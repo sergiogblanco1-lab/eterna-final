@@ -1611,6 +1611,10 @@ async def create_order_and_redirect(
 # HOME / CREATE
 # =========================================================
 
+# =========================================================
+# HOME / CREATE
+# =========================================================
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
@@ -1698,24 +1702,24 @@ async def crear_post(
     photo6: UploadFile = File(...),
 ):
     return await create_order_and_redirect(
-        customer_name=customer_name,
-        customer_email=customer_email,
-        customer_phone=customer_phone,
-        recipient_name=recipient_name,
-        recipient_phone=recipient_phone,
-        message_type=message_type,
-        phrase_mode=phrase_mode,
-        phrase_1=phrase_1,
-        phrase_2=phrase_2,
-        phrase_3=phrase_3,
-        gift_amount=gift_amount,
-        photo1=photo1,
-        photo2=photo2,
-        photo3=photo3,
-        photo4=photo4,
-        photo5=photo5,
-        photo6=photo6,
-    )
+    customer_name=customer_name,
+    customer_email=customer_email,
+    customer_phone=customer_phone,
+    recipient_name=recipient_name,
+    recipient_phone=recipient_phone,
+    message_type=message_type,
+    phrase_mode=phrase_mode,
+    phrase_1=phrase_1,
+    phrase_2=phrase_2,
+    phrase_3=phrase_3,
+    gift_amount=gift_amount,
+    photo1=photo1,
+    photo2=photo2,
+    photo3=photo3,
+    photo4=photo4,
+    photo5=photo5,
+    photo6=photo6,
+)
 
 
 # =========================================================
@@ -1787,7 +1791,7 @@ async def stripe_webhook(request: Request):
             try:
                 existing = get_order_by_id(order_id)
             except HTTPException:
-                return {"received": True}
+                existing = {}
 
             update_order(
                 order_id,
@@ -1799,6 +1803,27 @@ async def stripe_webhook(request: Request):
             )
 
             try:
+                from videoenxini import generate_video
+
+                video_url = generate_video(
+                    order_id,
+                    [
+                        existing.get("phrase_1", ""),
+                        existing.get("phrase_2", ""),
+                        existing.get("phrase_3", ""),
+                    ]
+                )
+
+                if video_url:
+                    update_order(
+                        order_id,
+                        experience_video_url=video_url
+                    )
+
+            except Exception as e:
+                log_error("Error generando video", e)
+
+            try:
                 updated = get_order_by_id(order_id)
                 try_send_recipient_sms(updated)
             except Exception as e:
@@ -1807,6 +1832,68 @@ async def stripe_webhook(request: Request):
     return {"received": True}
 
 
+# =========================================================
+# POST PAYMENT
+# =========================================================
+
+@app.get("/post-pago/{order_id}")
+def post_pago(order_id: str):
+    order = get_order_by_id(order_id)
+    if not order["paid"]:
+        return RedirectResponse(url=f"/checkout-exito/{order_id}", status_code=303)
+    return RedirectResponse(url=f"/resumen/{order_id}", status_code=303)
+
+
+@app.get("/resumen/{order_id}", response_class=HTMLResponse)
+def resumen(order_id: str):
+    order = get_order_by_id(order_id)
+
+    if not order.get("recipient_sms_sent_at"):
+        try:
+            try_send_recipient_sms(order)
+            order = get_order_by_id(order_id)
+        except Exception as e:
+            log_error("resumen try_send_recipient_sms", e)
+
+    recipient_name = safe_text(order.get("recipient_name") or "esa persona")
+    sms_sent = bool(order.get("recipient_sms_sent_at"))
+
+    if sms_sent:
+        status_line = "Estamos creando tu momento."
+        sub_line = f"{recipient_name} ya tiene su mensaje."
+        soft_line = "Pronto tendrás noticias."
+    else:
+        status_line = "Estamos creando tu momento."
+        sub_line = f"Estamos intentando enviar el mensaje a {recipient_name}."
+        soft_line = "Pronto tendrás noticias."
+
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ETERNA</title>
+    </head>
+    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
+        <div style="max-width:720px;width:100%;">
+            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
+                {status_line}
+            </h1>
+
+            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
+                {sub_line}
+            </div>
+
+            <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
+                {soft_line}
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+    
 # =========================================================
 # POST PAYMENT
 # =========================================================
