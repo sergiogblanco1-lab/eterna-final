@@ -3261,27 +3261,27 @@ async def stripe_webhook(request: Request):
         return {"status": "error"}
 
     # ✅ FUERA del try/except (IMPORTANTE)
-     if event["type"] == "checkout.session.completed":
-         session = event["data"]["object"]
-         print("SESSION:", session)
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        print("SESSION:", session)
 
-         order_id = session.get("metadata", {}).get("order_id")
-         print("ORDER_ID:", order_id)
+        order_id = session.get("metadata", {}).get("order_id")
+        print("ORDER_ID:", order_id)
 
-         print("💰 Pago completado:", order_id)
+        print("💰 Pago completado:", order_id)
 
-         conn = sqlite3.connect("/var/data/eterna.db", check_same_thread=False)
-         conn.execute(
-         "UPDATE orders SET paid=1 WHERE id=?",
-         (order_id,)
-         )
-         conn.commit()
-         conn.close()
+        conn = sqlite3.connect("/var/data/eterna.db", check_same_thread=False)
+        conn.execute(
+        "UPDATE orders SET paid=1 WHERE id=?",
+        (order_id,)
+)
+        conn.commit()
+        conn.close()
 
-         # 🚀 ENVÍO WHATSAPP (AQUÍ DENTRO)
-         enviar_whatsapp(order_id)
+        # 🚀 ENVÍO WHATSAPP (AQUÍ DENTRO)
+        enviar_whatsapp(order_id)
 
-         trigger_video_engine(order_id)
+        trigger_video_engine(order_id)
 
     return {"status": "success"}
 
