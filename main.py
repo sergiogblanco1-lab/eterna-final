@@ -3264,7 +3264,6 @@ async def stripe_webhook(request: Request):
         conn.commit()
         conn.close()
 
-    return {"status": "success"}
 
         # 🚀 ENVÍO WHATSAPP
         enviar_whatsapp(order_id)
