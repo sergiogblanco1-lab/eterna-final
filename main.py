@@ -2,6 +2,7 @@ import html
 import json
 import mimetypes
 import os
+import requests
 import secrets
 import sqlite3
 import uuid
@@ -22,6 +23,19 @@ except ImportError:
 
 app = FastAPI(title="ETERNA FINAL PRODUCTO")
 
+def trigger_video_engine(order_id):
+    url = os.getenv("VIDEO_ENGINE_URL")
+
+    requests.post(
+        f"{url}/render",
+        json={
+            "order_id": order_id,
+            "photos": [],
+            "phrases": []
+        }
+    )
+
+    print("🎬 Video engine llamado")
 
 # =========================================================
 # CONFIG
@@ -3267,6 +3281,7 @@ async def stripe_webhook(request: Request):
     # 🚀 ENVÍO WHATSAPP (AQUÍ DENTRO)
     enviar_whatsapp(order_id)
 
+    trigger_video_engine(order_id)
 
     return {"status": "success"}
 
