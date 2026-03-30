@@ -3268,28 +3268,30 @@ async def stripe_webhook(request: Request):
 )
         conn.commit()
         conn.close()
-
-        # 🚀 ENVÍO WHATSAPP (AQUÍ DENTRO)
-        enviar_whatsapp(order_id)
+        
+# 🚀 ENVÍO SMS (AQUÍ DENTRO)
+enviar_sms(order_id)
 
         trigger_video_engine(order_id)
 
     return {"status": "success"}
 
-    def enviar_whatsapp(order_id):
-        from twilio.rest import Client
+def enviar_sms(order_id):
+    from twilio.rest import Client
+    import os
 
-        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    twilio_number = os.getenv("TWILIO_PHONE_NUMBER")
 
-        client = Client(account_sid, auth_token)
+    client = Client(account_sid, auth_token)
 
-        to_number = "whatsapp:+34674713885"
+    to_number = "+34674713885"
 
-        mensaje = f"Hay algo para ti...\nhttps://eterna-final.onrender.com"
+    mensaje = f"Hay algo para ti...\nhttps://eterna-final.onrender.com"
 
-        client.messages.create(
-            from_="whatsapp:+14155238886",
-            body=mensaje,
-            to=to_number
+    client.messages.create(
+        body=mensaje,
+        from_=twilio_number,
+        to=to_number
     )
