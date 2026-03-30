@@ -4,28 +4,20 @@ import subprocess
 
 app = FastAPI()
 
-
-class RenderRequest(BaseModel):
+class VideoRequest(BaseModel):
     order_id: str
-    photos: list[str]
-    phrases: list[str]
-
 
 @app.get("/")
 def health():
     return {"status": "ok"}
 
-
 @app.post("/render")
-def render_video(data: RenderRequest):
-    print("🎬 Generando video para:", data.order_id)
+def render_video(data: VideoRequest):
+    order_id = data.order_id
 
-    subprocess.run(
-        ["python", "video_engine.py", data.order_id],
-        check=True
-    )
+    subprocess.run(["python", "video_engine.py", order_id])
 
     return {
-        "status": "rendering_started",
-        "order_id": data.order_id
+        "status": "render_started",
+        "order_id": order_id
     }

@@ -667,5 +667,18 @@ def render_eterna_video(photo_paths, phrase_1, phrase_2, phrase_3, output_path):
 # =========================================================
 
 
+import sys
+
 if __name__ == "__main__":
-    main()
+    order_id = sys.argv[1]
+
+    print("🎬 Generando video para:", order_id)
+
+    # ⚠️ Aquí tienes dos opciones:
+
+    # OPCIÓN RÁPIDA (para probar conexión)
+    # solo imprime y ya funciona el flujo
+
+    # OPCIÓN REAL (cuando quieras ya generar):
+    # tienes que llamar a tu función real:
+    # render_eterna_video(...)
