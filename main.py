@@ -1193,6 +1193,7 @@ def render_create_form() -> str:
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
+                    <input type="hidden" name="message_type" value="emotional">
                     <div class="section-title">Tus datos</div>
                     <input name="customer_name" placeholder="Tu nombre" required>
                     <input name="customer_email" type="email" placeholder="Tu email">
