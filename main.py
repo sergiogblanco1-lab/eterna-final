@@ -3271,7 +3271,6 @@ async def stripe_webhook(request: Request):
 
         # 🚀 ENVÍO SMS (AQUÍ DENTRO)
         enviar_sms(order_id)
-
         trigger_video_engine(order_id)
 
         return {"status": "success"}
