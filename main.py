@@ -1821,22 +1821,13 @@ async def stripe_webhook(request: Request):
             )
 
             try:
-                from video_engine import generate_video
+                import requests
 
-                video_url = generate_video(
-                    order_id,
-                    [
-                        existing.get("phrase_1", ""),
-                        existing.get("phrase_2", ""),
-                        existing.get("phrase_3", ""),
-                    ]
-                )
+                requests.post(
+                "https://eterna-final.onrender.com/render",
+                json={"order_id": order_id}
+)
 
-                if video_url:
-                    update_order(
-                        order_id,
-                        experience_video_url=video_url
-                    )
 
             except Exception as e:
                 log_error("Error generando video", e)
