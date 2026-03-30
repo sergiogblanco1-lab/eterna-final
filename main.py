@@ -3224,8 +3224,11 @@ def health():
     }
 from fastapi import Request
 import stripe
-import sqlite3
 import os
+
+os.makedirs("/var/data", exist_ok=True)
+
+conn = sqlite3.connect("/var/data/eterna.db", check_same_thread=False)
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
