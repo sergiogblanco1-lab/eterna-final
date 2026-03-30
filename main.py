@@ -24,15 +24,14 @@ except ImportError:
 app = FastAPI(title="ETERNA FINAL PRODUCTO")
 
 def trigger_video_engine(order_id):
-    url = os.getenv("VIDEO_ENGINE_URL")
+    from video_engine import render_eterna_video
 
-    requests.post(
-        f"{url}/render",
-        json={
-            "order_id": order_id,
-            "photos": [],
-            "phrases": []
-        }
+    render_eterna_video(
+        photo_paths=[],  # luego metemos reales
+        phrase_1="",
+        phrase_2="",
+        phrase_3="",
+        output_path=f"videos/{order_id}.mp4"
     )
 
     print("🎬 Video engine llamado")
