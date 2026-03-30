@@ -3252,7 +3252,7 @@ async def stripe_webhook(request: Request):
         return {"status": "error"}
 
     # ✅ FUERA del try/except (IMPORTANTE)
-    if event["type"] == "checkout.session.completed":
+    if event.get("type") == "checkout.session.completed":
         session = event["data"]["object"]
         print("SESSION:", session)
 
