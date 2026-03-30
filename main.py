@@ -3268,11 +3268,11 @@ async def stripe_webhook(request: Request):
 )
         conn.commit()
         conn.close()
-        
+
 # 🚀 ENVÍO SMS (AQUÍ DENTRO)
 enviar_sms(order_id)
 
-        trigger_video_engine(order_id)
+    trigger_video_engine(order_id)
 
     return {"status": "success"}
 
