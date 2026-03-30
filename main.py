@@ -3269,26 +3269,25 @@ async def stripe_webhook(request: Request):
         conn.commit()
         conn.close()
 
-# 🚀 ENVÍO SMS (AQUÍ DENTRO)
-enviar_sms(order_id)
+        # 🚀 ENVÍO SMS (AQUÍ DENTRO)
+        enviar_sms(order_id)
 
-    trigger_video_engine(order_id)
+        trigger_video_engine(order_id)
 
-    return {"status": "success"}
+        return {"status": "success"}
 
 def enviar_sms(order_id):
     from twilio.rest import Client
     import os
 
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-    twilio_number = os.getenv("TWILIO_PHONE_NUMBER")
+        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+        twilio_number = os.getenv("TWILIO_PHONE_NUMBER")
 
-    client = Client(account_sid, auth_token)
+        client = Client(account_sid, auth_token)
 
-    to_number = "+34674713885"
-
-    mensaje = f"Hay algo para ti...\nhttps://eterna-final.onrender.com"
+        to_number = "+34674713885"
+        mensaje = f"Hay algo para ti...\nhttps://eterna-final.onrender.com"
 
     client.messages.create(
         body=mensaje,
