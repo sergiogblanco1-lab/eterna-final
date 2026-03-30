@@ -69,7 +69,7 @@ R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").strip().rstrip("/")
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
-TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "").strip()
+TWILIO_FROM_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "").strip()
 
 MAX_VIDEO_SIZE = 30 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
