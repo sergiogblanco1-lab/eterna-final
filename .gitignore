@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+
+data/
+videos/
+uploads/
+temp/
+renders/
+order_assets/
+
+*.db
+.env
