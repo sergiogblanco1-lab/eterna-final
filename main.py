@@ -33,7 +33,7 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
-    "https://eterna-v2-lab.onrender.com",
+    "https://eterna-final.onrender.com",
 ).strip().rstrip("/")
 
 BASE_PRICE = float(os.getenv("ETERNA_BASE_PRICE", "29"))
@@ -3222,3 +3222,61 @@ def health():
         "stripe_enabled": bool(STRIPE_SECRET_KEY),
         "default_experience_video_url": DEFAULT_EXPERIENCE_VIDEO_URL,
     }
+from fastapi import Request
+import stripe
+import sqlite3
+import os
+
+@app.post("/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except Exception as e:
+        print("❌ Webhook error:", e)
+        return {"status": "error"}
+
+    # 💥 PAGO COMPLETADO
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+
+        order_id = session.get("client_reference_id")
+
+        print("💰 Pago completado:", order_id)
+
+        # marcar como pagado
+        conn = sqlite3.connect("data/eterna.db")
+        conn.execute(
+            "UPDATE orders SET paid=1 WHERE id=?",
+            (order_id,)
+        )
+        conn.commit()
+        conn.close()
+
+        # 🚀 ENVÍO WHATSAPP
+        enviar_whatsapp(order_id)
+
+    return {"status": "success"}
+    def enviar_whatsapp(order_id):
+    from twilio.rest import Client
+
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+
+    client = Client(account_sid, auth_token)
+
+    to_number = "whatsapp:+34674713885"
+
+    mensaje = f"Hay algo para ti…\nhttps://eterna-final.onrender.com/pedido/{order_id}"
+
+    client.messages.create(
+        from_="whatsapp:+14155238886",
+        body=mensaje,
+        to=to_number
+    )
