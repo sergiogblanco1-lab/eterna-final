@@ -1780,7 +1780,7 @@ def checkout_exito(order_id: str):
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
-    payload = await request.body()
+    payload = (await request.body()).decode("utf-8")
     sig_header = request.headers.get("stripe-signature", "")
 
     if not STRIPE_WEBHOOK_SECRET and STRIPE_SECRET_KEY:
