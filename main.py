@@ -3263,20 +3263,21 @@ async def stripe_webhook(request: Request):
         enviar_whatsapp(order_id)
 
     return {"status": "success"}
+
     def enviar_whatsapp(order_id):
-    from twilio.rest import Client
+        from twilio.rest import Client
 
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 
-    client = Client(account_sid, auth_token)
+        client = Client(account_sid, auth_token)
 
-    to_number = "whatsapp:+34674713885"
+        to_number = "whatsapp:+34674713885"
 
-    mensaje = f"Hay algo para ti…\nhttps://eterna-final.onrender.com/pedido/{order_id}"
+        mensaje = f"Hay algo para ti...\nhttps://eterna-final.onrender.com"
 
-    client.messages.create(
-        from_="whatsapp:+14155238886",
-        body=mensaje,
-        to=to_number
+        client.messages.create(
+            from_="whatsapp:+14155238886",
+            body=mensaje,
+            to=to_number
     )
