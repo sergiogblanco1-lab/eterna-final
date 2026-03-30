@@ -9,11 +9,12 @@ class RenderRequest(BaseModel):
     phrases: list[str]
 
 
-    @app.get("/")
+@app.get("/")
 def health():
     return {"status": "ok"}
 
- @app.post("/render")
+
+@app.post("/render")
 def render_video(data: RenderRequest):
     print("🎬 Generando video para:", data.order_id)
 
