@@ -1820,7 +1820,7 @@ async def stripe_webhook(request: Request):
             )
 
             try:
-                from videoenxini import generate_video
+                from video_engine import generate_video
 
                 video_url = generate_video(
                     order_id,
