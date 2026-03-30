@@ -3229,7 +3229,6 @@ import os
 os.makedirs("/var/data", exist_ok=True)
 
 conn = sqlite3.connect("/var/data/eterna.db", check_same_thread=False)
-
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
     payload = await request.body()
@@ -3246,15 +3245,17 @@ async def stripe_webhook(request: Request):
         return {"status": "error"}
 
     # 💥 PAGO COMPLETADO
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+   if event["type"] == "checkout.session.completed":
+    session = event["data"]["object"]
+    print("SESSION:", session)
 
-        order_id = session.get("client_reference_id")
+    order_id = session.get("metadata", {}).get("order_id")
+    print("ORDER_ID:", order_id)
 
-        print("💰 Pago completado:", order_id)
+    print("💰 Pago completado:", order_id)
 
         # marcar como pagado
-        conn = sqlite3.connect("data/eterna.db")
+        conn = sqlite3.connect("/var/data/eterna.db", check_same_thread=False)
         conn.execute(
             "UPDATE orders SET paid=1 WHERE id=?",
             (order_id,)
