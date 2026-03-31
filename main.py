@@ -1813,11 +1813,15 @@ def checkout_exito(order_id: str):
 
 
 @app.post("/stripe/webhook")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    payload = bytes(payload)
+async def webhook(request: Request):
+    import stripe
+    import traceback
 
+    payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
 
     try:
         event = stripe.Webhook.construct_event(
@@ -1825,59 +1829,44 @@ async def stripe_webhook(request: Request):
             sig_header,
             STRIPE_WEBHOOK_SECRET
         )
-    except Exception as e:
-        print("❌ ERROR WEBHOOK:", str(e))
-        raise HTTPException(status_code=400, detail=f"Webhook inválido: {e}")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma inválida")
 
-    event_type = event.get("type")
-    print("✅ Evento recibido:", event_type)
-
-    if event_type == "checkout.session.completed":
-        session = event.get("data", {}).get("object", {})
-
-        order_id = (
-            session.get("client_reference_id")
-            or session.get("metadata", {}).get("order_id")
-        )
-
-        print("🧾 order_id:", order_id)
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        order_id = session.get("client_reference_id")
 
         if not order_id:
-            raise HTTPException(status_code=400, detail="order_id no encontrado en webhook")
+            return {"status": "error", "reason": "order_id missing"}
+
+        print(f"🔥 WEBHOOK OK → {order_id}")
+
+        conn = db_conn()
+        conn.execute(
+            """
+            UPDATE orders
+            SET paid = 1,
+                stripe_payment_status = 'paid',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (order_id,)
+        )
+        conn.commit()
+        conn.close()
 
         try:
-            existing = get_order_by_id(order_id)
-            if not existing:
-                raise HTTPException(status_code=404, detail=f"Pedido no encontrado: {order_id}")
+            print(f"🚀 START VIDEO ENGINE → {order_id}")
+            result = trigger_video_engine(order_id)
+            print(f"✅ VIDEO ENGINE OK → {order_id}")
+            print(f"📦 RESULT → {result}")
+        except Exception:
+            print(f"❌ VIDEO ENGINE ERROR → {order_id}")
+            traceback.print_exc()
 
-            update_order(
-                order_id,
-                paid=1,
-                stripe_session_id=session.get("id"),
-                stripe_payment_status=session.get("payment_status", "paid")
-            )
-
-            print(f"✅ Pedido marcado como pagado: {order_id}")
-
-            try:
-                enviar_sms(order_id)
-                print(f"✅ SMS enviado: {order_id}")
-            except Exception as e:
-                print(f"❌ Error enviando SMS para {order_id}: {e}")
-
-            try:
-                trigger_video_engine(order_id)
-                print(f"✅ Video engine lanzado: {order_id}")
-            except Exception as e:
-                print(f"❌ Error lanzando video engine para {order_id}: {e}")
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            print(f"❌ Error procesando pedido {order_id}: {e}")
-            raise HTTPException(status_code=500, detail=f"Error procesando pedido: {e}")
-
-    return {"status": "ok"}
+    return {"status": "success"}
 
 
 # =========================================================
