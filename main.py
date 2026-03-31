@@ -714,11 +714,11 @@ def try_send_sender_sms(order: dict) -> dict:
         print(f"❌ Pedido no encontrado para SMS: {order_id}")
         return
 
-    result = try_send_recipient_sms(order)
+        result = try_send_recipient_sms(order)
 
-    print(f"📩 Resultado SMS: {result}")
+        print(f"📩 Resultado SMS: {result}")
 
-    return result
+        return result
 
         def enviar_sms(order_id: str):
             order = get_order_by_id(order_id)
