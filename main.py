@@ -127,7 +127,7 @@ def trigger_video_engine(order_id: str):
     return public_video_url
 
 @app.get("/video/generated/{order_id}")
-def get_generated_video(order_id: str):
+    def get_generated_video(order_id: str):
     filepath = Path("videos") / f"{order_id}.mp4"
 
     if not filepath.exists():
@@ -1685,13 +1685,61 @@ async def create_order_and_redirect(
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
 
 
-# =========================================================
-# HOME / CREATE
-# =========================================================
+
 
 # =========================================================
 # HOME / CREATE
 # =========================================================
+
+@app.post("/stripe/webhook")
+async def webhook(request: Request):
+    import stripe
+    import traceback
+
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma inválida")
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+
+        session_id = session.get("id")
+        order_id = None
+
+        order_id = session.get("client_reference_id")
+
+        if not order_id:
+            metadata = session.get("metadata", {}) or {}
+            order_id = metadata.get("order_id")
+
+        if not order_id and session_id:
+            conn = db_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1",
+                (session_id,)
+            )
+            row = cur.fetchone()
+            conn.close()
+            if row:
+                order_id = row["id"]
+
+        if not order_id:
+            print("❌ WEBHOOK: no se pudo resolver order_id")
+           
 
 @app.get("/", response_class=HTMLResponse)
 def home():
