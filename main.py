@@ -2461,12 +2461,11 @@ async def upload_video(
             log_error("Error subiendo a R2", e)
 
         update_order(
-            order["id"],
-            reaction_video_local=filepath,
-            reaction_video_public_url=public_video_url,
-            reaction_uploaded=1,
-            experience_completed=1,
-        )
+    order_id,
+    paid=1,
+    stripe_session_id=session.get("id"),
+    stripe_payment_status=session.get("payment_status", "paid")
+)
 
         if public_video_url:
             insert_asset(order["id"], "reaction_video", public_video_url, "r2")
@@ -3228,60 +3227,68 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
-    payload = (await request.body())
+    payload = await request.body()
+    payload = bytes(payload)
+
     sig_header = request.headers.get("stripe-signature")
-    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 
     try:
         event = stripe.Webhook.construct_event(
-            payload=payload,
-            sig_header=sig_header,
-            secret=STRIPE_WEBHOOK_SECRET,
+            payload,
+            sig_header,
+            STRIPE_WEBHOOK_SECRET
         )
-        print("✅ WEBHOOK OK")
-        print("EVENT TYPE:", event.get("type"))
-
     except Exception as e:
-        print("❌ Webhook error:", str(e))
-        return JSONResponse(status_code=400, content={"status": "error"})
+        print("❌ ERROR WEBHOOK:", str(e))
+        raise HTTPException(status_code=400, detail=f"Webhook inválido: {e}")
 
-    if event.get("type") == "checkout.session.completed":
+    event_type = event.get("type")
+    print("✅ Evento recibido:", event_type)
+
+    if event_type == "checkout.session.completed":
         session = event.get("data", {}).get("object", {})
-        print("SESSION:", session)
 
-        order_id = session.get("client_reference_id") or session.get("metadata", {}).get("order_id")
-        print("ORDER_ID:", order_id)
+        order_id = (
+            session.get("client_reference_id")
+            or session.get("metadata", {}).get("order_id")
+        )
+
+        print("🧾 order_id:", order_id)
 
         if not order_id:
-            print("❌ No order_id en session")
-            return JSONResponse(status_code=400, content={"status": "missing_order_id"})
-
-        print("💰 Pago completado:", order_id)
-
-        conn = sqlite3.connect("/var/data/eterna.db", check_same_thread=False)
-        conn.execute(
-            "UPDATE orders SET paid=1 WHERE id=?",
-            (order_id,)
-        )
-        conn.commit()
-        conn.close()
+            raise HTTPException(status_code=400, detail="order_id no encontrado en webhook")
 
         try:
-            enviar_sms(order_id)
-            print("✅ SMS enviado")
+            existing = get_order_by_id(order_id)
+            if not existing:
+                raise HTTPException(status_code=404, detail=f"Pedido no encontrado: {order_id}")
+
+            update_order(
+                order_id,
+                paid=1,
+                stripe_session_id=session.get("id"),
+                stripe_payment_status=session.get("payment_status", "paid"),
+                gift_refund_deadline_at=gift_refund_deadline_iso(),
+            )
+
+            print(f"✅ Pedido marcado como pagado: {order_id}")
+
+            try:
+                enviar_sms(order_id)
+                print(f"✅ SMS enviado: {order_id}")
+            except Exception as e:
+                print(f"❌ Error enviando SMS para {order_id}: {e}")
+
+            try:
+                trigger_video_engine(order_id)
+                print(f"✅ Video engine lanzado: {order_id}")
+            except Exception as e:
+                print(f"❌ Error lanzando video engine para {order_id}: {e}")
+
+        except HTTPException:
+            raise
         except Exception as e:
-            print("❌ Error SMS:", str(e))
+            print(f"❌ Error procesando pedido {order_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error procesando pedido: {e}")
 
-        try:
-            trigger_video_engine(order_id)
-            print("✅ Video engine lanzado")
-        except Exception as e:
-            print("❌ Error video engine:", str(e))
-
-    return {"status": "success"}
-
-    client.messages.create(
-        body=mensaje,
-        from_=twilio_number,
-        to=to_number
-    )
+    return {"status": "ok"}
