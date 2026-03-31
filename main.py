@@ -1646,7 +1646,7 @@ cur.execute(f"""
     None, None, None, None,
     0, 0, None, None,
     created_at, created_at
-))
+)
 
     conn.commit()
     conn.close()
