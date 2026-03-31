@@ -1663,8 +1663,7 @@ cur.execute(f"""
     None, None, None, None,
     0, 0, None, None,
     created_at, created_at
-))
-
+))  
 
     conn.commit()
     conn.close()
@@ -1753,7 +1752,7 @@ cur.execute(f"""
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return """
+    return f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
