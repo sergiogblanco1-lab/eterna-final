@@ -2334,21 +2334,29 @@ def experiencia(recipient_token: str):
 # EXPERIENCE LOCK
 # =========================================================
 
+def try_start_experience(order_id: str) -> str:
+    order = get_order_by_id(order_id)
+
+    if not order:
+        return "not_found"
+
+    if not bool(order.get("paid")):
+        return "not_paid"
+
+    if bool(order.get("experience_completed")):
+        return "already_completed"
+
+    update_order(
+        order_id,
+        experience_started=1,
+        delivered_to_recipient=1,
+    )
+
+    return "started"
+
+
 @app.post("/start-experience")
 def start_experience(recipient_token: str = Form(...)):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    result = try_start_experience(order["id"])
-
-    if result == "not_paid":
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if result == "already_completed":
-        return JSONResponse({
-            "status": "already_completed",
-            "redirect_url": f"/cobrar/{recipient_token}",
-        })
-
-    return JSONResponse({"status": "ok"})
 
 
 # =========================================================
