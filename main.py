@@ -707,20 +707,18 @@ def try_send_sender_sms(order: dict) -> dict:
     result = send_sms(order.get("sender_phone", ""), build_sender_ready_message(order))
 
     if result["ok"]:
-        update_order(
-            order["id"],
-            sender_sms_sent_at=now_iso(),
-            sender_sms_sid=result["sid"],
-            sender_sms_attempts=attempts,
-            sender_sms_error=None,
-            sender_notified=1,
-        )
-        return {
-            "ok": True,
-            "sid": result["sid"],
-            "already_sent": False,
-            "error": None,
-        }
+        def enviar_sms(order_id: str):
+    order = get_order_by_id(order_id)
+
+    if not order:
+        print(f"❌ Pedido no encontrado para SMS: {order_id}")
+        return
+
+    result = try_send_recipient_sms(order)
+
+    print(f"📩 Resultado SMS: {result}")
+
+    return result
 
         def enviar_sms(order_id: str):
             order = get_order_by_id(order_id)
