@@ -23,18 +23,94 @@ except ImportError:
 
 app = FastAPI(title="ETERNA FINAL PRODUCTO")
 
-def trigger_video_engine(order_id):
-    from video_engine import render_eterna_video
+def trigger_video_engine(order_id: str):
+    print(f"🎬 Iniciando video engine para order_id={order_id}")
 
-    render_eterna_video(
-        photo_paths=[],  # luego metemos reales
-        phrase_1="",
-        phrase_2="",
-        phrase_3="",
-        output_path=f"videos/{order_id}.mp4"
-    )
+    # 1. Obtener pedido
+    order = get_order_by_id(order_id)
+    if not order:
+        print(f"❌ Pedido no encontrado: {order_id}")
+        return
 
-    print("🎬 Video engine llamado")
+    # 2. Obtener fotos desde assets
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT asset_type, file_url
+            FROM assets
+            WHERE order_id = ?
+        """, (order_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+    except Exception as e:
+        print(f"❌ Error obteniendo assets: {e}")
+        return
+
+    # 3. Ordenar fotos correctamente (photo1 → photo6)
+    photos = {}
+
+    for row in rows:
+        asset_type = row["asset_type"]
+        file_url = row["file_url"]
+
+        if asset_type.startswith("photo"):
+            try:
+                index = int(asset_type.replace("photo", ""))
+                photos[index] = file_url
+            except:
+                pass
+
+    photo_paths = [photos[i] for i in range(1, 7) if i in photos]
+
+    if len(photo_paths) != 6:
+        print(f"❌ Faltan fotos. Encontradas: {len(photo_paths)}")
+        return
+
+    print(f"✅ 6 fotos cargadas correctamente")
+
+    # 4. Obtener frases
+    phrase_1 = order.get("phrase_1", "")
+    phrase_2 = order.get("phrase_2", "")
+    phrase_3 = order.get("phrase_3", "")
+
+    # 5. Ruta de salida
+    output_path = f"videos/{order_id}.mp4"
+
+    # 6. Llamar al motor real
+    try:
+        from video_engine import render_eterna_video
+
+        render_eterna_video(
+            photo_paths=photo_paths,
+            phrase_1=phrase_1,
+            phrase_2=phrase_2,
+            phrase_3=phrase_3,
+            output_path=output_path
+        )
+
+        print(f"🎬 Video generado en {output_path}")
+
+    except Exception as e:
+        print(f"❌ Error en video engine: {e}")
+        return
+
+    # 7. Guardar URL en la BD
+    try:
+        public_url = f"{PUBLIC_BASE_URL}/{output_path}"
+
+        update_order(
+            order_id,
+            experience_video_url=public_url
+        )
+
+        print(f"✅ URL guardada: {public_url}")
+
+    except Exception as e:
+        print(f"❌ Error guardando URL: {e}")
 
 # =========================================================
 # CONFIG
