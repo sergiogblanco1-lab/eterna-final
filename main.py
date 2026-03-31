@@ -699,6 +699,9 @@ def try_send_sender_sms(order: dict) -> dict:
             "already_sent": True,
             "error": None,
         }
+        def enviar_sms(order_id: str):
+            order = get_order_by_id(order_id)
+            return try_send_recipient_sms(order)
 
     attempts = int(order.get("sender_sms_attempts") or 0) + 1
     result = send_sms(order.get("sender_phone", ""), build_sender_ready_message(order))
