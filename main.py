@@ -1638,7 +1638,7 @@ async def create_order_and_redirect(
         0, 0,
         None, None, None, None, None, None,
         recipient_token, sender_token,
-        None, None, DEFAULT_EXPERIENCE_VIDEO_URL or None,
+        None, None, None,
         None,
         None, None, None, None,
         0, 0, None, None,
