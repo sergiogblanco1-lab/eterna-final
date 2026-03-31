@@ -653,14 +653,13 @@ def send_sms(phone: str, message: str) -> dict:
 
 if not order:
         print(f"❌ Pedido no encontrado para SMS: {order_id}")
-        return
+        
 
         result = try_send_recipient_sms(order)
 
         print(f"📩 Resultado SMS: {result}")
 
-        return result
-
+        return result 
 
 # =========================================================
 # STRIPE CONNECT HELPERS
