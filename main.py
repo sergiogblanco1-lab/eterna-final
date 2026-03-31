@@ -125,6 +125,18 @@ def trigger_video_engine(order_id: str):
 
     print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
     return public_video_url
+    @app.get("/video/generated/{order_id}")
+def get_generated_video(order_id: str):
+    filepath = Path("videos") / f"{order_id}.mp4"
+
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Vídeo generado no encontrado")
+
+    return FileResponse(
+        str(filepath),
+        media_type="video/mp4",
+        filename=f"{order_id}.mp4"
+    )
 
 # =========================================================
 # CONFIG
