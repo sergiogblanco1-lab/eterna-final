@@ -1752,7 +1752,7 @@ cur.execute(f"""
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return f"""
+    return """
     <!DOCTYPE html>
     <html lang="es">
     <head>
@@ -1760,9 +1760,15 @@ def home():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
         <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
+            * { box-sizing: border-box; }
+
+            html, body {
+                margin: 0;
+                min-height: 100%;
+                background: #000;
+            }
+
+            body {
                 min-height: 100vh;
                 background:
                     radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
@@ -1773,8 +1779,9 @@ def home():
                 justify-content: center;
                 align-items: center;
                 padding: 24px;
-            }}
-            .card {{
+            }
+
+            .card {
                 width: 100%;
                 max-width: 760px;
                 background: rgba(255,255,255,0.04);
@@ -1782,11 +1789,29 @@ def home():
                 border-radius: 28px;
                 padding: 42px 30px;
                 text-align: center;
-            }}
-            h1 {{ margin: 0 0 10px 0; font-size: 48px; letter-spacing: 3px; }}
-            .subtitle {{ color: rgba(255,255,255,0.80); font-size: 20px; line-height: 1.8; margin-top: 18px; }}
-            .soft {{ margin-top: 24px; color: rgba(255,255,255,0.50); font-size: 15px; line-height: 1.7; }}
-            .btn {{
+            }
+
+            h1 {
+                margin: 0 0 10px 0;
+                font-size: 48px;
+                letter-spacing: 3px;
+            }
+
+            .subtitle {
+                color: rgba(255,255,255,0.80);
+                font-size: 20px;
+                line-height: 1.8;
+                margin-top: 18px;
+            }
+
+            .soft {
+                margin-top: 24px;
+                color: rgba(255,255,255,0.50);
+                font-size: 15px;
+                line-height: 1.7;
+            }
+
+            .btn {
                 margin-top: 30px;
                 width: 100%;
                 display: inline-block;
@@ -1796,17 +1821,24 @@ def home():
                 color: black;
                 font-weight: bold;
                 text-decoration: none;
-            }}
+            }
         </style>
     </head>
+
     <body>
         <div class="card">
             <h1>ETERNA</h1>
-            <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
-            <div class="soft">No es un vídeo.<br>Es un momento.</div>
+            <div class="subtitle">
+                Hay momentos que merecen quedarse para siempre
+            </div>
+            <div class="soft">
+                No es un vídeo.<br>
+                Es un momento.
+            </div>
             <a class="btn" href="/crear">CREAR MI ETERNA</a>
         </div>
     </body>
+
     </html>
     """
 
