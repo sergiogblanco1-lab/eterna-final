@@ -1820,8 +1820,9 @@ async def stripe_webhook(request: Request):
             if not existing:
                 raise HTTPException(status_code=404, detail=f"Pedido no encontrado: {order_id}")
 
-            update_order_paid(
-                order_id=order_id,
+            update_order(
+                order_id,
+                paid=1,
                 stripe_session_id=session.get("id"),
                 stripe_payment_status=session.get("payment_status", "paid")
             )
