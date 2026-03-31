@@ -2357,6 +2357,20 @@ def try_start_experience(order_id: str) -> str:
 
 @app.post("/start-experience")
 def start_experience(recipient_token: str = Form(...)):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    result = try_start_experience(order["id"])
+
+    if result == "not_paid":
+        raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    if result == "already_completed":
+        return JSONResponse({
+            "status": "already_completed",
+            "redirect_url": f"/cobrar/{recipient_token}"
+        })
+
+    return JSONResponse({"status": "ok"})
 
 
 # =========================================================
