@@ -1783,63 +1783,69 @@ def checkout_exito(order_id: str):
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
     payload = (await request.body()).decode("utf-8")
-    sig_header = request.headers.get("stripe-signature", "")
+    sig_header = request.headers.get("stripe-signature")
 
     if not STRIPE_WEBHOOK_SECRET and STRIPE_SECRET_KEY:
         raise HTTPException(status_code=400, detail="Webhook secret no configurado")
 
     try:
-        if STRIPE_WEBHOOK_SECRET:
-            event = stripe.Webhook.construct_event(
-                payload=payload,
-                sig_header=sig_header,
-                secret=STRIPE_WEBHOOK_SECRET,
-            )
-        else:
-            event = json.loads(payload.decode("utf-8"))
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            STRIPE_WEBHOOK_SECRET
+        )
     except Exception as e:
+        print("❌ ERROR WEBHOOK:", str(e))
         raise HTTPException(status_code=400, detail=f"Webhook inválido: {e}")
 
     event_type = event.get("type")
+    print("✅ Evento recibido:", event_type)
 
     if event_type == "checkout.session.completed":
-        session = event["data"]["object"]
-        order_id = session.get("metadata", {}).get("order_id") or session.get("client_reference_id")
+        session = event.get("data", {}).get("object", {})
 
-        if order_id:
-            try:
-                existing = get_order_by_id(order_id)
-            except HTTPException:
-                existing = {}
+        order_id = (
+            session.get("client_reference_id")
+            or session.get("metadata", {}).get("order_id")
+        )
 
-            update_order(
-                order_id,
-                paid=1,
-                stripe_payment_status="paid",
+        print("🧾 order_id:", order_id)
+
+        if not order_id:
+            raise HTTPException(status_code=400, detail="order_id no encontrado en webhook")
+
+        try:
+            existing = get_order_by_id(order_id)
+            if not existing:
+                raise HTTPException(status_code=404, detail=f"Pedido no encontrado: {order_id}")
+
+            update_order_paid(
+                order_id=order_id,
                 stripe_session_id=session.get("id"),
-                stripe_payment_intent_id=session.get("payment_intent"),
-                gift_refund_deadline_at=existing.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+                stripe_payment_status=session.get("payment_status", "paid")
             )
 
-            try:
-                import requests
-
-                requests.post(
-                "https://eterna-final.onrender.com/render",
-                json={"order_id": order_id}
-)
-
-
-            except Exception as e:
-                log_error("Error generando video", e)
+            print(f"✅ Pedido marcado como pagado: {order_id}")
 
             try:
-                updated = get_order_by_id(order_id)
-                try_send_recipient_sms(updated)
+                enviar_sms(order_id)
+                print(f"✅ SMS enviado: {order_id}")
             except Exception as e:
-                log_error("Recipient SMS after payment", e)
+                print(f"❌ Error enviando SMS para {order_id}: {e}")
 
-    return {"received": True}
+            try:
+                trigger_video_engine(order_id)
+                print(f"✅ Video engine lanzado: {order_id}")
+            except Exception as e:
+                print(f"❌ Error lanzando video engine para {order_id}: {e}")
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"❌ Error procesando pedido {order_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error procesando pedido: {e}")
+
+    return {"status": "ok"}
 
 
 # =========================================================
