@@ -47,10 +47,7 @@ GIFT_COMMISSION_RATE = float(os.getenv("GIFT_COMMISSION_RATE", "0.05"))
 FIXED_PLATFORM_FEE = float(os.getenv("ETERNA_FIXED_FEE", "2"))
 GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
 
-DEFAULT_EXPERIENCE_VIDEO_URL = os.getenv(
-    "DEFAULT_EXPERIENCE_VIDEO_URL",
-    f"{PUBLIC_BASE_URL}/static/eterna-base.mp4",
-).strip()
+
 
 R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "").strip()
 R2_SECRET_KEY = os.getenv("R2_SECRET_KEY", "").strip()
@@ -3117,19 +3114,7 @@ def admin_process_refunds(token: str = ""):
     return JSONResponse({"ok": True})
 
 
-@app.get("/admin/fix-experience-videos")
-def admin_fix_experience_videos(token: str = ""):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="No autorizado")
 
-    conn = db_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        UPDATE orders
-        SET experience_video_url = ?, updated_at = ?
-        WHERE experience_video_url IS NULL OR TRIM(experience_video_url) = ''
-    """, (DEFAULT_EXPERIENCE_VIDEO_URL, now_iso()))
 
     conn.commit()
     updated = cur.rowcount
@@ -3138,7 +3123,7 @@ def admin_fix_experience_videos(token: str = ""):
     return JSONResponse({
         "ok": True,
         "updated_orders": updated,
-        "experience_video_url": DEFAULT_EXPERIENCE_VIDEO_URL,
+        "experience_video_url": None,
     })
 
 
