@@ -1619,8 +1619,6 @@ async def create_order_and_redirect(
             ],
             success_url=f"{PUBLIC_BASE_URL}/checkout-exito/{order_id}",
             cancel_url=f"{PUBLIC_BASE_URL}/crear",
-            client_reference_id=order_id,
-            metadata={"order_id": order_id},
         )
         update_order(order_id, stripe_session_id=session.id, stripe_payment_status="created")
         return RedirectResponse(url=session.url, status_code=303)
