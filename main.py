@@ -1782,11 +1782,10 @@ def checkout_exito(order_id: str):
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
-    payload = (await request.body())
-    sig_header = request.headers.get("stripe-signature")
+    payload = await request.body()
+    payload = bytes(payload)
 
-    if not STRIPE_WEBHOOK_SECRET and STRIPE_SECRET_KEY:
-        raise HTTPException(status_code=400, detail="Webhook secret no configurado")
+    sig_header = request.headers.get("stripe-signature")
 
     try:
         event = stripe.Webhook.construct_event(
