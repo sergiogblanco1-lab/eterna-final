@@ -1782,7 +1782,7 @@ def checkout_exito(order_id: str):
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
-    payload = (await request.body()).decode("utf-8")
+    payload = (await request.body())
     sig_header = request.headers.get("stripe-signature")
 
     if not STRIPE_WEBHOOK_SECRET and STRIPE_SECRET_KEY:
@@ -3227,15 +3227,15 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
-    payload = (await request.body()).decode("utf-8")
+    payload = (await request.body())
     sig_header = request.headers.get("stripe-signature")
     endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 
     try:
         event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            endpoint_secret
+            payload=payload,
+            sig_header=sig_header,
+            secret=STRIPE_WEBHOOK_SECRET,
         )
         print("✅ WEBHOOK OK")
         print("EVENT TYPE:", event.get("type"))
