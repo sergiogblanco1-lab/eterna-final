@@ -1759,6 +1759,7 @@ def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
+
         <style>
             * { box-sizing: border-box; }
 
@@ -1824,12 +1825,23 @@ def home():
             }
         </style>
     </head>
+
     <body>
         <div class="card">
             <h1>ETERNA</h1>
-            <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
-            <div class="soft">No es un vídeo.<br>Es un momento.</div>
-            <a class="btn" href="/crear">CREAR MI ETERNA</a>
+
+            <div class="subtitle">
+                Hay momentos que merecen quedarse para siempre
+            </div>
+
+            <div class="soft">
+                No es un vídeo.<br>
+                Es un momento.
+            </div>
+
+            <a class="btn" href="/crear">
+                CREAR MI ETERNA
+            </a>
         </div>
     </body>
     </html>
@@ -1839,96 +1851,6 @@ def home():
 @app.get("/crear", response_class=HTMLResponse)
 def crear_get():
     return render_create_form()
-
-
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-        <style>
-            * { box-sizing: border-box; }
-
-            html, body {
-                margin: 0;
-                min-height: 100%;
-                background: #000;
-            }
-
-            body {
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                padding: 24px;
-            }
-
-            .card {
-                width: 100%;
-                max-width: 760px;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 28px;
-                padding: 42px 30px;
-                text-align: center;
-            }
-
-            h1 {
-                margin: 0 0 10px 0;
-                font-size: 48px;
-                letter-spacing: 3px;
-            }
-
-            .subtitle {
-                color: rgba(255,255,255,0.80);
-                font-size: 20px;
-                line-height: 1.8;
-                margin-top: 18px;
-            }
-
-            .soft {
-                margin-top: 24px;
-                color: rgba(255,255,255,0.50);
-                font-size: 15px;
-                line-height: 1.7;
-            }
-
-            .btn {
-                margin-top: 30px;
-                width: 100%;
-                display: inline-block;
-                padding: 18px 24px;
-                border-radius: 999px;
-                background: white;
-                color: black;
-                font-weight: bold;
-                text-decoration: none;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>ETERNA</h1>
-            <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
-            <div class="soft">No es un vídeo.<br>Es un momento.</div>
-            <a class="btn" href="/crear">CREAR MI ETERNA</a>
-        </div>
-    </body>
-    </html>
-    """
-
-
-@app.get("/latido/{recipient_token}", response_class=HTMLResponse)
-def latido_page(recipient_token: str):
     return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
 
