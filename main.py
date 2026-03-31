@@ -24,93 +24,107 @@ except ImportError:
 app = FastAPI(title="ETERNA FINAL PRODUCTO")
 
 def trigger_video_engine(order_id: str):
-    print(f"🎬 Iniciando video engine para order_id={order_id}")
+    import os
+    from pathlib import Path
 
-    # 1. Obtener pedido
+    print(f"[VIDEO_ENGINE] Iniciando render para pedido: {order_id}")
+
     order = get_order_by_id(order_id)
     if not order:
-        print(f"❌ Pedido no encontrado: {order_id}")
-        return
+        raise Exception(f"No existe el pedido {order_id}")
 
-    # 2. Obtener fotos desde assets
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
+    conn = db_conn()
+    cur = conn.cursor()
 
-        cursor.execute("""
-            SELECT asset_type, file_url
-            FROM assets
-            WHERE order_id = ?
-        """, (order_id,))
+    cur.execute(
+        """
+        SELECT asset_type, file_url
+        FROM assets
+        WHERE order_id = ?
+        ORDER BY created_at ASC, id ASC
+        """,
+        (order_id,),
+    )
+    assets = cur.fetchall()
+    conn.close()
 
-        rows = cursor.fetchall()
-        conn.close()
+    photo_map = {}
 
-    except Exception as e:
-        print(f"❌ Error obteniendo assets: {e}")
-        return
+    for asset in assets:
+        asset_type = (asset["asset_type"] or "").lower().strip()
+        file_url = (asset["file_url"] or "").strip()
 
-    # 3. Ordenar fotos correctamente (photo1 → photo6)
-    photos = {}
+        if not file_url:
+            continue
 
-    for row in rows:
-        asset_type = row["asset_type"]
-        file_url = row["file_url"]
+        if asset_type in {"photo1", "foto1"}:
+            photo_map[1] = file_url
+        elif asset_type in {"photo2", "foto2"}:
+            photo_map[2] = file_url
+        elif asset_type in {"photo3", "foto3"}:
+            photo_map[3] = file_url
+        elif asset_type in {"photo4", "foto4"}:
+            photo_map[4] = file_url
+        elif asset_type in {"photo5", "foto5"}:
+            photo_map[5] = file_url
+        elif asset_type in {"photo6", "foto6"}:
+            photo_map[6] = file_url
 
-        if asset_type.startswith("photo"):
-            try:
-                index = int(asset_type.replace("photo", ""))
-                photos[index] = file_url
-            except:
-                pass
-
-    photo_paths = [photos[i] for i in range(1, 7) if i in photos]
+    photo_paths = [photo_map[i] for i in range(1, 7) if i in photo_map]
 
     if len(photo_paths) != 6:
-        print(f"❌ Faltan fotos. Encontradas: {len(photo_paths)}")
-        return
-
-    print(f"✅ 6 fotos cargadas correctamente")
-
-    # 4. Obtener frases
-    phrase_1 = order.get("phrase_1", "")
-    phrase_2 = order.get("phrase_2", "")
-    phrase_3 = order.get("phrase_3", "")
-
-    # 5. Ruta de salida
-    output_path = f"videos/{order_id}.mp4"
-
-    # 6. Llamar al motor real
-    try:
-        from video_engine import render_eterna_video
-
-        render_eterna_video(
-            photo_paths=photo_paths,
-            phrase_1=phrase_1,
-            phrase_2=phrase_2,
-            phrase_3=phrase_3,
-            output_path=output_path
+        raise Exception(
+            f"El pedido {order_id} no tiene exactamente 6 fotos válidas. Encontradas: {len(photo_paths)}"
         )
 
-        print(f"🎬 Video generado en {output_path}")
+    for i, p in enumerate(photo_paths, start=1):
+        if not os.path.exists(p):
+            raise Exception(f"La foto {i} no existe en disco: {p}")
 
-    except Exception as e:
-        print(f"❌ Error en video engine: {e}")
-        return
+    phrase_1 = (order.get("phrase_1") or "").strip()
+    phrase_2 = (order.get("phrase_2") or "").strip()
+    phrase_3 = (order.get("phrase_3") or "").strip()
 
-    # 7. Guardar URL en la BD
-    try:
-        public_url = f"{PUBLIC_BASE_URL}/{output_path}"
+    output_dir = Path("videos")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{order_id}.mp4"
 
-        update_order(
-            order_id,
-            experience_video_url=public_url
-        )
+    print(f"[VIDEO_ENGINE] Fotos encontradas: {photo_paths}")
+    print(f"[VIDEO_ENGINE] Frases: {phrase_1} | {phrase_2} | {phrase_3}")
+    print(f"[VIDEO_ENGINE] Output: {output_path}")
 
-        print(f"✅ URL guardada: {public_url}")
+    from video_engine import render_eterna_video
 
-    except Exception as e:
-        print(f"❌ Error guardando URL: {e}")
+    final_video_path = render_eterna_video(
+        photo_paths=photo_paths,
+        phrase_1=phrase_1,
+        phrase_2=phrase_2,
+        phrase_3=phrase_3,
+        output_path=str(output_path),
+    )
+
+    if not final_video_path:
+        final_video_path = str(output_path)
+
+    if not os.path.exists(final_video_path):
+        raise Exception(f"El render terminó pero no existe el archivo final: {final_video_path}")
+
+    public_video_url = f"{PUBLIC_BASE_URL}/video/generated/{order_id}"
+
+    update_order(
+        order_id,
+        experience_video_url=public_video_url
+    )
+
+    insert_asset(
+        order_id=order_id,
+        asset_type="rendered_video",
+        file_url=public_video_url,
+        storage_provider="local",
+    )
+
+    print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
+    return public_video_url
 
 # =========================================================
 # CONFIG
