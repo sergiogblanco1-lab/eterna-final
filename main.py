@@ -1594,6 +1594,10 @@ async def create_order_and_redirect(
 
     try:
         session = stripe.checkout.Session.create(
+            client_reference_id=order_id,
+            metadata={
+                "order_id": order_id
+            },
             mode="payment",
             payment_method_types=["card"],
             line_items=[
