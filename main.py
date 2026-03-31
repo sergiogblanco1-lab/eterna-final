@@ -610,7 +610,8 @@ def twilio_enabled() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER)
 
 
-def send_sms(phone: str, message: str) -> dict:
+
+    def send_sms(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
 
     if not to_phone:
@@ -651,15 +652,97 @@ def send_sms(phone: str, message: str) -> dict:
         }
 
 
-if not order:
+def try_send_recipient_sms(order: dict) -> dict:
+    if order.get("recipient_sms_sent_at"):
+        return {
+            "ok": True,
+            "sid": order.get("recipient_sms_sid"),
+            "already_sent": True,
+            "error": None,
+        }
+
+    attempts = int(order.get("recipient_sms_attempts") or 0) + 1
+    result = send_sms(order.get("recipient_phone", ""), build_recipient_message(order))
+
+    if result["ok"]:
+        update_order(
+            order["id"],
+            recipient_sms_sent_at=now_iso(),
+            recipient_sms_sid=result["sid"],
+            recipient_sms_attempts=attempts,
+            recipient_sms_error=None,
+        )
+        return {
+            "ok": True,
+            "sid": result["sid"],
+            "already_sent": False,
+            "error": None,
+        }
+
+    update_order(
+        order["id"],
+        recipient_sms_attempts=attempts,
+        recipient_sms_error=result["error"],
+    )
+    return {
+        "ok": False,
+        "sid": None,
+        "already_sent": False,
+        "error": result["error"],
+    }
+
+
+def try_send_sender_sms(order: dict) -> dict:
+    if order.get("sender_sms_sent_at"):
+        return {
+            "ok": True,
+            "sid": order.get("sender_sms_sid"),
+            "already_sent": True,
+            "error": None,
+        }
+
+    attempts = int(order.get("sender_sms_attempts") or 0) + 1
+    result = send_sms(order.get("sender_phone", ""), build_sender_ready_message(order))
+
+    if result["ok"]:
+        update_order(
+            order["id"],
+            sender_sms_sent_at=now_iso(),
+            sender_sms_sid=result["sid"],
+            sender_sms_attempts=attempts,
+            sender_sms_error=None,
+            sender_notified=1,
+        )
+        return {
+            "ok": True,
+            "sid": result["sid"],
+            "already_sent": False,
+            "error": None,
+        }
+
+    update_order(
+        order["id"],
+        sender_sms_attempts=attempts,
+        sender_sms_error=result["error"],
+    )
+    return {
+        "ok": False,
+        "sid": None,
+        "already_sent": False,
+        "error": result["error"],
+    }
+
+
+def enviar_sms(order_id: str):
+    order = get_order_by_id(order_id)
+
+    if not order:
         print(f"❌ Pedido no encontrado para SMS: {order_id}")
-        
+        return
 
-        result = try_send_recipient_sms(order)
-
-        print(f"📩 Resultado SMS: {result}")
-
-        return result 
+    result = try_send_recipient_sms(order)
+    print(f"📩 Resultado SMS: {result}")
+    return result
 
 # =========================================================
 # STRIPE CONNECT HELPERS
