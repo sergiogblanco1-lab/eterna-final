@@ -1841,24 +1841,9 @@ def crear_get():
     return render_create_form()
 
 
-@app.get("/pedido/{recipient_token}", response_class=HTMLResponse)
-def pedido(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not order["paid"]:
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="es">
-        <body style="background:#000;color:white;text-align:center;padding-top:100px;font-family:Arial;">
-            <h1>Esta ETERNA aún no está disponible</h1>
-        </body>
-        </html>
-        """)
-
-    if bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    return f"""
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return """
     <!DOCTYPE html>
     <html lang="es">
     <head>
@@ -1866,8 +1851,15 @@ def pedido(recipient_token: str):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
         <style>
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
+            * { box-sizing: border-box; }
+
+            html, body {
+                margin: 0;
+                min-height: 100%;
+                background: #000;
+            }
+
+            body {
                 min-height: 100vh;
                 background:
                     radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
@@ -1875,63 +1867,63 @@ def pedido(recipient_token: str):
                 color: white;
                 font-family: Arial, sans-serif;
                 display: flex;
-                align-items: center;
                 justify-content: center;
-                text-align: center;
+                align-items: center;
                 padding: 24px;
-            }}
-            .card {{
+            }
+
+            .card {
                 width: 100%;
-                max-width: 720px;
+                max-width: 760px;
                 background: rgba(255,255,255,0.04);
                 border: 1px solid rgba(255,255,255,0.08);
                 border-radius: 28px;
-                padding: 40px 28px;
-            }}
-            h1 {{
-                font-size: 40px;
-                margin: 0 0 18px 0;
-                line-height: 1.25;
-            }}
-            .line {{
-                font-size: 22px;
+                padding: 42px 30px;
+                text-align: center;
+            }
+
+            h1 {
+                margin: 0 0 10px 0;
+                font-size: 48px;
+                letter-spacing: 3px;
+            }
+
+            .subtitle {
+                color: rgba(255,255,255,0.80);
+                font-size: 20px;
                 line-height: 1.8;
-                color: rgba(255,255,255,0.88);
-                margin-top: 8px;
-            }}
-            .btn {{
-                width: 100%;
+                margin-top: 18px;
+            }
+
+            .soft {
+                margin-top: 24px;
+                color: rgba(255,255,255,0.50);
+                font-size: 15px;
+                line-height: 1.7;
+            }
+
+            .btn {
                 margin-top: 30px;
-                padding: 17px 22px;
+                width: 100%;
+                display: inline-block;
+                padding: 18px 24px;
                 border-radius: 999px;
-                border: 0;
                 background: white;
                 color: black;
                 font-weight: bold;
-                font-size: 15px;
-                cursor: pointer;
-            }}
+                text-decoration: none;
+            }
         </style>
     </head>
     <body>
         <div class="card">
-            <h1>Esto es solo para ti</h1>
-
-            <div class="line">Busca un momento a solas</div>
-            <div class="line">Sin ruido</div>
-            <div class="line">Sin prisa</div>
-
-            <button class="btn" onclick="goExperience()">Vivirlo</button>
+            <h1>ETERNA</h1>
+            <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
+            <div class="soft">No es un vídeo.<br>Es un momento.</div>
+            <a class="btn" href="/crear">CREAR MI ETERNA</a>
         </div>
-
-        <script>
-            function goExperience() {{
-                window.location.href = "/experiencia/{safe_attr(recipient_token)}";
-            }}
-        </script>
     </body>
     </html>
-    
     """
 
 
