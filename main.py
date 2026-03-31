@@ -611,19 +611,17 @@ def twilio_enabled() -> bool:
 
 
 
-    def send_sms(phone: str, message: str) -> dict:
+def send_sms(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
 
     if not to_phone:
-        log_info("SMS skipped", "invalid phone")
         return {
             "ok": False,
             "sid": None,
             "error": "invalid_phone",
         }
 
-    if not twilio_enabled():
-        log_info("SMS skipped", "twilio not configured")
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
         return {
             "ok": False,
             "sid": None,
@@ -631,20 +629,23 @@ def twilio_enabled() -> bool:
         }
 
     try:
+        from twilio.rest import Client
+
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
         sms = client.messages.create(
             body=message,
             from_=TWILIO_FROM_NUMBER,
             to=to_phone,
         )
-        log_info("SMS sent", {"to": to_phone, "sid": sms.sid, "status": sms.status})
+
         return {
             "ok": True,
             "sid": sms.sid,
             "error": None,
         }
+
     except Exception as e:
-        log_error("Twilio SMS error", e)
         return {
             "ok": False,
             "sid": None,
