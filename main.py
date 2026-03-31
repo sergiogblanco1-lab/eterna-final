@@ -1,8 +1,6 @@
 import html
-import json
 import mimetypes
 import os
-import requests
 import secrets
 import sqlite3
 import uuid
@@ -16,128 +14,15 @@ from botocore.client import Config
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+
 try:
     from twilio.rest import Client
 except ImportError:
     Client = None
 
+
 app = FastAPI(title="ETERNA FINAL PRODUCTO")
 
-def trigger_video_engine(order_id: str):
-    import os
-    from pathlib import Path
-
-    print(f"[VIDEO_ENGINE] Iniciando render para pedido: {order_id}")
-
-    order = get_order_by_id(order_id)
-    if not order:
-        raise Exception(f"No existe el pedido {order_id}")
-
-    conn = db_conn()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT asset_type, file_url
-        FROM assets
-        WHERE order_id = ?
-        ORDER BY created_at ASC, id ASC
-        """,
-        (order_id,),
-    )
-    assets = cur.fetchall()
-    conn.close()
-
-    photo_map = {}
-
-    for asset in assets:
-        asset_type = (asset["asset_type"] or "").lower().strip()
-        file_url = (asset["file_url"] or "").strip()
-
-        if not file_url:
-            continue
-
-        if asset_type in {"photo1", "foto1"}:
-            photo_map[1] = file_url
-        elif asset_type in {"photo2", "foto2"}:
-            photo_map[2] = file_url
-        elif asset_type in {"photo3", "foto3"}:
-            photo_map[3] = file_url
-        elif asset_type in {"photo4", "foto4"}:
-            photo_map[4] = file_url
-        elif asset_type in {"photo5", "foto5"}:
-            photo_map[5] = file_url
-        elif asset_type in {"photo6", "foto6"}:
-            photo_map[6] = file_url
-
-    photo_paths = [photo_map[i] for i in range(1, 7) if i in photo_map]
-
-    if len(photo_paths) != 6:
-        raise Exception(
-            f"El pedido {order_id} no tiene exactamente 6 fotos válidas. Encontradas: {len(photo_paths)}"
-        )
-
-    for i, p in enumerate(photo_paths, start=1):
-        if not os.path.exists(p):
-            raise Exception(f"La foto {i} no existe en disco: {p}")
-
-    phrase_1 = (order.get("phrase_1") or "").strip()
-    phrase_2 = (order.get("phrase_2") or "").strip()
-    phrase_3 = (order.get("phrase_3") or "").strip()
-
-    output_dir = Path("videos")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{order_id}.mp4"
-
-    print(f"[VIDEO_ENGINE] Fotos encontradas: {photo_paths}")
-    print(f"[VIDEO_ENGINE] Frases: {phrase_1} | {phrase_2} | {phrase_3}")
-    print(f"[VIDEO_ENGINE] Output: {output_path}")
-
-    from video_engine import render_eterna_video
-
-    final_video_path = render_eterna_video(
-        photo_paths=photo_paths,
-        phrase_1=phrase_1,
-        phrase_2=phrase_2,
-        phrase_3=phrase_3,
-        output_path=str(output_path),
-    )
-
-    if not final_video_path:
-        final_video_path = str(output_path)
-
-    if not os.path.exists(final_video_path):
-        raise Exception(f"El render terminó pero no existe el archivo final: {final_video_path}")
-
-    public_video_url = f"{PUBLIC_BASE_URL}/video/generated/{order_id}"
-
-    update_order(
-        order_id,
-        experience_video_url=public_video_url
-    )
-
-    insert_asset(
-        order_id=order_id,
-        asset_type="rendered_video",
-        file_url=public_video_url,
-        storage_provider="local",
-    )
-
-    print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
-    return public_video_url
-
-@app.get("/video/generated/{order_id}")
-    def get_generated_video(order_id: str):
-    filepath = Path("videos") / f"{order_id}.mp4"
-
-    if not filepath.exists():
-        raise HTTPException(status_code=404, detail="Vídeo generado no encontrado")
-
-    return FileResponse(
-        str(filepath),
-        media_type="video/mp4",
-        filename=f"{order_id}.mp4"
-    )
 
 # =========================================================
 # CONFIG
@@ -362,7 +247,11 @@ def init_db():
     add_column_if_missing("orders", "stripe_payment_intent_id", "ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT")
     add_column_if_missing("orders", "stripe_connected_account_id", "ALTER TABLE orders ADD COLUMN stripe_connected_account_id TEXT")
     add_column_if_missing("orders", "stripe_transfer_id", "ALTER TABLE orders ADD COLUMN stripe_transfer_id TEXT")
-    add_column_if_missing("orders", "gift_refund_deadline_at", "ALTER TABLE orders ADD COLUMN gift_refund_deadLINE_at TEXT".replace("DEADLINE", "deadline"))
+    add_column_if_missing(
+        "orders",
+        "gift_refund_deadline_at",
+        "ALTER TABLE orders ADD COLUMN gift_refund_deadline_at TEXT"
+    )
     add_column_if_missing("orders", "gift_refunded", "ALTER TABLE orders ADD COLUMN gift_refunded INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "stripe_gift_refund_id", "ALTER TABLE orders ADD COLUMN stripe_gift_refund_id TEXT")
     add_column_if_missing("orders", "recipient_sms_sent_at", "ALTER TABLE orders ADD COLUMN recipient_sms_sent_at TEXT")
@@ -616,7 +505,7 @@ def update_order(order_id: str, **fields):
     if not fields:
         return
 
-    fields["updated_at"] = now_iso()   # 👈 VA AQUÍ
+    fields["updated_at"] = now_iso()
 
     columns = ", ".join([f"{k} = ?" for k in fields.keys()])
     values = list(fields.values()) + [order_id]
@@ -713,7 +602,6 @@ def twilio_enabled() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER)
 
 
-
 def send_sms(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
 
@@ -733,7 +621,6 @@ def send_sms(phone: str, message: str) -> dict:
 
     try:
         from twilio.rest import Client
-
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
         sms = client.messages.create(
@@ -839,14 +726,163 @@ def try_send_sender_sms(order: dict) -> dict:
 
 def enviar_sms(order_id: str):
     order = get_order_by_id(order_id)
-
-    if not order:
-        print(f"❌ Pedido no encontrado para SMS: {order_id}")
-        return
-
     result = try_send_recipient_sms(order)
     print(f"📩 Resultado SMS: {result}")
     return result
+
+
+# =========================================================
+# HELPERS EXTRA QUE FALTABAN
+# =========================================================
+
+def compute_cashout_status(order: dict) -> str:
+    if bool(order.get("gift_refunded")):
+        return "gift_refunded"
+    if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
+        return "completed"
+    return "pending"
+
+
+def try_acquire_transfer_lock(order_id: str) -> bool:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE orders
+        SET transfer_in_progress = 1,
+            updated_at = ?
+        WHERE id = ?
+          AND COALESCE(transfer_in_progress, 0) = 0
+          AND COALESCE(transfer_completed, 0) = 0
+        """,
+        (now_iso(), order_id)
+    )
+    conn.commit()
+    acquired = cur.rowcount == 1
+    conn.close()
+    return acquired
+
+
+def release_transfer_lock(order_id: str):
+    update_order(order_id, transfer_in_progress=0)
+
+
+# =========================================================
+# VIDEO ENGINE
+# =========================================================
+
+def trigger_video_engine(order_id: str):
+    print(f"[VIDEO_ENGINE] Iniciando render para pedido: {order_id}")
+
+    order = get_order_by_id(order_id)
+
+    conn = db_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT asset_type, file_url
+        FROM assets
+        WHERE order_id = ?
+        ORDER BY created_at ASC, id ASC
+        """,
+        (order_id,),
+    )
+    assets = cur.fetchall()
+    conn.close()
+
+    photo_map = {}
+
+    for asset in assets:
+        asset_type = (asset["asset_type"] or "").lower().strip()
+        file_url = (asset["file_url"] or "").strip()
+
+        if not file_url:
+            continue
+
+        if asset_type in {"photo1", "foto1"}:
+            photo_map[1] = file_url
+        elif asset_type in {"photo2", "foto2"}:
+            photo_map[2] = file_url
+        elif asset_type in {"photo3", "foto3"}:
+            photo_map[3] = file_url
+        elif asset_type in {"photo4", "foto4"}:
+            photo_map[4] = file_url
+        elif asset_type in {"photo5", "foto5"}:
+            photo_map[5] = file_url
+        elif asset_type in {"photo6", "foto6"}:
+            photo_map[6] = file_url
+
+    photo_paths = [photo_map[i] for i in range(1, 7) if i in photo_map]
+
+    if len(photo_paths) != 6:
+        raise Exception(
+            f"El pedido {order_id} no tiene exactamente 6 fotos válidas. Encontradas: {len(photo_paths)}"
+        )
+
+    for i, p in enumerate(photo_paths, start=1):
+        if not os.path.exists(p):
+            raise Exception(f"La foto {i} no existe en disco: {p}")
+
+    phrase_1 = (order.get("phrase_1") or "").strip()
+    phrase_2 = (order.get("phrase_2") or "").strip()
+    phrase_3 = (order.get("phrase_3") or "").strip()
+
+    output_dir = Path("videos")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{order_id}.mp4"
+
+    print(f"[VIDEO_ENGINE] Fotos encontradas: {photo_paths}")
+    print(f"[VIDEO_ENGINE] Frases: {phrase_1} | {phrase_2} | {phrase_3}")
+    print(f"[VIDEO_ENGINE] Output: {output_path}")
+
+    from video_engine import render_eterna_video
+
+    final_video_path = render_eterna_video(
+        photo_paths=photo_paths,
+        phrase_1=phrase_1,
+        phrase_2=phrase_2,
+        phrase_3=phrase_3,
+        output_path=str(output_path),
+    )
+
+    if not final_video_path:
+        final_video_path = str(output_path)
+
+    if not os.path.exists(final_video_path):
+        raise Exception(f"El render terminó pero no existe el archivo final: {final_video_path}")
+
+    public_video_url = f"{PUBLIC_BASE_URL}/video/generated/{order_id}"
+
+    update_order(
+        order_id,
+        experience_video_url=public_video_url
+    )
+
+    insert_asset(
+        order_id=order_id,
+        asset_type="rendered_video",
+        file_url=public_video_url,
+        storage_provider="local",
+    )
+
+    print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
+    return public_video_url
+
+
+@app.get("/video/generated/{order_id}")
+def get_generated_video(order_id: str):
+    filepath = Path("videos") / f"{order_id}.mp4"
+
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Vídeo generado no encontrado")
+
+    return FileResponse(
+        str(filepath),
+        media_type="video/mp4",
+        filename=f"{order_id}.mp4"
+    )
+
 
 # =========================================================
 # STRIPE CONNECT HELPERS
@@ -1251,7 +1287,6 @@ def render_create_form() -> str:
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
-                    <input type="hidden" name="message_type" value="emotional">
                     <div class="section-title">Tus datos</div>
                     <input name="customer_name" placeholder="Tu nombre" required>
                     <input name="customer_email" type="email" placeholder="Tu email">
@@ -1649,6 +1684,12 @@ async def create_order_and_redirect(
         )
         order = get_order_by_id(order_id)
         try_send_recipient_sms(order)
+
+        try:
+            trigger_video_engine(order_id)
+        except Exception as e:
+            log_error("trigger_video_engine test_no_stripe", e)
+
         return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
 
     try:
@@ -1685,61 +1726,9 @@ async def create_order_and_redirect(
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
 
 
-
-
 # =========================================================
 # HOME / CREATE
 # =========================================================
-
-@app.post("/stripe/webhook")
-async def webhook(request: Request):
-    import stripe
-    import traceback
-
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-
-    if not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Payload inválido")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Firma inválida")
-
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-
-        session_id = session.get("id")
-        order_id = None
-
-        order_id = session.get("client_reference_id")
-
-        if not order_id:
-            metadata = session.get("metadata", {}) or {}
-            order_id = metadata.get("order_id")
-
-        if not order_id and session_id:
-            conn = db_conn()
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1",
-                (session_id,)
-            )
-            row = cur.fetchone()
-            conn.close()
-            if row:
-                order_id = row["id"]
-
-        if not order_id:
-            print("❌ WEBHOOK: no se pudo resolver order_id")
-           
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -1828,28 +1817,28 @@ async def crear_post(
     photo6: UploadFile = File(...),
 ):
     return await create_order_and_redirect(
-    customer_name=customer_name,
-    customer_email=customer_email,
-    customer_phone=customer_phone,
-    recipient_name=recipient_name,
-    recipient_phone=recipient_phone,
-    message_type=message_type,
-    phrase_mode=phrase_mode,
-    phrase_1=phrase_1,
-    phrase_2=phrase_2,
-    phrase_3=phrase_3,
-    gift_amount=gift_amount,
-    photo1=photo1,
-    photo2=photo2,
-    photo3=photo3,
-    photo4=photo4,
-    photo5=photo5,
-    photo6=photo6,
-)
+        customer_name=customer_name,
+        customer_email=customer_email,
+        customer_phone=customer_phone,
+        recipient_name=recipient_name,
+        recipient_phone=recipient_phone,
+        message_type=message_type,
+        phrase_mode=phrase_mode,
+        phrase_1=phrase_1,
+        phrase_2=phrase_2,
+        phrase_3=phrase_3,
+        gift_amount=gift_amount,
+        photo1=photo1,
+        photo2=photo2,
+        photo3=photo3,
+        photo4=photo4,
+        photo5=photo5,
+        photo6=photo6,
+    )
 
 
 # =========================================================
-# STRIPE CHECKOUT / WEBHOOK
+# CHECKOUT / WEBHOOK
 # =========================================================
 
 @app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
@@ -1888,8 +1877,7 @@ def checkout_exito(order_id: str):
 
 
 @app.post("/stripe/webhook")
-async def webhook(request: Request):
-    import stripe
+async def stripe_webhook(request: Request):
     import traceback
 
     payload = await request.body()
@@ -1911,101 +1899,91 @@ async def webhook(request: Request):
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
+
+        session_id = session.get("id")
         order_id = session.get("client_reference_id")
 
         if not order_id:
-            return {"status": "error", "reason": "order_id missing"}
+            metadata = session.get("metadata", {}) or {}
+            order_id = metadata.get("order_id")
+
+        if not order_id and session_id:
+            conn = db_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1",
+                (session_id,)
+            )
+            row = cur.fetchone()
+            conn.close()
+            if row:
+                order_id = row["id"]
+
+        if not order_id:
+            print("❌ WEBHOOK: no se pudo resolver order_id")
+            return {"status": "error", "reason": "order_id_not_found"}
 
         print(f"🔥 WEBHOOK OK → {order_id}")
 
         conn = db_conn()
-        conn.execute(
+        cur = conn.cursor()
+
+        cur.execute("SELECT paid FROM orders WHERE id = ? LIMIT 1", (order_id,))
+        row = cur.fetchone()
+
+        if not row:
+            conn.close()
+            print(f"❌ Pedido no encontrado en DB → {order_id}")
+            return {"status": "error", "reason": "order_not_found"}
+
+        already_paid = int(row["paid"] or 0) == 1
+
+        cur.execute(
             """
             UPDATE orders
             SET paid = 1,
-                stripe_payment_status = 'paid',
-                updated_at = CURRENT_TIMESTAMP
+                stripe_session_id = COALESCE(?, stripe_session_id),
+                stripe_payment_status = ?,
+                gift_refund_deadline_at = COALESCE(gift_refund_deadline_at, ?),
+                updated_at = ?
             WHERE id = ?
             """,
-            (order_id,)
+            (
+                session_id,
+                session.get("payment_status", "paid"),
+                gift_refund_deadline_iso(),
+                now_iso(),
+                order_id,
+            )
         )
         conn.commit()
         conn.close()
 
-        try:
-            print(f"🚀 START VIDEO ENGINE → {order_id}")
-            result = trigger_video_engine(order_id)
-            print(f"✅ VIDEO ENGINE OK → {order_id}")
-            print(f"📦 RESULT → {result}")
-        except Exception:
-            print(f"❌ VIDEO ENGINE ERROR → {order_id}")
-            traceback.print_exc()
+        print(f"✅ Pedido marcado como pagado → {order_id}")
+
+        if not already_paid:
+            try:
+                order = get_order_by_id(order_id)
+                try_send_recipient_sms(order)
+            except Exception as e:
+                log_error("webhook try_send_recipient_sms", e)
+
+            try:
+                print(f"🚀 START VIDEO ENGINE → {order_id}")
+                trigger_video_engine(order_id)
+                print(f"✅ VIDEO ENGINE LANZADO → {order_id}")
+            except Exception:
+                print(f"❌ ERROR AL LANZAR VIDEO ENGINE → {order_id}")
+                traceback.print_exc()
+        else:
+            print(f"ℹ️ Pedido ya estaba pagado, no relanzo motor → {order_id}")
+
+    else:
+        print(f"ℹ️ Evento Stripe ignorado: {event['type']}")
 
     return {"status": "success"}
 
 
-# =========================================================
-# POST PAYMENT
-# =========================================================
-
-@app.get("/post-pago/{order_id}")
-def post_pago(order_id: str):
-    order = get_order_by_id(order_id)
-    if not order["paid"]:
-        return RedirectResponse(url=f"/checkout-exito/{order_id}", status_code=303)
-    return RedirectResponse(url=f"/resumen/{order_id}", status_code=303)
-
-
-@app.get("/resumen/{order_id}", response_class=HTMLResponse)
-def resumen(order_id: str):
-    order = get_order_by_id(order_id)
-
-    if not order.get("recipient_sms_sent_at"):
-        try:
-            try_send_recipient_sms(order)
-            order = get_order_by_id(order_id)
-        except Exception as e:
-            log_error("resumen try_send_recipient_sms", e)
-
-    recipient_name = safe_text(order.get("recipient_name") or "esa persona")
-    sms_sent = bool(order.get("recipient_sms_sent_at"))
-
-    if sms_sent:
-        status_line = "Estamos creando tu momento."
-        sub_line = f"{recipient_name} ya tiene su mensaje."
-        soft_line = "Pronto tendrás noticias."
-    else:
-        status_line = "Estamos creando tu momento."
-        sub_line = f"Estamos intentando enviar el mensaje a {recipient_name}."
-        soft_line = "Pronto tendrás noticias."
-
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-    </head>
-    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
-        <div style="max-width:720px;width:100%;">
-            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
-                {status_line}
-            </h1>
-
-            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
-                {sub_line}
-            </div>
-
-            <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
-                {soft_line}
-            </div>
-        </div>
-    </body>
-    </html>
-    """)
-
-    
 # =========================================================
 # POST PAYMENT
 # =========================================================
@@ -2477,9 +2455,6 @@ def experiencia(recipient_token: str):
 def try_start_experience(order_id: str) -> str:
     order = get_order_by_id(order_id)
 
-    if not order:
-        return "not_found"
-
     if not bool(order.get("paid")):
         return "not_paid"
 
@@ -2523,7 +2498,7 @@ async def upload_video(
     video: UploadFile = File(...),
 ):
     order = get_order_by_recipient_token_or_404(recipient_token)
-    order_id  = order["id"]
+    order_id = order["id"]
 
     if not order["paid"]:
         raise HTTPException(status_code=403, detail="Pedido no pagado")
@@ -2579,11 +2554,13 @@ async def upload_video(
             log_error("Error subiendo a R2", e)
 
         update_order(
-    order_id,
-    paid=1,
-    stripe_session_id=session.get("id"),
-    stripe_payment_status=session.get("payment_status", "paid")
-)
+            order_id,
+            reaction_uploaded=1,
+            experience_completed=1,
+            reaction_video_local=filepath,
+            reaction_video_public_url=public_video_url,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
 
         if public_video_url:
             insert_asset(order["id"], "reaction_video", public_video_url, "r2")
@@ -2853,22 +2830,22 @@ def mi_video(recipient_token: str):
             .wrap {{ min-height: 100vh; display: flex; flex-direction: column; }}
             .header {{ padding: 28px 20px 10px; text-align: center; }}
             .header-title {{ font-size: 24px; line-height: 1.5; color: rgba(255,255,255,0.92); }}
-            .top {{
+            .top {
                 flex: 1;
                 min-height: 50vh;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 padding: 0 16px;
-            }}
-            video {{
+            }
+            video {
                 width: 100%;
                 max-width: 460px;
                 border-radius: 18px;
                 background: #111;
                 display: block;
-            }}
-            .status {{
+            }
+            .status {
                 max-width: 760px;
                 margin: 0 auto;
                 padding: 0 16px;
@@ -2876,10 +2853,10 @@ def mi_video(recipient_token: str):
                 color: rgba(255,255,255,0.70);
                 line-height: 1.7;
                 font-size: 15px;
-            }}
+            }
             .actions {{ padding: 24px 16px 30px; }}
             .buttons {{ display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }}
-            .btn {{
+            .btn {
                 width: 100%;
                 padding: 16px 24px;
                 border-radius: 999px;
@@ -2890,13 +2867,13 @@ def mi_video(recipient_token: str):
                 display: inline-block;
                 text-decoration: none;
                 text-align: center;
-            }}
+            }
             .primary {{ background: white; color: black; }}
-            .ghost {{
+            .ghost {
                 background: rgba(255,255,255,0.10);
                 color: white;
                 border: 1px solid rgba(255,255,255,0.10);
-            }}
+            }
         </style>
     </head>
     <body>
@@ -2948,6 +2925,7 @@ def mi_video(recipient_token: str):
 # =========================================================
 # SENDER PACK
 # =========================================================
+
 
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str):
@@ -3341,72 +3319,3 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
         "sender_sms_attempts": updated.get("sender_sms_attempts"),
         "sender_sms_error": updated.get("sender_sms_error"),
     })
-
-
-@app.post("/stripe/webhook")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    payload = bytes(payload)
-
-    sig_header = request.headers.get("stripe-signature")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            STRIPE_WEBHOOK_SECRET
-        )
-    except Exception as e:
-        print("❌ ERROR WEBHOOK:", str(e))
-        raise HTTPException(status_code=400, detail=f"Webhook inválido: {e}")
-
-    event_type = event.get("type")
-    print("✅ Evento recibido:", event_type)
-
-    if event_type == "checkout.session.completed":
-        session = event.get("data", {}).get("object", {})
-
-        order_id = (
-            session.get("client_reference_id")
-            or session.get("metadata", {}).get("order_id")
-        )
-
-        print("🧾 order_id:", order_id)
-
-        if not order_id:
-            raise HTTPException(status_code=400, detail="order_id no encontrado en webhook")
-
-        try:
-            existing = get_order_by_id(order_id)
-            if not existing:
-                raise HTTPException(status_code=404, detail=f"Pedido no encontrado: {order_id}")
-
-            update_order(
-                order_id,
-                paid=1,
-                stripe_session_id=session.get("id"),
-                stripe_payment_status=session.get("payment_status", "paid"),
-                gift_refund_deadline_at=gift_refund_deadline_iso(),
-            )
-
-            print(f"✅ Pedido marcado como pagado: {order_id}")
-
-            try:
-                enviar_sms(order_id)
-                print(f"✅ SMS enviado: {order_id}")
-            except Exception as e:
-                print(f"❌ Error enviando SMS para {order_id}: {e}")
-
-            try:
-                trigger_video_engine(order_id)
-                print(f"✅ Video engine lanzado: {order_id}")
-            except Exception as e:
-                print(f"❌ Error lanzando video engine para {order_id}: {e}")
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            print(f"❌ Error procesando pedido {order_id}: {e}")
-            raise HTTPException(status_code=500, detail=f"Error procesando pedido: {e}")
-
-    return {"status": "ok"}
