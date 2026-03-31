@@ -722,11 +722,21 @@ def try_send_sender_sms(order: dict) -> dict:
             "error": None,
         }
 
-    update_order(
-        order["id"],
-        sender_sms_attempts=attempts,
-        sender_sms_error=result["error"],
-    )
+        def enviar_sms(order_id: str):
+            order = get_order_by_id(order_id)
+            if not order:
+            print(f"❌ Pedido no encontrado para SMS: {order_id}")
+            return
+
+            result = try_send_recipient_sms(order)
+
+            print(f"📩 Resultado SMS: {result}")
+
+            update_order(
+                order["id"],
+                sender_sms_attempts=attempts,
+                sender_sms_error=result["error"],
+        )
     return {
         "ok": False,
         "sid": None,
