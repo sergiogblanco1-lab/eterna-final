@@ -1836,9 +1836,10 @@ def home():
     """
 
 
-# =========================================================
-# PRELUDIO / EXPERIENCE
-# =========================================================
+@app.get("/crear", response_class=HTMLResponse)
+def crear_get():
+    return render_create_form()
+
 
 @app.get("/pedido/{recipient_token}", response_class=HTMLResponse)
 def pedido(recipient_token: str):
@@ -1930,6 +1931,7 @@ def pedido(recipient_token: str):
         </script>
     </body>
     </html>
+    
     """
 
 
