@@ -2448,6 +2448,7 @@ async def upload_video(
     video: UploadFile = File(...),
 ):
     order = get_order_by_recipient_token_or_404(recipient_token)
+    order_id  = order^["id"]
 
     if not order["paid"]:
         raise HTTPException(status_code=403, detail="Pedido no pagado")
