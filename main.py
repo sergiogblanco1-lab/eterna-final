@@ -3,29 +3,24 @@ import mimetypes
 import os
 import secrets
 import sqlite3
+import traceback
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-import boto3
 import stripe
-from botocore.client import Config
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-
-
-templates = Jinja2Templates(directory="templates")
 
 try:
-    from twilio.rest import Client
+    from twilio.rest import Client as TwilioClient
 except ImportError:
-    Client = None
+    TwilioClient = None
 
 
-app = FastAPI(title="ETERNA FINAL PRODUCTO")
+app = FastAPI(title="ETERNA MAIN")
 
 
 # =========================================================
@@ -34,30 +29,20 @@ app = FastAPI(title="ETERNA FINAL PRODUCTO")
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
     "https://eterna-final.onrender.com",
 ).strip().rstrip("/")
 
-BASE_PRICE = float(os.getenv("ETERNA_BASE_PRICE", "29"))
-CURRENCY = os.getenv("ETERNA_CURRENCY", "eur").strip().lower()
-
+ETERNA_BASE_PRICE = float(os.getenv("ETERNA_BASE_PRICE", "29"))
+ETERNA_CURRENCY = os.getenv("ETERNA_CURRENCY", "eur").strip().lower()
 GIFT_COMMISSION_RATE = float(os.getenv("GIFT_COMMISSION_RATE", "0.05"))
-FIXED_PLATFORM_FEE = float(os.getenv("ETERNA_FIXED_FEE", "2"))
-GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
 
 DEFAULT_EXPERIENCE_VIDEO_URL = os.getenv(
     "DEFAULT_EXPERIENCE_VIDEO_URL",
-    f"{PUBLIC_BASE_URL}/static/eterna-base.mp4",
+    "",
 ).strip()
-
-R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "").strip()
-R2_SECRET_KEY = os.getenv("R2_SECRET_KEY", "").strip()
-R2_BUCKET = os.getenv("R2_BUCKET", "").strip()
-R2_ENDPOINT = os.getenv("R2_ENDPOINT", "").strip().rstrip("/")
-R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").strip().rstrip("/")
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
@@ -70,39 +55,38 @@ ALLOWED_VIDEO_TYPES = {
     "application/octet-stream",
 }
 
-DATA_FOLDER = Path("data")
-DATA_FOLDER.mkdir(parents=True, exist_ok=True)
+BASE_DIR = Path(".")
+DATA_DIR = BASE_DIR / "data"
+UPLOADS_DIR = BASE_DIR / "uploads"
+VIDEOS_DIR = BASE_DIR / "videos"
+STATIC_DIR = BASE_DIR / "static"
 
-VIDEO_FOLDER = Path("videos")
-VIDEO_FOLDER.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
-STATIC_FOLDER = Path("static")
-STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
-
-PHOTO_FOLDER = Path("uploads")
-PHOTO_FOLDER.mkdir(parents=True, exist_ok=True)
-
-DB_PATH = DATA_FOLDER / "eterna.db"
+DB_PATH = DATA_DIR / "eterna.db"
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 # =========================================================
 # LOG
 # =========================================================
 
-def log_info(label: str, value=None):
-    if value is None:
-        print(f"[INFO] {label}")
+def log_info(message: str):
+    print(f"[INFO] {message}")
+
+
+def log_error(message: str, error: Exception | None = None):
+    if error is None:
+        print(f"[ERROR] {message}")
     else:
-        print(f"[INFO] {label}: {value}")
-
-
-def log_error(label: str, error: Exception):
-    print(f"[ERROR] {label}: {error}")
+        print(f"[ERROR] {message}: {error}")
 
 
 # =========================================================
@@ -112,160 +96,106 @@ def log_error(label: str, error: Exception):
 def db_conn():
     conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
+    conn.execute("PRAGMA journal_mode=WAL;")
     return conn
-
-
-def column_exists(table_name: str, column_name: str) -> bool:
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute(f"PRAGMA table_info({table_name})")
-    cols = cur.fetchall()
-    conn.close()
-    return any(col["name"] == column_name for col in cols)
-
-
-def add_column_if_missing(table_name: str, column_name: str, sql: str):
-    if not column_exists(table_name, column_name):
-        conn = db_conn()
-        cur = conn.cursor()
-        cur.execute(sql)
-        conn.commit()
-        conn.close()
 
 
 def init_db():
     conn = db_conn()
     cur = conn.cursor()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS senders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT,
-        phone TEXT NOT NULL,
-        created_at TEXT NOT NULL
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS senders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
     )
-    """)
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS recipients (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        created_at TEXT NOT NULL
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS recipients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
     )
-    """)
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS orders (
-        id TEXT PRIMARY KEY,
-        sender_id INTEGER NOT NULL,
-        recipient_id INTEGER NOT NULL,
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS orders (
+            id TEXT PRIMARY KEY,
+            sender_id INTEGER NOT NULL,
+            recipient_id INTEGER NOT NULL,
 
-        message_type TEXT,
-        phrase_mode TEXT NOT NULL DEFAULT 'auto',
+            message_type TEXT,
+            phrase_mode TEXT NOT NULL DEFAULT 'auto',
 
-        phrase_1 TEXT NOT NULL,
-        phrase_2 TEXT NOT NULL,
-        phrase_3 TEXT NOT NULL,
+            phrase_1 TEXT NOT NULL,
+            phrase_2 TEXT NOT NULL,
+            phrase_3 TEXT NOT NULL,
 
-        gift_amount REAL NOT NULL DEFAULT 0,
-        platform_fixed_fee REAL NOT NULL DEFAULT 0,
-        platform_variable_fee REAL NOT NULL DEFAULT 0,
-        platform_total_fee REAL NOT NULL DEFAULT 0,
-        total_amount REAL NOT NULL DEFAULT 0,
+            gift_amount REAL NOT NULL DEFAULT 0,
+            gift_commission REAL NOT NULL DEFAULT 0,
+            total_amount REAL NOT NULL DEFAULT 0,
 
-        paid INTEGER NOT NULL DEFAULT 0,
-        delivered_to_recipient INTEGER NOT NULL DEFAULT 0,
-        reaction_uploaded INTEGER NOT NULL DEFAULT 0,
+            paid INTEGER NOT NULL DEFAULT 0,
+            delivered_to_recipient INTEGER NOT NULL DEFAULT 0,
+            experience_started INTEGER NOT NULL DEFAULT 0,
+            experience_completed INTEGER NOT NULL DEFAULT 0,
+            reaction_uploaded INTEGER NOT NULL DEFAULT 0,
+            sender_notified INTEGER NOT NULL DEFAULT 0,
 
-        cashout_completed INTEGER NOT NULL DEFAULT 0,
-        transfer_completed INTEGER NOT NULL DEFAULT 0,
-        transfer_in_progress INTEGER NOT NULL DEFAULT 0,
-        sender_notified INTEGER NOT NULL DEFAULT 0,
+            stripe_session_id TEXT,
+            stripe_payment_status TEXT,
+            stripe_payment_intent_id TEXT,
 
-        experience_started INTEGER NOT NULL DEFAULT 0,
-        experience_completed INTEGER NOT NULL DEFAULT 0,
+            recipient_token TEXT NOT NULL UNIQUE,
+            sender_token TEXT NOT NULL UNIQUE,
 
-        connect_onboarding_completed INTEGER NOT NULL DEFAULT 0,
-        gift_refunded INTEGER NOT NULL DEFAULT 0,
+            reaction_video_local TEXT,
+            reaction_video_public_url TEXT,
+            experience_video_url TEXT,
 
-        stripe_session_id TEXT,
-        stripe_payment_status TEXT,
-        stripe_payment_intent_id TEXT,
-        stripe_connected_account_id TEXT,
-        stripe_transfer_id TEXT,
-        stripe_gift_refund_id TEXT,
+            recipient_sms_sent_at TEXT,
+            sender_sms_sent_at TEXT,
+            recipient_sms_sid TEXT,
+            sender_sms_sid TEXT,
+            recipient_sms_error TEXT,
+            sender_sms_error TEXT,
 
-        recipient_token TEXT NOT NULL UNIQUE,
-        sender_token TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
 
-        reaction_video_local TEXT,
-        reaction_video_public_url TEXT,
-        experience_video_url TEXT,
-
-        gift_refund_deadline_at TEXT,
-
-        recipient_sms_sent_at TEXT,
-        sender_sms_sent_at TEXT,
-        recipient_sms_sid TEXT,
-        sender_sms_sid TEXT,
-
-        recipient_sms_attempts INTEGER NOT NULL DEFAULT 0,
-        sender_sms_attempts INTEGER NOT NULL DEFAULT 0,
-        recipient_sms_error TEXT,
-        sender_sms_error TEXT,
-
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-
-        FOREIGN KEY(sender_id) REFERENCES senders(id),
-        FOREIGN KEY(recipient_id) REFERENCES recipients(id)
+            FOREIGN KEY(sender_id) REFERENCES senders(id),
+            FOREIGN KEY(recipient_id) REFERENCES recipients(id)
+        )
+        """
     )
-    """)
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS assets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        order_id TEXT NOT NULL,
-        asset_type TEXT NOT NULL,
-        file_url TEXT NOT NULL,
-        storage_provider TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(order_id) REFERENCES orders(id)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id TEXT NOT NULL,
+            asset_type TEXT NOT NULL,
+            file_url TEXT NOT NULL,
+            storage_provider TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(order_id) REFERENCES orders(id)
+        )
+        """
     )
-    """)
 
     conn.commit()
     conn.close()
-
-    add_column_if_missing("orders", "message_type", "ALTER TABLE orders ADD COLUMN message_type TEXT")
-    add_column_if_missing("orders", "phrase_mode", "ALTER TABLE orders ADD COLUMN phrase_mode TEXT NOT NULL DEFAULT 'auto'")
-    add_column_if_missing("orders", "experience_video_url", "ALTER TABLE orders ADD COLUMN experience_video_url TEXT")
-    add_column_if_missing("orders", "reaction_video_public_url", "ALTER TABLE orders ADD COLUMN reaction_video_public_url TEXT")
-    add_column_if_missing("orders", "reaction_video_local", "ALTER TABLE orders ADD COLUMN reaction_video_local TEXT")
-    add_column_if_missing("orders", "stripe_session_id", "ALTER TABLE orders ADD COLUMN stripe_session_id TEXT")
-    add_column_if_missing("orders", "stripe_payment_status", "ALTER TABLE orders ADD COLUMN stripe_payment_status TEXT")
-    add_column_if_missing("orders", "stripe_payment_intent_id", "ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT")
-    add_column_if_missing("orders", "stripe_connected_account_id", "ALTER TABLE orders ADD COLUMN stripe_connected_account_id TEXT")
-    add_column_if_missing("orders", "stripe_transfer_id", "ALTER TABLE orders ADD COLUMN stripe_transfer_id TEXT")
-    add_column_if_missing(
-        "orders",
-        "gift_refund_deadline_at",
-        "ALTER TABLE orders ADD COLUMN gift_refund_deadline_at TEXT"
-    )
-    add_column_if_missing("orders", "gift_refunded", "ALTER TABLE orders ADD COLUMN gift_refunded INTEGER NOT NULL DEFAULT 0")
-    add_column_if_missing("orders", "stripe_gift_refund_id", "ALTER TABLE orders ADD COLUMN stripe_gift_refund_id TEXT")
-    add_column_if_missing("orders", "recipient_sms_sent_at", "ALTER TABLE orders ADD COLUMN recipient_sms_sent_at TEXT")
-    add_column_if_missing("orders", "sender_sms_sent_at", "ALTER TABLE orders ADD COLUMN sender_sms_sent_at TEXT")
-    add_column_if_missing("orders", "recipient_sms_sid", "ALTER TABLE orders ADD COLUMN recipient_sms_sid TEXT")
-    add_column_if_missing("orders", "sender_sms_sid", "ALTER TABLE orders ADD COLUMN sender_sms_sid TEXT")
-    add_column_if_missing("orders", "recipient_sms_attempts", "ALTER TABLE orders ADD COLUMN recipient_sms_attempts INTEGER NOT NULL DEFAULT 0")
-    add_column_if_missing("orders", "sender_sms_attempts", "ALTER TABLE orders ADD COLUMN sender_sms_attempts INTEGER NOT NULL DEFAULT 0")
-    add_column_if_missing("orders", "recipient_sms_error", "ALTER TABLE orders ADD COLUMN recipient_sms_error TEXT")
-    add_column_if_missing("orders", "sender_sms_error", "ALTER TABLE orders ADD COLUMN sender_sms_error TEXT")
 
 
 init_db()
@@ -283,31 +213,24 @@ def now_iso() -> str:
     return now_dt().isoformat()
 
 
-def gift_refund_deadline_iso() -> str:
-    return (now_dt() + timedelta(days=GIFT_REFUND_DAYS)).isoformat()
+def safe_text(value: str) -> str:
+    return html.escape(str(value or "").strip())
 
 
-def safe_text(v: str) -> str:
-    return html.escape(str(v or "").strip())
+def safe_attr(value: str) -> str:
+    return html.escape(str(value or "").strip(), quote=True)
 
 
-def safe_attr(v: str) -> str:
-    return html.escape(str(v or "").strip(), quote=True)
+def money(value: float) -> str:
+    return f"{float(value):.2f}"
 
 
-def money(v: float) -> str:
-    return f"{float(v):.2f}"
+def format_amount_display(value: float) -> str:
+    return f"{float(value):.2f} €".replace(".", ",")
 
 
-def format_amount_display(value) -> str:
-    try:
-        return f"{float(value):.2f} €".replace(".", ",")
-    except Exception:
-        return "0,00 €"
-
-
-def normalize_phone(p: str) -> str:
-    raw = str(p or "").strip()
+def normalize_phone(phone: str) -> str:
+    raw = str(phone or "").strip()
     raw = raw.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
     if raw.startswith("00"):
         raw = raw[2:]
@@ -321,16 +244,12 @@ def to_e164(phone: str) -> str:
     normalized = normalize_phone(phone)
     if not normalized:
         return ""
-
     if normalized.startswith("34") and len(normalized) == 11:
         return f"+{normalized}"
-
     if len(normalized) == 9:
         return f"+34{normalized}"
-
     if len(normalized) >= 10:
         return f"+{normalized}"
-
     return ""
 
 
@@ -342,226 +261,13 @@ def new_token() -> str:
     return secrets.token_urlsafe(24)
 
 
-def detect_video_extension(upload: UploadFile) -> str:
-    content_type = (upload.content_type or "").lower().strip()
-    filename = (upload.filename or "").lower().strip()
-    if filename.endswith(".mp4") or content_type == "video/mp4":
-        return "mp4"
-    return "webm"
-
-
-def detect_image_extension(upload: UploadFile) -> str:
-    filename = (upload.filename or "").lower().strip()
-    content_type = (upload.content_type or "").lower().strip()
-
-    if filename.endswith(".png") or content_type == "image/png":
-        return "png"
-    if filename.endswith(".webp") or content_type == "image/webp":
-        return "webp"
-    if filename.endswith(".jpeg") or content_type == "image/jpeg":
-        return "jpg"
-    if filename.endswith(".jpg") or content_type in {"image/jpg", "image/jpeg"}:
-        return "jpg"
-
-    return "jpg"
-
-
-def build_photo_path(order_id: str, slot_name: str, upload: UploadFile) -> str:
-    ext = detect_image_extension(upload)
-    folder = PHOTO_FOLDER / order_id
-    folder.mkdir(parents=True, exist_ok=True)
-    return str(folder / f"{slot_name}.{ext}")
-
-
-def reaction_video_path(order_id: str, extension: str = "webm") -> str:
-    extension = (extension or "webm").lower().strip()
-    if extension not in {"webm", "mp4"}:
-        extension = "webm"
-    return str(VIDEO_FOLDER / f"{order_id}.{extension}")
-
-
-def guess_media_type_from_path(path: str) -> str:
-    media_type, _ = mimetypes.guess_type(path)
-    return media_type or "application/octet-stream"
-
-
-def guess_media_type_from_url(url: str) -> str:
-    raw = (url or "").split("?")[0].lower()
-    if raw.endswith(".webm"):
-        return "video/webm"
-    if raw.endswith(".mp4"):
-        return "video/mp4"
-    return "video/mp4"
-
-
-def r2_enabled() -> bool:
-    return all([R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET, R2_ENDPOINT, R2_PUBLIC_URL])
-
-
-def get_r2_client():
-    if not r2_enabled():
-        return None
-    return boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT,
-        aws_access_key_id=R2_ACCESS_KEY,
-        aws_secret_access_key=R2_SECRET_KEY,
-        config=Config(signature_version="s3v4"),
-        region_name="auto",
-    )
-
-
-def upload_video_to_r2(local_path: str, remote_name: str, content_type: str = "video/webm") -> Optional[str]:
-    client = get_r2_client()
-    if not client:
-        return None
-
-    client.upload_file(
-        local_path,
-        R2_BUCKET,
-        remote_name,
-        ExtraArgs={"ContentType": content_type},
-    )
-    return f"{R2_PUBLIC_URL}/{remote_name}"
-
-
-def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider: str):
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO assets (order_id, asset_type, file_url, storage_provider, created_at)
-        VALUES (?, ?, ?, ?, ?)
-    """, (order_id, asset_type, file_url, storage_provider, now_iso()))
-    conn.commit()
-    conn.close()
-
-
-def get_order_by_id(order_id: str):
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            o.*,
-            s.name AS sender_name,
-            s.email AS sender_email,
-            s.phone AS sender_phone,
-            r.name AS recipient_name,
-            r.phone AS recipient_phone
-        FROM orders o
-        JOIN senders s ON s.id = o.sender_id
-        JOIN recipients r ON r.id = o.recipient_id
-        WHERE o.id = ?
-    """, (order_id,))
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    return dict(row)
-
-
-def get_order_by_recipient_token_or_404(token: str):
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            o.*,
-            s.name AS sender_name,
-            s.email AS sender_email,
-            s.phone AS sender_phone,
-            r.name AS recipient_name,
-            r.phone AS recipient_phone
-        FROM orders o
-        JOIN senders s ON s.id = o.sender_id
-        JOIN recipients r ON r.id = o.recipient_id
-        WHERE o.recipient_token = ?
-    """, (token,))
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Experiencia no encontrada")
-    return dict(row)
-
-
-def get_order_by_sender_token_or_404(token: str):
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            o.*,
-            s.name AS sender_name,
-            s.email AS sender_email,
-            s.phone AS sender_phone,
-            r.name AS recipient_name,
-            r.phone AS recipient_phone
-        FROM orders o
-        JOIN senders s ON s.id = o.sender_id
-        JOIN recipients r ON r.id = o.recipient_id
-        WHERE o.sender_token = ?
-    """, (token,))
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Sender pack no encontrado")
-    return dict(row)
-
-
-def update_order(order_id: str, **fields):
-    if not fields:
-        return
-
-    fields["updated_at"] = now_iso()
-
-    columns = ", ".join([f"{k} = ?" for k in fields.keys()])
-    values = list(fields.values()) + [order_id]
-
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
-    conn.commit()
-    conn.close()
-
-
-def reaction_exists(order: dict) -> bool:
-    if order.get("reaction_video_public_url"):
-        return True
-    local_path = order.get("reaction_video_local")
-    return bool(local_path) and os.path.exists(local_path)
-
-
-def sender_pack_url_from_order(order: dict) -> str:
-    return f"{PUBLIC_BASE_URL}/sender/{order['sender_token']}"
-
-
-def recipient_experience_url_from_order(order: dict) -> str:
-    return f"{PUBLIC_BASE_URL}/pedido/{order['recipient_token']}"
-
-
-def build_recipient_message(order: dict) -> str:
-    return (
-        "ETERNA\n\n"
-        "Tienes algo que ver…\n\n"
-        f"{recipient_experience_url_from_order(order)}"
-    )
-
-
-def build_sender_ready_message(order: dict) -> str:
-    return (
-        "Tu ETERNA ha vuelto.\n\n"
-        f"{sender_pack_url_from_order(order)}"
-    )
-
-
-def calculate_fees(gift_amount: float) -> dict:
+def calculate_totals(gift_amount: float) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
-    fixed_fee = round(FIXED_PLATFORM_FEE, 2)
-    variable_fee = round(gift_amount * GIFT_COMMISSION_RATE, 2)
-    total_fee = round(fixed_fee + variable_fee, 2)
-    total_amount = round(BASE_PRICE + gift_amount + total_fee, 2)
+    commission = round(gift_amount * GIFT_COMMISSION_RATE, 2)
+    total_amount = round(ETERNA_BASE_PRICE + gift_amount + commission, 2)
     return {
         "gift_amount": gift_amount,
-        "fixed_fee": fixed_fee,
-        "variable_fee": variable_fee,
-        "total_fee": total_fee,
+        "gift_commission": commission,
         "total_amount": total_amount,
     }
 
@@ -571,7 +277,7 @@ def get_phrases_by_type(message_type: str):
         "cumpleanos": [
             "Hoy no es un día cualquiera.",
             "Es tu historia celebrándose.",
-            "Y lo mejor… aún está por venir.",
+            "Y lo mejor aún está por venir.",
         ],
         "amor": [
             "Si volviera a empezar,",
@@ -591,7 +297,7 @@ def get_phrases_by_type(message_type: str):
         "esfuerzo": [
             "Todo lo que has dado",
             "no ha pasado desapercibido.",
-            "Y lo valoramos más de lo que imaginas.",
+            "Y vale más de lo que imaginas.",
         ],
         "sorpresa": [
             "Pensabas que hoy era un día normal…",
@@ -602,61 +308,235 @@ def get_phrases_by_type(message_type: str):
     return templates.get(message_type, templates["sorpresa"])
 
 
+def detect_image_extension(upload: UploadFile) -> str:
+    filename = (upload.filename or "").lower().strip()
+    content_type = (upload.content_type or "").lower().strip()
+    if filename.endswith(".png") or content_type == "image/png":
+        return "png"
+    if filename.endswith(".webp") or content_type == "image/webp":
+        return "webp"
+    return "jpg"
+
+
+def detect_video_extension(upload: UploadFile) -> str:
+    filename = (upload.filename or "").lower().strip()
+    content_type = (upload.content_type or "").lower().strip()
+    if filename.endswith(".mp4") or content_type == "video/mp4":
+        return "mp4"
+    return "webm"
+
+
+def build_photo_path(order_id: str, slot_name: str, upload: UploadFile) -> Path:
+    folder = UPLOADS_DIR / order_id
+    folder.mkdir(parents=True, exist_ok=True)
+    ext = detect_image_extension(upload)
+    return folder / f"{slot_name}.{ext}"
+
+
+def reaction_video_path(order_id: str, extension: str = "webm") -> Path:
+    extension = extension if extension in {"webm", "mp4"} else "webm"
+    return VIDEOS_DIR / f"{order_id}.{extension}"
+
+
+def guess_media_type_from_path(path: str) -> str:
+    media_type, _ = mimetypes.guess_type(path)
+    return media_type or "application/octet-stream"
+
+
+def guess_media_type_from_url(url: str) -> str:
+    raw = (url or "").split("?")[0].lower()
+    if raw.endswith(".webm"):
+        return "video/webm"
+    if raw.endswith(".mp4"):
+        return "video/mp4"
+    return "video/mp4"
+
+
+def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider: str = "local"):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO assets (order_id, asset_type, file_url, storage_provider, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (order_id, asset_type, file_url, storage_provider, now_iso()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_order_by_id(order_id: str) -> dict:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT
+            o.*,
+            s.name AS sender_name,
+            s.email AS sender_email,
+            s.phone AS sender_phone,
+            r.name AS recipient_name,
+            r.phone AS recipient_phone
+        FROM orders o
+        JOIN senders s ON s.id = o.sender_id
+        JOIN recipients r ON r.id = o.recipient_id
+        WHERE o.id = ?
+        LIMIT 1
+        """,
+        (order_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    return dict(row)
+
+
+def get_order_by_recipient_token_or_404(token: str) -> dict:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT
+            o.*,
+            s.name AS sender_name,
+            s.email AS sender_email,
+            s.phone AS sender_phone,
+            r.name AS recipient_name,
+            r.phone AS recipient_phone
+        FROM orders o
+        JOIN senders s ON s.id = o.sender_id
+        JOIN recipients r ON r.id = o.recipient_id
+        WHERE o.recipient_token = ?
+        LIMIT 1
+        """,
+        (token,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Experiencia no encontrada")
+    return dict(row)
+
+
+def get_order_by_sender_token_or_404(token: str) -> dict:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT
+            o.*,
+            s.name AS sender_name,
+            s.email AS sender_email,
+            s.phone AS sender_phone,
+            r.name AS recipient_name,
+            r.phone AS recipient_phone
+        FROM orders o
+        JOIN senders s ON s.id = o.sender_id
+        JOIN recipients r ON r.id = o.recipient_id
+        WHERE o.sender_token = ?
+        LIMIT 1
+        """,
+        (token,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Sender pack no encontrado")
+    return dict(row)
+
+
+def update_order(order_id: str, **fields):
+    if not fields:
+        return
+    fields["updated_at"] = now_iso()
+    columns = ", ".join([f"{key} = ?" for key in fields.keys()])
+    values = list(fields.values()) + [order_id]
+
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
+    conn.commit()
+    conn.close()
+
+
+def reaction_exists(order: dict) -> bool:
+    local_path = (order.get("reaction_video_local") or "").strip()
+    public_url = (order.get("reaction_video_public_url") or "").strip()
+    if public_url:
+        return True
+    if local_path and os.path.exists(local_path):
+        return True
+    return False
+
+
+def recipient_experience_url(order: dict) -> str:
+    return f"{PUBLIC_BASE_URL}/pedido/{order['recipient_token']}"
+
+
+def sender_pack_url(order: dict) -> str:
+    return f"{PUBLIC_BASE_URL}/sender/{order['sender_token']}"
+
+
+def build_recipient_message(order: dict) -> str:
+    return (
+        "ETERNA\n\n"
+        "Tienes algo que ver…\n\n"
+        f"{recipient_experience_url(order)}"
+    )
+
+
+def build_sender_ready_message(order: dict) -> str:
+    return (
+        "Tu ETERNA ha vuelto.\n\n"
+        f"{sender_pack_url(order)}"
+    )
+
+
+# =========================================================
+# SMS
+# =========================================================
+
 def twilio_enabled() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER)
+    return bool(
+        TWILIO_ACCOUNT_SID and
+        TWILIO_AUTH_TOKEN and
+        TWILIO_FROM_NUMBER and
+        TwilioClient is not None
+    )
 
 
 def send_sms(phone: str, message: str) -> dict:
-    to_phone = to_e164(phone)
+    e164_phone = to_e164(phone)
 
-    if not to_phone:
-        return {
-            "ok": False,
-            "sid": None,
-            "error": "invalid_phone",
-        }
+    if not e164_phone:
+        return {"ok": False, "sid": None, "error": "invalid_phone"}
 
-    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
-        return {
-            "ok": False,
-            "sid": None,
-            "error": "twilio_not_configured",
-        }
+    if not twilio_enabled():
+        print("\n================ SMS STUB ================")
+        print("TO:", e164_phone)
+        print("MESSAGE:")
+        print(message)
+        print("=========================================\n")
+        return {"ok": True, "sid": "stub_sid", "error": None}
 
     try:
-        from twilio.rest import Client
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-
+        client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
         sms = client.messages.create(
             body=message,
             from_=TWILIO_FROM_NUMBER,
-            to=to_phone,
+            to=e164_phone,
         )
-
-        return {
-            "ok": True,
-            "sid": sms.sid,
-            "error": None,
-        }
-
+        return {"ok": True, "sid": sms.sid, "error": None}
     except Exception as e:
-        return {
-            "ok": False,
-            "sid": None,
-            "error": str(e),
-        }
+        return {"ok": False, "sid": None, "error": str(e)}
 
 
 def try_send_recipient_sms(order: dict) -> dict:
     if order.get("recipient_sms_sent_at"):
-        return {
-            "ok": True,
-            "sid": order.get("recipient_sms_sid"),
-            "already_sent": True,
-            "error": None,
-        }
+        return {"ok": True, "sid": order.get("recipient_sms_sid"), "already_sent": True, "error": None}
 
-    attempts = int(order.get("recipient_sms_attempts") or 0) + 1
     result = send_sms(order.get("recipient_phone", ""), build_recipient_message(order))
 
     if result["ok"]:
@@ -664,39 +544,21 @@ def try_send_recipient_sms(order: dict) -> dict:
             order["id"],
             recipient_sms_sent_at=now_iso(),
             recipient_sms_sid=result["sid"],
-            recipient_sms_attempts=attempts,
             recipient_sms_error=None,
         )
-        return {
-            "ok": True,
-            "sid": result["sid"],
-            "already_sent": False,
-            "error": None,
-        }
+        return {"ok": True, "sid": result["sid"], "already_sent": False, "error": None}
 
     update_order(
         order["id"],
-        recipient_sms_attempts=attempts,
         recipient_sms_error=result["error"],
     )
-    return {
-        "ok": False,
-        "sid": None,
-        "already_sent": False,
-        "error": result["error"],
-    }
+    return {"ok": False, "sid": None, "already_sent": False, "error": result["error"]}
 
 
 def try_send_sender_sms(order: dict) -> dict:
     if order.get("sender_sms_sent_at"):
-        return {
-            "ok": True,
-            "sid": order.get("sender_sms_sid"),
-            "already_sent": True,
-            "error": None,
-        }
+        return {"ok": True, "sid": order.get("sender_sms_sid"), "already_sent": True, "error": None}
 
-    attempts = int(order.get("sender_sms_attempts") or 0) + 1
     result = send_sms(order.get("sender_phone", ""), build_sender_ready_message(order))
 
     if result["ok"]:
@@ -704,91 +566,33 @@ def try_send_sender_sms(order: dict) -> dict:
             order["id"],
             sender_sms_sent_at=now_iso(),
             sender_sms_sid=result["sid"],
-            sender_sms_attempts=attempts,
             sender_sms_error=None,
             sender_notified=1,
         )
-        return {
-            "ok": True,
-            "sid": result["sid"],
-            "already_sent": False,
-            "error": None,
-        }
+        return {"ok": True, "sid": result["sid"], "already_sent": False, "error": None}
 
     update_order(
         order["id"],
-        sender_sms_attempts=attempts,
         sender_sms_error=result["error"],
     )
-    return {
-        "ok": False,
-        "sid": None,
-        "already_sent": False,
-        "error": result["error"],
-    }
-
-
-def enviar_sms(order_id: str):
-    order = get_order_by_id(order_id)
-    result = try_send_recipient_sms(order)
-    print(f"📩 Resultado SMS: {result}")
-    return result
+    return {"ok": False, "sid": None, "already_sent": False, "error": result["error"]}
 
 
 # =========================================================
-# HELPERS EXTRA QUE FALTABAN
+# VIDEO ENGINE BRIDGE
 # =========================================================
 
-def compute_cashout_status(order: dict) -> str:
-    if bool(order.get("gift_refunded")):
-        return "gift_refunded"
-    if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
-        return "completed"
-    return "pending"
-
-
-def try_acquire_transfer_lock(order_id: str) -> bool:
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        UPDATE orders
-        SET transfer_in_progress = 1,
-            updated_at = ?
-        WHERE id = ?
-          AND COALESCE(transfer_in_progress, 0) = 0
-          AND COALESCE(transfer_completed, 0) = 0
-        """,
-        (now_iso(), order_id)
-    )
-    conn.commit()
-    acquired = cur.rowcount == 1
-    conn.close()
-    return acquired
-
-
-def release_transfer_lock(order_id: str):
-    update_order(order_id, transfer_in_progress=0)
-
-
-# =========================================================
-# VIDEO ENGINE
-# =========================================================
-
-def trigger_video_engine(order_id: str):
-    print(f"[VIDEO_ENGINE] Iniciando render para pedido: {order_id}")
-
+def trigger_video_engine(order_id: str) -> str:
     order = get_order_by_id(order_id)
 
     conn = db_conn()
     cur = conn.cursor()
-
     cur.execute(
         """
         SELECT asset_type, file_url
         FROM assets
         WHERE order_id = ?
-        ORDER BY created_at ASC, id ASC
+        ORDER BY id ASC
         """,
         (order_id,),
     )
@@ -798,11 +602,8 @@ def trigger_video_engine(order_id: str):
     photo_map = {}
 
     for asset in assets:
-        asset_type = (asset["asset_type"] or "").lower().strip()
+        asset_type = (asset["asset_type"] or "").strip().lower()
         file_url = (asset["file_url"] or "").strip()
-
-        if not file_url:
-            continue
 
         if asset_type in {"photo1", "foto1"}:
             photo_map[1] = file_url
@@ -820,29 +621,21 @@ def trigger_video_engine(order_id: str):
     photo_paths = [photo_map[i] for i in range(1, 7) if i in photo_map]
 
     if len(photo_paths) != 6:
-        raise Exception(
-            f"El pedido {order_id} no tiene exactamente 6 fotos válidas. Encontradas: {len(photo_paths)}"
-        )
+        raise Exception(f"El pedido {order_id} no tiene exactamente 6 fotos válidas")
 
-    for i, p in enumerate(photo_paths, start=1):
-        if not os.path.exists(p):
-            raise Exception(f"La foto {i} no existe en disco: {p}")
+    for idx, path in enumerate(photo_paths, start=1):
+        if not os.path.exists(path):
+            raise Exception(f"La foto {idx} no existe en disco: {path}")
 
     phrase_1 = (order.get("phrase_1") or "").strip()
     phrase_2 = (order.get("phrase_2") or "").strip()
     phrase_3 = (order.get("phrase_3") or "").strip()
 
-    output_dir = Path("videos")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{order_id}.mp4"
-
-    print(f"[VIDEO_ENGINE] Fotos encontradas: {photo_paths}")
-    print(f"[VIDEO_ENGINE] Frases: {phrase_1} | {phrase_2} | {phrase_3}")
-    print(f"[VIDEO_ENGINE] Output: {output_path}")
+    output_path = VIDEOS_DIR / f"{order_id}.mp4"
 
     from video_engine import render_eterna_video
 
-    final_video_path = render_eterna_video(
+    final_path = render_eterna_video(
         photo_paths=photo_paths,
         phrase_1=phrase_1,
         phrase_2=phrase_2,
@@ -850,17 +643,16 @@ def trigger_video_engine(order_id: str):
         output_path=str(output_path),
     )
 
-    if not final_video_path:
-        final_video_path = str(output_path)
+    final_path = final_path or str(output_path)
 
-    if not os.path.exists(final_video_path):
-        raise Exception(f"El render terminó pero no existe el archivo final: {final_video_path}")
+    if not os.path.exists(final_path):
+        raise Exception(f"El render terminó pero no existe el archivo final: {final_path}")
 
     public_video_url = f"{PUBLIC_BASE_URL}/video/generated/{order_id}"
 
     update_order(
         order_id,
-        experience_video_url=public_video_url
+        experience_video_url=public_video_url,
     )
 
     insert_asset(
@@ -870,171 +662,500 @@ def trigger_video_engine(order_id: str):
         storage_provider="local",
     )
 
-    print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
     return public_video_url
 
 
 @app.get("/video/generated/{order_id}")
-def get_generated_video(order_id: str):
-    filepath = Path("videos") / f"{order_id}.mp4"
-
+def generated_video(order_id: str):
+    filepath = VIDEOS_DIR / f"{order_id}.mp4"
     if not filepath.exists():
         raise HTTPException(status_code=404, detail="Vídeo generado no encontrado")
-
     return FileResponse(
         str(filepath),
         media_type="video/mp4",
-        filename=f"{order_id}.mp4"
+        filename=f"{order_id}.mp4",
     )
 
 
 # =========================================================
-# STRIPE CONNECT HELPERS
+# FORM HTML
 # =========================================================
 
-def get_or_create_connected_account(order: dict) -> str:
-    existing = (order.get("stripe_connected_account_id") or "").strip()
-    if existing:
-        return existing
+def render_create_form() -> str:
+    return f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Crear ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            body {{
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                padding: 24px;
+            }}
+            .wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
+            .card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 28px;
+                padding: 28px;
+            }}
+            h1 {{ margin: 0 0 12px 0; font-size: 36px; text-align: center; letter-spacing: 2px; }}
+            .subtitle {{ text-align: center; color: rgba(255,255,255,0.7); line-height: 1.7; margin-bottom: 10px; }}
+            .intro-soft {{
+                text-align: center;
+                color: rgba(255,255,255,0.48);
+                line-height: 1.8;
+                margin: 0 auto 26px auto;
+                max-width: 620px;
+                font-size: 14px;
+            }}
+            .section-title {{
+                margin: 22px 0 10px 0;
+                font-size: 13px;
+                letter-spacing: 1.4px;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.55);
+            }}
+            input {{
+                width: 100%;
+                padding: 15px 16px;
+                margin: 8px 0;
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.10);
+                background: rgba(255,255,255,0.05);
+                color: white;
+                outline: none;
+                font-size: 15px;
+            }}
+            input::placeholder {{ color: rgba(255,255,255,0.4); }}
+            .photo-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+                margin-top: 12px;
+            }}
+            .photo-card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 22px;
+                padding: 16px;
+            }}
+            .photo-label {{
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1.2px;
+                color: rgba(255,255,255,0.45);
+                margin-bottom: 8px;
+            }}
+            .photo-guide {{
+                font-size: 15px;
+                color: rgba(255,255,255,0.92);
+                line-height: 1.5;
+                margin-bottom: 12px;
+                min-height: 44px;
+            }}
+            .photo-box {{
+                position: relative;
+                border: 1px dashed rgba(255,255,255,0.18);
+                border-radius: 18px;
+                min-height: 210px;
+                overflow: hidden;
+                background: rgba(255,255,255,0.03);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 16px;
+            }}
+            .photo-box input[type="file"] {{
+                position: absolute;
+                inset: 0;
+                opacity: 0;
+                cursor: pointer;
+                margin: 0;
+                padding: 0;
+            }}
+            .photo-placeholder {{
+                color: rgba(255,255,255,0.48);
+                line-height: 1.7;
+                font-size: 14px;
+            }}
+            .photo-preview {{
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: none;
+                position: absolute;
+                inset: 0;
+            }}
+            .mini-note {{
+                margin-top: 10px;
+                color: rgba(255,255,255,0.42);
+                font-size: 12px;
+                line-height: 1.6;
+            }}
+            .emotion-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 14px;
+                margin-top: 12px;
+            }}
+            .emotion-card {{
+                padding: 18px 18px;
+                border-radius: 20px;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                cursor: pointer;
+                transition: all 0.25s ease;
+            }}
+            .emotion-card.selected {{
+                border: 1px solid rgba(255,255,255,0.32);
+                background: rgba(255,255,255,0.08);
+            }}
+            .emotion-title {{ font-size: 16px; font-weight: 600; margin-bottom: 6px; }}
+            .emotion-sub {{ font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.45; }}
+            .mode-box {{
+                margin-top: 14px;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 18px;
+                padding: 12px 14px;
+            }}
+            .radio-row {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin: 10px 0;
+                color: rgba(255,255,255,0.88);
+                font-size: 14px;
+            }}
+            .radio-row input {{ width: auto; margin: 0; }}
+            .recommended {{ opacity: 0.5; font-size: 12px; margin-left: 4px; }}
+            .phrases-manual.hidden {{ display: none; }}
+            .price-box {{
+                margin-top: 12px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 16px;
+                padding: 14px 16px;
+                font-size: 14px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.82);
+            }}
+            .hint {{
+                margin-top: 10px;
+                font-size: 13px;
+                line-height: 1.7;
+                color: rgba(255,255,255,0.45);
+                text-align: center;
+            }}
+            .buttons {{ display: grid; gap: 12px; margin-top: 24px; }}
+            .btn, button {{
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                border: 0;
+                font-weight: bold;
+                font-size: 15px;
+                text-decoration: none;
+                text-align: center;
+                cursor: pointer;
+            }}
+            button {{ background: white; color: black; }}
+            .ghost {{
+                display: inline-block;
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
+            @media (max-width: 760px) {{
+                .photo-grid,
+                .emotion-grid {{
+                    grid-template-columns: 1fr;
+                }}
+                body {{ padding: 16px; }}
+                .card {{ padding: 22px; }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="card">
+                <h1>CREAR ETERNA</h1>
+                <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
+                <div class="intro-soft">
+                    Shhh…<br>
+                    Esto no es un vídeo.<br>
+                    Es algo que alguien no va a olvidar.
+                </div>
 
-    if not STRIPE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Stripe no configurado")
+                <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
+                    <div class="section-title">Tus datos</div>
+                    <input name="customer_name" placeholder="Tu nombre" required>
+                    <input name="customer_email" type="email" placeholder="Tu email">
+                    <input name="customer_phone" placeholder="Tu teléfono (ej. 674123456)" required>
 
-    account = stripe.Account.create(
-        type="express",
-        country="ES",
-        capabilities={"transfers": {"requested": True}},
-        metadata={
-            "order_id": order["id"],
-            "recipient_name": order.get("recipient_name", ""),
-        },
-    )
-    update_order(order["id"], stripe_connected_account_id=account.id)
-    return account.id
+                    <div class="section-title">Persona que recibe</div>
+                    <input name="recipient_name" placeholder="Nombre de la persona" required>
+                    <input name="recipient_phone" placeholder="Teléfono de la persona (ej. 674123456)" required>
 
+                    <div class="section-title">Tus 6 fotos</div>
+                    <div class="photo-grid">
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 1</div>
+                            <div class="photo-guide">Una imagen solo suya.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo1">
+                                <div class="photo-placeholder" id="placeholder_photo1">Añadir foto</div>
+                                <input type="file" name="photo1" id="photo1" accept="image/*" required>
+                            </label>
+                        </div>
 
-def create_connect_onboarding_link(order: dict) -> str:
-    account_id = get_or_create_connected_account(order)
-    link = stripe.AccountLink.create(
-        account=account_id,
-        refresh_url=f"{PUBLIC_BASE_URL}/connect/refresh/{order['recipient_token']}",
-        return_url=f"{PUBLIC_BASE_URL}/connect/return/{order['recipient_token']}",
-        type="account_onboarding",
-    )
-    return link.url
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 2</div>
+                            <div class="photo-guide">Ese momento que lo dice todo.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo2">
+                                <div class="photo-placeholder" id="placeholder_photo2">Añadir foto</div>
+                                <input type="file" name="photo2" id="photo2" accept="image/*" required>
+                            </label>
+                        </div>
 
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 3</div>
+                            <div class="photo-guide">Algo que os una.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo3">
+                                <div class="photo-placeholder" id="placeholder_photo3">Añadir foto</div>
+                                <input type="file" name="photo3" id="photo3" accept="image/*" required>
+                            </label>
+                        </div>
 
-def refresh_connect_status(order: dict) -> bool:
-    account_id = (order.get("stripe_connected_account_id") or "").strip()
-    if not account_id:
-        return False
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 4</div>
+                            <div class="photo-guide">Un recuerdo que duela bonito.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo4">
+                                <div class="photo-placeholder" id="placeholder_photo4">Añadir foto</div>
+                                <input type="file" name="photo4" id="photo4" accept="image/*" required>
+                            </label>
+                        </div>
 
-    acct = stripe.Account.retrieve(account_id)
-    ready = bool(acct.get("details_submitted")) and (
-        acct.get("capabilities", {}).get("transfers") == "active"
-    )
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 5</div>
+                            <div class="photo-guide">Algo especial, solo vuestro.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo5">
+                                <div class="photo-placeholder" id="placeholder_photo5">Añadir foto</div>
+                                <input type="file" name="photo5" id="photo5" accept="image/*" required>
+                            </label>
+                        </div>
 
-    update_order(order["id"], connect_onboarding_completed=1 if ready else 0)
-    return ready
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 6</div>
+                            <div class="photo-guide">La que nunca olvidará.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo6">
+                                <div class="photo-placeholder" id="placeholder_photo6">Añadir foto</div>
+                                <input type="file" name="photo6" id="photo6" accept="image/*" required>
+                            </label>
+                        </div>
+                    </div>
 
+                    <div class="mini-note">
+                        Recomendación: mejor verticales. Idealmente 2 fotos suyas, 2 juntos y 2 finales suyas.
+                    </div>
 
-def process_gift_transfer_for_order(order: dict) -> dict:
-    order = get_order_by_id(order["id"])
-    gift_amount = float(order.get("gift_amount") or 0)
+                    <div class="section-title">Elige la emoción</div>
 
-    if bool(order.get("gift_refunded")):
-        return {"status": "gift_already_refunded"}
+                    <div class="emotion-grid">
+                        <div class="emotion-card" data-type="cumpleanos">
+                            <div class="emotion-title">Cumpleaños</div>
+                            <div class="emotion-sub">Un día que merece quedarse</div>
+                        </div>
+                        <div class="emotion-card" data-type="amor">
+                            <div class="emotion-title">Amor</div>
+                            <div class="emotion-sub">Cuando lo que sientes ya no cabe dentro</div>
+                        </div>
+                        <div class="emotion-card" data-type="familia">
+                            <div class="emotion-title">Familia</div>
+                            <div class="emotion-sub">Para quien siempre ha estado</div>
+                        </div>
+                        <div class="emotion-card" data-type="superacion">
+                            <div class="emotion-title">Superación</div>
+                            <div class="emotion-sub">Para recordar todo lo que vale</div>
+                        </div>
+                        <div class="emotion-card" data-type="esfuerzo">
+                            <div class="emotion-title">Esfuerzo</div>
+                            <div class="emotion-sub">Para reconocer lo que otros no siempre ven</div>
+                        </div>
+                        <div class="emotion-card" data-type="sorpresa">
+                            <div class="emotion-title">Sorpresa</div>
+                            <div class="emotion-sub">Cuando quieres tocar el corazón sin avisar</div>
+                        </div>
+                    </div>
 
-    if gift_amount <= 0:
-        update_order(
-            order["id"],
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-            connect_onboarding_completed=1,
-        )
-        return {"status": "no_gift"}
+                    <input type="hidden" name="message_type" id="messageType" required>
 
-    if not STRIPE_SECRET_KEY:
-        update_order(
-            order["id"],
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-            connect_onboarding_completed=1,
-        )
-        return {"status": "stripe_disabled_test_mode"}
+                    <div class="mode-box">
+                        <div class="radio-row">
+                            <input type="radio" id="mode_auto" name="phrase_mode" value="auto" checked>
+                            <label for="mode_auto">
+                                Que ETERNA lo haga por mí
+                                <span class="recommended">(recomendado)</span>
+                            </label>
+                        </div>
 
-    if not bool(order.get("paid")):
-        return {"status": "not_paid"}
+                        <div class="radio-row">
+                            <input type="radio" id="mode_manual" name="phrase_mode" value="manual">
+                            <label for="mode_manual">Quiero escribir mis frases</label>
+                        </div>
+                    </div>
 
-    if not bool(order.get("experience_completed")):
-        return {"status": "experience_not_completed"}
+                    <div class="phrases-manual hidden" id="manualPhrases">
+                        <div class="section-title">Tus 3 frases</div>
+                        <input name="phrase_1" placeholder="Frase para foto 2" maxlength="160">
+                        <input name="phrase_2" placeholder="Frase para foto 4" maxlength="160">
+                        <input name="phrase_3" placeholder="Frase para foto 6" maxlength="160">
+                    </div>
 
-    if not bool(order.get("connect_onboarding_completed")):
-        return {"status": "onboarding_not_ready"}
+                    <div class="section-title">Dinero a regalar</div>
+                    <input
+                        name="gift_amount"
+                        placeholder="Dinero a regalar (€)"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value="0"
+                        required
+                    >
 
-    if order.get("stripe_transfer_id"):
-        update_order(
-            order["id"],
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-        )
-        return {"status": "already_transferred", "transfer_id": order.get("stripe_transfer_id")}
+                    <div class="price-box">
+                        Precio base ETERNA: {money(ETERNA_BASE_PRICE)}€<br>
+                        Comisión regalo: {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado
+                    </div>
 
-    destination = (order.get("stripe_connected_account_id") or "").strip()
-    if not destination:
-        return {"status": "missing_destination"}
+                    <div class="hint">No es un vídeo. Es un momento.</div>
 
-    if not try_acquire_transfer_lock(order["id"]):
-        refreshed = get_order_by_id(order["id"])
-        if refreshed.get("stripe_transfer_id"):
-            return {"status": "already_transferred", "transfer_id": refreshed.get("stripe_transfer_id")}
-        if bool(refreshed.get("gift_refunded")):
-            return {"status": "gift_already_refunded"}
-        return {"status": "transfer_in_progress"}
+                    <div class="buttons">
+                        <button type="submit" id="submitBtn">CONTINUAR</button>
+                        <a class="btn ghost" href="/">Volver</a>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-    try:
-        transfer = stripe.Transfer.create(
-            amount=int(round(gift_amount * 100)),
-            currency=CURRENCY,
-            destination=destination,
-            metadata={
-                "order_id": order["id"],
-                "type": "eterna_gift_transfer",
-            },
-            transfer_group=f"ETERNA_ORDER_{order['id']}",
-        )
+        <script>
+            const cards = document.querySelectorAll(".emotion-card");
+            const input = document.getElementById("messageType");
+            const autoRadio = document.getElementById("mode_auto");
+            const manualRadio = document.getElementById("mode_manual");
+            const manualPhrases = document.getElementById("manualPhrases");
+            const form = document.getElementById("createForm");
+            const button = document.getElementById("submitBtn");
 
-        update_order(
-            order["id"],
-            stripe_transfer_id=transfer.id,
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-        )
-        return {"status": "ok", "transfer_id": transfer.id}
-    except Exception as e:
-        log_error("Transfer error", e)
-        release_transfer_lock(order["id"])
-        return {"status": "error", "error": str(e)}
+            cards.forEach(card => {{
+                card.addEventListener("click", () => {{
+                    cards.forEach(c => c.classList.remove("selected"));
+                    card.classList.add("selected");
+                    input.value = card.dataset.type;
+                }});
+            }});
+
+            function updatePhraseMode() {{
+                if (manualRadio.checked) manualPhrases.classList.remove("hidden");
+                else manualPhrases.classList.add("hidden");
+            }}
+
+            autoRadio.addEventListener("change", updatePhraseMode);
+            manualRadio.addEventListener("change", updatePhraseMode);
+            updatePhraseMode();
+
+            function bindPreview(inputId) {{
+                const fileInput = document.getElementById(inputId);
+                const preview = document.getElementById("preview_" + inputId);
+                const placeholder = document.getElementById("placeholder_" + inputId);
+
+                fileInput.addEventListener("change", function() {{
+                    const file = this.files && this.files[0];
+                    if (!file) return;
+
+                    const url = URL.createObjectURL(file);
+                    preview.src = url;
+                    preview.style.display = "block";
+                    placeholder.style.display = "none";
+                }});
+            }}
+
+            ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
+
+            form.addEventListener("submit", function () {{
+                button.disabled = true;
+                button.textContent = "Procesando...";
+            }});
+        </script>
+    </body>
+    </html>
+    """
 
 
 # =========================================================
-# LEGAL
+# HOME
 # =========================================================
 
-@app.get("/condiciones", response_class=HTMLResponse)
-def condiciones(request: Request):
-    return templates.TemplateResponse("condiciones.html", {"request": request})
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return HTMLResponse(
+        """
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+        </head>
+        <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
+            <div style="max-width:760px;">
+                <h1 style="font-size:52px;margin:0 0 18px 0;letter-spacing:2px;">ETERNA</h1>
+                <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.85);margin-bottom:28px;">
+                    Hay momentos que merecen quedarse para siempre
+                </div>
+                <a href="/crear" style="display:inline-block;padding:16px 28px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;">
+                    CREAR MI ETERNA
+                </a>
+            </div>
+        </body>
+        </html>
+        """
+    )
 
 
-@app.get("/privacidad", response_class=HTMLResponse)
-def privacidad(request: Request):
-    return templates.TemplateResponse("privacidad.html", {"request": request})
+@app.get("/crear", response_class=HTMLResponse)
+def crear_get():
+    return render_create_form()
 
-    
+
+# =========================================================
+# CREATE ORDER
+# =========================================================
+
+async def save_upload_to_path(upload: UploadFile, path: Path):
+    with open(path, "wb") as f:
+        while True:
+            chunk = await upload.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+
 
 async def create_order_and_redirect(
     customer_name: str,
@@ -1094,8 +1215,11 @@ async def create_order_and_redirect(
     sender_phone = normalize_phone(customer_phone)
     recipient_phone_norm = normalize_phone(recipient_phone)
 
-    if not sender_phone or not recipient_phone_norm:
-        raise HTTPException(status_code=400, detail="Teléfono no válido")
+    if not sender_phone:
+        raise HTTPException(status_code=400, detail="Teléfono del comprador no válido")
+
+    if not recipient_phone_norm:
+        raise HTTPException(status_code=400, detail="Teléfono del destinatario no válido")
 
     photos = {
         "photo1": photo1,
@@ -1113,119 +1237,84 @@ async def create_order_and_redirect(
         content_type = (upload.content_type or "").lower().strip()
         filename = (upload.filename or "").lower().strip()
 
-        is_valid_type = content_type.startswith("image/")
-        is_valid_name = (
-            filename.endswith(".jpg")
-            or filename.endswith(".jpeg")
-            or filename.endswith(".png")
-            or filename.endswith(".webp")
-        )
+        valid_type = content_type.startswith("image/")
+        valid_name = filename.endswith((".jpg", ".jpeg", ".png", ".webp"))
 
-        if not is_valid_type and not is_valid_name:
+        if not valid_type and not valid_name:
             raise HTTPException(status_code=400, detail=f"{slot_name} no es una imagen válida")
 
     order_id = new_order_id()
     recipient_token = new_token()
     sender_token = new_token()
-
-    fees = calculate_fees(gift_amount)
     created_at = now_iso()
+    totals = calculate_totals(gift_amount)
 
     conn = db_conn()
     cur = conn.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO senders (name, email, phone, created_at)
         VALUES (?, ?, ?, ?)
-    """, (customer_name, customer_email, sender_phone, created_at))
+        """,
+        (customer_name, customer_email, sender_phone, created_at),
+    )
     sender_id = cur.lastrowid
 
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO recipients (name, phone, created_at)
         VALUES (?, ?, ?)
-    """, (recipient_name, recipient_phone_norm, created_at))
+        """,
+        (recipient_name, recipient_phone_norm, created_at),
+    )
     recipient_id = cur.lastrowid
 
-    placeholders = ", ".join(["?"] * 46)
-
-cur.execute(f"""
-    INSERT INTO orders (
-        id, sender_id, recipient_id,
-        message_type, phrase_mode,
-        phrase_1, phrase_2, phrase_3,
-        gift_amount, platform_fixed_fee, platform_variable_fee, platform_total_fee, total_amount,
-        paid, delivered_to_recipient, reaction_uploaded,
-        cashout_completed, transfer_completed, transfer_in_progress, sender_notified,
-        experience_started, experience_completed,
-        connect_onboarding_completed, gift_refunded,
-        stripe_session_id, stripe_payment_status, stripe_payment_intent_id, stripe_connected_account_id, stripe_transfer_id, stripe_gift_refund_id,
-        recipient_token, sender_token,
-        reaction_video_local, reaction_video_public_url, experience_video_url,
-        gift_refund_deadline_at,
-        recipient_sms_sent_at, sender_sms_sent_at, recipient_sms_sid, sender_sms_sid,
-        recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
-        created_at, updated_at
+    cur.execute(
+        """
+        INSERT INTO orders (
+            id, sender_id, recipient_id,
+            message_type, phrase_mode,
+            phrase_1, phrase_2, phrase_3,
+            gift_amount, gift_commission, total_amount,
+            paid, delivered_to_recipient, experience_started, experience_completed, reaction_uploaded, sender_notified,
+            stripe_session_id, stripe_payment_status, stripe_payment_intent_id,
+            recipient_token, sender_token,
+            reaction_video_local, reaction_video_public_url, experience_video_url,
+            recipient_sms_sent_at, sender_sms_sent_at, recipient_sms_sid, sender_sms_sid,
+            recipient_sms_error, sender_sms_error,
+            created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            order_id, sender_id, recipient_id,
+            message_type, phrase_mode,
+            phrase_1, phrase_2, phrase_3,
+            totals["gift_amount"], totals["gift_commission"], totals["total_amount"],
+            0, 0, 0, 0, 0, 0,
+            None, None, None,
+            recipient_token, sender_token,
+            None, None, None,
+            None, None, None, None,
+            None, None,
+            created_at, created_at,
+        ),
     )
-    VALUES placeholders = ", ".join(["?"] * 46)
-
-cur.execute(f"""
-    INSERT INTO orders (
-        id, sender_id, recipient_id,
-        message_type, phrase_mode,
-        phrase_1, phrase_2, phrase_3,
-        gift_amount, platform_fixed_fee, platform_variable_fee, platform_total_fee, total_amount,
-        paid, delivered_to_recipient, reaction_uploaded,
-        cashout_completed, transfer_completed, transfer_in_progress, sender_notified,
-        experience_started, experience_completed,
-        connect_onboarding_completed, gift_refunded,
-        stripe_session_id, stripe_payment_status, stripe_payment_intent_id, stripe_connected_account_id, stripe_transfer_id, stripe_gift_refund_id,
-        recipient_token, sender_token,
-        reaction_video_local, reaction_video_public_url, experience_video_url,
-        gift_refund_deadline_at,
-        recipient_sms_sent_at, sender_sms_sent_at, recipient_sms_sid, sender_sms_sid,
-        recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
-        created_at, updated_at
-    )
-    VALUES ({placeholders})
-""", (
-    order_id, sender_id, recipient_id,
-    message_type, phrase_mode,
-    phrase_1, phrase_2, phrase_3,
-    fees["gift_amount"], fees["fixed_fee"], fees["variable_fee"], fees["total_fee"], fees["total_amount"],
-    0, 0, 0,
-    0, 0, 0, 0,
-    0, 0,
-    0, 0,
-    None, None, None, None, None, None,
-    recipient_token, sender_token,
-    None, None, None,
-    None,
-    None, None, None, None,
-    0, 0, None, None,
-    created_at, created_at
-))  
 
     conn.commit()
     conn.close()
 
     try:
         for slot_name, upload in photos.items():
-            filepath = build_photo_path(order_id, slot_name, upload)
-
-            with open(filepath, "wb") as f:
-                while True:
-                    chunk = await upload.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-
+            photo_path = build_photo_path(order_id, slot_name, upload)
+            await save_upload_to_path(upload, photo_path)
             insert_asset(
                 order_id=order_id,
                 asset_type=slot_name,
-                file_url=filepath,
+                file_url=str(photo_path),
                 storage_provider="local",
             )
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error guardando fotos: {e}")
     finally:
@@ -1240,39 +1329,42 @@ cur.execute(f"""
             order_id,
             paid=1,
             stripe_payment_status="test_no_stripe",
-            gift_refund_deadline_at=gift_refund_deadline_iso(),
         )
+
         order = get_order_by_id(order_id)
-        try_send_recipient_sms(order)
+
+        try:
+            try_send_recipient_sms(order)
+        except Exception as e:
+            log_error("SMS destinatario sin Stripe", e)
 
         try:
             trigger_video_engine(order_id)
         except Exception as e:
-            log_error("trigger_video_engine test_no_stripe", e)
+            log_error("Video engine sin Stripe", e)
+            traceback.print_exc()
 
         return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
 
     try:
         session = stripe.checkout.Session.create(
             client_reference_id=order_id,
-            metadata={
-                "order_id": order_id
-            },
+            metadata={"order_id": order_id},
             mode="payment",
             payment_method_types=["card"],
             line_items=[
                 {
                     "price_data": {
-                        "currency": CURRENCY,
+                        "currency": ETERNA_CURRENCY,
                         "product_data": {
                             "name": "ETERNA",
                             "description": (
-                                f"Base {money(BASE_PRICE)}€ + "
-                                f"regalo {money(fees['gift_amount'])}€ + "
-                                f"comisión {money(fees['total_fee'])}€"
+                                f"Base {money(ETERNA_BASE_PRICE)}€ + "
+                                f"regalo {money(totals['gift_amount'])}€ + "
+                                f"comisión {money(totals['gift_commission'])}€"
                             ),
                         },
-                        "unit_amount": int(round(fees["total_amount"] * 100)),
+                        "unit_amount": int(round(totals["total_amount"] * 100)),
                     },
                     "quantity": 1,
                 }
@@ -1280,423 +1372,348 @@ cur.execute(f"""
             success_url=f"{PUBLIC_BASE_URL}/checkout-exito/{order_id}",
             cancel_url=f"{PUBLIC_BASE_URL}/crear",
         )
-        update_order(order_id, stripe_session_id=session.id, stripe_payment_status="created")
+
+        update_order(
+            order_id,
+            stripe_session_id=session.id,
+            stripe_payment_status="created",
+        )
+
         return RedirectResponse(url=session.url, status_code=303)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
 
 
+@app.post("/crear")
+async def crear_post(
+    customer_name: str = Form(...),
+    customer_email: str = Form(""),
+    customer_phone: str = Form(...),
+    recipient_name: str = Form(...),
+    recipient_phone: str = Form(...),
+    message_type: str = Form(...),
+    phrase_mode: str = Form("auto"),
+    phrase_1: str = Form(""),
+    phrase_2: str = Form(""),
+    phrase_3: str = Form(""),
+    gift_amount: float = Form(0),
+    photo1: UploadFile = File(...),
+    photo2: UploadFile = File(...),
+    photo3: UploadFile = File(...),
+    photo4: UploadFile = File(...),
+    photo5: UploadFile = File(...),
+    photo6: UploadFile = File(...),
+):
+    return await create_order_and_redirect(
+        customer_name=customer_name,
+        customer_email=customer_email,
+        customer_phone=customer_phone,
+        recipient_name=recipient_name,
+        recipient_phone=recipient_phone,
+        message_type=message_type,
+        phrase_mode=phrase_mode,
+        phrase_1=phrase_1,
+        phrase_2=phrase_2,
+        phrase_3=phrase_3,
+        gift_amount=gift_amount,
+        photo1=photo1,
+        photo2=photo2,
+        photo3=photo3,
+        photo4=photo4,
+        photo5=photo5,
+        photo6=photo6,
+    )
+
+
 # =========================================================
-# HOME / CREATE
+# CHECKOUT / WEBHOOK
 # =========================================================
 
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
+@app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
+def checkout_exito(order_id: str):
+    order = get_order_by_id(order_id)
+    is_paid = bool(order["paid"])
 
-        <style>
-            * { box-sizing: border-box; }
-
-            html, body {
-                margin: 0;
-                min-height: 100%;
-                background: #000;
-            }
-
-            body {
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                padding: 24px;
-            }
-
-            .card {
-                width: 100%;
-                max-width: 760px;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 28px;
-                padding: 42px 30px;
-                text-align: center;
-            }
-
-            h1 {
-                margin: 0 0 10px 0;
-                font-size: 48px;
-                letter-spacing: 3px;
-            }
-
-            .subtitle {
-                color: rgba(255,255,255,0.80);
-                font-size: 20px;
-                line-height: 1.8;
-                margin-top: 18px;
-            }
-
-            .soft {
-                margin-top: 24px;
-                color: rgba(255,255,255,0.50);
-                font-size: 15px;
-                line-height: 1.7;
-            }
-
-            .btn {
-                margin-top: 30px;
-                width: 100%;
-                display: inline-block;
-                padding: 18px 24px;
-                border-radius: 999px;
-                background: white;
-                color: black;
-                font-weight: bold;
-                text-decoration: none;
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="card">
-            <h1>ETERNA</h1>
-
-            <div class="subtitle">
-                Hay momentos que merecen quedarse para siempre
-            </div>
-
-            <div class="soft">
-                No es un vídeo.<br>
-                Es un momento.
-            </div>
-
-            <a class="btn" href="/crear">
-                CREAR MI ETERNA
-            </a>
-        </div>
-    </body>
-    </html>
-    """
-
-
-@app.get("/crear", response_class=HTMLResponse)
-def crear_get():
-    return render_create_form()
-    return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
-
-
-@app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
-def experiencia(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not order["paid"]:
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    phrase_1 = safe_text(order["phrase_1"])
-    phrase_2 = safe_text(order["phrase_2"])
-    phrase_3 = safe_text(order["phrase_3"])
-    gift_amount = format_amount_display(order["gift_amount"])
+    refresh = '<meta http-equiv="refresh" content="5">' if not is_paid else ""
+    redirect_script = f"""
+        setTimeout(function() {{
+            window.location.href = "/post-pago/{safe_attr(order_id)}";
+        }}, 3000);
+    """ if is_paid else ""
 
     return f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        {refresh}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{
-                margin: 0;
-                width: 100%;
-                min-height: 100%;
-                background: #000;
-            }}
-            body {{
-                background: #000;
-                color: white;
-                font-family: Arial, sans-serif;
-                text-align: center;
-            }}
-            .screen {{
-                min-height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                flex-direction: column;
-                padding: 24px;
-            }}
-            #content {{
-                width: 100%;
-                max-width: 920px;
-                padding: 24px;
-                opacity: 0;
-                transform: translateY(12px);
-                transition: opacity 0.7s ease, transform 0.7s ease;
-            }}
-            #content.visible {{
-                opacity: 1;
-                transform: translateY(0);
-            }}
-            #content h2 {{
-                font-size: 42px;
-                line-height: 1.4;
-                margin: 0;
-                font-weight: 500;
-                color: white;
-                white-space: pre-line;
-                opacity: 0.95;
-            }}
-            #content .amount {{
-                margin-top: 20px;
-                font-size: 54px;
-                font-weight: bold;
-                line-height: 1;
-            }}
-            #statusMsg {{
-                margin-top: 20px;
-                color: rgba(255,255,255,0.6);
-                font-size: 14px;
-            }}
-            @media (max-width: 768px) {{
-                #content h2 {{ font-size: 30px; }}
-                #content .amount {{ font-size: 42px; }}
-            }}
-        </style>
     </head>
-    <body>
-        <div class="screen">
-            <div id="content"></div>
-            <div id="statusMsg"></div>
+    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
+        <div style="max-width:680px;">
+            <h1 style="font-size:42px;margin-bottom:18px;">Todo ya está en camino</h1>
+            <div style="font-size:20px;line-height:1.8;color:rgba(255,255,255,0.85);">
+                En unos instantes,<br>
+                alguien va a vivir algo que no espera
+            </div>
         </div>
-
-        <script>
-            let recorder = null;
-            let chunks = [];
-            let currentStream = null;
-            let mediaMimeType = "video/webm";
-            let uploadStarted = false;
-            let experienceStarted = false;
-
-            function wait(ms) {{
-                return new Promise(resolve => setTimeout(resolve, ms));
-            }}
-
-            function setStatus(text) {{
-                const el = document.getElementById("statusMsg");
-                if (el) el.textContent = text || "";
-            }}
-
-            async function showScene(scene) {{
-                const content = document.getElementById("content");
-                content.classList.remove("visible");
-                await wait(180);
-                content.innerHTML = scene.html || "";
-                await wait(40);
-                content.classList.add("visible");
-                await wait(scene.duration || 2000);
-            }}
-
-            async function lockExperienceStart() {{
-                const formData = new FormData();
-                formData.append("recipient_token", "{safe_attr(order['recipient_token'])}");
-
-                const response = await fetch("/start-experience", {{
-                    method: "POST",
-                    body: formData
-                }});
-
-                const data = await response.json();
-
-                if (data.status === "already_completed") {{
-                    window.location.href = data.redirect_url || "/cobrar/{safe_attr(order['recipient_token'])}";
-                    return false;
-                }}
-
-                return true;
-            }}
-
-            async function sendVideo() {{
-                try {{
-                    if (!chunks.length) return null;
-
-                    const ext = mediaMimeType.includes("mp4") ? "mp4" : "webm";
-                    const blob = new Blob(chunks, {{
-                        type: ext === "mp4" ? "video/mp4" : "video/webm"
-                    }});
-
-                    if (!blob || blob.size === 0) return null;
-
-                    const formData = new FormData();
-                    formData.append("recipient_token", "{safe_attr(order['recipient_token'])}");
-                    formData.append("video", blob, "{safe_attr(order['id'])}." + ext);
-
-                    const response = await fetch("/upload-video", {{
-                        method: "POST",
-                        body: formData
-                    }});
-
-                    if (!response.ok) return null;
-                    return await response.json();
-
-                }} catch (err) {{
-                    return null;
-                }}
-            }}
-
-            async function stopRecordingAndUpload() {{
-                if (uploadStarted) return null;
-                uploadStarted = true;
-
-                if (recorder && recorder.state !== "inactive") {{
-                    await new Promise((resolve) => {{
-                        recorder.onstop = () => resolve();
-                        try {{
-                            recorder.stop();
-                        }} catch (e) {{
-                            resolve();
-                        }}
-                    }});
-                }}
-
-                if (currentStream) {{
-                    currentStream.getTracks().forEach(track => track.stop());
-                    currentStream = null;
-                }}
-
-                await wait(500);
-                return await sendVideo();
-            }}
-
-            async function finishFlow() {{
-                setStatus("Guardando este momento…");
-
-                const result = await stopRecordingAndUpload();
-
-                if (!result || (result.status !== "ok" && result.status !== "already_uploaded")) {{
-                    alert("No hemos podido guardar bien la reacción. Inténtalo otra vez.");
-                    window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
-                    return;
-                }}
-
-                window.location.href = result.cashout_url || "/cobrar/{safe_attr(order['recipient_token'])}";
-            }}
-
-            const scenes = [
-                {{ html: "<h2>Esto no es un vídeo.</h2>", duration: 2000 }},
-                {{ html: "<h2>No es solo un momento.</h2>", duration: 2000 }},
-                {{ html: "<h2>Esto es magia.</h2>", duration: 2400 }},
-
-                {{ html: "<h2>{phrase_1}</h2>", duration: 2200 }},
-                {{ html: "<h2>{phrase_2}</h2>", duration: 2200 }},
-                {{ html: "<h2>{phrase_3}</h2>", duration: 2200 }},
-                {{
-                    html: "<h2>Esto es para ti.</h2><div class='amount'>{gift_amount}</div>",
-                    duration: 5000
-                }}
-            ];
-
-            async function startExperience() {{
-                if (experienceStarted) return;
-                experienceStarted = true;
-
-                try {{
-                    if (!window.MediaRecorder) {{
-                        throw new Error("MediaRecorder no soportado");
-                    }}
-
-                    const stream = await navigator.mediaDevices.getUserMedia({{
-                        video: {{ width: 640, height: 480, facingMode: "user" }},
-                        audio: true
-                    }});
-
-                    currentStream = stream;
-                    chunks = [];
-                    uploadStarted = false;
-
-                    let options = null;
-
-                    if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
-                        mediaMimeType = "video/webm;codecs=vp8,opus";
-                        options = {{
-                            mimeType: mediaMimeType,
-                            videoBitsPerSecond: 900000,
-                            audioBitsPerSecond: 64000
-                        }};
-                    }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
-                        mediaMimeType = "video/webm";
-                        options = {{
-                            mimeType: mediaMimeType,
-                            videoBitsPerSecond: 900000,
-                            audioBitsPerSecond: 64000
-                        }};
-                    }} else if (MediaRecorder.isTypeSupported("video/mp4")) {{
-                        mediaMimeType = "video/mp4";
-                        options = {{
-                            mimeType: mediaMimeType,
-                            videoBitsPerSecond: 900000,
-                            audioBitsPerSecond: 64000
-                        }};
-                    }} else {{
-                        throw new Error("Formato no soportado");
-                    }}
-
-                    const lockOk = await lockExperienceStart();
-                    if (!lockOk) {{
-                        if (currentStream) {{
-                            currentStream.getTracks().forEach(track => track.stop());
-                            currentStream = null;
-                        }}
-                        return;
-                    }}
-
-                    recorder = new MediaRecorder(stream, options);
-
-                    recorder.ondataavailable = (e) => {{
-                        if (e.data && e.data.size > 0) chunks.push(e.data);
-                    }};
-
-                    await wait(300);
-                    recorder.start(300);
-
-                    for (const scene of scenes) {{
-                        await showScene(scene);
-                    }}
-
-                    await finishFlow();
-
-                }} catch (e) {{
-                    if (currentStream) {{
-                        currentStream.getTracks().forEach(track => track.stop());
-                        currentStream = null;
-                    }}
-                    alert("Necesitamos acceso a cámara y micrófono para continuar.");
-                    window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
-                }}
-            }}
-
-            startExperience();
-        </script>
+        <script>{redirect_script}</script>
     </body>
     </html>
     """
 
 
+@app.post("/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            STRIPE_WEBHOOK_SECRET,
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma inválida")
+
+    if event["type"] != "checkout.session.completed":
+        return {"status": "ignored", "event_type": event["type"]}
+
+    session = event["data"]["object"]
+    session_id = session.get("id")
+    order_id = session.get("client_reference_id")
+
+    if not order_id:
+        metadata = session.get("metadata", {}) or {}
+        order_id = metadata.get("order_id")
+
+    if not order_id and session_id:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1",
+            (session_id,),
+        )
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            order_id = row["id"]
+
+    if not order_id:
+        log_error("WEBHOOK sin order_id")
+        return {"status": "error", "reason": "order_id_not_found"}
+
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT paid FROM orders WHERE id = ? LIMIT 1", (order_id,))
+    row = cur.fetchone()
+
+    if not row:
+        conn.close()
+        log_error(f"WEBHOOK pedido no encontrado: {order_id}")
+        return {"status": "error", "reason": "order_not_found"}
+
+    already_paid = int(row["paid"] or 0) == 1
+
+    cur.execute(
+        """
+        UPDATE orders
+        SET paid = 1,
+            stripe_session_id = COALESCE(?, stripe_session_id),
+            stripe_payment_status = ?,
+            stripe_payment_intent_id = COALESCE(?, stripe_payment_intent_id),
+            updated_at = ?
+        WHERE id = ?
+        """,
+        (
+            session_id,
+            session.get("payment_status", "paid"),
+            session.get("payment_intent"),
+            now_iso(),
+            order_id,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    if not already_paid:
+        try:
+            order = get_order_by_id(order_id)
+            try_send_recipient_sms(order)
+        except Exception as e:
+            log_error("WEBHOOK SMS destinatario", e)
+
+        try:
+            trigger_video_engine(order_id)
+        except Exception as e:
+            log_error("WEBHOOK VIDEO ENGINE", e)
+            traceback.print_exc()
+
+    return {"status": "success"}
+
+
+@app.get("/post-pago/{order_id}")
+def post_pago(order_id: str):
+    order = get_order_by_id(order_id)
+    if not order["paid"]:
+        return RedirectResponse(url=f"/checkout-exito/{order_id}", status_code=303)
+    return RedirectResponse(url=f"/resumen/{order_id}", status_code=303)
+
+
+@app.get("/resumen/{order_id}", response_class=HTMLResponse)
+def resumen(order_id: str):
+    order = get_order_by_id(order_id)
+
+    if not order.get("recipient_sms_sent_at"):
+        try:
+            try_send_recipient_sms(order)
+            order = get_order_by_id(order_id)
+        except Exception as e:
+            log_error("Resumen SMS destinatario", e)
+
+    recipient_name = safe_text(order.get("recipient_name") or "esa persona")
+    sms_sent = bool(order.get("recipient_sms_sent_at"))
+
+    if sms_sent:
+        status_line = "Estamos creando tu momento."
+        sub_line = f"{recipient_name} ya tiene su mensaje."
+        soft_line = "Pronto tendrás noticias."
+    else:
+        status_line = "Estamos creando tu momento."
+        sub_line = f"Estamos intentando enviar el mensaje a {recipient_name}."
+        soft_line = "Pronto tendrás noticias."
+
+    return HTMLResponse(
+        f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+        </head>
+        <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
+            <div style="max-width:720px;width:100%;">
+                <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
+                    {status_line}
+                </h1>
+
+                <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
+                    {sub_line}
+                </div>
+
+                <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
+                    {soft_line}
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    )
+
+
 # =========================================================
-# EXPERIENCE LOCK
+# PEDIDO / EXPERIENCIA
 # =========================================================
+
+@app.get("/pedido/{recipient_token}", response_class=HTMLResponse)
+def pedido(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not order["paid"]:
+        return HTMLResponse(
+            """
+            <!DOCTYPE html>
+            <html lang="es">
+            <body style="background:#000;color:white;text-align:center;padding-top:100px;font-family:Arial;">
+                <h1>Esta ETERNA aún no está disponible</h1>
+            </body>
+            </html>
+            """
+        )
+
+    if bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+
+    return HTMLResponse(
+        f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                html, body {{ margin: 0; min-height: 100%; background: #000; }}
+                body {{
+                    min-height: 100vh;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    padding: 24px;
+                }}
+                .card {{
+                    width: 100%;
+                    max-width: 720px;
+                    background: rgba(255,255,255,0.04);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 28px;
+                    padding: 40px 28px;
+                }}
+                h1 {{
+                    font-size: 40px;
+                    margin: 0 0 18px 0;
+                    line-height: 1.25;
+                }}
+                .line {{
+                    font-size: 22px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.88);
+                    margin-top: 8px;
+                }}
+                .btn {{
+                    width: 100%;
+                    margin-top: 30px;
+                    padding: 17px 22px;
+                    border-radius: 999px;
+                    border: 0;
+                    background: white;
+                    color: black;
+                    font-weight: bold;
+                    font-size: 15px;
+                    cursor: pointer;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>Esto es solo para ti</h1>
+
+                <div class="line">Busca un momento a solas</div>
+                <div class="line">Sin ruido</div>
+                <div class="line">Sin prisa</div>
+
+                <button class="btn" onclick="window.location.href='/experiencia/{safe_attr(recipient_token)}'">Vivirlo</button>
+            </div>
+        </body>
+        </html>
+        """
+    )
+
 
 def try_start_experience(order_id: str) -> str:
     order = get_order_by_id(order_id)
@@ -1719,23 +1736,325 @@ def try_start_experience(order_id: str) -> str:
 @app.post("/start-experience")
 def start_experience(recipient_token: str = Form(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
-
     result = try_start_experience(order["id"])
 
     if result == "not_paid":
         raise HTTPException(status_code=403, detail="Pedido no pagado")
 
     if result == "already_completed":
-        return JSONResponse({
-            "status": "already_completed",
-            "redirect_url": f"/cobrar/{recipient_token}"
-        })
+        return JSONResponse(
+            {
+                "status": "already_completed",
+                "redirect_url": f"/mi-video/{recipient_token}",
+            }
+        )
 
     return JSONResponse({"status": "ok"})
 
 
+@app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
+def experiencia(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not order["paid"]:
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+
+    phrase_1 = safe_text(order["phrase_1"])
+    phrase_2 = safe_text(order["phrase_2"])
+    phrase_3 = safe_text(order["phrase_3"])
+    gift_amount = format_amount_display(order["gift_amount"])
+
+    return HTMLResponse(
+        f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                * {{ box-sizing: border-box; }}
+                html, body {{
+                    margin: 0;
+                    width: 100%;
+                    min-height: 100%;
+                    background: #000;
+                }}
+                body {{
+                    background: #000;
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                }}
+                .screen {{
+                    min-height: 100vh;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    flex-direction: column;
+                    padding: 24px;
+                }}
+                #content {{
+                    width: 100%;
+                    max-width: 920px;
+                    padding: 24px;
+                    opacity: 0;
+                    transform: translateY(12px);
+                    transition: opacity 0.7s ease, transform 0.7s ease;
+                }}
+                #content.visible {{
+                    opacity: 1;
+                    transform: translateY(0);
+                }}
+                #content h2 {{
+                    font-size: 42px;
+                    line-height: 1.4;
+                    margin: 0;
+                    font-weight: 500;
+                    color: white;
+                    white-space: pre-line;
+                    opacity: 0.95;
+                }}
+                #content .amount {{
+                    margin-top: 20px;
+                    font-size: 54px;
+                    font-weight: bold;
+                    line-height: 1;
+                }}
+                #statusMsg {{
+                    margin-top: 20px;
+                    color: rgba(255,255,255,0.6);
+                    font-size: 14px;
+                }}
+                @media (max-width: 768px) {{
+                    #content h2 {{ font-size: 30px; }}
+                    #content .amount {{ font-size: 42px; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="screen">
+                <div id="content"></div>
+                <div id="statusMsg"></div>
+            </div>
+
+            <script>
+                let recorder = null;
+                let chunks = [];
+                let currentStream = null;
+                let mediaMimeType = "video/webm";
+                let uploadStarted = false;
+                let experienceStarted = false;
+
+                function wait(ms) {{
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                }}
+
+                function setStatus(text) {{
+                    const el = document.getElementById("statusMsg");
+                    if (el) el.textContent = text || "";
+                }}
+
+                async function showScene(scene) {{
+                    const content = document.getElementById("content");
+                    content.classList.remove("visible");
+                    await wait(180);
+                    content.innerHTML = scene.html || "";
+                    await wait(40);
+                    content.classList.add("visible");
+                    await wait(scene.duration || 2000);
+                }}
+
+                async function lockExperienceStart() {{
+                    const formData = new FormData();
+                    formData.append("recipient_token", "{safe_attr(order['recipient_token'])}");
+
+                    const response = await fetch("/start-experience", {{
+                        method: "POST",
+                        body: formData
+                    }});
+
+                    const data = await response.json();
+
+                    if (data.status === "already_completed") {{
+                        window.location.href = data.redirect_url || "/mi-video/{safe_attr(order['recipient_token'])}";
+                        return false;
+                    }}
+
+                    return true;
+                }}
+
+                async function sendVideo() {{
+                    try {{
+                        if (!chunks.length) return null;
+
+                        const ext = mediaMimeType.includes("mp4") ? "mp4" : "webm";
+                        const blob = new Blob(chunks, {{
+                            type: ext === "mp4" ? "video/mp4" : "video/webm"
+                        }});
+
+                        if (!blob || blob.size === 0) return null;
+
+                        const formData = new FormData();
+                        formData.append("recipient_token", "{safe_attr(order['recipient_token'])}");
+                        formData.append("video", blob, "{safe_attr(order['id'])}." + ext);
+
+                        const response = await fetch("/upload-video", {{
+                            method: "POST",
+                            body: formData
+                        }});
+
+                        if (!response.ok) return null;
+                        return await response.json();
+
+                    }} catch (err) {{
+                        return null;
+                    }}
+                }}
+
+                async function stopRecordingAndUpload() {{
+                    if (uploadStarted) return null;
+                    uploadStarted = true;
+
+                    if (recorder && recorder.state !== "inactive") {{
+                        await new Promise((resolve) => {{
+                            recorder.onstop = () => resolve();
+                            try {{
+                                recorder.stop();
+                            }} catch (e) {{
+                                resolve();
+                            }}
+                        }});
+                    }}
+
+                    if (currentStream) {{
+                        currentStream.getTracks().forEach(track => track.stop());
+                        currentStream = null;
+                    }}
+
+                    await wait(500);
+                    return await sendVideo();
+                }}
+
+                async function finishFlow() {{
+                    setStatus("Guardando este momento…");
+
+                    const result = await stopRecordingAndUpload();
+
+                    if (!result || (result.status !== "ok" && result.status !== "already_uploaded")) {{
+                        alert("No hemos podido guardar bien la reacción. Inténtalo otra vez.");
+                        window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
+                        return;
+                    }}
+
+                    window.location.href = result.final_url || "/mi-video/{safe_attr(order['recipient_token'])}";
+                }}
+
+                const scenes = [
+                    {{ html: "<h2>Esto no es un vídeo.</h2>", duration: 2000 }},
+                    {{ html: "<h2>No es solo un momento.</h2>", duration: 2000 }},
+                    {{ html: "<h2>Esto es magia.</h2>", duration: 2400 }},
+                    {{ html: "<h2>{phrase_1}</h2>", duration: 2200 }},
+                    {{ html: "<h2>{phrase_2}</h2>", duration: 2200 }},
+                    {{ html: "<h2>{phrase_3}</h2>", duration: 2200 }},
+                    {{
+                        html: "<h2>Esto es para ti.</h2><div class='amount'>{gift_amount}</div>",
+                        duration: 5000
+                    }}
+                ];
+
+                async function startExperience() {{
+                    if (experienceStarted) return;
+                    experienceStarted = true;
+
+                    try {{
+                        if (!window.MediaRecorder) {{
+                            throw new Error("MediaRecorder no soportado");
+                        }}
+
+                        const stream = await navigator.mediaDevices.getUserMedia({{
+                            video: {{ width: 640, height: 480, facingMode: "user" }},
+                            audio: true
+                        }});
+
+                        currentStream = stream;
+                        chunks = [];
+                        uploadStarted = false;
+
+                        let options = null;
+
+                        if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
+                            mediaMimeType = "video/webm;codecs=vp8,opus";
+                            options = {{
+                                mimeType: mediaMimeType,
+                                videoBitsPerSecond: 900000,
+                                audioBitsPerSecond: 64000
+                            }};
+                        }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
+                            mediaMimeType = "video/webm";
+                            options = {{
+                                mimeType: mediaMimeType,
+                                videoBitsPerSecond: 900000,
+                                audioBitsPerSecond: 64000
+                            }};
+                        }} else if (MediaRecorder.isTypeSupported("video/mp4")) {{
+                            mediaMimeType = "video/mp4";
+                            options = {{
+                                mimeType: mediaMimeType,
+                                videoBitsPerSecond: 900000,
+                                audioBitsPerSecond: 64000
+                            }};
+                        }} else {{
+                            throw new Error("Formato no soportado");
+                        }}
+
+                        const lockOk = await lockExperienceStart();
+                        if (!lockOk) {{
+                            if (currentStream) {{
+                                currentStream.getTracks().forEach(track => track.stop());
+                                currentStream = null;
+                            }}
+                            return;
+                        }}
+
+                        recorder = new MediaRecorder(stream, options);
+
+                        recorder.ondataavailable = (e) => {{
+                            if (e.data && e.data.size > 0) chunks.push(e.data);
+                        }};
+
+                        await wait(300);
+                        recorder.start(300);
+
+                        for (const scene of scenes) {{
+                            await showScene(scene);
+                        }}
+
+                        await finishFlow();
+
+                    }} catch (e) {{
+                        if (currentStream) {{
+                            currentStream.getTracks().forEach(track => track.stop());
+                            currentStream = null;
+                        }}
+                        alert("Necesitamos acceso a cámara y micrófono para continuar.");
+                        window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
+                    }}
+                }}
+
+                startExperience();
+            </script>
+        </body>
+        </html>
+        """
+    )
+
+
 # =========================================================
-# UPLOAD VIDEO
+# UPLOAD VIDEO REACCION
 # =========================================================
 
 @app.post("/upload-video")
@@ -1750,23 +2069,24 @@ async def upload_video(
         raise HTTPException(status_code=403, detail="Pedido no pagado")
 
     if bool(order.get("reaction_uploaded")) or reaction_exists(order):
-        return JSONResponse({
-            "status": "already_uploaded",
-            "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}",
-        })
+        return JSONResponse(
+            {
+                "status": "already_uploaded",
+                "final_url": f"{PUBLIC_BASE_URL}/mi-video/{order['recipient_token']}",
+            }
+        )
 
     content_type = (video.content_type or "").lower().strip()
     filename = (video.filename or "").lower().strip()
 
-    is_allowed_type = content_type in ALLOWED_VIDEO_TYPES
-    is_allowed_name = filename.endswith(".webm") or filename.endswith(".mp4")
+    valid_type = content_type in ALLOWED_VIDEO_TYPES
+    valid_name = filename.endswith(".webm") or filename.endswith(".mp4")
 
-    if not is_allowed_type and not is_allowed_name:
+    if not valid_type and not valid_name:
         raise HTTPException(status_code=400, detail="Formato de vídeo no permitido")
 
     video_extension = detect_video_extension(video)
-    filepath = reaction_video_path(order["id"], video_extension)
-    final_content_type = "video/mp4" if video_extension == "mp4" else "video/webm"
+    filepath = reaction_video_path(order_id, video_extension)
 
     total_size = 0
 
@@ -1780,244 +2100,76 @@ async def upload_video(
                 total_size += len(chunk)
                 if total_size > MAX_VIDEO_SIZE:
                     f.close()
-                    if os.path.exists(filepath):
-                        os.remove(filepath)
+                    if filepath.exists():
+                        filepath.unlink()
                     raise HTTPException(status_code=400, detail="Vídeo demasiado grande")
 
                 f.write(chunk)
 
-        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+        if not filepath.exists() or filepath.stat().st_size == 0:
             raise HTTPException(status_code=400, detail="Vídeo vacío")
 
-        public_video_url = None
-        try:
-            public_video_url = upload_video_to_r2(
-                filepath,
-                f"{order['id']}.{video_extension}",
-                final_content_type,
-            )
-        except Exception as e:
-            log_error("Error subiendo a R2", e)
+        public_video_url = f"{PUBLIC_BASE_URL}/video/sender/{order['sender_token']}"
 
         update_order(
             order_id,
             reaction_uploaded=1,
             experience_completed=1,
-            reaction_video_local=filepath,
+            reaction_video_local=str(filepath),
             reaction_video_public_url=public_video_url,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
-        if public_video_url:
-            insert_asset(order["id"], "reaction_video", public_video_url, "r2")
-        else:
-            insert_asset(
-                order["id"],
-                "reaction_video",
-                f"{PUBLIC_BASE_URL}/video/sender/{order['sender_token']}",
-                "local",
-            )
+        insert_asset(
+            order_id=order_id,
+            asset_type="reaction_video",
+            file_url=public_video_url,
+            storage_provider="local",
+        )
 
-        updated_order = get_order_by_id(order["id"])
+        updated_order = get_order_by_id(order_id)
 
         try:
             try_send_sender_sms(updated_order)
         except Exception as e:
-            log_error("Sender SMS after reaction", e)
+            log_error("SMS regalante tras reacción", e)
 
-        return JSONResponse({
-            "status": "ok",
-            "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{updated_order['recipient_token']}",
-        })
+        return JSONResponse(
+            {
+                "status": "ok",
+                "final_url": f"{PUBLIC_BASE_URL}/mi-video/{updated_order['recipient_token']}",
+            }
+        )
 
     finally:
-        await video.close()
+        try:
+            await video.close()
+        except Exception:
+            pass
 
 
 # =========================================================
-# LOCAL VIDEO FILES
+# VIDEOS
 # =========================================================
 
 @app.get("/video/sender/{sender_token}")
 def get_video_for_sender(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
-    filepath = order.get("reaction_video_local")
+    filepath = (order.get("reaction_video_local") or "").strip()
+
     if not filepath or not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Vídeo no encontrado")
+
     media_type = guess_media_type_from_path(filepath)
-    return FileResponse(filepath, media_type=media_type, filename=os.path.basename(filepath))
+
+    return FileResponse(
+        filepath,
+        media_type=media_type,
+        filename=os.path.basename(filepath),
+    )
 
 
 # =========================================================
-# RECIPIENT CASHOUT
-# =========================================================
-
-@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
-def cobrar(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not bool(order.get("experience_started")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    cashout_status = compute_cashout_status(order)
-    gift_amount = float(order.get("gift_amount") or 0)
-
-    if cashout_status == "completed":
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    if cashout_status == "gift_refunded":
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    amount_text = format_amount_display(order["gift_amount"])
-    button_href = f"/iniciar-cobro-real/{safe_attr(recipient_token)}"
-    button_text = "RECIBIR"
-
-    if gift_amount > 0 and bool(order.get("connect_onboarding_completed")):
-        button_text = "Finalizar cobro"
-
-    return f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-    </head>
-    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial;display:flex;justify-content:center;align-items:center;padding:24px;text-align:center;">
-        <div style="width:100%;max-width:760px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:28px;padding:40px 28px;">
-            <h1 style="margin:0 0 16px 0;font-size:40px;">Esto ya es tuyo</h1>
-            <div style="font-size:18px;color:rgba(255,255,255,0.85);line-height:1.8;">
-                Para recibirlo, continúa.
-            </div>
-            <div style="margin-top:24px;font-size:48px;font-weight:bold;">{amount_text}</div>
-            <a href="{button_href}" style="margin-top:28px;padding:16px 24px;border-radius:999px;border:0;background:white;color:black;font-weight:bold;font-size:15px;width:100%;display:block;text-decoration:none;text-align:center;">{button_text}</a>
-            <div style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.5);line-height:1.7;">
-                ETERNA no guarda tu IBAN. Stripe se encarga del proceso seguro.
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-
-@app.get("/iniciar-cobro-real/{recipient_token}")
-def iniciar_cobro_real(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if bool(order.get("gift_refunded")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    gift_amount = float(order.get("gift_amount") or 0)
-
-    if gift_amount <= 0:
-        update_order(
-            order["id"],
-            transfer_completed=1,
-            cashout_completed=1,
-            connect_onboarding_completed=1,
-            transfer_in_progress=0,
-        )
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    if not STRIPE_SECRET_KEY:
-        update_order(
-            order["id"],
-            transfer_completed=1,
-            cashout_completed=1,
-            connect_onboarding_completed=1,
-            transfer_in_progress=0,
-        )
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    if bool(order.get("transfer_completed")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    if bool(order.get("transfer_in_progress")):
-        return RedirectResponse(url=f"/verificando-cobro/{recipient_token}", status_code=303)
-
-    if bool(order.get("connect_onboarding_completed")):
-        result = process_gift_transfer_for_order(order)
-        if result.get("status") in {"ok", "already_transferred", "no_gift", "stripe_disabled_test_mode"}:
-            return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-        return RedirectResponse(url=f"/verificando-cobro/{recipient_token}", status_code=303)
-
-    link_url = create_connect_onboarding_link(order)
-    return RedirectResponse(url=link_url, status_code=303)
-
-
-@app.get("/connect/refresh/{recipient_token}")
-def connect_refresh(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    if bool(order.get("gift_refunded")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-    link_url = create_connect_onboarding_link(order)
-    return RedirectResponse(url=link_url, status_code=303)
-
-
-@app.get("/connect/return/{recipient_token}")
-def connect_return(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if bool(order.get("gift_refunded")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    try:
-        ready = refresh_connect_status(order)
-    except Exception as e:
-        log_error("connect_return refresh_connect_status", e)
-        ready = False
-
-    refreshed = get_order_by_recipient_token_or_404(recipient_token)
-
-    if ready or bool(refreshed.get("connect_onboarding_completed")):
-        try:
-            process_gift_transfer_for_order(refreshed)
-        except Exception as e:
-            log_error("connect_return process_gift_transfer_for_order", e)
-
-    return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-
-@app.get("/verificando-cobro/{recipient_token}")
-def verificando_cobro(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if bool(order.get("gift_refunded")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-    try:
-        if bool(order.get("stripe_connected_account_id")) and not bool(order.get("connect_onboarding_completed")):
-            refresh_connect_status(order)
-    except Exception as e:
-        log_error("verificando_cobro refresh_connect_status", e)
-
-    refreshed = get_order_by_recipient_token_or_404(recipient_token)
-
-    if bool(refreshed.get("connect_onboarding_completed")) and not bool(refreshed.get("transfer_completed")):
-        try:
-            process_gift_transfer_for_order(refreshed)
-        except Exception as e:
-            log_error("verificando_cobro process_gift_transfer_for_order", e)
-
-    return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-
-@app.get("/gracias-cobro/{recipient_token}", response_class=HTMLResponse)
-def gracias_cobro(recipient_token: str):
-    return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
-
-# =========================================================
-# RECIPIENT FINAL VIDEO
+# FINAL RECIPIENTE
 # =========================================================
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
@@ -2033,535 +2185,159 @@ def mi_video(recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or DEFAULT_EXPERIENCE_VIDEO_URL or "").strip()
 
     if not experience_video_url:
-        return HTMLResponse("""
+        return HTMLResponse(
+            """
+            <!DOCTYPE html>
+            <html lang="es">
+            <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial, sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
+                <div>
+                    <h1>Tu momento ya es tuyo.</h1>
+                    <p>Falta conectar el vídeo original final de esta ETERNA.</p>
+                </div>
+            </body>
+            </html>
+            """
+        )
+
+    video_type = guess_media_type_from_url(experience_video_url)
+
+    return HTMLResponse(
+        f"""
         <!DOCTYPE html>
         <html lang="es">
-        <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial, sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
-            <div>
-                <h1>Tu momento ya es tuyo.</h1>
-                <p>Falta conectar el vídeo original final de esta ETERNA.</p>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Mi vídeo</title>
+            <style>
+                * {{ box-sizing: border-box; }}
+                html, body {{ margin: 0; min-height: 100%; background: #000; }}
+                body {{
+                    min-height: 100vh;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    padding: 24px;
+                }}
+                .wrap {{
+                    width: 100%;
+                    max-width: 720px;
+                    margin: 0 auto;
+                    text-align: center;
+                }}
+                h1 {{
+                    margin: 0 0 18px 0;
+                    font-size: 38px;
+                }}
+                .sub {{
+                    color: rgba(255,255,255,0.72);
+                    font-size: 18px;
+                    line-height: 1.7;
+                    margin-bottom: 24px;
+                }}
+                video {{
+                    width: 100%;
+                    border-radius: 22px;
+                    background: #000;
+                    overflow: hidden;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <h1>Esto ya es tuyo</h1>
+                <div class="sub">Tu momento original</div>
+                <video controls playsinline preload="metadata">
+                    <source src="{safe_attr(experience_video_url)}" type="{safe_attr(video_type)}">
+                </video>
             </div>
         </body>
         </html>
-        """)
-
-    video_type = guess_media_type_from_url(experience_video_url)
-    gift_amount = float(order.get("gift_amount") or 0)
-    cashout_done = bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")) or gift_amount <= 0
-
-    status_text = (
-        "Tu dinero ya se ha procesado."
-        if cashout_done else
-        "Tu dinero ya está en camino. Puede tardar unos días en aparecer en tu cuenta."
+        """
     )
-
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mi vídeo</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-            }}
-            .wrap {{ min-height: 100vh; display: flex; flex-direction: column; }}
-            .header {{ padding: 28px 20px 10px; text-align: center; }}
-            .header-title {{ font-size: 24px; line-height: 1.5; color: rgba(255,255,255,0.92); }}
-            .top {
-                flex: 1;
-                min-height: 50vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0 16px;
-            }
-            video {
-                width: 100%;
-                max-width: 460px;
-                border-radius: 18px;
-                background: #111;
-                display: block;
-            }
-            .status {
-                max-width: 760px;
-                margin: 0 auto;
-                padding: 0 16px;
-                text-align: center;
-                color: rgba(255,255,255,0.70);
-                line-height: 1.7;
-                font-size: 15px;
-            }
-            .actions {{ padding: 24px 16px 30px; }}
-            .buttons {{ display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }}
-            .btn {
-                width: 100%;
-                padding: 16px 24px;
-                border-radius: 999px;
-                border: 0;
-                font-weight: bold;
-                font-size: 15px;
-                cursor: pointer;
-                display: inline-block;
-                text-decoration: none;
-                text-align: center;
-            }
-            .primary {{ background: white; color: black; }}
-            .ghost {
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <div class="header">
-                <div class="header-title">Este momento ya es tuyo</div>
-            </div>
-
-            <div class="top">
-                <video playsinline controls preload="metadata">
-                    <source src="{safe_attr(experience_video_url)}" type="{safe_attr(video_type)}">
-                    Tu navegador no puede reproducir este vídeo.
-                </video>
-            </div>
-
-            <div class="status">
-                {safe_text(status_text)}
-            </div>
-
-            <div class="actions">
-                <div class="buttons">
-                    <button class="btn primary" onclick="sharePage()">Compartir</button>
-                    <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            async function sharePage() {{
-                const url = window.location.href;
-                if (navigator.share) {{
-                    try {{
-                        await navigator.share({{
-                            title: "ETERNA",
-                            text: "Este momento ya es tuyo",
-                            url: url
-                        }});
-                    }} catch (e) {{}}
-                }} else {{
-                    window.open(url, "_blank");
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """)
 
 
 # =========================================================
 # SENDER PACK
 # =========================================================
 
-
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
 
-    if reaction_exists(order) and not order.get("sender_sms_sent_at"):
-        try:
-            try_send_sender_sms(order)
-            order = get_order_by_sender_token_or_404(sender_token)
-        except Exception as e:
-            log_error("sender_pack try_send_sender_sms", e)
+    if not bool(order.get("reaction_uploaded")):
+        return HTMLResponse(
+            """
+            <!DOCTYPE html>
+            <html lang="es">
+            <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
+                <div>
+                    <h1>Aún no ha vuelto</h1>
+                    <p>La reacción todavía no está disponible.</p>
+                </div>
+            </body>
+            </html>
+            """
+        )
 
-    if not reaction_exists(order):
-        return HTMLResponse("""
+    reaction_url = f"{PUBLIC_BASE_URL}/video/sender/{order['sender_token']}"
+    reaction_type = guess_media_type_from_url(reaction_url)
+
+    return HTMLResponse(
+        f"""
         <!DOCTYPE html>
         <html lang="es">
-        <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
-            <div style="width:100%;max-width:760px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:28px;padding:40px 28px;">
-                <h1 style="margin:0 0 14px 0;">Estamos preparando este momento…</h1>
-                <div style="color:rgba(255,255,255,0.7);line-height:1.7;">
-                    La reacción todavía no ha llegado.
-                </div>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Tu ETERNA ha vuelto</title>
+            <style>
+                * {{ box-sizing: border-box; }}
+                html, body {{ margin: 0; min-height: 100%; background: #000; }}
+                body {{
+                    min-height: 100vh;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    padding: 24px;
+                }}
+                .wrap {{
+                    width: 100%;
+                    max-width: 720px;
+                    margin: 0 auto;
+                    text-align: center;
+                }}
+                h1 {{
+                    margin: 0 0 18px 0;
+                    font-size: 38px;
+                }}
+                .sub {{
+                    color: rgba(255,255,255,0.72);
+                    font-size: 18px;
+                    line-height: 1.7;
+                    margin-bottom: 24px;
+                }}
+                video {{
+                    width: 100%;
+                    border-radius: 22px;
+                    background: #000;
+                    overflow: hidden;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <h1>Tu ETERNA ha vuelto</h1>
+                <div class="sub">Esta es su reacción</div>
+                <video controls playsinline preload="metadata">
+                    <source src="{safe_attr(reaction_url)}" type="{safe_attr(reaction_type)}">
+                </video>
             </div>
         </body>
         </html>
-        """)
-
-    experience_video_url = (order.get("experience_video_url") or DEFAULT_EXPERIENCE_VIDEO_URL or "").strip()
-    reaction_video_url = (order.get("reaction_video_public_url") or "").strip()
-
-    if not reaction_video_url:
-        reaction_video_url = f"{PUBLIC_BASE_URL}/video/sender/{order['sender_token']}"
-
-    experience_video_type = guess_media_type_from_url(experience_video_url) if experience_video_url else "video/mp4"
-    reaction_video_type = guess_media_type_from_url(reaction_video_url)
-
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <title>Tu ETERNA</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                padding: 20px;
-            }}
-            .card {{
-                width: 100%;
-                max-width: 1080px;
-                margin: 0 auto;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 28px;
-                padding: 26px 18px 30px;
-            }}
-            .intro {{
-                text-align: center;
-                font-size: 28px;
-                line-height: 1.45;
-                color: rgba(255,255,255,0.95);
-                margin-bottom: 10px;
-            }}
-            .intro-soft {{
-                text-align: center;
-                font-size: 15px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.55);
-                margin-bottom: 18px;
-            }}
-            .pack-grid {{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
-                align-items: start;
-            }}
-            .video-box {{
-                background: rgba(255,255,255,0.03);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 22px;
-                padding: 14px;
-            }}
-            .video-label {{
-                font-size: 12px;
-                letter-spacing: 1.2px;
-                text-transform: uppercase;
-                color: rgba(255,255,255,0.55);
-                margin-bottom: 10px;
-                text-align: left;
-            }}
-            .video-frame {{
-                width: 100%;
-                background: #101010;
-                border-radius: 16px;
-                overflow: hidden;
-            }}
-            video {{
-                width: 100%;
-                max-height: 72vh;
-                display: block;
-                background: #111;
-                pointer-events: none;
-            }}
-            .controls {{
-                display: grid;
-                gap: 12px;
-                margin-top: 20px;
-                max-width: 820px;
-                margin-left: auto;
-                margin-right: auto;
-            }}
-            .btn {{
-                width: 100%;
-                padding: 16px 22px;
-                border-radius: 999px;
-                border: 0;
-                font-weight: bold;
-                font-size: 15px;
-                cursor: pointer;
-                text-decoration: none;
-                text-align: center;
-                display: inline-block;
-            }}
-            .primary {{ background: white; color: black; }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-            @media (max-width: 860px) {{
-                .pack-grid {{
-                    grid-template-columns: 1fr;
-                }}
-                .intro {{
-                    font-size: 24px;
-                }}
-                video {{
-                    max-height: none;
-                }}
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="intro">Lo que creaste volvió a ti.</div>
-            <div class="intro-soft">Lo que vio y lo que sintió. Juntos.</div>
-
-            <div class="pack-grid">
-                <div class="video-box">
-                    <div class="video-label">Lo que vio</div>
-                    <div class="video-frame">
-                        <video id="videoOriginal" playsinline preload="auto">
-                            <source src="{safe_attr(experience_video_url)}" type="{safe_attr(experience_video_type)}">
-                        </video>
-                    </div>
-                </div>
-
-                <div class="video-box">
-                    <div class="video-label">Lo que sintió</div>
-                    <div class="video-frame">
-                        <video id="videoReaction" playsinline preload="auto">
-                            <source src="{safe_attr(reaction_video_url)}" type="{safe_attr(reaction_video_type)}">
-                        </video>
-                    </div>
-                </div>
-            </div>
-
-            <div class="controls">
-                <button class="btn primary" id="toggleBtn" onclick="toggleBoth()">Reproducir</button>
-                <button class="btn ghost" onclick="sharePack()">Compartir</button>
-                <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
-            </div>
-        </div>
-
-        <script>
-            const original = document.getElementById("videoOriginal");
-            const reaction = document.getElementById("videoReaction");
-            const toggleBtn = document.getElementById("toggleBtn");
-            let syncing = false;
-            let endedHandled = false;
-
-            function safePlay(v) {{
-                if (!v) return Promise.resolve();
-                try {{
-                    return v.play();
-                }} catch (e) {{
-                    return Promise.resolve();
-                }}
-            }}
-
-            function safePause(v) {{
-                if (!v) return;
-                try {{ v.pause(); }} catch (e) {{}}
-            }}
-
-            function safeReset(v) {{
-                if (!v) return;
-                safePause(v);
-                try {{ v.currentTime = 0; }} catch (e) {{}}
-            }}
-
-            function syncTime(source, target) {{
-                if (!source || !target || syncing) return;
-                syncing = true;
-                try {{
-                    if (Math.abs((target.currentTime || 0) - (source.currentTime || 0)) > 0.25) {{
-                        target.currentTime = source.currentTime || 0;
-                    }}
-                }} catch (e) {{}}
-                syncing = false;
-            }}
-
-            function isAnyPlaying() {{
-                return (
-                    (original && !original.paused && !original.ended) ||
-                    (reaction && !reaction.paused && !reaction.ended)
-                );
-            }}
-
-            function setButtonState() {{
-                toggleBtn.textContent = isAnyPlaying() ? "Pausar" : "Reproducir";
-            }}
-
-            async function playBoth() {{
-                endedHandled = false;
-                syncTime(original, reaction);
-                syncTime(reaction, original);
-                await Promise.allSettled([safePlay(original), safePlay(reaction)]);
-                setButtonState();
-            }}
-
-            function pauseBoth() {{
-                safePause(original);
-                safePause(reaction);
-                setButtonState();
-            }}
-
-            function resetBothToStart() {{
-                safeReset(original);
-                safeReset(reaction);
-                toggleBtn.textContent = "Reproducir";
-            }}
-
-            function toggleBoth() {{
-                if (isAnyPlaying()) {{
-                    pauseBoth();
-                }} else {{
-                    playBoth();
-                }}
-            }}
-
-            original.addEventListener("play", () => {{
-                endedHandled = false;
-                syncTime(original, reaction);
-                if (reaction.paused) safePlay(reaction);
-                setButtonState();
-            }});
-
-            reaction.addEventListener("play", () => {{
-                endedHandled = false;
-                syncTime(reaction, original);
-                if (original.paused) safePlay(original);
-                setButtonState();
-            }});
-
-            original.addEventListener("pause", () => {{
-                if (!endedHandled && reaction && !reaction.paused) safePause(reaction);
-                setButtonState();
-            }});
-
-            reaction.addEventListener("pause", () => {{
-                if (!endedHandled && original && !original.paused) safePause(original);
-                setButtonState();
-            }});
-
-            original.addEventListener("seeking", () => syncTime(original, reaction));
-            reaction.addEventListener("seeking", () => syncTime(reaction, original));
-
-            function handleEnded() {{
-                if (endedHandled) return;
-                endedHandled = true;
-                pauseBoth();
-                setTimeout(() => {{
-                    resetBothToStart();
-                }}, 80);
-            }}
-
-            original.addEventListener("ended", handleEnded);
-            reaction.addEventListener("ended", handleEnded);
-
-            async function sharePack() {{
-                const url = window.location.href;
-
-                if (navigator.share) {{
-                    try {{
-                        await navigator.share({{
-                            title: "ETERNA",
-                            text: "ETERNA",
-                            url: url
-                        }});
-                    }} catch (e) {{}}
-                }} else {{
-                    window.open(url, "_blank");
-                }}
-            }}
-
-            setButtonState();
-        </script>
-    </body>
-    </html>
-    """)
-
-
-# =========================================================
-# ADMIN / HEALTH
-# =========================================================
-
-@app.get("/admin/process-refunds")
-def admin_process_refunds(token: str = ""):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="No autorizado")
-    return JSONResponse({"ok": True})
-
-
-@app.get("/admin/fix-experience-videos")
-def admin_fix_experience_videos(token: str = ""):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="No autorizado")
-
-    conn = db_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        UPDATE orders
-        SET experience_video_url = ?, updated_at = ?
-        WHERE experience_video_url IS NULL OR TRIM(experience_video_url) = ''
-    """, (DEFAULT_EXPERIENCE_VIDEO_URL, now_iso()))
-
-    conn.commit()
-    updated = cur.rowcount
-    conn.close()
-
-    return JSONResponse({
-        "ok": True,
-        "updated_orders": updated,
-        "experience_video_url": DEFAULT_EXPERIENCE_VIDEO_URL,
-    })
-
-
-@app.get("/admin/retry-recipient-message/{order_id}")
-def admin_retry_recipient_message(order_id: str, token: str = ""):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="No autorizado")
-
-    order = get_order_by_id(order_id)
-    result = try_send_recipient_sms(order)
-    updated = get_order_by_id(order_id)
-
-    return JSONResponse({
-        "ok": result.get("ok", False),
-        "result": result,
-        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
-        "recipient_sms_sid": updated.get("recipient_sms_sid"),
-        "recipient_sms_attempts": updated.get("recipient_sms_attempts"),
-        "recipient_sms_error": updated.get("recipient_sms_error"),
-    })
-
-
-@app.get("/admin/retry-sender-message/{order_id}")
-def admin_retry_sender_message(order_id: str, token: str = ""):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="No autorizado")
-
-    order = get_order_by_id(order_id)
-    result = try_send_sender_sms(order)
-    updated = get_order_by_id(order_id)
-
-    return JSONResponse({
-        "ok": result.get("ok", False),
-        "result": result,
-        "sender_sms_sent_at": updated.get("sender_sms_sent_at"),
-        "sender_sms_sid": updated.get("sender_sms_sid"),
-        "sender_sms_attempts": updated.get("sender_sms_attempts"),
-        "sender_sms_error": updated.get("sender_sms_error"),
-    })
+        """
+    )
