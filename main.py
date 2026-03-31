@@ -512,7 +512,9 @@ def get_order_by_sender_token_or_404(token: str):
 def update_order(order_id: str, **fields):
     if not fields:
         return
-    fields["updated_at"] = now_iso()
+
+    fields["updated_at"] = now_iso()   # 👈 VA AQUÍ
+
     columns = ", ".join([f"{k} = ?" for k in fields.keys()])
     values = list(fields.values()) + [order_id]
 
