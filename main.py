@@ -404,10 +404,12 @@ def get_input_photo(order_id: str, slot_name: str):
     _ = get_order_by_id(order_id)
 
     filepath = get_photo_asset_path(order_id, slot_name)
+
     if not filepath or not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Foto no encontrada")
 
     media_type, _ = mimetypes.guess_type(filepath)
+
     return FileResponse(
         filepath,
         media_type=media_type or "image/jpeg",
