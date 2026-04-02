@@ -604,6 +604,40 @@ def upload_video_to_r2(local_path: str, remote_name: str, content_type: str = "v
 
 
 def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider: str):
+    def list_assets(order_id: str):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, order_id, asset_type, file_url, storage_provider, created_at
+        FROM assets
+        WHERE order_id = ?
+        ORDER BY id ASC
+    """, (order_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
+    slot_name = (slot_name or "").strip().lower()
+
+    aliases = {slot_name}
+    if slot_name.startswith("photo"):
+        aliases.add(slot_name.replace("photo", "foto", 1))
+    if slot_name.startswith("foto"):
+        aliases.add(slot_name.replace("foto", "photo", 1))
+
+    assets = list_assets(order_id)
+
+    for asset in assets:
+        asset_type = (asset.get("asset_type") or "").strip().lower()
+        file_url = (asset.get("file_url") or "").strip()
+
+        if asset_type in aliases and file_url:
+            return file_url
+
+    return None
+
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -1948,7 +1982,8 @@ async def stripe_webhook(request: Request):
 
     if event["type"] != "checkout.session.completed":
         return {"status": "ignored"}
-        session = event["data"]["object"]
+
+    session = event["data"]["object"]
 
     order_id = session.get("client_reference_id")
     if not order_id:
@@ -2648,16 +2683,17 @@ def get_input_photo(order_id: str, slot_name: str):
     _ = get_order_by_id(order_id)
 
     filepath = get_photo_asset_path(order_id, slot_name)
+
     if not filepath or not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Foto no encontrada")
 
     media_type, _ = mimetypes.guess_type(filepath)
+
     return FileResponse(
         filepath,
         media_type=media_type or "image/jpeg",
         filename=os.path.basename(filepath),
     )
-
 
 
 # =========================================================
@@ -2848,10 +2884,45 @@ def mi_video(recipient_token: str):
         return HTMLResponse("""
         <!DOCTYPE html>
         <html lang="es">
-        <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial, sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
-            <div>
-                <h1>Tu momento ya es tuyo.</h1>
-                <p>Falta conectar el vídeo original final de esta ETERNA.</p>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                html, body {
+                    margin: 0;
+                    min-height: 100%;
+                    background: #000;
+                }
+                body {
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 24px;
+                }
+                .box {
+                    max-width: 720px;
+                }
+                h1 {
+                    font-size: 34px;
+                    margin-bottom: 18px;
+                    line-height: 1.4;
+                }
+                p {
+                    font-size: 18px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.65);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h1>Estamos creando tu ETERNA…</h1>
+                <p>Tu vídeo original aún no está listo. Vuelve a entrar en unos segundos.</p>
             </div>
         </body>
         </html>
