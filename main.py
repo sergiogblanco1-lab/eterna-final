@@ -1789,19 +1789,16 @@ async def stripe_webhook(request: Request):
             print("❌ ERROR: no hay order_id")
             return {"status": "error", "reason": "order_id missing"}
 
-        try:
-            print("🎬 LLAMANDO VIDEO ENGINE...")
+    # =========================================================
+# VIDEO ENGINE (DESACTIVADO TEMPORALMENTE)
+# =========================================================
 
-            # 🔥 IMPORTANTE: ajusta esto a tu sistema real
-            from video_engine import render_eterna_video
+print("⚠️ VIDEO ENGINE DESACTIVADO")
 
-            render_eterna_video(order_id)
+# Aquí en el futuro llamaremos al video engine correctamente
+# Pero ahora lo dejamos limpio para no romper el flujo
 
-            print("✅ VIDEO GENERADO")
-
-        except Exception as e:
-            print("❌ ERROR EN VIDEO ENGINE")
-            traceback.print_exc()
+# =========================================================
 
     return {"status": "ok"}
 
