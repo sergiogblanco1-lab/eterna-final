@@ -1789,7 +1789,7 @@ async def stripe_webhook(request: Request):
             print("❌ ERROR: no hay order_id")
             return {"status": "error", "reason": "order_id missing"}
 
-    # =========================================================
+# =========================================================
 # VIDEO ENGINE (DESACTIVADO TEMPORALMENTE)
 # =========================================================
 
