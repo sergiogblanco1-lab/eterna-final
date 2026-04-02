@@ -396,6 +396,9 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
+    import stripe
+    import traceback
+
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
@@ -416,88 +419,39 @@ async def stripe_webhook(request: Request):
     if event["type"] != "checkout.session.completed":
         return {"status": "ignored"}
 
-    session = event["data"]["object"]
-
-    order_id = session.get("client_reference_id")
-    if not order_id:
-        metadata = session.get("metadata", {}) or {}
-        order_id = metadata.get("order_id")
-
-    print("📦 order_id:", order_id)
-
-    if not order_id:
-        print("❌ ERROR: no hay order_id")
-        return {"status": "error", "reason": "order_id missing"}
-
     try:
-        order = get_order_by_id(order_id)
-    except Exception:
-        print("❌ ERROR: pedido no encontrado")
-        return {"status": "error", "reason": "order_not_found"}
+        session = event["data"]["object"]
 
-    try:
-        stripe_payment_status = (session.get("payment_status") or "paid").strip()
-        stripe_payment_intent_id = (session.get("payment_intent") or "").strip() or None
+        order_id = session.get("client_reference_id")
 
-        update_order(
-            order_id,
-            paid=1,
-            stripe_payment_status=stripe_payment_status,
-            stripe_payment_intent_id=stripe_payment_intent_id,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-        )
+        if not order_id:
+            metadata = session.get("metadata", {}) or {}
+            order_id = metadata.get("order_id")
 
-        order = get_order_by_id(order_id)
+        if not order_id:
+            return {"status": "error", "reason": "order_id missing"}
 
-        photos = [
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo1",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo2",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo3",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo4",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo5",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo6",
-        ]
+        print(f"🔥 WEBHOOK OK → order_id: {order_id}")
 
-        phrases = [
-            (order.get("phrase_1") or "").strip(),
-            (order.get("phrase_2") or "").strip(),
-            (order.get("phrase_3") or "").strip(),
-        ]
+        # MARCAR COMO PAGADO
+        update_order(order_id, paid=1)
 
-        print("🚀 Enviando al video engine...")
+        # LANZAR MOTOR (SIN DUPLICAR NADA)
+        try:
+            requests.post(
+                "https://eterna-video-engine.onrender.com/render",
+                json={"order_id": order_id},
+                timeout=10
+            )
+        except Exception as e:
+            print("❌ Error llamando al motor:", str(e))
 
-        response = requests.post(
-            "https://eterna-video-engine.onrender.com/render",
-            json={
-                "order_id": order_id,
-                "photos": photos,
-                "phrases": phrases,
-            },
-            timeout=300,
-        )
-
-        print("📩 Video engine:", response.status_code)
-        print("📩 Response:", response.text)
-
-        if response.ok:
-            data = response.json()
-            video_url = (data.get("video_url") or "").strip()
-
-            if video_url:
-                update_order(order_id, experience_video_url=video_url)
-
-                insert_asset(
-                    order_id=order_id,
-                    asset_type="rendered_video",
-                    file_url=video_url,
-                    storage_provider="video_engine",
-                )
-
+        # SMS
         try:
             order = get_order_by_id(order_id)
             try_send_recipient_sms(order)
         except Exception as e:
-            log_error("recipient sms after webhook", e)
+            print("❌ Error SMS:", str(e))
 
         return {"status": "ok"}
 
@@ -1961,7 +1915,7 @@ def checkout_exito(order_id: str):
     """
 
 
-@app.post("/stripe/webhook")
+("/stripe/webhook")
 async def stripe_webhook(request: Request):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -1972,7 +1926,7 @@ async def stripe_webhook(request: Request):
     try:
         event = stripe.Webhook.construct_event(
             payload,
-            sig_header,
+            sig_header,@app.post
             STRIPE_WEBHOOK_SECRET
         )
     except ValueError:
