@@ -2499,11 +2499,19 @@ async def upload_video(
 @app.get("/video/sender/{sender_token}")
 def get_video_for_sender(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
+
     filepath = order.get("reaction_video_local")
+
     if not filepath or not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Vídeo no encontrado")
+        raise HTTPException(status_code=404, detail="Video no encontrado")
+
     media_type = guess_media_type_from_path(filepath)
-    return FileResponse(filepath, media_type=media_type, filename=os.path.basename(filepath))
+
+    return FileResponse(
+        filepath,
+        media_type=media_type,
+        filename=os.path.basename(filepath),
+    )
 
    
 
