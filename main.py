@@ -396,23 +396,7 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
 
-y termina en la línea 1052:
 
-    return {"status": "ignored"}
-Así que:
-borra desde la línea 1005 hasta la 1052
-pega ahí el webhook nuevo
-3) Endpoint /video/input/{order_id}/{slot_name}
-
-Pégalo justo debajo de get_video_for_sender(sender_token: str).
-
-Ese bloque termina en la línea 1320:
-
-    return FileResponse(filepath, media_type=media_type, filename=os.path.basename(filepath))
-Así que:
-empieza a pegar en la línea 1322
-
-Bloque a insertar desde la línea 1322:
 
 @app.get("/video/input/{order_id}/{slot_name}")
 def get_input_photo(order_id: str, slot_name: str):
@@ -428,23 +412,7 @@ def get_input_photo(order_id: str, slot_name: str):
         media_type=media_type or "image/jpeg",
         filename=os.path.basename(filepath),
     )
-api.py del motor
 
-En el archivo que me has pegado, la parte FastAPI está rota y mezclada con el motor.
-Aquí no merece la pena insertar por líneas sueltas.
-
-Haz esto:
-borra todo el archivo
-pega el bloque completo nuevo desde la línea 1
-Resumen ultra claro
-main.py
-línea 363 → pegar helpers list_assets(...) y get_photo_asset_path(...)
-líneas 1005 a 1052 → sustituir webhook completo
-línea 1322 → pegar endpoint /video/input/{order_id}/{slot_name}
-api.py
-línea 1 → reemplazar todo el archivo
-
-Si quieres, en el siguiente mensaje te lo doy en formato “LÍNEA X: pega esto / LÍNEA Y-Z: borra esto” ya preparado para copiar sin pensar.
 def build_photo_path(order_id: str, slot_name: str, upload: UploadFile) -> str:
     ext = detect_image_extension(upload)
     folder = PHOTO_FOLDER / order_id
