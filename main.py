@@ -2505,13 +2505,21 @@ def get_video_for_sender(sender_token: str):
     media_type = guess_media_type_from_path(filepath)
     return FileResponse(filepath, media_type=media_type, filename=os.path.basename(filepath))
 
-    @app.get("/video/sender/{sender_token}")
+   @app.get("/video/sender/{sender_token}")
 def get_video_for_sender(sender_token: str):
-    ...
-    return FileResponse(...)
+    order = get_order_by_sender_token_or_404(sender_token)
+    filepath = order.get("reaction_video_local")
 
+    if not filepath or not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Vídeo no encontrado")
 
-# 👇 PEGA ESTO JUSTO AQUÍ 👇
+    media_type = guess_media_type_from_path(filepath)
+    return FileResponse(
+        filepath,
+        media_type=media_type,
+        filename=os.path.basename(filepath),
+    )
+
 
 @app.get("/video/input/{order_id}/{slot_name}")
 def get_input_photo(order_id: str, slot_name: str):
