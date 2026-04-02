@@ -559,46 +559,45 @@ def upload_video_to_r2(local_path: str, remote_name: str, content_type: str = "v
 
 
 def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider: str):
-    def list_assets(order_id: str):
+    def get_order_by_sender_token_or_404(token: str):
     conn = db_conn()
     cur = conn.cursor()
+
     cur.execute("""
-        SELECT id, order_id, asset_type, file_url, storage_provider, created_at
-        FROM assets
-        WHERE order_id = ?
-        ORDER BY id ASC
-    """, (order_id,))
-    rows = cur.fetchall()
+        SELECT
+            o.*,
+            s.name AS sender_name,
+            s.email AS sender_email,
+            s.phone AS sender_phone,
+            r.name AS recipient_name,
+            r.phone AS recipient_phone
+        FROM orders o
+        JOIN senders s ON s.id = o.sender_id
+        JOIN recipients r ON r.id = o.recipient_id
+        WHERE o.sender_token = ?
+    """, (token,))
+
+    row = cur.fetchone()
     conn.close()
-    return [dict(r) for r in rows]
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Sender pack no encontrado")
+
+    return dict(row)
 
 
-def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
-    slot_name = (slot_name or "").strip().lower()
+def update_order(order_id: str, **fields):
+    if not fields:
+        return
 
-    aliases = {slot_name}
-    if slot_name.startswith("photo"):
-        aliases.add(slot_name.replace("photo", "foto", 1))
-    if slot_name.startswith("foto"):
-        aliases.add(slot_name.replace("foto", "photo", 1))
+    fields["updated_at"] = now_iso()
 
-    assets = list_assets(order_id)
-
-    for asset in assets:
-        asset_type = (asset.get("asset_type") or "").strip().lower()
-        file_url = (asset.get("file_url") or "").strip()
-
-        if asset_type in aliases and file_url:
-            return file_url
-
-    return None
+    columns = ", ".join([f"{k}=?" for k in fields.keys()])
+    values = list(fields.values()) + [order_id]
 
     conn = db_conn()
     cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO assets (order_id, asset_type, file_url, storage_provider, created_at)
-        VALUES (?, ?, ?, ?, ?)
-    """, (order_id, asset_type, file_url, storage_provider, now_iso()))
+    cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
     conn.commit()
     conn.close()
 
@@ -606,6 +605,7 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
 def get_order_by_id(order_id: str):
     conn = db_conn()
     cur = conn.cursor()
+
     cur.execute("""
         SELECT
             o.*,
@@ -619,16 +619,20 @@ def get_order_by_id(order_id: str):
         JOIN recipients r ON r.id = o.recipient_id
         WHERE o.id = ?
     """, (order_id,))
+
     row = cur.fetchone()
     conn.close()
+
     if not row:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
     return dict(row)
 
 
 def get_order_by_recipient_token_or_404(token: str):
     conn = db_conn()
     cur = conn.cursor()
+
     cur.execute("""
         SELECT
             o.*,
@@ -642,12 +646,14 @@ def get_order_by_recipient_token_or_404(token: str):
         JOIN recipients r ON r.id = o.recipient_id
         WHERE o.recipient_token = ?
     """, (token,))
+
     row = cur.fetchone()
     conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Experiencia no encontrada")
-    return dict(row)
 
+    if not row:
+        raise HTTPException(status_code=404, detail="Recipient pack no encontrado")
+
+    return dict(row)
 
 def get_order_by_sender_token_or_404(token: str):
     conn = db_conn()
