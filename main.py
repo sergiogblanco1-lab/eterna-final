@@ -808,6 +808,13 @@ def trigger_video_engine(order_id: str):
 
     from video_engine import render_eterna_video
 
+import traceback
+
+try:
+    print(f"[VIDEO_ENGINE] Fotos encontradas: {photo_paths}")
+    print(f"[VIDEO_ENGINE] Frases: {phrase_1} | {phrase_2} | {phrase_3}")
+    print(f"[VIDEO_ENGINE] Output: {output_path}")
+
     final_video_path = render_eterna_video(
         photo_paths=photo_paths,
         phrase_1=phrase_1,
@@ -816,6 +823,14 @@ def trigger_video_engine(order_id: str):
         output_path=str(output_path),
     )
 
+    print(f"[VIDEO_ENGINE] Render devolvió: {final_video_path}")
+
+except Exception as e:
+    print("❌ ERROR REAL EN VIDEO ENGINE:")
+    print(str(e))
+    traceback.print_exc()
+    raise
+    
     if not final_video_path:
         final_video_path = str(output_path)
 
