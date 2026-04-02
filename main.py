@@ -849,8 +849,8 @@ except Exception as e:
     )
 
     print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
-    
-    return public_video_url
+
+return public_video_url
 
 
 @app.get("/video/generated/{order_id}")
