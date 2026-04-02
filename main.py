@@ -745,29 +745,21 @@ def try_start_experience(order_id: str) -> str:
 # =========================================================
 
 def trigger_video_engine(order_id: str):
-    print(f"[VIDEO_ENGINE] Iniciando render para pedido: {order_id}")
+    import os
+    import traceback
+    from pathlib import Path
 
-    order = get_order_by_id(order_id)
+    order = get_order(order_id)
+    if not order:
+        raise Exception(f"Pedido no encontrado: {order_id}")
 
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT asset_type, file_url
-        FROM assets
-        WHERE order_id = ?
-        ORDER BY created_at ASC, id ASC
-        """,
-        (order_id,),
-    )
-    assets = cur.fetchall()
-    conn.close()
+    assets = list_assets(order_id)
 
     photo_map = {}
 
     for asset in assets:
-        asset_type = (asset["asset_type"] or "").lower().strip()
-        file_url = (asset["file_url"] or "").strip()
+        asset_type = (asset.get("asset_type") or "").strip().lower()
+        file_url = (asset.get("file_url") or "").strip()
 
         if not file_url:
             continue
@@ -788,7 +780,7 @@ def trigger_video_engine(order_id: str):
     photo_paths = [photo_map[i] for i in range(1, 7) if i in photo_map]
 
     if len(photo_paths) != 6:
-        raise Exception(f"El pedido {order_id} no tiene exactamente 6 fotos válidas. Encontradas: {len(photo_paths)}")
+        raise Exception(f"El pedido {order_id} no tiene exactamente 6 fotos. Encontradas: {len(photo_paths)}")
 
     for i, p in enumerate(photo_paths, start=1):
         if not os.path.exists(p):
@@ -808,34 +800,28 @@ def trigger_video_engine(order_id: str):
 
     from video_engine import render_eterna_video
 
-import traceback
+    try:
+        final_video_path = render_eterna_video(
+            photo_paths=photo_paths,
+            phrase_1=phrase_1,
+            phrase_2=phrase_2,
+            phrase_3=phrase_3,
+            output_path=str(output_path),
+        )
 
-try:
-    print(f"[VIDEO_ENGINE] Fotos encontradas: {photo_paths}")
-    print(f"[VIDEO_ENGINE] Frases: {phrase_1} | {phrase_2} | {phrase_3}")
-    print(f"[VIDEO_ENGINE] Output: {output_path}")
+        print(f"[VIDEO_ENGINE] Render devolvió: {final_video_path}")
 
-    final_video_path = render_eterna_video(
-        photo_paths=photo_paths,
-        phrase_1=phrase_1,
-        phrase_2=phrase_2,
-        phrase_3=phrase_3,
-        output_path=str(output_path),
-    )
+        if not final_video_path:
+            final_video_path = str(output_path)
 
-    print(f"[VIDEO_ENGINE] Render devolvió: {final_video_path}")
+        if not os.path.exists(final_video_path):
+            raise Exception(f"El render terminó pero no existe el archivo final: {final_video_path}")
 
-except Exception as e:
-    print("❌ ERROR REAL EN VIDEO ENGINE:")
-    print(str(e))
-    traceback.print_exc()
-    raise
-
-    if not final_video_path:
-        final_video_path = str(output_path)
-
-    if not os.path.exists(final_video_path):
-        raise Exception(f"El render terminó pero no existe el archivo final: {final_video_path}")
+    except Exception as e:
+        print("❌ ERROR REAL EN VIDEO ENGINE:")
+        print(str(e))
+        traceback.print_exc()
+        raise
 
     public_video_url = f"{PUBLIC_BASE_URL}/video/generated/{order_id}"
 
@@ -849,23 +835,7 @@ except Exception as e:
     )
 
     print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
-
     return public_video_url
-
-
-@app.get("/video/generated/{order_id}")
-def get_generated_video(order_id: str):
-    filepath = Path("videos") / f"{order_id}.mp4"
-
-    if not filepath.exists():
-        raise HTTPException(status_code=404, detail="Vídeo generado no encontrado")
-
-    return FileResponse(
-        str(filepath),
-        media_type="video/mp4",
-        filename=f"{order_id}.mp4"
-    )
-
 
 # =========================================================
 # STRIPE CONNECT HELPERS
