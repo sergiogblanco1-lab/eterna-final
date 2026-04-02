@@ -396,6 +396,134 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma inválida")
+
+    if event["type"] != "checkout.session.completed":
+        return {"status": "ignored"}
+
+    session = event["data"]["object"]
+
+    order_id = session.get("client_reference_id")
+    if not order_id:
+        metadata = session.get("metadata", {}) or {}
+        order_id = metadata.get("order_id")
+
+    print("📦 order_id:", order_id)
+
+    if not order_id:
+        print("❌ ERROR: no hay order_id")
+        return {"status": "error", "reason": "order_id missing"}
+
+    try:
+        order = get_order_by_id(order_id)
+    except Exception:
+        print("❌ ERROR: pedido no encontrado")
+        return {"status": "error", "reason": "order_not_found"}
+
+    try:
+        stripe_payment_status = (session.get("payment_status") or "paid").strip()
+        stripe_payment_intent_id = (session.get("payment_intent") or "").strip() or None
+
+        update_order(
+            order_id,
+            paid=1,
+            stripe_payment_status=stripe_payment_status,
+            stripe_payment_intent_id=stripe_payment_intent_id,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+
+        order = get_order_by_id(order_id)
+
+        photos = [
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo1",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo2",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo3",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo4",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo5",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo6",
+        ]
+
+        phrases = [
+            (order.get("phrase_1") or "").strip(),
+            (order.get("phrase_2") or "").strip(),
+            (order.get("phrase_3") or "").strip(),
+        ]
+
+        print("🚀 Enviando al video engine...")
+
+        response = requests.post(
+            "https://eterna-video-engine.onrender.com/render",
+            json={
+                "order_id": order_id,
+                "photos": photos,
+                "phrases": phrases,
+            },
+            timeout=300,
+        )
+
+        print("📩 Video engine:", response.status_code)
+        print("📩 Response:", response.text)
+
+        if response.ok:
+            data = response.json()
+            video_url = (data.get("video_url") or "").strip()
+
+            if video_url:
+                update_order(order_id, experience_video_url=video_url)
+
+                insert_asset(
+                    order_id=order_id,
+                    asset_type="rendered_video",
+                    file_url=video_url,
+                    storage_provider="video_engine",
+                )
+
+        try:
+            order = get_order_by_id(order_id)
+            try_send_recipient_sms(order)
+        except Exception as e:
+            log_error("recipient sms after webhook", e)
+
+        return {"status": "ok"}
+
+    except Exception as e:
+        print("❌ ERROR webhook:", str(e))
+        traceback.print_exc()
+        return {"status": "error", "reason": str(e)}
+
+
+@app.get("/video/input/{order_id}/{slot_name}")
+def get_input_photo(order_id: str, slot_name: str):
+    _ = get_order_by_id(order_id)
+
+    filepath = get_photo_asset_path(order_id, slot_name)
+
+    if not filepath or not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Foto no encontrada")
+
+    media_type, _ = mimetypes.guess_type(filepath)
+
+    return FileResponse(
+        filepath,
+        media_type=media_type or "image/jpeg",
+        filename=os.path.basename(filepath),
+    )
+
 
 
 
