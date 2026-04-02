@@ -1743,19 +1743,11 @@ def checkout_exito(order_id: str):
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
-    import stripe
-    import traceback
-
-    print("🔥 WEBHOOK RECIBIDO")
 
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
-    print("📦 Payload recibido")
-    print("🔐 Signature:", sig_header)
-
     if not STRIPE_WEBHOOK_SECRET:
-        print("❌ ERROR: falta STRIPE_WEBHOOK_SECRET")
         raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
 
     try:
@@ -1764,17 +1756,17 @@ async def stripe_webhook(request: Request):
             sig_header,
             STRIPE_WEBHOOK_SECRET
         )
-        print("✅ Firma válida")
     except ValueError:
-        print("❌ Payload inválido")
         raise HTTPException(status_code=400, detail="Payload inválido")
     except stripe.error.SignatureVerificationError:
-        print("❌ Firma inválida")
         raise HTTPException(status_code=400, detail="Firma inválida")
 
-    print("📢 Evento recibido:", event["type"])
+    # =========================================================
+    # SOLO NOS IMPORTA ESTE EVENTO
+    # =========================================================
 
     if event["type"] == "checkout.session.completed":
+
         session = event["data"]["object"]
 
         order_id = session.get("client_reference_id")
@@ -1783,25 +1775,30 @@ async def stripe_webhook(request: Request):
             metadata = session.get("metadata", {}) or {}
             order_id = metadata.get("order_id")
 
-        print("🧾 order_id:", order_id)
+        print("📦 order_id:", order_id)
 
         if not order_id:
             print("❌ ERROR: no hay order_id")
             return {"status": "error", "reason": "order_id missing"}
 
-# =========================================================
-# VIDEO ENGINE (DESACTIVADO TEMPORALMENTE)
-# =========================================================
+        # =========================================================
+        # VIDEO ENGINE (DESACTIVADO TEMPORALMENTE)
+        # =========================================================
 
-print("⚠️ VIDEO ENGINE DESACTIVADO")
+        print("⚠️ VIDEO ENGINE DESACTIVADO")
 
-# Aquí en el futuro llamaremos al video engine correctamente
-# Pero ahora lo dejamos limpio para no romper el flujo
+        # Aquí en el futuro conectaremos el video engine externo
 
-# =========================================================
+        # =========================================================
 
-    return {"status": "ok"}
+        return {"status": "ok"}
 
+    # =========================================================
+    # OTROS EVENTOS
+    # =========================================================
+
+    return {"status": "ignored"}
+    
 # =========================================================
 # POST PAYMENT
 # =========================================================
