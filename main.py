@@ -358,7 +358,95 @@ def detect_image_extension(upload: UploadFile) -> str:
 
     return "jpg"
 
+def list_assets(order_id: str):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, order_id, asset_type, file_url, storage_provider, created_at
+        FROM assets
+        WHERE order_id = ?
+        ORDER BY id ASC
+    """, (order_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
+
+def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
+    slot_name = (slot_name or "").strip().lower()
+
+    aliases = {slot_name}
+    if slot_name.startswith("photo"):
+        aliases.add(slot_name.replace("photo", "foto", 1))
+    if slot_name.startswith("foto"):
+        aliases.add(slot_name.replace("foto", "photo", 1))
+
+    assets = list_assets(order_id)
+
+    for asset in assets:
+        asset_type = (asset.get("asset_type") or "").strip().lower()
+        file_url = (asset.get("file_url") or "").strip()
+
+        if asset_type in aliases and file_url:
+            return file_url
+
+    return None
+2) Sustituir el webhook
+
+Tu webhook actual empieza en la línea 1005:
+
+@app.post("/stripe/webhook")
+async def stripe_webhook(request: Request):
+
+y termina en la línea 1052:
+
+    return {"status": "ignored"}
+Así que:
+borra desde la línea 1005 hasta la 1052
+pega ahí el webhook nuevo
+3) Endpoint /video/input/{order_id}/{slot_name}
+
+Pégalo justo debajo de get_video_for_sender(sender_token: str).
+
+Ese bloque termina en la línea 1320:
+
+    return FileResponse(filepath, media_type=media_type, filename=os.path.basename(filepath))
+Así que:
+empieza a pegar en la línea 1322
+
+Bloque a insertar desde la línea 1322:
+
+@app.get("/video/input/{order_id}/{slot_name}")
+def get_input_photo(order_id: str, slot_name: str):
+    _ = get_order_by_id(order_id)
+
+    filepath = get_photo_asset_path(order_id, slot_name)
+    if not filepath or not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Foto no encontrada")
+
+    media_type, _ = mimetypes.guess_type(filepath)
+    return FileResponse(
+        filepath,
+        media_type=media_type or "image/jpeg",
+        filename=os.path.basename(filepath),
+    )
+api.py del motor
+
+En el archivo que me has pegado, la parte FastAPI está rota y mezclada con el motor.
+Aquí no merece la pena insertar por líneas sueltas.
+
+Haz esto:
+borra todo el archivo
+pega el bloque completo nuevo desde la línea 1
+Resumen ultra claro
+main.py
+línea 363 → pegar helpers list_assets(...) y get_photo_asset_path(...)
+líneas 1005 a 1052 → sustituir webhook completo
+línea 1322 → pegar endpoint /video/input/{order_id}/{slot_name}
+api.py
+línea 1 → reemplazar todo el archivo
+
+Si quieres, en el siguiente mensaje te lo doy en formato “LÍNEA X: pega esto / LÍNEA Y-Z: borra esto” ya preparado para copiar sin pensar.
 def build_photo_path(order_id: str, slot_name: str, upload: UploadFile) -> str:
     ext = detect_image_extension(upload)
     folder = PHOTO_FOLDER / order_id
@@ -1761,38 +1849,97 @@ async def stripe_webhook(request: Request):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Firma inválida")
 
-    if event["type"] == "checkout.session.completed":
+    if event["type"] != "checkout.session.completed":
+        return {"status": "ignored"}
         session = event["data"]["object"]
 
-        order_id = session.get("client_reference_id")
+    order_id = session.get("client_reference_id")
+    if not order_id:
+        metadata = session.get("metadata", {}) or {}
+        order_id = metadata.get("order_id")
 
-        if not order_id:
-            metadata = session.get("metadata", {}) or {}
-            order_id = metadata.get("order_id")
+    print("📦 order_id:", order_id)
 
-        print("📦 order_id:", order_id)
+    if not order_id:
+        print("❌ ERROR: no hay order_id")
+        return {"status": "error", "reason": "order_id missing"}
 
-        if not order_id:
-            print("❌ ERROR: no hay order_id")
-            return {"status": "error", "reason": "order_id missing"}
+    try:
+        order = get_order_by_id(order_id)
+    except Exception:
+        print("❌ ERROR: pedido no encontrado")
+        return {"status": "error", "reason": "order_not_found"}
+
+    try:
+        stripe_payment_status = (session.get("payment_status") or "paid").strip()
+        stripe_payment_intent_id = (session.get("payment_intent") or "").strip() or None
+
+        update_order(
+            order_id,
+            paid=1,
+            stripe_payment_status=stripe_payment_status,
+            stripe_payment_intent_id=stripe_payment_intent_id,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+
+        order = get_order_by_id(order_id)
+
+        photos = [
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo1",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo2",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo3",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo4",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo5",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo6",
+        ]
+
+        phrases = [
+            (order.get("phrase_1") or "").strip(),
+            (order.get("phrase_2") or "").strip(),
+            (order.get("phrase_3") or "").strip(),
+        ]
+
+        print("🚀 Enviando al video engine...")
+
+        response = requests.post(
+            "https://eterna-video-engine.onrender.com/render",
+            json={
+                "order_id": order_id,
+                "photos": photos,
+                "phrases": phrases,
+            },
+            timeout=300,
+        )
+
+        print("📩 Video engine:", response.status_code)
+        print("📩 Response:", response.text)
+
+        if response.ok:
+            data = response.json()
+            video_url = (data.get("video_url") or "").strip()
+
+            if video_url:
+                update_order(order_id, experience_video_url=video_url)
+
+                insert_asset(
+                    order_id=order_id,
+                    asset_type="rendered_video",
+                    file_url=video_url,
+                    storage_provider="video_engine",
+                )
 
         try:
-            print("🚀 Enviando al video engine...")
-
-            response = requests.post(
-                "https://eterna-video-engine.onrender.com/render",
-                json={"order_id": order_id},
-                timeout=10
-            )
-
-            print("📩 Video engine response:", response.text)
-
+            order = get_order_by_id(order_id)
+            try_send_recipient_sms(order)
         except Exception as e:
-            print("❌ Error llamando al video engine:", str(e))
+            log_error("recipient sms after webhook", e)
 
         return {"status": "ok"}
 
-    return {"status": "ignored"}
+    except Exception as e:
+        print("❌ ERROR webhook:", str(e))
+        traceback.print_exc()
+        return {"status": "error", "reason": str(e)}
 
     
 # =========================================================
@@ -2391,6 +2538,29 @@ def get_video_for_sender(sender_token: str):
         raise HTTPException(status_code=404, detail="Vídeo no encontrado")
     media_type = guess_media_type_from_path(filepath)
     return FileResponse(filepath, media_type=media_type, filename=os.path.basename(filepath))
+
+    @app.get("/video/sender/{sender_token}")
+def get_video_for_sender(sender_token: str):
+    ...
+    return FileResponse(...)
+
+
+# 👇 PEGA ESTO JUSTO AQUÍ 👇
+
+@app.get("/video/input/{order_id}/{slot_name}")
+def get_input_photo(order_id: str, slot_name: str):
+    _ = get_order_by_id(order_id)
+
+    filepath = get_photo_asset_path(order_id, slot_name)
+    if not filepath or not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Foto no encontrada")
+
+    media_type, _ = mimetypes.guess_type(filepath)
+    return FileResponse(
+        filepath,
+        media_type=media_type or "image/jpeg",
+        filename=os.path.basename(filepath),
+    )
 
 
 # =========================================================
