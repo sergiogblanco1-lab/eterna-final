@@ -391,9 +391,7 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
             return file_url
 
     return None
-2) Sustituir el webhook
 
-Tu webhook actual empieza en la línea 1005:
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
