@@ -1757,10 +1757,19 @@ def checkout_exito(order_id: str):
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
+    import stripe
+    import traceback
+
+    print("🔥 WEBHOOK RECIBIDO")
+
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
+    print("📦 Payload recibido")
+    print("🔐 Signature:", sig_header)
+
     if not STRIPE_WEBHOOK_SECRET:
+        print("❌ ERROR: falta STRIPE_WEBHOOK_SECRET")
         raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
 
     try:
@@ -1769,96 +1778,46 @@ async def stripe_webhook(request: Request):
             sig_header,
             STRIPE_WEBHOOK_SECRET
         )
+        print("✅ Firma válida")
     except ValueError:
+        print("❌ Payload inválido")
         raise HTTPException(status_code=400, detail="Payload inválido")
     except stripe.error.SignatureVerificationError:
+        print("❌ Firma inválida")
         raise HTTPException(status_code=400, detail="Firma inválida")
+
+    print("📢 Evento recibido:", event["type"])
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
 
-        session_id = session.get("id")
         order_id = session.get("client_reference_id")
 
         if not order_id:
             metadata = session.get("metadata", {}) or {}
             order_id = metadata.get("order_id")
 
-        if not order_id and session_id:
-            conn = db_conn()
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1",
-                (session_id,)
-            )
-            row = cur.fetchone()
-            conn.close()
-            if row:
-                order_id = row["id"]
+        print("🧾 order_id:", order_id)
 
         if not order_id:
-            print("❌ WEBHOOK: no se pudo resolver order_id")
-            return {"status": "error", "reason": "order_id_not_found"}
+            print("❌ ERROR: no hay order_id")
+            return {"status": "error", "reason": "order_id missing"}
 
-        print(f"🔥 WEBHOOK OK → {order_id}")
+        try:
+            print("🎬 LLAMANDO VIDEO ENGINE...")
 
-        conn = db_conn()
-        cur = conn.cursor()
+            # 🔥 IMPORTANTE: ajusta esto a tu sistema real
+            from video_engine import render_eterna_video
 
-        cur.execute("SELECT paid FROM orders WHERE id = ? LIMIT 1", (order_id,))
-        row = cur.fetchone()
+            render_eterna_video(order_id)
 
-        if not row:
-            conn.close()
-            print(f"❌ Pedido no encontrado en DB → {order_id}")
-            return {"status": "error", "reason": "order_not_found"}
+            print("✅ VIDEO GENERADO")
 
-        already_paid = int(row["paid"] or 0) == 1
+        except Exception as e:
+            print("❌ ERROR EN VIDEO ENGINE")
+            traceback.print_exc()
 
-        cur.execute(
-            """
-            UPDATE orders
-            SET paid = 1,
-                stripe_session_id = COALESCE(?, stripe_session_id),
-                stripe_payment_status = ?,
-                gift_refund_deadline_at = COALESCE(gift_refund_deadline_at, ?),
-                updated_at = ?
-            WHERE id = ?
-            """,
-            (
-                session_id,
-                session.get("payment_status", "paid"),
-                gift_refund_deadline_iso(),
-                now_iso(),
-                order_id,
-            )
-        )
-        conn.commit()
-        conn.close()
-
-        print(f"✅ Pedido marcado como pagado → {order_id}")
-
-        if not already_paid:
-            try:
-                order = get_order_by_id(order_id)
-                try_send_recipient_sms(order)
-            except Exception as e:
-                log_error("webhook try_send_recipient_sms", e)
-
-            try:
-                print(f"🚀 START VIDEO ENGINE → {order_id}")
-                trigger_video_engine(order_id)
-                print(f"✅ VIDEO ENGINE LANZADO → {order_id}")
-            except Exception:
-                print(f"❌ ERROR AL LANZAR VIDEO ENGINE → {order_id}")
-                traceback.print_exc()
-        else:
-            print(f"ℹ️ Pedido ya estaba pagado, no relanzo motor → {order_id}")
-
-    else:
-        print(f"ℹ️ Evento Stripe ignorado: {event['type']}")
-
-    return {"status": "success"}
+    return {"status": "ok"}
 
 
 # =========================================================
