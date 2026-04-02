@@ -1766,38 +1766,36 @@ async def stripe_webhook(request: Request):
     # SOLO NOS IMPORTA ESTE EVENTO
     # =========================================================
 
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+if event["type"] == "checkout.session.completed":
+    session = event["data"]["object"]
 
-        order_id = session.get("client_reference_id")
+    order_id = session.get("client_reference_id")
 
-        if not order_id:
-            metadata = session.get("metadata", {}) or {}
-            order_id = metadata.get("order_id")
+    if not order_id:
+        metadata = session.get("metadata", {}) or {}
+        order_id = metadata.get("order_id")
 
-        print("📦 order_id:", order_id)
+    print("📦 order_id:", order_id)
 
-        if not order_id:
-            print("❌ ERROR: no hay order_id")
-            return {"status": "error", "reason": "order_id missing"}
+    if not order_id:
+        print("❌ ERROR: no hay order_id")
+        return {"status": "error", "reason": "order_id missing"}
 
-        try:
-            print("📡 Enviando al video engine...")
+    try:
+        print("🚀 Enviando al video engine...")
 
-            response = requests.post(
-                "https://eterna-video-engine.onrender.com/render",
-                json={"order_id": order_id},
-                timeout=10
-            )
+        response = requests.post(
+            "https://eterna-video-engine.onrender.com/render",
+            json={"order_id": order_id},
+            timeout=10
+        )
 
-            print("📡 Video engine response:", response.text)
+        print("📩 Video engine response:", response.text)
 
-        except Exception as e:
-            print("❌ Error llamando al video engine:", str(e))
+    except Exception as e:
+        print("❌ Error llamando al video engine:", str(e))
 
-        return {"status": "ok"}
-
-    return {"status": "ignored"}
+    return {"status": "ok"}
 
     
 # =========================================================
