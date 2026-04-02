@@ -5,6 +5,7 @@ import secrets
 import sqlite3
 import traceback
 import uuid
+import requests
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -1781,15 +1782,19 @@ async def stripe_webhook(request: Request):
             print("❌ ERROR: no hay order_id")
             return {"status": "error", "reason": "order_id missing"}
 
-        # =========================================================
-        # VIDEO ENGINE (DESACTIVADO TEMPORALMENTE)
-        # =========================================================
+try:
+    print("🎬 Enviando al video engine...")
 
-        print("⚠️ VIDEO ENGINE DESACTIVADO")
+    response = requests.post(
+        "https://eterna-video-engine.onrender.com/render",
+        json={"order_id": order_id},
+        timeout=10
+    )
 
-        # Aquí en el futuro conectaremos el video engine externo
+    print("🎬 Video engine response:", response.text)
 
-        # =========================================================
+except Exception as e:
+    print("❌ Error llamando al video engine:", str(e))
 
         return {"status": "ok"}
 
