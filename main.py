@@ -830,7 +830,7 @@ except Exception as e:
     print(str(e))
     traceback.print_exc()
     raise
-    
+
     if not final_video_path:
         final_video_path = str(output_path)
 
@@ -849,6 +849,7 @@ except Exception as e:
     )
 
     print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
+    
     return public_video_url
 
 
