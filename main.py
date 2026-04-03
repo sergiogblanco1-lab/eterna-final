@@ -1,5 +1,6 @@
 print("🔥 DEPLOY TEST 🔥")
 print("🔥 VERSION NUEVA CARGADA 🔥")
+
 import html
 import mimetypes
 import os
@@ -7,12 +8,12 @@ import secrets
 import sqlite3
 import traceback
 import uuid
-import requests
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
 import boto3
+import requests
 import stripe
 from botocore.client import Config
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -43,14 +44,17 @@ PUBLIC_BASE_URL = os.getenv(
     "https://eterna-final.onrender.com",
 ).strip().rstrip("/")
 
+VIDEO_ENGINE_URL = os.getenv(
+    "VIDEO_ENGINE_URL",
+    "https://eterna-video-engine.onrender.com",
+).strip().rstrip("/")
+
 BASE_PRICE = float(os.getenv("ETERNA_BASE_PRICE", "29"))
 CURRENCY = os.getenv("ETERNA_CURRENCY", "eur").strip().lower()
 
 GIFT_COMMISSION_RATE = float(os.getenv("GIFT_COMMISSION_RATE", "0.05"))
 FIXED_PLATFORM_FEE = float(os.getenv("ETERNA_FIXED_FEE", "2"))
 GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
-
-
 
 R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "").strip()
 R2_SECRET_KEY = os.getenv("R2_SECRET_KEY", "").strip()
@@ -60,7 +64,10 @@ R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").strip().rstrip("/")
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
-TWILIO_FROM_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "").strip()
+TWILIO_FROM_NUMBER = (
+    os.getenv("TWILIO_FROM_NUMBER", "").strip()
+    or os.getenv("TWILIO_PHONE_NUMBER", "").strip()
+)
 
 MAX_VIDEO_SIZE = 30 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
@@ -360,144 +367,6 @@ def detect_image_extension(upload: UploadFile) -> str:
 
     return "jpg"
 
-def list_assets(order_id: str):
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id, order_id, asset_type, file_url, storage_provider, created_at
-        FROM assets
-        WHERE order_id = ?
-        ORDER BY id ASC
-    """, (order_id,))
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
-    slot_name = (slot_name or "").strip().lower()
-
-    aliases = {slot_name}
-    if slot_name.startswith("photo"):
-        aliases.add(slot_name.replace("photo", "foto", 1))
-    if slot_name.startswith("foto"):
-        aliases.add(slot_name.replace("foto", "photo", 1))
-
-    assets = list_assets(order_id)
-
-    for asset in assets:
-        asset_type = (asset.get("asset_type") or "").strip().lower()
-        file_url = (asset.get("file_url") or "").strip()
-
-        if asset_type in aliases and file_url:
-            return file_url
-
-    return None
-
-
-@app.post("/stripe/webhook")
-async def stripe_webhook(request: Request):
-    import stripe
-    import traceback
-
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-
-    if not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Payload inválido")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Firma inválida")
-
-    if event["type"] != "checkout.session.completed":
-        return {"status": "ignored"}
-
-    try:
-        session = event["data"]["object"]
-
-        order_id = session.get("client_reference_id")
-
-        if not order_id:
-            metadata = session.get("metadata", {}) or {}
-            order_id = metadata.get("order_id")
-
-        if not order_id:
-            return {"status": "error", "reason": "order_id missing"}
-
-        print(f"🔥 WEBHOOK OK → order_id: {order_id}")
-
-        # MARCAR COMO PAGADO
-        update_order(order_id, paid=1)
-
-        # LANZAR MOTOR (SIN DUPLICAR NADA)
-        try:
-            requests.post(
-                "https://eterna-video-engine.onrender.com/render",
-                json={"order_id": order_id},
-                timeout=10
-            )
-        except Exception as e:
-            print("❌ Error llamando al motor:", str(e))
-
-        # SMS
-        try:
-            order = get_order_by_id(order_id)
-            try_send_recipient_sms(order)
-        except Exception as e:
-            print("❌ Error SMS:", str(e))
-
-        return {"status": "ok"}
-
-    except Exception as e:
-        print("❌ ERROR webhook:", str(e))
-        traceback.print_exc()
-        return {"status": "error", "reason": str(e)}
-
-
-@app.get("/video/input/{order_id}/{slot_name}")
-def get_input_photo(order_id: str, slot_name: str):
-    _ = get_order_by_id(order_id)
-
-    filepath = get_photo_asset_path(order_id, slot_name)
-
-    if not filepath or not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Foto no encontrada")
-
-    media_type, _ = mimetypes.guess_type(filepath)
-
-    return FileResponse(
-        filepath,
-        media_type=media_type or "image/jpeg",
-        filename=os.path.basename(filepath),
-    )
-
-
-
-
-@app.get("/video/input/{order_id}/{slot_name}")
-def get_input_photo(order_id: str, slot_name: str):
-    _ = get_order_by_id(order_id)
-
-    filepath = get_photo_asset_path(order_id, slot_name)
-
-    if not filepath or not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Foto no encontrada")
-
-    media_type, _ = mimetypes.guess_type(filepath)
-
-    return FileResponse(
-        filepath,
-        media_type=media_type or "image/jpeg",
-        filename=os.path.basename(filepath),
-    )
 
 def build_photo_path(order_id: str, slot_name: str, upload: UploadFile) -> str:
     ext = detect_image_extension(upload)
@@ -559,53 +428,58 @@ def upload_video_to_r2(local_path: str, remote_name: str, content_type: str = "v
 
 
 def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider: str):
-    def get_order_by_sender_token_or_404(token: str):
     conn = db_conn()
     cur = conn.cursor()
-
     cur.execute("""
-        SELECT
-            o.*,
-            s.name AS sender_name,
-            s.email AS sender_email,
-            s.phone AS sender_phone,
-            r.name AS recipient_name,
-            r.phone AS recipient_phone
-        FROM orders o
-        JOIN senders s ON s.id = o.sender_id
-        JOIN recipients r ON r.id = o.recipient_id
-        WHERE o.sender_token = ?
-    """, (token,))
-
-    row = cur.fetchone()
-    conn.close()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Sender pack no encontrado")
-
-    return dict(row)
-
-
-def update_order(order_id: str, **fields):
-    if not fields:
-        return
-
-    fields["updated_at"] = now_iso()
-
-    columns = ", ".join([f"{k}=?" for k in fields.keys()])
-    values = list(fields.values()) + [order_id]
-
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
+        INSERT INTO assets (order_id, asset_type, file_url, storage_provider, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    """, (order_id, asset_type, file_url, storage_provider, now_iso()))
     conn.commit()
     conn.close()
 
 
+def list_assets(order_id: str):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, order_id, asset_type, file_url, storage_provider, created_at
+        FROM assets
+        WHERE order_id = ?
+        ORDER BY id ASC
+    """, (order_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
+    slot_name = (slot_name or "").strip().lower()
+
+    aliases = {slot_name}
+    if slot_name.startswith("photo"):
+        aliases.add(slot_name.replace("photo", "foto", 1))
+    if slot_name.startswith("foto"):
+        aliases.add(slot_name.replace("foto", "photo", 1))
+
+    assets = list_assets(order_id)
+
+    for asset in assets:
+        asset_type = (asset.get("asset_type") or "").strip().lower()
+        file_url = (asset.get("file_url") or "").strip()
+
+        if asset_type in aliases and file_url:
+            return file_url
+
+    return None
+
+
+# =========================================================
+# ORDER HELPERS
+# =========================================================
+
 def get_order_by_id(order_id: str):
     conn = db_conn()
     cur = conn.cursor()
-
     cur.execute("""
         SELECT
             o.*,
@@ -619,20 +493,16 @@ def get_order_by_id(order_id: str):
         JOIN recipients r ON r.id = o.recipient_id
         WHERE o.id = ?
     """, (order_id,))
-
     row = cur.fetchone()
     conn.close()
-
     if not row:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
-
     return dict(row)
 
 
 def get_order_by_recipient_token_or_404(token: str):
     conn = db_conn()
     cur = conn.cursor()
-
     cur.execute("""
         SELECT
             o.*,
@@ -646,14 +516,12 @@ def get_order_by_recipient_token_or_404(token: str):
         JOIN recipients r ON r.id = o.recipient_id
         WHERE o.recipient_token = ?
     """, (token,))
-
     row = cur.fetchone()
     conn.close()
-
     if not row:
-        raise HTTPException(status_code=404, detail="Recipient pack no encontrado")
-
+        raise HTTPException(status_code=404, detail="Experiencia no encontrada")
     return dict(row)
+
 
 def get_order_by_sender_token_or_404(token: str):
     conn = db_conn()
@@ -920,103 +788,6 @@ def try_start_experience(order_id: str) -> str:
 
     return "started"
 
-
-# =========================================================
-# VIDEO ENGINE
-# =========================================================
-
-def trigger_video_engine(order_id: str):
-    import os
-    import traceback
-    from pathlib import Path
-
-    order = get_order(order_id)
-    if not order:
-        raise Exception(f"Pedido no encontrado: {order_id}")
-
-    assets = list_assets(order_id)
-
-    photo_map = {}
-
-    for asset in assets:
-        asset_type = (asset.get("asset_type") or "").strip().lower()
-        file_url = (asset.get("file_url") or "").strip()
-
-        if not file_url:
-            continue
-
-        if asset_type in {"photo1", "foto1"}:
-            photo_map[1] = file_url
-        elif asset_type in {"photo2", "foto2"}:
-            photo_map[2] = file_url
-        elif asset_type in {"photo3", "foto3"}:
-            photo_map[3] = file_url
-        elif asset_type in {"photo4", "foto4"}:
-            photo_map[4] = file_url
-        elif asset_type in {"photo5", "foto5"}:
-            photo_map[5] = file_url
-        elif asset_type in {"photo6", "foto6"}:
-            photo_map[6] = file_url
-
-    photo_paths = [photo_map[i] for i in range(1, 7) if i in photo_map]
-
-    if len(photo_paths) != 6:
-        raise Exception(f"El pedido {order_id} no tiene exactamente 6 fotos. Encontradas: {len(photo_paths)}")
-
-    for i, p in enumerate(photo_paths, start=1):
-        if not os.path.exists(p):
-            raise Exception(f"La foto {i} no existe en disco: {p}")
-
-    phrase_1 = (order.get("phrase_1") or "").strip()
-    phrase_2 = (order.get("phrase_2") or "").strip()
-    phrase_3 = (order.get("phrase_3") or "").strip()
-
-    output_dir = Path("videos")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{order_id}.mp4"
-
-    print(f"[VIDEO_ENGINE] Fotos encontradas: {photo_paths}")
-    print(f"[VIDEO_ENGINE] Frases: {phrase_1} | {phrase_2} | {phrase_3}")
-    print(f"[VIDEO_ENGINE] Output: {output_path}")
-
-    from video_engine import render_eterna_video
-
-    try:
-        final_video_path = render_eterna_video(
-            photo_paths=photo_paths,
-            phrase_1=phrase_1,
-            phrase_2=phrase_2,
-            phrase_3=phrase_3,
-            output_path=str(output_path),
-        )
-
-        print(f"[VIDEO_ENGINE] Render devolvió: {final_video_path}")
-
-        if not final_video_path:
-            final_video_path = str(output_path)
-
-        if not os.path.exists(final_video_path):
-            raise Exception(f"El render terminó pero no existe el archivo final: {final_video_path}")
-
-    except Exception as e:
-        print("❌ ERROR REAL EN VIDEO ENGINE:")
-        print(str(e))
-        traceback.print_exc()
-        raise
-
-    public_video_url = f"{PUBLIC_BASE_URL}/video/generated/{order_id}"
-
-    update_order(order_id, experience_video_url=public_video_url)
-
-    insert_asset(
-        order_id=order_id,
-        asset_type="rendered_video",
-        file_url=public_video_url,
-        storage_provider="local",
-    )
-
-    print(f"[VIDEO_ENGINE] Render completado para {order_id}: {public_video_url}")
-    return public_video_url
 
 # =========================================================
 # STRIPE CONNECT HELPERS
@@ -1779,6 +1550,19 @@ async def create_order_and_redirect(
             except Exception:
                 pass
 
+    payload = {
+        "order_id": order_id,
+        "photos": [
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo1",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo2",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo3",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo4",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo5",
+            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo6",
+        ],
+        "phrases": [phrase_1, phrase_2, phrase_3],
+    }
+
     if not STRIPE_SECRET_KEY:
         update_order(
             order_id,
@@ -1786,13 +1570,26 @@ async def create_order_and_redirect(
             stripe_payment_status="test_no_stripe",
             gift_refund_deadline_at=gift_refund_deadline_iso(),
         )
+
         order = get_order_by_id(order_id)
         try_send_recipient_sms(order)
 
         try:
-            trigger_video_engine(order_id)
+            response = requests.post(
+                f"{VIDEO_ENGINE_URL}/render",
+                json=payload,
+                timeout=300,
+            )
+            print("📩 Video engine status:", response.status_code)
+            print("📩 Video engine response:", response.text)
+            if response.ok:
+                data = response.json()
+                video_url = (data.get("video_url") or "").strip()
+                if video_url:
+                    update_order(order_id, experience_video_url=video_url)
+                    insert_asset(order_id, "rendered_video", video_url, "video_engine")
         except Exception as e:
-            log_error("trigger_video_engine test_no_stripe", e)
+            log_error("video engine test_no_stripe", e)
 
         return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
 
@@ -1922,7 +1719,7 @@ def checkout_exito(order_id: str):
     """
 
 
-("/stripe/webhook")
+@app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -1933,7 +1730,7 @@ async def stripe_webhook(request: Request):
     try:
         event = stripe.Webhook.construct_event(
             payload,
-            sig_header,@app.post
+            sig_header,
             STRIPE_WEBHOOK_SECRET
         )
     except ValueError:
@@ -1995,7 +1792,7 @@ async def stripe_webhook(request: Request):
         print("🚀 Enviando al video engine...")
 
         response = requests.post(
-            "https://eterna-video-engine.onrender.com/render",
+            f"{VIDEO_ENGINE_URL}/render",
             json={
                 "order_id": order_id,
                 "photos": photos,
@@ -2004,8 +1801,8 @@ async def stripe_webhook(request: Request):
             timeout=300,
         )
 
-        print("📩 Video engine:", response.status_code)
-        print("📩 Response:", response.text)
+        print("📩 Video engine status:", response.status_code)
+        print("📩 Video engine response:", response.text)
 
         if response.ok:
             data = response.json()
@@ -2030,11 +1827,11 @@ async def stripe_webhook(request: Request):
         return {"status": "ok"}
 
     except Exception as e:
-        print("❌ ERROR webhook:", str(e))
+        print("❌ ERROR webhook/video engine:", str(e))
         traceback.print_exc()
         return {"status": "error", "reason": str(e)}
 
-    
+
 # =========================================================
 # POST PAYMENT
 # =========================================================
@@ -3345,19 +3142,6 @@ def admin_process_refunds(token: str = ""):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return JSONResponse({"ok": True})
-
-
-
-
-    conn.commit()
-    updated = cur.rowcount
-    conn.close()
-
-    return JSONResponse({
-        "ok": True,
-        "updated_orders": updated,
-        "experience_video_url": None,
-    })
 
 
 @app.get("/admin/retry-recipient-message/{order_id}")
