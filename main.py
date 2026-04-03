@@ -568,6 +568,10 @@ def reaction_exists(order: dict) -> bool:
     return bool(local_path) and os.path.exists(local_path)
 
 
+def original_video_ready(order: dict) -> bool:
+    return bool((order.get("experience_video_url") or "").strip())
+
+
 def sender_pack_url_from_order(order: dict) -> str:
     return f"{PUBLIC_BASE_URL}/sender/{order['sender_token']}"
 
@@ -674,6 +678,22 @@ def try_send_recipient_sms(order: dict) -> dict:
             "sid": order.get("recipient_sms_sid"),
             "already_sent": True,
             "error": None,
+        }
+
+    if not bool(order.get("paid")):
+        return {
+            "ok": False,
+            "sid": None,
+            "already_sent": False,
+            "error": "order_not_paid",
+        }
+
+    if not original_video_ready(order):
+        return {
+            "ok": False,
+            "sid": None,
+            "already_sent": False,
+            "error": "original_video_not_ready",
         }
 
     attempts = int(order.get("recipient_sms_attempts") or 0) + 1
@@ -1571,9 +1591,6 @@ async def create_order_and_redirect(
             gift_refund_deadline_at=gift_refund_deadline_iso(),
         )
 
-        order = get_order_by_id(order_id)
-        try_send_recipient_sms(order)
-
         try:
             response = requests.post(
                 f"{VIDEO_ENGINE_URL}/render",
@@ -1582,12 +1599,19 @@ async def create_order_and_redirect(
             )
             print("📩 Video engine status:", response.status_code)
             print("📩 Video engine response:", response.text)
+
             if response.ok:
                 data = response.json()
                 video_url = (data.get("video_url") or "").strip()
+
                 if video_url:
                     update_order(order_id, experience_video_url=video_url)
                     insert_asset(order_id, "rendered_video", video_url, "video_engine")
+
+                    order = get_order_by_id(order_id)
+                    try_send_recipient_sms(order)
+                else:
+                    print("⏳ Vídeo todavía no listo. No se envía SMS.")
         except Exception as e:
             log_error("video engine test_no_stripe", e)
 
@@ -1818,11 +1842,15 @@ async def stripe_webhook(request: Request):
                     storage_provider="video_engine",
                 )
 
-        try:
-            order = get_order_by_id(order_id)
-            try_send_recipient_sms(order)
-        except Exception as e:
-            log_error("recipient sms after webhook", e)
+                try:
+                    order = get_order_by_id(order_id)
+                    try_send_recipient_sms(order)
+                except Exception as e:
+                    log_error("recipient sms after webhook", e)
+            else:
+                print("⏳ Video engine aceptó el trabajo pero aún no devolvió video_url. No se envía SMS.")
+        else:
+            print("❌ Video engine no devolvió OK")
 
         return {"status": "ok"}
 
@@ -1848,13 +1876,6 @@ def post_pago(order_id: str):
 def resumen(order_id: str):
     order = get_order_by_id(order_id)
 
-    if not order.get("recipient_sms_sent_at"):
-        try:
-            try_send_recipient_sms(order)
-            order = get_order_by_id(order_id)
-        except Exception as e:
-            log_error("resumen try_send_recipient_sms", e)
-
     recipient_name = safe_text(order.get("recipient_name") or "esa persona")
     sms_sent = bool(order.get("recipient_sms_sent_at"))
 
@@ -1864,8 +1885,8 @@ def resumen(order_id: str):
         soft_line = "Pronto tendrás noticias."
     else:
         status_line = "Estamos creando tu momento."
-        sub_line = f"Estamos intentando enviar el mensaje a {recipient_name}."
-        soft_line = "Pronto tendrás noticias."
+        sub_line = f"Tu ETERNA se está preparando antes de avisar a {recipient_name}."
+        soft_line = "El mensaje solo saldrá cuando el vídeo esté completamente listo."
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
