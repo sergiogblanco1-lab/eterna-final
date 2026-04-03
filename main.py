@@ -1,5 +1,6 @@
 print("🔥 DEPLOY TEST 🔥")
 print("🔥 VERSION NUEVA CARGADA 🔥")
+print("🔥 CALLBACK READY VERSION 🔥")
 
 import html
 import mimetypes
@@ -48,6 +49,11 @@ VIDEO_ENGINE_URL = os.getenv(
     "VIDEO_ENGINE_URL",
     "https://eterna-video-engine.onrender.com",
 ).strip().rstrip("/")
+
+VIDEO_READY_CALLBACK_SECRET = os.getenv(
+    "VIDEO_READY_CALLBACK_SECRET",
+    "",
+).strip()
 
 BASE_PRICE = float(os.getenv("ETERNA_BASE_PRICE", "29"))
 CURRENCY = os.getenv("ETERNA_CURRENCY", "eur").strip().lower()
@@ -452,6 +458,20 @@ def list_assets(order_id: str):
     return [dict(r) for r in rows]
 
 
+def asset_exists(order_id: str, asset_type: str, file_url: str) -> bool:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 1
+        FROM assets
+        WHERE order_id = ? AND asset_type = ? AND file_url = ?
+        LIMIT 1
+    """, (order_id, asset_type, file_url))
+    row = cur.fetchone()
+    conn.close()
+    return bool(row)
+
+
 def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
     slot_name = (slot_name or "").strip().lower()
 
@@ -471,6 +491,55 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
             return file_url
 
     return None
+
+
+def video_engine_headers() -> dict:
+    headers = {"Content-Type": "application/json"}
+    if VIDEO_READY_CALLBACK_SECRET:
+        headers["X-Video-Engine-Secret"] = VIDEO_READY_CALLBACK_SECRET
+    return headers
+
+
+def trigger_video_engine(order_id: str, phrases: list[str]) -> dict:
+    photos = [
+        f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo1",
+        f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo2",
+        f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo3",
+        f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo4",
+        f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo5",
+        f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo6",
+    ]
+
+    payload = {
+        "order_id": order_id,
+        "photos": photos,
+        "phrases": phrases,
+    }
+
+    print("🚀 Enviando al video engine...")
+    print("🚀 VIDEO_ENGINE_URL:", VIDEO_ENGINE_URL)
+    print("🚀 payload:", payload)
+
+    response = requests.post(
+        f"{VIDEO_ENGINE_URL}/render",
+        json=payload,
+        headers=video_engine_headers(),
+        timeout=30,
+    )
+
+    print("📩 Video engine status:", response.status_code)
+    print("📩 Video engine response:", response.text)
+
+    data = {}
+    try:
+        data = response.json()
+    except Exception:
+        data = {"raw_text": response.text}
+
+    if not response.ok:
+        raise Exception(f"video_engine_http_{response.status_code}: {response.text}")
+
+    return data
 
 
 # =========================================================
@@ -1573,19 +1642,6 @@ async def create_order_and_redirect(
             except Exception:
                 pass
 
-    payload = {
-        "order_id": order_id,
-        "photos": [
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo1",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo2",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo3",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo4",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo5",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo6",
-        ],
-        "phrases": [phrase_1, phrase_2, phrase_3],
-    }
-
     if not STRIPE_SECRET_KEY:
         update_order(
             order_id,
@@ -1595,26 +1651,8 @@ async def create_order_and_redirect(
         )
 
         try:
-            response = requests.post(
-                f"{VIDEO_ENGINE_URL}/render",
-                json=payload,
-                timeout=300,
-            )
-            print("📩 Video engine status:", response.status_code)
-            print("📩 Video engine response:", response.text)
-
-            if response.ok:
-                data = response.json()
-                video_url = (data.get("video_url") or "").strip()
-
-                if video_url:
-                    update_order(order_id, experience_video_url=video_url)
-                    insert_asset(order_id, "rendered_video", video_url, "video_engine")
-
-                    order = get_order_by_id(order_id)
-                    try_send_recipient_sms(order)
-                else:
-                    print("⏳ Vídeo todavía no listo. No se envía SMS.")
+            trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
+            print("⏳ Render aceptado por el video engine. Esperando callback.")
         except Exception as e:
             log_error("video engine test_no_stripe", e)
 
@@ -1708,7 +1746,7 @@ async def crear_post(
 
 
 # =========================================================
-# CHECKOUT / WEBHOOK
+# CHECKOUT / WEBHOOK / CALLBACK
 # =========================================================
 
 @app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
@@ -1801,66 +1839,105 @@ async def stripe_webhook(request: Request):
 
         order = get_order_by_id(order_id)
 
-        photos = [
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo1",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo2",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo3",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo4",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo5",
-            f"{PUBLIC_BASE_URL}/video/input/{order_id}/photo6",
-        ]
-
         phrases = [
             (order.get("phrase_1") or "").strip(),
             (order.get("phrase_2") or "").strip(),
             (order.get("phrase_3") or "").strip(),
         ]
 
-        print("🚀 Enviando al video engine...")
-
-        response = requests.post(
-            f"{VIDEO_ENGINE_URL}/render",
-            json={
-                "order_id": order_id,
-                "photos": photos,
-                "phrases": phrases,
-            },
-            timeout=300,
-        )
-
-        print("📩 Video engine status:", response.status_code)
-        print("📩 Video engine response:", response.text)
-
-        if response.ok:
-            data = response.json()
-            video_url = (data.get("video_url") or "").strip()
-
-            if video_url:
-                update_order(order_id, experience_video_url=video_url)
-
-                insert_asset(
-                    order_id=order_id,
-                    asset_type="rendered_video",
-                    file_url=video_url,
-                    storage_provider="video_engine",
-                )
-
-                try:
-                    order = get_order_by_id(order_id)
-                    try_send_recipient_sms(order)
-                except Exception as e:
-                    log_error("recipient sms after webhook", e)
-            else:
-                print("⏳ Video engine aceptó el trabajo pero aún no devolvió video_url. No se envía SMS.")
-        else:
-            print("❌ Video engine no devolvió OK")
+        try:
+            data = trigger_video_engine(order_id, phrases)
+            print("✅ Video engine aceptó el trabajo:", data)
+        except Exception as e:
+            print("❌ ERROR webhook/video engine:", str(e))
+            traceback.print_exc()
+            return {"status": "error", "reason": str(e)}
 
         return {"status": "ok"}
 
     except Exception as e:
-        print("❌ ERROR webhook/video engine:", str(e))
+        print("❌ ERROR webhook:", str(e))
         traceback.print_exc()
         return {"status": "error", "reason": str(e)}
+
+
+@app.post("/internal/video-ready")
+async def internal_video_ready(request: Request):
+    incoming_secret = (request.headers.get("X-Video-Engine-Secret") or "").strip()
+
+    if VIDEO_READY_CALLBACK_SECRET:
+        if incoming_secret != VIDEO_READY_CALLBACK_SECRET:
+            print("❌ Callback secret inválido")
+            return JSONResponse(
+                status_code=403,
+                content={"status": "error", "reason": "invalid_secret"},
+            )
+
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "reason": "invalid_json"},
+        )
+
+    order_id = (data.get("order_id") or "").strip()
+    video_url = (data.get("video_url") or "").strip()
+
+    print("🎬 CALLBACK VIDEO READY")
+    print("🎬 order_id:", order_id)
+    print("🎬 video_url:", video_url)
+
+    if not order_id or not video_url:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "reason": "missing_data"},
+        )
+
+    try:
+        order = get_order_by_id(order_id)
+
+        if not bool(order.get("paid")):
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "reason": "order_not_paid"},
+            )
+
+        already_video = (order.get("experience_video_url") or "").strip()
+        if already_video:
+            print("ℹ️ El pedido ya tenía experience_video_url:", already_video)
+        else:
+            update_order(order_id, experience_video_url=video_url)
+
+        if not asset_exists(order_id, "rendered_video", video_url):
+            insert_asset(
+                order_id=order_id,
+                asset_type="rendered_video",
+                file_url=video_url,
+                storage_provider="video_engine",
+            )
+
+        updated_order = get_order_by_id(order_id)
+
+        try:
+            sms_result = try_send_recipient_sms(updated_order)
+            print("📩 Resultado SMS callback:", sms_result)
+        except Exception as e:
+            log_error("recipient sms after callback", e)
+
+        return JSONResponse({
+            "status": "ok",
+            "order_id": order_id,
+            "video_url": video_url,
+        })
+
+    except Exception as e:
+        print("❌ ERROR internal_video_ready:", str(e))
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "reason": str(e)},
+        )
 
 
 # =========================================================
@@ -1892,9 +1969,9 @@ def resumen(order_id: str):
         sub_line = f"Estamos enviando el mensaje a {recipient_name}."
         soft_line = "El aviso solo sale cuando el vídeo ya existe de verdad."
     else:
-        status_line = "Estamos creando tu momento"
-        sub_line = "El vídeo original aún se está generando."
-        soft_line = "No se enviará ningún SMS hasta que esté completamente listo."
+        status_line = "Pago confirmado"
+        sub_line = "La fábrica de ETERNA ya está haciendo magia."
+        soft_line = "Estamos preparando este momento. Cuando esté listo y salga, todo seguirá su curso."
 
     refresh = '<meta http-equiv="refresh" content="8">' if not sms_sent else ""
 
