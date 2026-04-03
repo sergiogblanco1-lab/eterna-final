@@ -797,6 +797,9 @@ def try_start_experience(order_id: str) -> str:
     if not bool(order.get("paid")):
         return "not_paid"
 
+    if not original_video_ready(order):
+        return "video_not_ready"
+
     if bool(order.get("experience_completed")):
         return "already_completed"
 
@@ -1878,21 +1881,29 @@ def resumen(order_id: str):
 
     recipient_name = safe_text(order.get("recipient_name") or "esa persona")
     sms_sent = bool(order.get("recipient_sms_sent_at"))
+    video_ready = original_video_ready(order)
 
     if sms_sent:
-        status_line = "Estamos creando tu momento."
+        status_line = "Tu ETERNA ya ha salido"
         sub_line = f"{recipient_name} ya tiene su mensaje."
-        soft_line = "Pronto tendrás noticias."
+        soft_line = "Ahora el momento ya está en marcha."
+    elif video_ready:
+        status_line = "Tu ETERNA está lista"
+        sub_line = f"Estamos enviando el mensaje a {recipient_name}."
+        soft_line = "El aviso solo sale cuando el vídeo ya existe de verdad."
     else:
-        status_line = "Estamos creando tu momento."
-        sub_line = f"Tu ETERNA se está preparando antes de avisar a {recipient_name}."
-        soft_line = "El mensaje solo saldrá cuando el vídeo esté completamente listo."
+        status_line = "Estamos creando tu momento"
+        sub_line = "El vídeo original aún se está generando."
+        soft_line = "No se enviará ningún SMS hasta que esté completamente listo."
+
+    refresh = '<meta http-equiv="refresh" content="8">' if not sms_sent else ""
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        {refresh}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
     </head>
@@ -1929,6 +1940,64 @@ def pedido(recipient_token: str):
         <html lang="es">
         <body style="background:#000;color:white;text-align:center;padding-top:100px;font-family:Arial;">
             <h1>Esta ETERNA aún no está disponible</h1>
+        </body>
+        </html>
+        """)
+
+    if not original_video_ready(order):
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="6">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                html, body {{ margin: 0; min-height: 100%; background: #000; }}
+                body {{
+                    min-height: 100vh;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    padding: 24px;
+                }}
+                .card {{
+                    width: 100%;
+                    max-width: 720px;
+                    background: rgba(255,255,255,0.04);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 28px;
+                    padding: 40px 28px;
+                }}
+                h1 {{ font-size: 38px; margin: 0 0 18px 0; line-height: 1.25; }}
+                .line {{
+                    font-size: 20px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.82);
+                    margin-top: 8px;
+                }}
+                .soft {{
+                    margin-top: 18px;
+                    color: rgba(255,255,255,0.48);
+                    line-height: 1.7;
+                    font-size: 14px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>Tu ETERNA se está preparando</h1>
+                <div class="line">Estamos terminando de crear este momento.</div>
+                <div class="line">En cuanto esté listo, podrás verlo aquí.</div>
+                <div class="soft">Esta página se actualizará sola.</div>
+            </div>
         </body>
         </html>
         """)
@@ -2024,13 +2093,14 @@ def experiencia(recipient_token: str):
     if not order["paid"]:
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
+    if not original_video_ready(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    phrase_1 = safe_text(order["phrase_1"])
-    phrase_2 = safe_text(order["phrase_2"])
-    phrase_3 = safe_text(order["phrase_3"])
-    gift_amount = format_amount_display(order["gift_amount"])
+    experience_video_url = (order.get("experience_video_url") or "").strip()
+    experience_video_type = guess_media_type_from_url(experience_video_url)
 
     return f"""
     <!DOCTYPE html>
@@ -2043,66 +2113,86 @@ def experiencia(recipient_token: str):
             * {{ box-sizing: border-box; }}
             html, body {{
                 margin: 0;
-                width: 100%;
                 min-height: 100%;
                 background: #000;
             }}
             body {{
-                background: #000;
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
                 color: white;
                 font-family: Arial, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 18px;
+            }}
+            .wrap {{
+                width: 100%;
+                max-width: 520px;
                 text-align: center;
             }}
-            .screen {{
-                min-height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                flex-direction: column;
-                padding: 24px;
+            .title {{
+                font-size: 28px;
+                line-height: 1.5;
+                margin-bottom: 10px;
+                color: rgba(255,255,255,0.95);
             }}
-            #content {{
-                width: 100%;
-                max-width: 920px;
-                padding: 24px;
-                opacity: 0;
-                transform: translateY(12px);
-                transition: opacity 0.7s ease, transform 0.7s ease;
-            }}
-            #content.visible {{
-                opacity: 1;
-                transform: translateY(0);
-            }}
-            #content h2 {{
-                font-size: 42px;
-                line-height: 1.4;
-                margin: 0;
-                font-weight: 500;
-                color: white;
-                white-space: pre-line;
-                opacity: 0.95;
-            }}
-            #content .amount {{
-                margin-top: 20px;
-                font-size: 54px;
-                font-weight: bold;
-                line-height: 1;
-            }}
-            #statusMsg {{
-                margin-top: 20px;
-                color: rgba(255,255,255,0.6);
+            .soft {{
                 font-size: 14px;
+                line-height: 1.7;
+                color: rgba(255,255,255,0.52);
+                margin-bottom: 18px;
             }}
-            @media (max-width: 768px) {{
-                #content h2 {{ font-size: 30px; }}
-                #content .amount {{ font-size: 42px; }}
+            .video-shell {{
+                width: 100%;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 26px;
+                padding: 14px;
+            }}
+            video {{
+                width: 100%;
+                border-radius: 18px;
+                background: #111;
+                display: block;
+            }}
+            .btn {{
+                width: 100%;
+                margin-top: 18px;
+                padding: 16px 22px;
+                border-radius: 999px;
+                border: 0;
+                background: white;
+                color: black;
+                font-weight: bold;
+                font-size: 15px;
+                cursor: pointer;
+            }}
+            .status {{
+                margin-top: 16px;
+                font-size: 14px;
+                line-height: 1.7;
+                color: rgba(255,255,255,0.58);
+                min-height: 24px;
             }}
         </style>
     </head>
     <body>
-        <div class="screen">
-            <div id="content"></div>
-            <div id="statusMsg"></div>
+        <div class="wrap">
+            <div class="title">Esto es para ti</div>
+            <div class="soft">Activa cámara y micrófono. Tu reacción se grabará mientras ves tu ETERNA.</div>
+
+            <div class="video-shell">
+                <video id="eternaVideo" playsinline preload="auto" controls>
+                    <source src="{safe_attr(experience_video_url)}" type="{safe_attr(experience_video_type)}">
+                    Tu navegador no puede reproducir este vídeo.
+                </video>
+            </div>
+
+            <button class="btn" id="startBtn" onclick="startExperience()">Empezar</button>
+            <div class="status" id="statusMsg"></div>
         </div>
 
         <script>
@@ -2112,24 +2202,18 @@ def experiencia(recipient_token: str):
             let mediaMimeType = "video/webm";
             let uploadStarted = false;
             let experienceStarted = false;
+            let videoEndedHandled = false;
+
+            const video = document.getElementById("eternaVideo");
+            const startBtn = document.getElementById("startBtn");
+            const statusMsg = document.getElementById("statusMsg");
+
+            function setStatus(text) {{
+                statusMsg.textContent = text || "";
+            }}
 
             function wait(ms) {{
                 return new Promise(resolve => setTimeout(resolve, ms));
-            }}
-
-            function setStatus(text) {{
-                const el = document.getElementById("statusMsg");
-                if (el) el.textContent = text || "";
-            }}
-
-            async function showScene(scene) {{
-                const content = document.getElementById("content");
-                content.classList.remove("visible");
-                await wait(180);
-                content.innerHTML = scene.html || "";
-                await wait(40);
-                content.classList.add("visible");
-                await wait(scene.duration || 2000);
             }}
 
             async function lockExperienceStart() {{
@@ -2145,6 +2229,11 @@ def experiencia(recipient_token: str):
 
                 if (data.status === "already_completed") {{
                     window.location.href = data.redirect_url || "/cobrar/{safe_attr(order['recipient_token'])}";
+                    return false;
+                }}
+
+                if (data.status === "video_not_ready") {{
+                    window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
                     return false;
                 }}
 
@@ -2183,6 +2272,8 @@ def experiencia(recipient_token: str):
                 if (uploadStarted) return null;
                 uploadStarted = true;
 
+                setStatus("Guardando este momento…");
+
                 if (recorder && recorder.state !== "inactive") {{
                     await new Promise((resolve) => {{
                         recorder.onstop = () => resolve();
@@ -2204,8 +2295,6 @@ def experiencia(recipient_token: str):
             }}
 
             async function finishFlow() {{
-                setStatus("Guardando este momento…");
-
                 const result = await stopRecordingAndUpload();
 
                 if (!result || (result.status !== "ok" && result.status !== "already_uploaded")) {{
@@ -2217,87 +2306,88 @@ def experiencia(recipient_token: str):
                 window.location.href = result.cashout_url || "/cobrar/{safe_attr(order['recipient_token'])}";
             }}
 
-            const scenes = [
-                {{ html: "<h2>Esto no es un vídeo.</h2>", duration: 2000 }},
-                {{ html: "<h2>No es solo un momento.</h2>", duration: 2000 }},
-                {{ html: "<h2>Esto es magia.</h2>", duration: 2400 }},
-                {{ html: "<h2>{phrase_1}</h2>", duration: 2200 }},
-                {{ html: "<h2>{phrase_2}</h2>", duration: 2200 }},
-                {{ html: "<h2>{phrase_3}</h2>", duration: 2200 }},
-                {{
-                    html: "<h2>Esto es para ti.</h2><div class='amount'>{gift_amount}</div>",
-                    duration: 5000
+            async function prepareRecorder(stream) {{
+                currentStream = stream;
+                chunks = [];
+                uploadStarted = false;
+
+                let options = null;
+
+                if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
+                    mediaMimeType = "video/webm;codecs=vp8,opus";
+                    options = {{
+                        mimeType: mediaMimeType,
+                        videoBitsPerSecond: 900000,
+                        audioBitsPerSecond: 64000
+                    }};
+                }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
+                    mediaMimeType = "video/webm";
+                    options = {{
+                        mimeType: mediaMimeType,
+                        videoBitsPerSecond: 900000,
+                        audioBitsPerSecond: 64000
+                    }};
+                }} else if (MediaRecorder.isTypeSupported("video/mp4")) {{
+                    mediaMimeType = "video/mp4";
+                    options = {{
+                        mimeType: mediaMimeType,
+                        videoBitsPerSecond: 900000,
+                        audioBitsPerSecond: 64000
+                    }};
+                }} else {{
+                    throw new Error("Formato no soportado");
                 }}
-            ];
+
+                recorder = new MediaRecorder(stream, options);
+
+                recorder.ondataavailable = (e) => {{
+                    if (e.data && e.data.size > 0) chunks.push(e.data);
+                }};
+            }}
+
+            video.addEventListener("ended", async () => {{
+                if (videoEndedHandled) return;
+                videoEndedHandled = true;
+                await finishFlow();
+            }});
 
             async function startExperience() {{
                 if (experienceStarted) return;
                 experienceStarted = true;
+
+                startBtn.disabled = true;
+                startBtn.textContent = "Preparando...";
 
                 try {{
                     if (!window.MediaRecorder) {{
                         throw new Error("MediaRecorder no soportado");
                     }}
 
+                    const lockOk = await lockExperienceStart();
+                    if (!lockOk) return;
+
+                    setStatus("Activando cámara y micrófono…");
+
                     const stream = await navigator.mediaDevices.getUserMedia({{
                         video: {{ width: 640, height: 480, facingMode: "user" }},
                         audio: true
                     }});
 
-                    currentStream = stream;
-                    chunks = [];
-                    uploadStarted = false;
+                    await prepareRecorder(stream);
 
-                    let options = null;
-
-                    if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
-                        mediaMimeType = "video/webm;codecs=vp8,opus";
-                        options = {{
-                            mimeType: mediaMimeType,
-                            videoBitsPerSecond: 900000,
-                            audioBitsPerSecond: 64000
-                        }};
-                    }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
-                        mediaMimeType = "video/webm";
-                        options = {{
-                            mimeType: mediaMimeType,
-                            videoBitsPerSecond: 900000,
-                            audioBitsPerSecond: 64000
-                        }};
-                    }} else if (MediaRecorder.isTypeSupported("video/mp4")) {{
-                        mediaMimeType = "video/mp4";
-                        options = {{
-                            mimeType: mediaMimeType,
-                            videoBitsPerSecond: 900000,
-                            audioBitsPerSecond: 64000
-                        }};
-                    }} else {{
-                        throw new Error("Formato no soportado");
-                    }}
-
-                    const lockOk = await lockExperienceStart();
-                    if (!lockOk) {{
-                        if (currentStream) {{
-                            currentStream.getTracks().forEach(track => track.stop());
-                            currentStream = null;
-                        }}
-                        return;
-                    }}
-
-                    recorder = new MediaRecorder(stream, options);
-
-                    recorder.ondataavailable = (e) => {{
-                        if (e.data && e.data.size > 0) chunks.push(e.data);
-                    }};
-
-                    await wait(300);
                     recorder.start(300);
 
-                    for (const scene of scenes) {{
-                        await showScene(scene);
-                    }}
+                    setStatus("Viviendo este momento…");
+                    startBtn.style.display = "none";
 
-                    await finishFlow();
+                    try {{
+                        video.currentTime = 0;
+                    }} catch (e) {{}}
+
+                    const playPromise = video.play();
+                    if (playPromise && typeof playPromise.then === "function") {{
+                        await playPromise;
+                    }}
 
                 }} catch (e) {{
                     if (currentStream) {{
@@ -2308,8 +2398,6 @@ def experiencia(recipient_token: str):
                     window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
                 }}
             }}
-
-            startExperience();
         </script>
     </body>
     </html>
@@ -2327,6 +2415,12 @@ def start_experience(recipient_token: str = Form(...)):
 
     if result == "not_paid":
         raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    if result == "video_not_ready":
+        return JSONResponse({
+            "status": "video_not_ready",
+            "redirect_url": f"/pedido/{recipient_token}"
+        })
 
     if result == "already_completed":
         return JSONResponse({
