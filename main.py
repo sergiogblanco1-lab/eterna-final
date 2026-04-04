@@ -1,4 +1,3 @@
-script de experiencia blindado
 cobro más robusto si falla la transferencia
 estado de cobro más claro en /mi-video
 print("🔥 DEPLOY TEST 🔥")
