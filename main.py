@@ -1,6 +1,11 @@
+script de experiencia blindado
+cobro más robusto si falla la transferencia
+estado de cobro más claro en /mi-video
 print("🔥 DEPLOY TEST 🔥")
 print("🔥 VERSION NUEVA CARGADA 🔥")
 print("🔥 CALLBACK READY VERSION 🔥")
+print("🔥 EXPERIENCE LOCKED VERSION 🔥")
+print("🔥 CASHOUT HARDENED VERSION 🔥")
 
 import html
 import mimetypes
@@ -75,7 +80,7 @@ TWILIO_FROM_NUMBER = (
     or os.getenv("TWILIO_PHONE_NUMBER", "").strip()
 )
 
-MAX_VIDEO_SIZE = 30 * 1024 * 1024
+MAX_VIDEO_SIZE = 100 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
     "video/webm",
     "video/mp4",
@@ -1008,10 +1013,20 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_in_progress=0,
         )
         return {"status": "ok", "transfer_id": transfer.id}
+
     except Exception as e:
         log_error("Transfer error", e)
-        release_transfer_lock(order["id"])
-        return {"status": "error", "error": str(e)}
+
+        update_order(
+            order["id"],
+            transfer_in_progress=0,
+        )
+
+        return {
+            "status": "error",
+            "error": str(e),
+            "retry": True,
+        }
 
 
 # =========================================================
@@ -1816,14 +1831,12 @@ async def stripe_webhook(request: Request):
     print("📦 order_id:", order_id)
 
     if not order_id:
-        print("❌ ERROR: no hay order_id")
-        return {"status": "error", "reason": "order_id missing"}
+        raise HTTPException(status_code=400, detail="order_id missing")
 
     try:
         order = get_order_by_id(order_id)
     except Exception:
-        print("❌ ERROR: pedido no encontrado")
-        return {"status": "error", "reason": "order_not_found"}
+        raise HTTPException(status_code=404, detail="order_not_found")
 
     try:
         stripe_payment_status = (session.get("payment_status") or "paid").strip()
@@ -1851,14 +1864,14 @@ async def stripe_webhook(request: Request):
         except Exception as e:
             print("❌ ERROR webhook/video engine:", str(e))
             traceback.print_exc()
-            return {"status": "error", "reason": str(e)}
+            raise HTTPException(status_code=500, detail=f"video_engine_error: {e}")
 
         return {"status": "ok"}
 
     except Exception as e:
         print("❌ ERROR webhook:", str(e))
         traceback.print_exc()
-        return {"status": "error", "reason": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/internal/video-ready")
@@ -2262,7 +2275,7 @@ def experiencia(recipient_token: str):
             <div class="soft">Activa cámara y micrófono. Tu reacción se grabará mientras ves tu ETERNA.</div>
 
             <div class="video-shell">
-                <video id="eternaVideo" playsinline preload="auto" controls>
+                <video id="eternaVideo" playsinline preload="auto">
                     <source src="{safe_attr(experience_video_url)}" type="{safe_attr(experience_video_type)}">
                     Tu navegador no puede reproducir este vídeo.
                 </video>
@@ -2280,6 +2293,7 @@ def experiencia(recipient_token: str):
             let uploadStarted = false;
             let experienceStarted = false;
             let videoEndedHandled = false;
+            let allowPlayback = false;
 
             const video = document.getElementById("eternaVideo");
             const startBtn = document.getElementById("startBtn");
@@ -2292,6 +2306,13 @@ def experiencia(recipient_token: str):
             function wait(ms) {{
                 return new Promise(resolve => setTimeout(resolve, ms));
             }}
+
+            video.addEventListener("play", function () {{
+                if (!allowPlayback) {{
+                    try {{ video.pause(); }} catch (err) {{}}
+                    try {{ video.currentTime = 0; }} catch (err) {{}}
+                }}
+            }});
 
             async function lockExperienceStart() {{
                 const formData = new FormData();
@@ -2353,7 +2374,13 @@ def experiencia(recipient_token: str):
 
                 if (recorder && recorder.state !== "inactive") {{
                     await new Promise((resolve) => {{
-                        recorder.onstop = () => resolve();
+                        const prevOnStop = recorder.onstop;
+                        recorder.onstop = () => {{
+                            try {{
+                                if (typeof prevOnStop === "function") prevOnStop();
+                            }} catch (e) {{}}
+                            resolve();
+                        }};
                         try {{
                             recorder.stop();
                         }} catch (e) {{
@@ -2367,7 +2394,7 @@ def experiencia(recipient_token: str):
                     currentStream = null;
                 }}
 
-                await wait(500);
+                await wait(900);
                 return await sendVideo();
             }}
 
@@ -2420,6 +2447,10 @@ def experiencia(recipient_token: str):
                 recorder.ondataavailable = (e) => {{
                     if (e.data && e.data.size > 0) chunks.push(e.data);
                 }};
+
+                recorder.onerror = () => {{
+                    setStatus("Error grabando la reacción.");
+                }};
             }}
 
             video.addEventListener("ended", async () => {{
@@ -2430,7 +2461,6 @@ def experiencia(recipient_token: str):
 
             async function startExperience() {{
                 if (experienceStarted) return;
-                experienceStarted = true;
 
                 startBtn.disabled = true;
                 startBtn.textContent = "Preparando...";
@@ -2441,7 +2471,12 @@ def experiencia(recipient_token: str):
                     }}
 
                     const lockOk = await lockExperienceStart();
-                    if (!lockOk) return;
+                    if (!lockOk) {{
+                        experienceStarted = false;
+                        startBtn.disabled = false;
+                        startBtn.textContent = "Empezar";
+                        return;
+                    }}
 
                     setStatus("Activando cámara y micrófono…");
 
@@ -2451,6 +2486,9 @@ def experiencia(recipient_token: str):
                     }});
 
                     await prepareRecorder(stream);
+
+                    experienceStarted = true;
+                    allowPlayback = true;
 
                     recorder.start(300);
 
@@ -2467,10 +2505,17 @@ def experiencia(recipient_token: str):
                     }}
 
                 }} catch (e) {{
+                    allowPlayback = false;
+                    experienceStarted = false;
+
                     if (currentStream) {{
                         currentStream.getTracks().forEach(track => track.stop());
                         currentStream = null;
                     }}
+
+                    startBtn.disabled = false;
+                    startBtn.textContent = "Empezar";
+
                     alert("Necesitamos acceso a cámara y micrófono para continuar.");
                     window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
                 }}
@@ -2744,8 +2789,13 @@ def iniciar_cobro_real(recipient_token: str):
 
     if bool(order.get("connect_onboarding_completed")):
         result = process_gift_transfer_for_order(order)
+
         if result.get("status") in {"ok", "already_transferred", "no_gift", "stripe_disabled_test_mode"}:
             return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+
+        if result.get("status") == "error":
+            return RedirectResponse(url=f"/verificando-cobro/{recipient_token}", status_code=303)
+
         return RedirectResponse(url=f"/verificando-cobro/{recipient_token}", status_code=303)
 
     link_url = create_connect_onboarding_link(order)
@@ -2880,13 +2930,23 @@ def mi_video(recipient_token: str):
 
     video_type = guess_media_type_from_url(experience_video_url)
     gift_amount = float(order.get("gift_amount") or 0)
-    cashout_done = bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")) or gift_amount <= 0
 
-    status_text = (
-        "Tu dinero ya se ha procesado."
-        if cashout_done else
-        "Tu dinero ya está en camino. Puede tardar unos días en aparecer en tu cuenta."
-    )
+    if bool(order.get("gift_refunded")):
+        status_text = "Este regalo ha sido cancelado."
+    elif gift_amount <= 0:
+        status_text = "Este momento ya es tuyo."
+    elif bool(order.get("transfer_completed")) or bool(order.get("cashout_completed")):
+        status_text = "Tu dinero ya se ha enviado correctamente."
+    elif bool(order.get("transfer_in_progress")):
+        status_text = "Estamos procesando el envío de tu dinero."
+    elif bool(order.get("connect_onboarding_completed")):
+        status_text = "Tu dinero está listo para enviarse."
+    else:
+        status_text = "Para recibir tu regalo, completa el proceso."
+
+    onboarding_hint = ""
+    if gift_amount > 0 and not bool(order.get("connect_onboarding_completed")) and not bool(order.get("gift_refunded")):
+        onboarding_hint = "Para recibir tu regalo, completa el proceso seguro de Stripe."
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -2970,6 +3030,7 @@ def mi_video(recipient_token: str):
 
             <div class="status">
                 {safe_text(status_text)}
+                {"<br><br>" + safe_text(onboarding_hint) if onboarding_hint else ""}
             </div>
 
             <div class="actions">
@@ -3193,130 +3254,130 @@ def sender_pack(sender_token: str):
             let syncing = false;
             let endedHandled = false;
 
-            function safePlay(v) {{
+            function safePlay(v) {
                 if (!v) return Promise.resolve();
-                try {{
+                try {
                     return v.play();
-                }} catch (e) {{
+                } catch (e) {
                     return Promise.resolve();
-                }}
-            }}
+                }
+            }
 
-            function safePause(v) {{
+            function safePause(v) {
                 if (!v) return;
-                try {{ v.pause(); }} catch (e) {{}}
-            }}
+                try { v.pause(); } catch (e) {}
+            }
 
-            function safeReset(v) {{
+            function safeReset(v) {
                 if (!v) return;
                 safePause(v);
-                try {{ v.currentTime = 0; }} catch (e) {{}}
-            }}
+                try { v.currentTime = 0; } catch (e) {}
+            }
 
-            function syncTime(source, target) {{
+            function syncTime(source, target) {
                 if (!source || !target || syncing) return;
                 syncing = true;
-                try {{
-                    if (Math.abs((target.currentTime || 0) - (source.currentTime || 0)) > 0.25) {{
+                try {
+                    if (Math.abs((target.currentTime || 0) - (source.currentTime || 0)) > 0.25) {
                         target.currentTime = source.currentTime || 0;
-                    }}
-                }} catch (e) {{}}
+                    }
+                } catch (e) {}
                 syncing = false;
-            }}
+            }
 
-            function isAnyPlaying() {{
+            function isAnyPlaying() {
                 return (
                     (original && !original.paused && !original.ended) ||
                     (reaction && !reaction.paused && !reaction.ended)
                 );
-            }}
+            }
 
-            function setButtonState() {{
+            function setButtonState() {
                 toggleBtn.textContent = isAnyPlaying() ? "Pausar" : "Reproducir";
-            }}
+            }
 
-            async function playBoth() {{
+            async function playBoth() {
                 endedHandled = false;
                 syncTime(original, reaction);
                 syncTime(reaction, original);
                 await Promise.allSettled([safePlay(original), safePlay(reaction)]);
                 setButtonState();
-            }}
+            }
 
-            function pauseBoth() {{
+            function pauseBoth() {
                 safePause(original);
                 safePause(reaction);
                 setButtonState();
-            }}
+            }
 
-            function resetBothToStart() {{
+            function resetBothToStart() {
                 safeReset(original);
                 safeReset(reaction);
                 toggleBtn.textContent = "Reproducir";
-            }}
+            }
 
-            function toggleBoth() {{
-                if (isAnyPlaying()) {{
+            function toggleBoth() {
+                if (isAnyPlaying()) {
                     pauseBoth();
-                }} else {{
+                } else {
                     playBoth();
-                }}
-            }}
+                }
+            }
 
-            original.addEventListener("play", () => {{
+            original.addEventListener("play", () => {
                 endedHandled = false;
                 syncTime(original, reaction);
                 if (reaction.paused) safePlay(reaction);
                 setButtonState();
-            }});
+            });
 
-            reaction.addEventListener("play", () => {{
+            reaction.addEventListener("play", () => {
                 endedHandled = false;
                 syncTime(reaction, original);
                 if (original.paused) safePlay(original);
                 setButtonState();
-            }});
+            });
 
-            original.addEventListener("pause", () => {{
+            original.addEventListener("pause", () => {
                 if (!endedHandled && reaction && !reaction.paused) safePause(reaction);
                 setButtonState();
-            }});
+            });
 
-            reaction.addEventListener("pause", () => {{
+            reaction.addEventListener("pause", () => {
                 if (!endedHandled && original && !original.paused) safePause(original);
                 setButtonState();
-            }});
+            });
 
             original.addEventListener("seeking", () => syncTime(original, reaction));
             reaction.addEventListener("seeking", () => syncTime(reaction, original));
 
-            function handleEnded() {{
+            function handleEnded() {
                 if (endedHandled) return;
                 endedHandled = true;
                 pauseBoth();
-                setTimeout(() => {{
+                setTimeout(() => {
                     resetBothToStart();
-                }}, 80);
-            }}
+                }, 80);
+            }
 
             original.addEventListener("ended", handleEnded);
             reaction.addEventListener("ended", handleEnded);
 
-            async function sharePack() {{
+            async function sharePack() {
                 const url = window.location.href;
 
-                if (navigator.share) {{
-                    try {{
-                        await navigator.share({{
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
                             title: "ETERNA",
                             text: "ETERNA",
                             url: url
-                        }});
-                    }} catch (e) {{}}
-                }} else {{
+                        });
+                    } catch (e) {}
+                } else {
                     window.open(url, "_blank");
-                }}
-            }}
+                }
+            }
 
             setButtonState();
         </script>
