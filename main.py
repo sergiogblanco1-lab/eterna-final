@@ -2897,435 +2897,101 @@ def sender_pack(sender_token: str):
     if not reaction_video_url:
         local_fallback = order.get("reaction_video_local")
         if local_fallback and os.path.exists(local_fallback):
-            reaction_video_url = f"{PUBLIC_BASE_URL}/video/sender/{sender_token}"
+            reaction_video_url = f"/video/sender/{sender_token}"
 
-    if not original_video_url:
-        return HTMLResponse(f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                html, body {
-                    margin: 0;
-                    min-height: 100%;
-                    background: #000;
-                }
-                body {
-                    min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-family: Arial, sans-serif;
-                    text-align: center;
-                    padding: 24px;
-                }
-                .box {
-                    max-width: 720px;
-                }
-                h1 {
-                    font-size: 34px;
-                    margin-bottom: 18px;
-                    line-height: 1.4;
-                }
-                p {
-                    font-size: 18px;
-                    line-height: 1.8;
-                    color: rgba(255,255,255,0.65);
-                }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <h1>Tu ETERNA aun se esta preparando</h1>
-                <p>El video original todavia no esta disponible.</p>
-            </div>
-        </body>
-        </html>
-        """)
+    html = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
 
-    if not reaction_video_url:
-        return HTMLResponse(f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                * {{ box-sizing: border-box; }}
-                html, body {{
-                    margin: 0;
-                    min-height: 100%;
-                    background: #000;
-                }}
-                body {{
-                    min-height: 100vh;
-                    background:
-                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                        linear-gradient(180deg, #050505 0%, #000000 100%);
-                    color: white;
-                    font-family: Arial, sans-serif;
-                    padding: 20px;
-                }}
-                .wrap {{
-                    width: 100%;
-                    max-width: 560px;
-                    margin: 0 auto;
-                    text-align: center;
-                }}
-                h1 {{
-                    font-size: 32px;
-                    line-height: 1.35;
-                    margin: 8px 0 12px 0;
-                }}
-                .sub {{
-                    color: rgba(255,255,255,0.62);
-                    font-size: 15px;
-                    line-height: 1.7;
-                    margin-bottom: 24px;
-                }}
-                .video-card {{
-                    background: rgba(255,255,255,0.04);
-                    border: 1px solid rgba(255,255,255,0.08);
-                    border-radius: 22px;
-                    padding: 14px;
-                }}
-                .video-label {{
-                    text-align: left;
-                    font-size: 12px;
-                    text-transform: uppercase;
-                    letter-spacing: 1.2px;
-                    color: rgba(255,255,255,0.45);
-                    margin-bottom: 10px;
-                }}
-                video {{
-                    width: 100%;
-                    border-radius: 16px;
-                    background: #000;
-                    display: block;
-                }}
-                .hint {{
-                    margin-top: 20px;
-                    color: rgba(255,255,255,0.44);
-                    font-size: 14px;
-                    line-height: 1.7;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="wrap">
-                <h1>Tu ETERNA ha vuelto</h1>
-                <div class="sub">
-                    El video original ya esta aqui.<br>
-                    La reaccion todavia se esta guardando.
-                </div>
+<style>
+body {
+    margin: 0;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
 
-                <div class="video-card">
-                    <div class="video-label">Video original</div>
-                    <video controls playsinline preload="metadata">
-                        <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
-                    </video>
-                </div>
+.container {
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+}
 
-                <div class="hint">
-                    Vuelve a entrar en unos segundos y aparecera tambien la reaccion.
-                </div>
-            </div>
-        </body>
-        </html>
-        """)
+video {
+    width: 100%;
+    margin-top: 20px;
+    border-radius: 10px;
+}
 
-    original_video_type = guess_media_type_from_url(original_video_url)
-    reaction_video_type = guess_media_type_from_url(reaction_video_url)
+h1 {
+    font-size: 22px;
+    margin-top: 20px;
+}
 
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
+p {
+    opacity: 0.7;
+    font-size: 14px;
+}
+</style>
+</head>
 
-        <style>
-            * {{ box-sizing: border-box; }}
+<body>
 
-            html, body {{
-                margin: 0;
-                min-height: 100%;
-                background: #000;
-            }}
+<div class="container">
 
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                padding: 20px;
-            }}
+<h1>Tu ETERNA ha vuelto</h1>
+<p>Esto es lo que provocaste</p>
 
-            .wrap {{
-                width: 100%;
-                max-width: 560px;
-                margin: 0 auto;
-                text-align: center;
-            }}
+<video controls>
+    <source src="__REACTION_VIDEO__" type="video/mp4">
+</video>
 
-            h1 {{
-                font-size: 32px;
-                line-height: 1.2;
-                margin: 8px 0 12px 0;
-            }}
+<video controls>
+    <source src="__ORIGINAL_VIDEO__" type="video/mp4">
+</video>
 
-            .sub {{
-                color: rgba(255,255,255,0.62);
-                font-size: 15px;
-                line-height: 1.7;
-                margin-bottom: 24px;
-            }}
+</div>
 
-            .videos {{
-                display: flex;
-                flex-direction: column;
-                gap: 18px;
-            }}
+</body>
+</html>
+"""
 
-            .video-card {{
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 22px;
-                padding: 14px;
-            }}
+    html = html.replace("__REACTION_VIDEO__", reaction_video_url or "")
+    html = html.replace("__ORIGINAL_VIDEO__", original_video_url or "")
 
-            .video-label {{
-                text-align: left;
-                font-size: 12px;
-                text-transform: uppercase;
-                letter-spacing: 1.2px;
-                color: rgba(255,255,255,0.45);
-                margin-bottom: 10px;
-            }}
+    return HTMLResponse(html)
 
-            video {{
-                width: 100%;
-                border-radius: 16px;
-                background: #000;
-                display: block;
-            }}
 
-            .btn {{
-                margin-top: 16px;
-                width: 100%;
-                padding: 16px 20px;
-                background: white;
-                color: black;
-                border: none;
-                border-radius: 999px;
-                cursor: pointer;
-                font-size: 15px;
-                font-weight: bold;
-            }}
+# =========================================================
+# VIDEO SENDER LOCAL (fallback)
+# =========================================================
 
-            .btn-secondary {{
-                margin-top: 12px;
-                width: 100%;
-                padding: 15px 20px;
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 999px;
-                cursor: pointer;
-                font-size: 15px;
-                font-weight: bold;
-            }}
+@app.get("/video/sender/{sender_token}")
+def get_sender_video(sender_token: str):
+    order = get_order_by_sender_token_or_404(sender_token)
 
-            .hint {{
-                margin-top: 14px;
-                color: rgba(255,255,255,0.44);
-                font-size: 13px;
-                line-height: 1.7;
-            }}
-        </style>
-    </head>
+    local_path = order.get("reaction_video_local")
 
-    <body>
-        <div class="wrap">
-            <h1>Tu ETERNA ha vuelto</h1>
+    if not local_path or not os.path.exists(local_path):
+        raise HTTPException(status_code=404, detail="Video no encontrado")
 
-            <div class="sub">
-                Aqui tienes el momento completo.<br>
-                El video original y su reaccion, juntos.
-            </div>
+    return FileResponse(local_path, media_type="video/mp4")
 
-            <div class="videos">
-                <div class="video-card">
-                    <div class="video-label">Video original</div>
-                    <video
-                        id="videoOriginal"
-                        controls
-                        playsinline
-                        preload="metadata"
-                    >
-                        <source src="{safe_attr(original_video_url)}" type="{safe_attr(original_video_type)}">
-                    </video>
-                </div>
 
-                <div class="video-card">
-                    <div class="video-label">Reaccion</div>
-                    <video
-                        id="videoReaction"
-                        controls
-                        playsinline
-                        preload="metadata"
-                    >
-                        <source src="{safe_attr(reaction_video_url)}" type="{safe_attr(reaction_video_type)}">
-                    </video>
-                </div>
-            </div>
+# =========================================================
+# HEALTH CHECK
+# =========================================================
 
-            <button id="playTogether" class="btn">
-                Ver los dos a la vez
-            </button>
+@app.get("/")
+def health():
+    return {"status": "ok"}
 
-            <button id="toggleAudio" class="btn-secondary">
-                Activar sonido reaccion
-            </button>
 
-            <div class="hint">
-                Primero puedes verlo solo. Y cuando quieras, reproducir ambos a la vez.
-            </div>
-        </div>
-
-        <script>
-            const original = document.getElementById("videoOriginal");
-            const reaction = document.getElementById("videoReaction");
-            const playTogetherBtn = document.getElementById("playTogether");
-            const toggleBtn = document.getElementById("toggleAudio");
-
-            let syncing = false;
-
-            function safePlay(v) {{
-                if (!v) return Promise.resolve();
-                try {{
-                    const p = v.play();
-                    if (p && typeof p.then === "function") {{
-                        return p.catch(() => {{}});
-                    }}
-                }} catch (e) {{}}
-                return Promise.resolve();
-            }}
-
-            function safePause(v) {{
-                if (!v) return;
-                try {{
-                    v.pause();
-                }} catch (e) {{}}
-            }}
-
-            function syncFrom(source, target) {{
-                if (!source || !target || syncing) return;
-                syncing = true;
-                try {{
-                    const sourceTime = source.currentTime || 0;
-                    const targetTime = target.currentTime || 0;
-                    const drift = Math.abs(targetTime - sourceTime);
-
-                    if (drift > 0.25) {{
-                        target.currentTime = sourceTime;
-                    }}
-                }} catch (e) {{}}
-                syncing = false;
-            }}
-
-            function updateToggleText() {{
-                if (!reaction || !toggleBtn) return;
-                toggleBtn.textContent = reaction.muted
-                    ? "Activar sonido reaccion"
-                    : "Silenciar reaccion";
-            }}
-
-            if (reaction) {{
-                reaction.muted = true;
-            }}
-
-            updateToggleText();
-
-            if (toggleBtn) {{
-                toggleBtn.addEventListener("click", function () {{
-                    if (!reaction) return;
-                    reaction.muted = !reaction.muted;
-                    updateToggleText();
-                }});
-            }}
-
-            if (playTogetherBtn) {{
-                playTogetherBtn.addEventListener("click", async function () {{
-                    try {{
-                        if (original) original.currentTime = 0;
-                        if (reaction) reaction.currentTime = 0;
-
-                        await Promise.all([
-                            safePlay(original),
-                            safePlay(reaction),
-                        ]);
-                    }} catch (e) {{}}
-                }});
-            }}
-
-            if (original && reaction) {{
-                original.addEventListener("play", function () {{
-                    if (reaction.paused && original.currentTime > 0 && reaction.currentTime === 0) return;
-                    safePlay(reaction);
-                }});
-
-                reaction.addEventListener("play", function () {{
-                    if (original.paused && reaction.currentTime > 0 && original.currentTime === 0) return;
-                    safePlay(original);
-                }});
-
-                original.addEventListener("pause", function () {{
-                    if (!reaction.paused) safePause(reaction);
-                }});
-
-                reaction.addEventListener("pause", function () {{
-                    if (!original.paused) safePause(original);
-                }});
-
-                original.addEventListener("timeupdate", function () {{
-                    syncFrom(original, reaction);
-                }});
-
-                reaction.addEventListener("timeupdate", function () {{
-                    syncFrom(reaction, original);
-                }});
-
-                original.addEventListener("seeking", function () {{
-                    syncFrom(original, reaction);
-                }});
-
-                reaction.addEventListener("seeking", function () {{
-                    syncFrom(reaction, original);
-                }});
-
-                original.addEventListener("ended", function () {{
-                    safePause(reaction);
-                    try {{ reaction.currentTime = 0; }} catch (e) {{}}
-                }});
-
-                reaction.addEventListener("ended", function () {{
-                    safePause(original);
-                    try {{ original.currentTime = 0; }} catch (e) {{}}
-                }});
-            }}
-        </script>
-    </body>
-    </html>
-    """)
 
 # =========================================================
 # COBRAR REGALO
