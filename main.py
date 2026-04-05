@@ -3289,15 +3289,15 @@ def sender_pack(sender_token: str):
         </head>
         <body>
             <div class="box">
-                <h1>Tu ETERNA aún se está preparando</h1>
-                <p>El vídeo original todavía no está disponible.</p>
+                <h1>Tu ETERNA aun se esta preparando</h1>
+                <p>El video original todavia no esta disponible.</p>
             </div>
         </body>
         </html>
         """)
 
     if not reaction_video_url:
-        return HTMLResponse("""
+        return HTMLResponse(f"""
         <!DOCTYPE html>
         <html lang="es">
         <head>
@@ -3305,40 +3305,84 @@ def sender_pack(sender_token: str):
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>ETERNA</title>
             <style>
-                html, body {
+                * {{ box-sizing: border-box; }}
+                html, body {{
                     margin: 0;
                     min-height: 100%;
                     background: #000;
-                }
-                body {
+                }}
+                body {{
                     min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
                     color: white;
                     font-family: Arial, sans-serif;
+                    padding: 20px;
+                }}
+                .wrap {{
+                    width: 100%;
+                    max-width: 560px;
+                    margin: 0 auto;
                     text-align: center;
-                    padding: 24px;
-                }
-                .box {
-                    max-width: 720px;
-                }
-                h1 {
-                    font-size: 34px;
-                    margin-bottom: 18px;
-                    line-height: 1.4;
-                }
-                p {
-                    font-size: 18px;
-                    line-height: 1.8;
-                    color: rgba(255,255,255,0.65);
-                }
+                }}
+                h1 {{
+                    font-size: 32px;
+                    line-height: 1.35;
+                    margin: 8px 0 12px 0;
+                }}
+                .sub {{
+                    color: rgba(255,255,255,0.62);
+                    font-size: 15px;
+                    line-height: 1.7;
+                    margin-bottom: 24px;
+                }}
+                .video-card {{
+                    background: rgba(255,255,255,0.04);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 22px;
+                    padding: 14px;
+                }}
+                .video-label {{
+                    text-align: left;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 1.2px;
+                    color: rgba(255,255,255,0.45);
+                    margin-bottom: 10px;
+                }}
+                video {{
+                    width: 100%;
+                    border-radius: 16px;
+                    background: #000;
+                    display: block;
+                }}
+                .hint {{
+                    margin-top: 20px;
+                    color: rgba(255,255,255,0.44);
+                    font-size: 14px;
+                    line-height: 1.7;
+                }}
             </style>
         </head>
         <body>
-            <div class="box">
+            <div class="wrap">
                 <h1>Tu ETERNA ha vuelto</h1>
-                <p>La reacción todavía se está guardando. Vuelve a entrar en unos segundos.</p>
+                <div class="sub">
+                    El video original ya esta aqui.<br>
+                    La reaccion todavia se esta guardando.
+                </div>
+
+                <div class="video-card">
+                    <div class="video-label">Video original</div>
+                    <video controls playsinline preload="metadata">
+                        <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
+                    </video>
+                </div>
+
+                <div class="hint">
+                    Vuelve a entrar en unos segundos y aparecera tambien la reaccion.
+                </div>
             </div>
         </body>
         </html>
@@ -3383,7 +3427,7 @@ def sender_pack(sender_token: str):
 
             h1 {{
                 font-size: 32px;
-                line-height: 1.35;
+                line-height: 1.2;
                 margin: 8px 0 12px 0;
             }}
 
@@ -3424,12 +3468,25 @@ def sender_pack(sender_token: str):
             }}
 
             .btn {{
-                margin-top: 18px;
+                margin-top: 16px;
                 width: 100%;
                 padding: 16px 20px;
                 background: white;
                 color: black;
                 border: none;
+                border-radius: 999px;
+                cursor: pointer;
+                font-size: 15px;
+                font-weight: bold;
+            }}
+
+            .btn-secondary {{
+                margin-top: 12px;
+                width: 100%;
+                padding: 15px 20px;
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
                 border-radius: 999px;
                 cursor: pointer;
                 font-size: 15px;
@@ -3448,14 +3505,15 @@ def sender_pack(sender_token: str):
     <body>
         <div class="wrap">
             <h1>Tu ETERNA ha vuelto</h1>
+
             <div class="sub">
-                Aquí tienes el momento completo.<br>
-                El vídeo original y su reacción, juntos.
+                Aqui tienes el momento completo.<br>
+                El video original y su reaccion, juntos.
             </div>
 
             <div class="videos">
                 <div class="video-card">
-                    <div class="video-label">Vídeo original</div>
+                    <div class="video-label">Video original</div>
                     <video
                         id="videoOriginal"
                         controls
@@ -3467,7 +3525,7 @@ def sender_pack(sender_token: str):
                 </div>
 
                 <div class="video-card">
-                    <div class="video-label">Reacción</div>
+                    <div class="video-label">Reaccion</div>
                     <video
                         id="videoReaction"
                         controls
@@ -3479,28 +3537,34 @@ def sender_pack(sender_token: str):
                 </div>
             </div>
 
-            <button id="toggleAudio" class="btn">
-                Activar sonido reacción
+            <button id="playTogether" class="btn">
+                Ver los dos a la vez
+            </button>
+
+            <button id="toggleAudio" class="btn-secondary">
+                Activar sonido reaccion
             </button>
 
             <div class="hint">
-                Puedes reproducirlos juntos y escuchar la reacción cuando quieras.
+                Primero puedes verlo solo. Y cuando quieras, reproducir ambos a la vez.
             </div>
         </div>
 
         <script>
             const original = document.getElementById("videoOriginal");
             const reaction = document.getElementById("videoReaction");
+            const playTogetherBtn = document.getElementById("playTogether");
             const toggleBtn = document.getElementById("toggleAudio");
 
             let syncing = false;
-            let endedHandled = false;
 
             function safePlay(v) {{
                 if (!v) return Promise.resolve();
                 try {{
                     const p = v.play();
-                    if (p && typeof p.then === "function") return p.catch(() => {{}});
+                    if (p && typeof p.then === "function") {{
+                        return p.catch(() => {{}});
+                    }}
                 }} catch (e) {{}}
                 return Promise.resolve();
             }}
@@ -3516,9 +3580,12 @@ def sender_pack(sender_token: str):
                 if (!source || !target || syncing) return;
                 syncing = true;
                 try {{
-                    const drift = Math.abs((target.currentTime || 0) - (source.currentTime || 0));
-                    if (drift > 0.35) {{
-                        target.currentTime = source.currentTime || 0;
+                    const sourceTime = source.currentTime || 0;
+                    const targetTime = target.currentTime || 0;
+                    const drift = Math.abs(targetTime - sourceTime);
+
+                    if (drift > 0.25) {{
+                        target.currentTime = sourceTime;
                     }}
                 }} catch (e) {{}}
                 syncing = false;
@@ -3527,13 +3594,15 @@ def sender_pack(sender_token: str):
             function updateToggleText() {{
                 if (!reaction || !toggleBtn) return;
                 toggleBtn.textContent = reaction.muted
-                    ? "Activar sonido reacción"
-                    : "Silenciar reacción";
+                    ? "Activar sonido reaccion"
+                    : "Silenciar reaccion";
             }}
 
             if (reaction) {{
                 reaction.muted = true;
             }}
+
+            updateToggleText();
 
             if (toggleBtn) {{
                 toggleBtn.addEventListener("click", function () {{
@@ -3541,24 +3610,39 @@ def sender_pack(sender_token: str):
                     reaction.muted = !reaction.muted;
                     updateToggleText();
                 }});
-                updateToggleText();
+            }}
+
+            if (playTogetherBtn) {{
+                playTogetherBtn.addEventListener("click", async function () {{
+                    try {{
+                        if (original) original.currentTime = 0;
+                        if (reaction) reaction.currentTime = 0;
+
+                        await Promise.all([
+                            safePlay(original),
+                            safePlay(reaction),
+                        ]);
+                    }} catch (e) {{}}
+                }});
             }}
 
             if (original && reaction) {{
                 original.addEventListener("play", function () {{
+                    if (reaction.paused && original.currentTime > 0 && reaction.currentTime === 0) return;
                     safePlay(reaction);
                 }});
 
                 reaction.addEventListener("play", function () {{
+                    if (original.paused && reaction.currentTime > 0 && original.currentTime === 0) return;
                     safePlay(original);
                 }});
 
                 original.addEventListener("pause", function () {{
-                    safePause(reaction);
+                    if (!reaction.paused) safePause(reaction);
                 }});
 
                 reaction.addEventListener("pause", function () {{
-                    safePause(original);
+                    if (!original.paused) safePause(original);
                 }});
 
                 original.addEventListener("timeupdate", function () {{
@@ -3569,16 +3653,22 @@ def sender_pack(sender_token: str):
                     syncFrom(reaction, original);
                 }});
 
+                original.addEventListener("seeking", function () {{
+                    syncFrom(original, reaction);
+                }});
+
+                reaction.addEventListener("seeking", function () {{
+                    syncFrom(reaction, original);
+                }});
+
                 original.addEventListener("ended", function () {{
-                    if (endedHandled) return;
-                    endedHandled = true;
                     safePause(reaction);
+                    try {{ reaction.currentTime = 0; }} catch (e) {{}}
                 }});
 
                 reaction.addEventListener("ended", function () {{
-                    if (endedHandled) return;
-                    endedHandled = true;
                     safePause(original);
+                    try {{ original.currentTime = 0; }} catch (e) {{}}
                 }});
             }}
         </script>
@@ -3586,7 +3676,191 @@ def sender_pack(sender_token: str):
     </html>
     """)
 
+# =========================================================
+# COBRAR REGALO
+# =========================================================
 
+@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
+def cobrar(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    gift_amount = float(order.get("gift_amount") or 0)
+    cashout_status = compute_cashout_status(order)
+
+    if gift_amount <= 0:
+        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+
+    if cashout_status == "gift_refunded":
+        title = "Este regalo ya no esta disponible"
+        text = "El importe asociado a esta ETERNA ha sido cancelado."
+        button_text = "Ver mi video"
+        button_href = f"/mi-video/{recipient_token}"
+    elif cashout_status == "completed":
+        title = "Tu regalo ya va hacia ti"
+        text = "El proceso ya esta completado y tu dinero se ha enviado correctamente."
+        button_text = "Ver mi video"
+        button_href = f"/mi-video/{recipient_token}"
+    elif cashout_status == "processing":
+        title = "Tu regalo ya esta en marcha"
+        text = "Estamos procesando el envio de tu dinero."
+        button_text = "Ver mi video"
+        button_href = f"/mi-video/{recipient_token}"
+    elif cashout_status == "ready_to_send":
+        title = "Esto tambien es para ti"
+        text = f"Ademas de este momento, hay {format_amount_display(gift_amount)} esperandote."
+        button_text = "Recibir mi regalo"
+        button_href = f"/iniciar-cobro-real/{recipient_token}"
+    else:
+        title = "Esto tambien es para ti"
+        text = f"Alguien no solo penso en ti. Tambien quiso dejarte {format_amount_display(gift_amount)}."
+        button_text = "Recibir mi regalo"
+        button_href = f"/iniciar-cobro-real/{recipient_token}"
+
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+
+            html, body {{
+                margin: 0;
+                min-height: 100%;
+                background: #000;
+            }}
+
+            body {{
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 24px;
+            }}
+
+            .wrap {{
+                width: 100%;
+                max-width: 720px;
+                margin: 0 auto;
+            }}
+
+            .eyebrow {{
+                font-size: 13px;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.34);
+                margin-bottom: 18px;
+            }}
+
+            h1 {{
+                margin: 0;
+                font-size: 48px;
+                line-height: 1.12;
+                font-weight: 700;
+            }}
+
+            .main {{
+                margin-top: 24px;
+                font-size: 24px;
+                line-height: 1.7;
+                color: rgba(255,255,255,0.88);
+            }}
+
+            .soft {{
+                margin: 28px auto 0 auto;
+                max-width: 620px;
+                font-size: 16px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.46);
+            }}
+
+            .amount {{
+                margin-top: 26px;
+                font-size: 42px;
+                font-weight: 700;
+                line-height: 1.1;
+            }}
+
+            .btn {{
+                display: inline-block;
+                width: 100%;
+                max-width: 460px;
+                margin-top: 34px;
+                padding: 18px 22px;
+                border-radius: 999px;
+                background: white;
+                color: black;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 16px;
+            }}
+
+            .ghost {{
+                display: inline-block;
+                width: 100%;
+                max-width: 460px;
+                margin-top: 14px;
+                padding: 16px 22px;
+                border-radius: 999px;
+                background: rgba(255,255,255,0.10);
+                color: white;
+                text-decoration: none;
+                border: 1px solid rgba(255,255,255,0.10);
+                font-weight: bold;
+                font-size: 15px;
+            }}
+
+            @media (max-width: 640px) {{
+                h1 {{
+                    font-size: 40px;
+                }}
+
+                .main {{
+                    font-size: 21px;
+                }}
+
+                .amount {{
+                    font-size: 34px;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="eyebrow">ETERNA</div>
+            <h1>{safe_text(title)}</h1>
+
+            <div class="main">{safe_text(text)}</div>
+
+            <div class="amount">{format_amount_display(gift_amount)}</div>
+
+            <div class="soft">
+                Primero recibiste un momento.<br>
+                Ahora tambien puedes recibir tu regalo.
+            </div>
+
+            <a class="btn" href="{safe_attr(button_href)}">{safe_text(button_text)}</a>
+            <a class="ghost" href="/mi-video/{safe_attr(recipient_token)}">Ver mi video</a>
+        </div>
+    </body>
+    </html>
+    """)
+
+    
 # =========================================================
 # ADMIN / HEALTH
 # =========================================================
