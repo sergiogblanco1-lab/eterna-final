@@ -2772,7 +2772,7 @@ async function startExperience() {
         mediaRecorder = new MediaRecorder(stream);
 
         mediaRecorder.ondataavailable = function(event) {
-            if (event.data.size > 0) {
+            if (event.data.size > 0) 
                 recordedChunks.push(event.data);
             }
         };
