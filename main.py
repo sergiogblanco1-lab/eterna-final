@@ -2800,7 +2800,7 @@ let recordedChunks = [];
 let stream;
 
 async function startExperience() {
-    try {{
+    try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
         mediaRecorder = new MediaRecorder(stream);
