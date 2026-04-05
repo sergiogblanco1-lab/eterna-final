@@ -3859,7 +3859,50 @@ def cobrar(recipient_token: str):
     </body>
     </html>
     """)
+# =========================================================
+# VIDEO READY CALLBACK
+# =========================================================
 
+@app.post("/video-ready")
+async def video_ready(request: Request):
+    try:
+        data = await request.json()
+
+        order_id = data.get("order_id")
+        video_url = data.get("video_url")
+
+        print("🎬 CALLBACK RECIBIDO")
+        print("order_id:", order_id)
+        print("video_url:", video_url)
+
+        if not order_id or not video_url:
+            raise HTTPException(status_code=400, detail="Datos incompletos")
+
+        order = get_order_by_id(order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Orden no encontrada")
+
+        # 🔥 CLAVE: actualizar orden
+        update_order(order_id, {
+            "experience_video_url": video_url,
+            "experience_ready": 1,
+            "updated_at": now_iso()
+        })
+
+        print("✅ VIDEO GUARDADO EN ORDEN")
+
+        # 🔥 OPCIONAL: enviar SMS aquí si no lo haces antes
+        try:
+            try_send_recipient_sms(order)
+        except Exception as e:
+            print("⚠️ Error enviando SMS:", e)
+
+        return {"status": "ok"}
+
+    except Exception as e:
+        print("❌ ERROR CALLBACK:", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
     
 # =========================================================
 # ADMIN / HEALTH
