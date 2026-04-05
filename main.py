@@ -3909,6 +3909,41 @@ async def video_ready(request: Request):
         print("❌ ERROR CALLBACK:", e)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+        # =========================================================
+# SUBIR REACCIÓN
+# =========================================================
+
+@app.post("/upload-reaction/{recipient_token}")
+async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
+    try:
+        order = get_order_by_recipient_token_or_404(recipient_token)
+
+        if not file:
+            raise HTTPException(status_code=400, detail="No file")
+
+        ext = Path(file.filename).suffix or ".mp4"
+        filename = f"reaction_{order['id']}{ext}"
+
+        save_path = Path("videos") / filename
+
+        with open(save_path, "wb") as f:
+            f.write(await file.read())
+
+        public_url = f"{PUBLIC_BASE_URL}/videos/{filename}"
+
+        update_order(
+            order["id"],
+            reaction_video_public_url=public_url,
+            reaction_uploaded=1,
+        )
+
+        print("🎥 REACCIÓN GUARDADA:", public_url)
+
+        return {"status": "ok", "url": public_url}
+
+    except Exception as e:
+        print("❌ ERROR SUBIENDO REACCIÓN:", e)
+        raise HTTPException(status_code=500, detail=str(e))
     
 # =========================================================
 # ADMIN / HEALTH
