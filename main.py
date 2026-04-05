@@ -2840,7 +2840,7 @@ async function startExperience() {
 }
 
 
-    # FULLSCREEN AUTOMÁTICO
+    // FULLSCREEN AUTOMÁTICO
 video.addEventListener("play", () => {
     if (video.requestFullscreen) {
         video.requestFullscreen();
@@ -2850,7 +2850,7 @@ video.addEventListener("play", () => {
 });
 
 
-// 💣 FINAL DEL VÍDEO (CLAVE)
+// FINAL DEL VÍDEO (CLAVE)
 video.onended = async () => {
     try {
         console.log("🎬 Video terminado");
