@@ -3859,6 +3859,8 @@ def cobrar(recipient_token: str):
     </body>
     </html>
     """)
+
+
 # =========================================================
 # VIDEO READY CALLBACK
 # =========================================================
@@ -3868,8 +3870,8 @@ async def video_ready(request: Request):
     try:
         data = await request.json()
 
-        order_id = data.get("order_id")
-        video_url = data.get("video_url")
+        order_id = (data.get("order_id") or "").strip()
+        video_url = (data.get("video_url") or "").strip()
 
         print("🎬 CALLBACK RECIBIDO")
         print("order_id:", order_id)
@@ -3879,26 +3881,30 @@ async def video_ready(request: Request):
             raise HTTPException(status_code=400, detail="Datos incompletos")
 
         order = get_order_by_id(order_id)
-        if not order:
-            raise HTTPException(status_code=404, detail="Orden no encontrada")
 
-        # 🔥 CLAVE: actualizar orden
-        update_order(order_id, {
-            "experience_video_url": video_url,
-            "experience_ready": 1,
-            "updated_at": now_iso()
-        })
+        update_order(
+            order_id,
+            experience_video_url=video_url,
+        )
 
         print("✅ VIDEO GUARDADO EN ORDEN")
 
-        # 🔥 OPCIONAL: enviar SMS aquí si no lo haces antes
+        updated_order = get_order_by_id(order_id)
+
         try:
-            try_send_recipient_sms(order)
+            sms_result = try_send_recipient_sms(updated_order)
+            print("📩 Resultado SMS callback:", sms_result)
         except Exception as e:
             print("⚠️ Error enviando SMS:", e)
 
-        return {"status": "ok"}
+        return JSONResponse({
+            "status": "ok",
+            "order_id": order_id,
+            "video_url": video_url,
+        })
 
+    except HTTPException:
+        raise
     except Exception as e:
         print("❌ ERROR CALLBACK:", e)
         traceback.print_exc()
