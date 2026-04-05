@@ -3236,324 +3236,184 @@ def mi_video(recipient_token: str):
 # SENDER PACK
 # =========================================================
 
-@app.get("/sender/{sender_token}", response_class=HTMLResponse)
+from fastapi.responses import HTMLResponse
+
 def sender_pack(sender_token: str):
-    order = get_order_by_sender_token_or_404(sender_token)
+    original_video_url = "/static/eterna-base.mp4"  # ajusta si hace falta
+    reaction_video_url = "/static/reaction.mp4"     # ajusta si hace falta
 
-    if reaction_exists(order) and not order.get("sender_sms_sent_at"):
-        try:
-            try_send_sender_sms(order)
-            order = get_order_by_sender_token_or_404(sender_token)
-        except Exception as e:
-            log_error("sender_pack try_send_sender_sms", e)
-
-    if not reaction_exists(order):
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="es">
-        <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
-            <div style="width:100%;max-width:760px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:28px;padding:40px 28px;">
-                <h1 style="margin:0 0 14px 0;">Estamos preparando este momento…</h1>
-                <div style="color:rgba(255,255,255,0.7);line-height:1.7;">
-                    La reacción todavía no ha llegado.
-                </div>
-            </div>
-        </body>
-        </html>
-        """)
-
-    experience_video_url = (order.get("experience_video_url") or "").strip()
-    reaction_video_url = (order.get("reaction_video_public_url") or "").strip()
-
-    if not reaction_video_url:
-        reaction_video_url = f"{PUBLIC_BASE_URL}/video/sender/{order['sender_token']}"
-
-    experience_video_type = guess_media_type_from_url(experience_video_url) if experience_video_url else "video/mp4"
-    reaction_video_type = guess_media_type_from_url(reaction_video_url)
-
-    return HTMLResponse(f"""
+    html = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html>
     <head>
-        <meta charset="UTF-8">
-        <title>Tu ETERNA</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="utf-8">
+        <title>ETERNA</title>
+
         <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
             body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                background: black;
                 color: white;
                 font-family: Arial, sans-serif;
+                text-align: center;
+                margin: 0;
                 padding: 20px;
             }}
-            .card {{
-                width: 100%;
-                max-width: 1080px;
-                margin: 0 auto;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 28px;
-                padding: 26px 18px 30px;
+
+            .videos {{
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                max-width: 400px;
+                margin: auto;
             }}
-            .intro {{
-                text-align: center;
-                font-size: 28px;
-                line-height: 1.45;
-                color: rgba(255,255,255,0.95);
-                margin-bottom: 10px;
-            }}
-            .intro-soft {{
-                text-align: center;
-                font-size: 15px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.55);
-                margin-bottom: 18px;
-            }}
-            .pack-grid {{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
-                align-items: start;
-            }}
-            .video-box {{
-                background: rgba(255,255,255,0.03);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 22px;
-                padding: 14px;
-            }}
-            .video-label {{
-                font-size: 12px;
-                letter-spacing: 1.2px;
-                text-transform: uppercase;
-                color: rgba(255,255,255,0.55);
-                margin-bottom: 10px;
-                text-align: left;
-            }}
-            .video-frame {{
-                width: 100%;
-                background: #101010;
-                border-radius: 16px;
-                overflow: hidden;
-            }}
+
             video {{
                 width: 100%;
-                max-height: 72vh;
-                display: block;
-                background: #111;
-                pointer-events: none;
+                border-radius: 10px;
+                background: black;
             }}
-            .controls {{
-                display: grid;
-                gap: 12px;
-                margin-top: 20px;
-                max-width: 820px;
-                margin-left: auto;
-                margin-right: auto;
-            }}
+
             .btn {{
-                width: 100%;
-                padding: 16px 22px;
-                border-radius: 999px;
-                border: 0;
-                font-weight: bold;
-                font-size: 15px;
+                margin-top: 20px;
+                padding: 12px 20px;
+                background: white;
+                color: black;
+                border: none;
+                border-radius: 8px;
                 cursor: pointer;
-                text-decoration: none;
-                text-align: center;
-                display: inline-block;
-            }}
-            .primary {{ background: white; color: black; }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-            @media (max-width: 860px) {{
-                .pack-grid {{
-                    grid-template-columns: 1fr;
-                }}
-                .intro {{
-                    font-size: 24px;
-                }}
-                video {{
-                    max-height: none;
-                }}
+                font-size: 16px;
             }}
         </style>
     </head>
+
     <body>
-        <div class="card">
-            <div class="intro">Lo que creaste volvió a ti.</div>
-            <div class="intro-soft">Lo que vio y lo que sintió. Juntos.</div>
 
-            <div class="pack-grid">
-                <div class="video-box">
-                    <div class="video-label">Lo que vio</div>
-                    <div class="video-frame">
-                        <video id="videoOriginal" playsinline preload="auto">
-                            <source src="{safe_attr(experience_video_url)}" type="{safe_attr(experience_video_type)}">
-                        </video>
-                    </div>
-                </div>
+        <h2>Tu ETERNA ha vuelto</h2>
 
-                <div class="video-box">
-                    <div class="video-label">Lo que sintió</div>
-                    <div class="video-frame">
-                        <video id="videoReaction" playsinline preload="auto">
-                            <source src="{safe_attr(reaction_video_url)}" type="{safe_attr(reaction_video_type)}">
-                        </video>
-                    </div>
-                </div>
-            </div>
+        <div class="videos">
+            <video
+                id="videoOriginal"
+                controls
+                playsinline
+                preload="metadata"
+                src="{original_video_url}"
+            ></video>
 
-            <div class="controls">
-                <button class="btn primary" id="toggleBtn" onclick="toggleBoth()">Reproducir</button>
-                <button class="btn ghost" onclick="sharePack()">Compartir</button>
-                <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
-            </div>
+            <video
+                id="videoReaction"
+                controls
+                playsinline
+                preload="metadata"
+                src="{reaction_video_url}"
+            ></video>
         </div>
 
-        <script>
-            const original = document.getElementById("videoOriginal");
-            const reaction = document.getElementById("videoReaction");
-            const toggleBtn = document.getElementById("toggleBtn");
-            let syncing = false;
-            let endedHandled = false;
+        <button id="toggleAudio" class="btn">
+            Activar sonido reacción
+        </button>
 
-            function safePlay(v) {
-                if (!v) return Promise.resolve();
-                try {
-                    return v.play();
-                } catch (e) {
-                    return Promise.resolve();
-                }
-            }
-
-            function safePause(v) {
-                if (!v) return;
-                try { v.pause(); } catch (e) {}
-            }
-
-            function safeReset(v) {
-                if (!v) return;
-                safePause(v);
-                try { v.currentTime = 0; } catch (e) {}
-            }
-
-            function syncTime(source, target) {
-                if (!source || !target || syncing) return;
-                syncing = true;
-                try {
-                    if (Math.abs((target.currentTime || 0) - (source.currentTime || 0)) > 0.25) {
-                        target.currentTime = source.currentTime || 0;
-                    }
-                } catch (e) {}
-                syncing = false;
-            }
-
-            function isAnyPlaying() {
-                return (
-                    (original && !original.paused && !original.ended) ||
-                    (reaction && !reaction.paused && !reaction.ended)
-                );
-            }
-
-            function setButtonState() {
-                toggleBtn.textContent = isAnyPlaying() ? "Pausar" : "Reproducir";
-            }
-
-            async function playBoth() {
-                endedHandled = false;
-                syncTime(original, reaction);
-                syncTime(reaction, original);
-                await Promise.allSettled([safePlay(original), safePlay(reaction)]);
-                setButtonState();
-            }
-
-            function pauseBoth() {
-                safePause(original);
-                safePause(reaction);
-                setButtonState();
-            }
-
-            function resetBothToStart() {
-                safeReset(original);
-                safeReset(reaction);
-                toggleBtn.textContent = "Reproducir";
-            }
-
-            function toggleBoth() {
-                if (isAnyPlaying()) {
-                    pauseBoth();
-                } else {
-                    playBoth();
-                }
-            }
-
-            original.addEventListener("play", () => {
-                endedHandled = false;
-                syncTime(original, reaction);
-                if (reaction.paused) safePlay(reaction);
-                setButtonState();
-            });
-
-            reaction.addEventListener("play", () => {
-                endedHandled = false;
-                syncTime(reaction, original);
-                if (original.paused) safePlay(original);
-                setButtonState();
-            });
-
-            original.addEventListener("pause", () => {
-                if (!endedHandled && reaction && !reaction.paused) safePause(reaction);
-                setButtonState();
-            });
-
-            reaction.addEventListener("pause", () => {
-                if (!endedHandled && original && !original.paused) safePause(original);
-                setButtonState();
-            });
-
-            original.addEventListener("seeking", () => syncTime(original, reaction));
-            reaction.addEventListener("seeking", () => syncTime(reaction, original));
-
-            function handleEnded() {
-                if (endedHandled) return;
-                endedHandled = true;
-                pauseBoth();
-                setTimeout(() => {
-                    resetBothToStart();
-                }, 80);
-            }
-
-            original.addEventListener("ended", handleEnded);
-            reaction.addEventListener("ended", handleEnded);
-
-            async function sharePack() {
-                const url = window.location.href;
-
-                if (navigator.share) {
-                    try {
-                        await navigator.share({
-                            title: "ETERNA",
-                            text: "ETERNA",
-                            url: url
-                        });
-                    } catch (e) {}
-                } else {
-                    window.open(url, "_blank");
-                }
-            }
-
-            setButtonState();
-        </script>
     </body>
     </html>
-    """)
+    """
+
+    script = """
+    <script>
+    const original = document.getElementById("videoOriginal");
+    const reaction = document.getElementById("videoReaction");
+    const toggleBtn = document.getElementById("toggleAudio");
+
+    let syncing = false;
+    let endedHandled = false;
+
+    function safePlay(v) {
+        if (!v) return Promise.resolve();
+        try {
+            return v.play();
+        } catch (e) {
+            return Promise.resolve();
+        }
+    }
+
+    function safePause(v) {
+        if (!v) return;
+        try {
+            v.pause();
+        } catch (e) {}
+    }
+
+    function syncFrom(source, target) {
+        if (!source || !target || syncing) return;
+        syncing = true;
+        try {
+            const drift = Math.abs((target.currentTime || 0) - (source.currentTime || 0));
+            if (drift > 0.35) {
+                target.currentTime = source.currentTime || 0;
+            }
+        } catch (e) {}
+        syncing = false;
+    }
+
+    function updateToggleText() {
+        if (!reaction || !toggleBtn) return;
+        toggleBtn.textContent = reaction.muted
+            ? "Activar sonido reacción"
+            : "Silenciar reacción";
+    }
+
+    if (reaction) {
+        reaction.muted = true;
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener("click", function () {
+            if (!reaction) return;
+            reaction.muted = !reaction.muted;
+            updateToggleText();
+        });
+        updateToggleText();
+    }
+
+    if (original && reaction) {
+        original.addEventListener("play", function () {
+            safePlay(reaction);
+        });
+
+        reaction.addEventListener("play", function () {
+            safePlay(original);
+        });
+
+        original.addEventListener("pause", function () {
+            safePause(reaction);
+        });
+
+        reaction.addEventListener("pause", function () {
+            safePause(original);
+        });
+
+        original.addEventListener("timeupdate", function () {
+            syncFrom(original, reaction);
+        });
+
+        reaction.addEventListener("timeupdate", function () {
+            syncFrom(reaction, original);
+        });
+
+        original.addEventListener("ended", function () {
+            if (endedHandled) return;
+            endedHandled = true;
+            safePause(reaction);
+        });
+
+        reaction.addEventListener("ended", function () {
+            if (endedHandled) return;
+            endedHandled = true;
+            safePause(original);
+        });
+    }
+    </script>
+    """
+
+    return HTMLResponse(html + script)
 
 
 # =========================================================
