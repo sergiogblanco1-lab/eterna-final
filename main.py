@@ -2250,6 +2250,11 @@ def latido_page(recipient_token: str):
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(recipient_token: str):
+
+por este bloque entero:
+
+@app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
+def experiencia(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not order["paid"]:
@@ -2264,131 +2269,260 @@ def experiencia(recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or "").strip()
     experience_video_type = guess_media_type_from_url(experience_video_url)
 
-    return f"""
+    return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>ETERNA</title>
         <style>
-            * {{ box-sizing: border-box; }}
+            * {{
+                box-sizing: border-box;
+                -webkit-tap-highlight-color: transparent;
+            }}
+
             html, body {{
                 margin: 0;
-                min-height: 100%;
+                width: 100%;
+                height: 100%;
                 background: #000;
-            }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
+                overflow: hidden;
                 font-family: Arial, sans-serif;
+            }}
+
+            body {{
+                position: fixed;
+                inset: 0;
+                background: #000;
+                color: white;
+            }}
+
+            .screen {{
+                position: fixed;
+                inset: 0;
+                width: 100vw;
+                height: 100vh;
+                background: #000;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 18px;
             }}
-            .wrap {{
-                width: 100%;
-                max-width: 520px;
-                text-align: center;
+
+            .video-wrap {{
+                position: fixed;
+                inset: 0;
+                width: 100vw;
+                height: 100vh;
+                background: #000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }}
-            .title {{
-                font-size: 28px;
-                line-height: 1.5;
-                margin-bottom: 10px;
-                color: rgba(255,255,255,0.95);
-            }}
-            .soft {{
-                font-size: 14px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.52);
-                margin-bottom: 18px;
-            }}
-            .video-shell {{
-                width: 100%;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 26px;
-                padding: 14px;
-            }}
+
             video {{
-                width: 100%;
-                border-radius: 18px;
-                background: #111;
+                width: 100vw;
+                height: 100vh;
+                object-fit: contain;
+                background: #000;
                 display: block;
             }}
+
+            .overlay {{
+                position: fixed;
+                inset: 0;
+                background:
+                    linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.42) 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 28px;
+                z-index: 5;
+            }}
+
+            .card {{
+                width: 100%;
+                max-width: 760px;
+                text-align: center;
+            }}
+
+            .eyebrow {{
+                font-size: 12px;
+                letter-spacing: 0.18em;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.34);
+                margin-bottom: 20px;
+            }}
+
+            h1 {{
+                margin: 0;
+                font-size: 42px;
+                line-height: 1.2;
+                font-weight: 700;
+            }}
+
+            .line {{
+                margin-top: 22px;
+                font-size: 24px;
+                line-height: 1.75;
+                color: rgba(255,255,255,0.90);
+            }}
+
+            .warn {{
+                margin: 28px auto 0 auto;
+                max-width: 620px;
+                font-size: 18px;
+                line-height: 1.9;
+                color: rgba(255,255,255,0.62);
+            }}
+
             .btn {{
                 width: 100%;
-                margin-top: 18px;
-                padding: 16px 22px;
+                max-width: 460px;
+                margin-top: 34px;
+                padding: 18px 22px;
                 border-radius: 999px;
                 border: 0;
                 background: white;
                 color: black;
                 font-weight: bold;
-                font-size: 15px;
+                font-size: 18px;
                 cursor: pointer;
             }}
+
             .status {{
-                margin-top: 16px;
-                font-size: 14px;
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 24px;
+                padding: 0 20px;
+                text-align: center;
+                font-size: 15px;
                 line-height: 1.7;
-                color: rgba(255,255,255,0.58);
-                min-height: 24px;
+                color: rgba(255,255,255,0.62);
+                z-index: 6;
+            }}
+
+            .loading {{
+                position: fixed;
+                inset: 0;
+                background: #000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                padding: 28px;
+                text-align: center;
+                z-index: 20;
+            }}
+
+            .loading.show {{
+                display: flex;
+            }}
+
+            .loading-title {{
+                font-size: 34px;
+                line-height: 1.25;
+                margin: 0 0 18px 0;
+            }}
+
+            .loading-text {{
+                font-size: 18px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.60);
+                max-width: 620px;
+            }}
+
+            @media (max-width: 640px) {{
+                h1 {{
+                    font-size: 34px;
+                }}
+
+                .line {{
+                    font-size: 22px;
+                }}
+
+                .warn {{
+                    font-size: 17px;
+                }}
+
+                .btn {{
+                    font-size: 17px;
+                }}
+
+                .loading-title {{
+                    font-size: 30px;
+                }}
             }}
         </style>
     </head>
     <body>
-        <div class="wrap">
-            <div class="title">Esto es para ti</div>
-            <div class="soft">Activa cámara y micrófono. Tu reacción se grabará mientras ves tu ETERNA.</div>
-
-            <div class="video-shell">
-                <video id="eternaVideo" playsinline preload="auto">
+        <div class="screen">
+            <div class="video-wrap">
+                <video id="videoPrincipal" playsinline preload="auto">
                     <source src="{safe_attr(experience_video_url)}" type="{safe_attr(experience_video_type)}">
                     Tu navegador no puede reproducir este vídeo.
                 </video>
             </div>
+        </div>
 
-            <button class="btn" id="startBtn" onclick="startExperience()">Empezar</button>
-            <div class="status" id="statusMsg"></div>
+        <div class="overlay" id="introOverlay">
+            <div class="card">
+                <div class="eyebrow">ETERNA</div>
+                <h1>Antes de empezar…</h1>
+
+                <div class="line">
+                    Busca un lugar tranquilo.<br>
+                    Sube el volumen.
+                </div>
+
+                <div class="warn">
+                    Este momento es solo para ti.<br>
+                    Cuando estés listo, empieza.
+                </div>
+
+                <button class="btn" id="startBtn">Empezar</button>
+            </div>
+        </div>
+
+        <div class="status" id="statusMsg"></div>
+
+        <div class="loading" id="loadingScreen">
+            <div class="loading-title">Guardando este momento…</div>
+            <div class="loading-text">
+                Espera unos segundos.<br>
+                Estamos preparando lo que viene después.
+            </div>
         </div>
 
         <script>
-            let recorder = null;
-            let chunks = [];
-            let currentStream = null;
-            let mediaMimeType = "video/webm";
-            let uploadStarted = false;
-            let experienceStarted = false;
-            let videoEndedHandled = false;
-            let allowPlayback = false;
+            const RECIPIENT_TOKEN = "{safe_attr(recipient_token)}";
 
-            const video = document.getElementById("eternaVideo");
+            let mediaRecorder = null;
+            let chunks = [];
+            let streamRef = null;
+            let experienceStarted = false;
+            let uploadStarted = false;
+            let endedHandled = false;
+            let startedRecording = false;
+
+            const introOverlay = document.getElementById("introOverlay");
             const startBtn = document.getElementById("startBtn");
+            const video = document.getElementById("videoPrincipal");
             const statusMsg = document.getElementById("statusMsg");
+            const loadingScreen = document.getElementById("loadingScreen");
 
             function setStatus(text) {{
                 statusMsg.textContent = text || "";
             }}
 
-            function wait(ms) {{
-                return new Promise(resolve => setTimeout(resolve, ms));
+            function showLoading() {{
+                loadingScreen.classList.add("show");
             }}
-
-            video.addEventListener("play", function () {{
-                if (!allowPlayback) {{
-                    try {{ video.pause(); }} catch (err) {{}}
-                    try {{ video.currentTime = 0; }} catch (err) {{}}
-                }}
-            }});
 
             async function lockExperienceStart() {{
                 const formData = new FormData();
-                formData.append("recipient_token", "{safe_attr(order['recipient_token'])}");
+                formData.append("recipient_token", RECIPIENT_TOKEN);
 
                 const response = await fetch("/start-experience", {{
                     method: "POST",
@@ -2398,174 +2532,117 @@ def experiencia(recipient_token: str):
                 const data = await response.json();
 
                 if (data.status === "already_completed") {{
-                    window.location.href = data.redirect_url || "/cobrar/{safe_attr(order['recipient_token'])}";
+                    window.location.href = data.redirect_url || `/cobrar/${{RECIPIENT_TOKEN}}`;
                     return false;
                 }}
 
                 if (data.status === "video_not_ready") {{
-                    window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
+                    window.location.href = `/pedido/${{RECIPIENT_TOKEN}}`;
                     return false;
                 }}
 
                 return true;
             }}
 
-            async function sendVideo() {{
-                try {{
-                    if (!chunks.length) return null;
+            async function startRecording() {{
+                streamRef = await navigator.mediaDevices.getUserMedia({{
+                    video: {{
+                        width: 640,
+                        height: 480,
+                        facingMode: "user"
+                    }},
+                    audio: true
+                }});
 
-                    const ext = mediaMimeType.includes("mp4") ? "mp4" : "webm";
+                mediaRecorder = new MediaRecorder(streamRef);
+                chunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {{
+                    if (e.data && e.data.size > 0) {{
+                        chunks.push(e.data);
+                    }}
+                }};
+
+                mediaRecorder.start(250);
+                startedRecording = true;
+                console.log("🎥 Grabacion iniciada");
+            }}
+
+            async function uploadReactionAndFinish() {{
+                if (uploadStarted) return;
+                uploadStarted = true;
+
+                showLoading();
+                setStatus("Guardando este momento…");
+
+                try {{
+                    if (mediaRecorder && mediaRecorder.state !== "inactive") {{
+                        await new Promise((resolve) => {{
+                            mediaRecorder.onstop = resolve;
+                            mediaRecorder.stop();
+                        }});
+                    }}
+
+                    if (streamRef) {{
+                        streamRef.getTracks().forEach(track => track.stop());
+                        streamRef = null;
+                    }}
+
                     const blob = new Blob(chunks, {{
-                        type: ext === "mp4" ? "video/mp4" : "video/webm"
+                        type: "video/webm"
                     }});
 
-                    if (!blob || blob.size === 0) return null;
+                    if (!blob || blob.size === 0) {{
+                        throw new Error("reaction_blob_empty");
+                    }}
 
                     const formData = new FormData();
-                    formData.append("recipient_token", "{safe_attr(order['recipient_token'])}");
-                    formData.append("video", blob, "{safe_attr(order['id'])}." + ext);
+                    formData.append("recipient_token", RECIPIENT_TOKEN);
+                    formData.append("video", blob, "reaction.webm");
 
                     const response = await fetch("/upload-video", {{
                         method: "POST",
                         body: formData
                     }});
 
-                    if (!response.ok) return null;
-                    return await response.json();
+                    const data = await response.json();
 
-                }} catch (err) {{
-                    return null;
+                    if (!response.ok) {{
+                        throw new Error(data.detail || "upload_failed");
+                    }}
+
+                    if (!data.cashout_url) {{
+                        throw new Error("missing_cashout_url");
+                    }}
+
+                    window.location.href = data.cashout_url;
+
+                }} catch (e) {{
+                    console.error("❌ ERROR FINALIZANDO EXPERIENCIA:", e);
+                    alert("No hemos podido guardar bien este momento. Intentalo otra vez.");
+                    window.location.href = `/pedido/${{RECIPIENT_TOKEN}}`;
                 }}
             }}
 
-            async function stopRecordingAndUpload() {{
-                if (uploadStarted) return null;
-                uploadStarted = true;
-
-                setStatus("Guardando este momento…");
-
-                if (recorder && recorder.state !== "inactive") {{
-                    await new Promise((resolve) => {{
-                        const prevOnStop = recorder.onstop;
-                        recorder.onstop = () => {{
-                            try {{
-                                if (typeof prevOnStop === "function") prevOnStop();
-                            }} catch (e) {{}}
-                            resolve();
-                        }};
-                        try {{
-                            recorder.stop();
-                        }} catch (e) {{
-                            resolve();
-                        }}
-                    }});
-                }}
-
-                if (currentStream) {{
-                    currentStream.getTracks().forEach(track => track.stop());
-                    currentStream = null;
-                }}
-
-                await wait(900);
-                return await sendVideo();
-            }}
-
-            async function finishFlow() {{
-                const result = await stopRecordingAndUpload();
-
-                if (!result || (result.status !== "ok" && result.status !== "already_uploaded")) {{
-                    alert("No hemos podido guardar bien la reacción. Inténtalo otra vez.");
-                    window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
-                    return;
-                }}
-
-                window.location.href = result.cashout_url || "/cobrar/{safe_attr(order['recipient_token'])}";
-            }}
-
-            async function prepareRecorder(stream) {{
-                currentStream = stream;
-                chunks = [];
-                uploadStarted = false;
-
-                let options = null;
-
-                if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
-                    mediaMimeType = "video/webm;codecs=vp8,opus";
-                    options = {{
-                        mimeType: mediaMimeType,
-                        videoBitsPerSecond: 900000,
-                        audioBitsPerSecond: 64000
-                    }};
-                }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
-                    mediaMimeType = "video/webm";
-                    options = {{
-                        mimeType: mediaMimeType,
-                        videoBitsPerSecond: 900000,
-                        audioBitsPerSecond: 64000
-                    }};
-                }} else if (MediaRecorder.isTypeSupported("video/mp4")) {{
-                    mediaMimeType = "video/mp4";
-                    options = {{
-                        mimeType: mediaMimeType,
-                        videoBitsPerSecond: 900000,
-                        audioBitsPerSecond: 64000
-                    }};
-                }} else {{
-                    throw new Error("Formato no soportado");
-                }}
-
-                recorder = new MediaRecorder(stream, options);
-
-                recorder.ondataavailable = (e) => {{
-                    if (e.data && e.data.size > 0) chunks.push(e.data);
-                }};
-
-                recorder.onerror = () => {{
-                    setStatus("Error grabando la reacción.");
-                }};
-            }}
-
-            video.addEventListener("ended", async () => {{
-                if (videoEndedHandled) return;
-                videoEndedHandled = true;
-                await finishFlow();
-            }});
-
-            async function startExperience() {{
+            startBtn.addEventListener("click", async function () {{
                 if (experienceStarted) return;
 
                 startBtn.disabled = true;
                 startBtn.textContent = "Preparando...";
 
                 try {{
-                    if (!window.MediaRecorder) {{
-                        throw new Error("MediaRecorder no soportado");
-                    }}
-
                     const lockOk = await lockExperienceStart();
                     if (!lockOk) {{
-                        experienceStarted = false;
                         startBtn.disabled = false;
                         startBtn.textContent = "Empezar";
                         return;
                     }}
 
-                    setStatus("Activando cámara y micrófono…");
-
-                    const stream = await navigator.mediaDevices.getUserMedia({{
-                        video: {{ width: 640, height: 480, facingMode: "user" }},
-                        audio: true
-                    }});
-
-                    await prepareRecorder(stream);
+                    await startRecording();
 
                     experienceStarted = true;
-                    allowPlayback = true;
-
-                    recorder.start(300);
-
+                    introOverlay.style.display = "none";
                     setStatus("Viviendo este momento…");
-                    startBtn.style.display = "none";
 
                     try {{
                         video.currentTime = 0;
@@ -2576,26 +2653,48 @@ def experiencia(recipient_token: str):
                         await playPromise;
                     }}
 
-                }} catch (e) {{
-                    allowPlayback = false;
-                    experienceStarted = false;
-
-                    if (currentStream) {{
-                        currentStream.getTracks().forEach(track => track.stop());
-                        currentStream = null;
+                    try {{
+                        if (video.requestFullscreen) {{
+                            await video.requestFullscreen();
+                        }} else if (video.webkitEnterFullscreen) {{
+                            video.webkitEnterFullscreen();
+                        }}
+                    }} catch (e) {{
+                        console.log("Fullscreen no disponible");
                     }}
 
+                }} catch (e) {{
+                    console.error("❌ ERROR INICIANDO EXPERIENCIA:", e);
+
+                    if (streamRef) {{
+                        streamRef.getTracks().forEach(track => track.stop());
+                        streamRef = null;
+                    }}
+
+                    alert("Necesitamos acceso a camara y microfono para continuar.");
                     startBtn.disabled = false;
                     startBtn.textContent = "Empezar";
-
-                    alert("Necesitamos acceso a cámara y micrófono para continuar.");
-                    window.location.href = "/pedido/{safe_attr(order['recipient_token'])}";
                 }}
-            }}
+            }});
+
+            video.addEventListener("play", function () {{
+                if (!experienceStarted) {{
+                    try {{
+                        video.pause();
+                        video.currentTime = 0;
+                    }} catch (e) {{}}
+                }}
+            }});
+
+            video.addEventListener("ended", async function () {{
+                if (endedHandled) return;
+                endedHandled = true;
+                await uploadReactionAndFinish();
+            }});
         </script>
     </body>
     </html>
-    """
+    """)
 
 
 # =========================================================
@@ -2845,22 +2944,18 @@ def mi_video(recipient_token: str):
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
 
-    if cashout_status == "gift_refunded":
+    if bool(order.get("gift_refunded")):
         status_text = "Este regalo ha sido cancelado."
     elif gift_amount <= 0:
         status_text = "Este momento ya es tuyo."
     elif cashout_status == "completed":
-        status_text = "Tu dinero ya se ha enviado correctamente."
+        status_text = "Tu regalo ya ha sido enviado."
     elif cashout_status == "processing":
-        status_text = "Estamos procesando el envío de tu dinero."
+        status_text = "Estamos procesando el envío de tu regalo."
     elif cashout_status == "ready_to_send":
-        status_text = "Tu dinero está listo para enviarse."
+        status_text = "Tu regalo está listo para enviarse."
     else:
-        status_text = "Para recibir tu regalo, completa el proceso."
-
-    onboarding_hint = ""
-    if gift_amount > 0 and cashout_status == "pending":
-        onboarding_hint = "Para recibir tu regalo, completa el proceso seguro de Stripe."
+        status_text = "Este momento ya es tuyo."
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -2871,7 +2966,13 @@ def mi_video(recipient_token: str):
         <title>Mi vídeo</title>
         <style>
             * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+
+            html, body {{
+                margin: 0;
+                min-height: 100%;
+                background: #000;
+            }}
+
             body {{
                 min-height: 100vh;
                 background:
@@ -2880,48 +2981,87 @@ def mi_video(recipient_token: str):
                 color: white;
                 font-family: Arial, sans-serif;
             }}
-            .wrap {{ min-height: 100vh; display: flex; flex-direction: column; }}
-            .header {{ padding: 28px 20px 10px; text-align: center; }}
-            .header-title {{ font-size: 24px; line-height: 1.5; color: rgba(255,255,255,0.92); }}
-            .top {{
-                flex: 1;
-                min-height: 50vh;
+
+            .wrap {{
+                min-height: 100vh;
                 display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0 16px;
+                flex-direction: column;
+                padding: 22px 16px 34px;
             }}
+
+            .header {{
+                text-align: center;
+                margin-bottom: 20px;
+            }}
+
+            .eyebrow {{
+                font-size: 12px;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.34);
+                margin-bottom: 12px;
+            }}
+
+            .title {{
+                font-size: 34px;
+                line-height: 1.2;
+                color: rgba(255,255,255,0.94);
+            }}
+
+            .video-shell {{
+                width: 100%;
+                max-width: 420px;
+                margin: 0 auto;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 24px;
+                padding: 14px;
+            }}
+
             video {{
                 width: 100%;
-                max-width: 460px;
+                max-width: 100%;
                 border-radius: 18px;
-                background: #111;
+                background: #000;
                 display: block;
-            }}
-            .status {{
-                max-width: 760px;
                 margin: 0 auto;
-                padding: 0 16px;
+            }}
+
+            .status {{
+                max-width: 700px;
+                margin: 22px auto 0 auto;
                 text-align: center;
-                color: rgba(255,255,255,0.70);
-                line-height: 1.7;
+                color: rgba(255,255,255,0.66);
+                line-height: 1.8;
                 font-size: 15px;
             }}
-            .actions {{ padding: 24px 16px 30px; }}
-            .buttons {{ display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }}
+
+            .buttons {{
+                display: grid;
+                gap: 12px;
+                max-width: 460px;
+                width: 100%;
+                margin: 26px auto 0 auto;
+            }}
+
             .btn {{
                 width: 100%;
-                padding: 16px 24px;
+                padding: 17px 22px;
                 border-radius: 999px;
                 border: 0;
                 font-weight: bold;
-                font-size: 15px;
+                font-size: 16px;
                 cursor: pointer;
-                display: inline-block;
                 text-decoration: none;
                 text-align: center;
+                display: inline-block;
             }}
-            .primary {{ background: white; color: black; }}
+
+            .primary {{
+                background: white;
+                color: black;
+            }}
+
             .ghost {{
                 background: rgba(255,255,255,0.10);
                 color: white;
@@ -2932,11 +3072,12 @@ def mi_video(recipient_token: str):
     <body>
         <div class="wrap">
             <div class="header">
-                <div class="header-title">Este momento ya es tuyo</div>
+                <div class="eyebrow">ETERNA</div>
+                <div class="title">Ya puedes volver a verlo</div>
             </div>
 
-            <div class="top">
-                <video playsinline controls preload="metadata">
+            <div class="video-shell">
+                <video id="finalVideo" playsinline controls preload="metadata">
                     <source src="{safe_attr(experience_video_url)}" type="{safe_attr(video_type)}">
                     Tu navegador no puede reproducir este vídeo.
                 </video>
@@ -2944,25 +3085,47 @@ def mi_video(recipient_token: str):
 
             <div class="status">
                 {safe_text(status_text)}
-                {"<br><br>" + safe_text(onboarding_hint) if onboarding_hint else ""}
             </div>
 
-            <div class="actions">
-                <div class="buttons">
-                    <button class="btn primary" onclick="sharePage()">Compartir</button>
-                    <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
-                </div>
+            <div class="buttons">
+                <button class="btn primary" onclick="watchFullscreen()">Ver a pantalla completa</button>
+                <button class="btn ghost" onclick="shareVideo()">Compartir</button>
+                <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
             </div>
         </div>
 
         <script>
-            async function sharePage() {{
+            async function watchFullscreen() {{
+                const video = document.getElementById("finalVideo");
+
+                try {{
+                    video.currentTime = 0;
+                }} catch (e) {{}}
+
+                try {{
+                    const playPromise = video.play();
+                    if (playPromise && typeof playPromise.then === "function") {{
+                        await playPromise;
+                    }}
+                }} catch (e) {{}}
+
+                try {{
+                    if (video.requestFullscreen) {{
+                        await video.requestFullscreen();
+                    }} else if (video.webkitEnterFullscreen) {{
+                        video.webkitEnterFullscreen();
+                    }}
+                }} catch (e) {{}}
+            }}
+
+            async function shareVideo() {{
                 const url = window.location.href;
+
                 if (navigator.share) {{
                     try {{
                         await navigator.share({{
                             title: "ETERNA",
-                            text: "Este momento ya es tuyo",
+                            text: "Quiero compartir este momento contigo.",
                             url: url
                         }});
                     }} catch (e) {{}}
