@@ -2017,16 +2017,6 @@ def resumen(order_id: str):
     """)
 
 
-@app.get("/latido/{recipient_token}", response_class=HTMLResponse)
-def latido_page(recipient_token: str):
-    return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
-
-
-@app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
-def experiencia(recipient_token: str):
-
-
-
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
@@ -2278,7 +2268,6 @@ def experiencia(recipient_token: str):
             let experienceStarted = false;
             let uploadStarted = false;
             let endedHandled = false;
-            let startedRecording = false;
 
             const introOverlay = document.getElementById("introOverlay");
             const startBtn = document.getElementById("startBtn");
@@ -2328,7 +2317,14 @@ def experiencia(recipient_token: str):
                     audio: true
                 }});
 
-                mediaRecorder = new MediaRecorder(streamRef);
+                let options = {{}};
+                if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
+                    options = {{ mimeType: "video/webm;codecs=vp8,opus" }};
+                }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
+                    options = {{ mimeType: "video/webm" }};
+                }}
+
+                mediaRecorder = new MediaRecorder(streamRef, options);
                 chunks = [];
 
                 mediaRecorder.ondataavailable = (e) => {{
@@ -2338,7 +2334,6 @@ def experiencia(recipient_token: str):
                 }};
 
                 mediaRecorder.start(250);
-                startedRecording = true;
                 console.log("🎥 Grabacion iniciada");
             }}
 
@@ -2352,7 +2347,13 @@ def experiencia(recipient_token: str):
                 try {{
                     if (mediaRecorder && mediaRecorder.state !== "inactive") {{
                         await new Promise((resolve) => {{
-                            mediaRecorder.onstop = resolve;
+                            const prevOnStop = mediaRecorder.onstop;
+                            mediaRecorder.onstop = () => {{
+                                try {{
+                                    if (typeof prevOnStop === "function") prevOnStop();
+                                }} catch (e) {{}}
+                                resolve();
+                            }};
                             mediaRecorder.stop();
                         }});
                     }}
@@ -2667,7 +2668,15 @@ def mi_video(recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or "").strip()
 
     if not experience_video_url:
-       return HTMLResponse(f"""
+        return HTMLResponse("""
+        <html>
+            <body style="background:black;color:white;text-align:center;padding-top:40%">
+                Tu video aun se esta preparando...
+            </body>
+        </html>
+        """)
+
+    return HTMLResponse(f"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2676,83 +2685,132 @@ def mi_video(recipient_token: str):
 <title>ETERNA</title>
 
 <style>
-body {{
+html, body {{
     margin: 0;
+    padding: 0;
     background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+}}
+
+.container {{
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 16px;
 }}
 
 video {{
+    width: 100%;
+    border-radius: 14px;
+    background: black;
+}}
+
+.fullscreen {{
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100vw;
     height: 100vh;
-    object-fit: cover;
+    z-index: 999;
+    background: black;
+    object-fit: contain;
+    border-radius: 0;
 }}
 
-#final {{
-    display: none;
-    position: fixed;
-    bottom: 40px;
+.btn {{
+    margin-top: 16px;
+    padding: 16px;
     width: 100%;
-    text-align: center;
+    border-radius: 999px;
+    border: none;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
 }}
 
-button {{
-    padding: 16px 24px;
-    border-radius: 30px;
-    border: none;
-    font-size: 16px;
-    margin: 10px;
+.primary {{
+    background: white;
+    color: black;
+}}
+
+.secondary {{
+    background: #222;
+    color: white;
+}}
+
+.hidden {{
+    display: none;
 }}
 </style>
 </head>
 
 <body>
 
-<video id="video" autoplay playsinline>
-    <source src="{experience_video_url}" type="video/mp4">
-</video>
+<div class="container">
+    <video id="video" playsinline preload="metadata">
+        <source src="{safe_attr(experience_video_url)}" type="video/mp4">
+    </video>
 
-<div id="final">
-    <button onclick="replay()">Volver a ver</button>
-    <button onclick="share()">Compartir</button>
+    <button id="startBtn" class="btn primary" onclick="start()">Ver a pantalla completa</button>
+    <button id="replay" class="btn secondary hidden" onclick="replay()">Ver otra vez</button>
+    <button id="share" class="btn secondary hidden" onclick="shareVideo()">Compartir</button>
 </div>
 
 <script>
-
 const video = document.getElementById("video");
+const startBtn = document.getElementById("startBtn");
+const replayBtn = document.getElementById("replay");
+const shareBtn = document.getElementById("share");
 
-// Mostrar opciones al terminar
-video.onended = () => {{
-    document.getElementById("final").style.display = "block";
-}};
+async function start() {{
+    startBtn.classList.add("hidden");
+    video.classList.add("fullscreen");
 
-// Repetir vídeo
-function replay() {{
-    video.currentTime = 0;
-    video.play();
+    try {{
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.then === "function") {{
+            await playPromise;
+        }}
+    }} catch (e) {{
+        console.log("Error reproduciendo video", e);
+    }}
+
+    try {{
+        if (video.requestFullscreen) {{
+            await video.requestFullscreen();
+        }} else if (video.webkitEnterFullscreen) {{
+            video.webkitEnterFullscreen();
+        }}
+    }} catch (e) {{
+        console.log("Fullscreen no disponible");
+    }}
 }}
 
-// Compartir
-function share() {{
-    const url = window.location.href;
+video.addEventListener("ended", function () {{
+    video.classList.remove("fullscreen");
+    replayBtn.classList.remove("hidden");
+    shareBtn.classList.remove("hidden");
+}});
 
+function replay() {{
+    replayBtn.classList.add("hidden");
+    shareBtn.classList.add("hidden");
+    video.currentTime = 0;
+    start();
+}}
+
+function shareVideo() {{
     if (navigator.share) {{
         navigator.share({{
             title: "ETERNA",
-            text: "Quiero compartir este momento contigo",
-            url: url
+            text: "Mira este momento",
+            url: window.location.href
         }});
     }} else {{
-        window.open(url, "_blank");
+        alert("Comparte este enlace manualmente");
     }}
 }}
-
-// Forzar fullscreen
-video.addEventListener("play", () => {{
-    if (video.requestFullscreen) {{
-        video.requestFullscreen();
-    }}
-});
-
 </script>
 
 </body>
@@ -3720,30 +3778,73 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
 
+        if not file:
+            raise HTTPException(status_code=400, detail="No file")
+
         order_id = order["id"]
+        ext = Path(file.filename or "reaction.webm").suffix.lower() or ".webm"
 
-        os.makedirs("videos", exist_ok=True)
+        if ext not in {".webm", ".mp4"}:
+            ext = ".webm"
 
-        path = f"videos/reaction_{order_id}.webm"
+        VIDEO_FOLDER.mkdir(parents=True, exist_ok=True)
+        save_path = VIDEO_FOLDER / f"reaction_{order_id}{ext}"
 
-        with open(path, "wb") as f:
-            f.write(await file.read())
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Archivo vacio")
 
-        update_order(order_id, {
-            "reaction_video_local": path,
-            "reaction_uploaded": 1,
-            "updated_at": now_iso()
-        })
+        with open(save_path, "wb") as f:
+            f.write(content)
 
-        print("🎥 REACCION GUARDADA:", path)
+        public_url = None
+        content_type = "video/mp4" if ext == ".mp4" else "video/webm"
 
-        return {"ok": True}
+        try:
+            public_url = upload_video_to_r2(
+                str(save_path),
+                f"reaction_{order_id}{ext}",
+                content_type,
+            )
+        except Exception as e:
+            log_error("upload_reaction r2", e)
+
+        if not public_url:
+            public_url = f"{PUBLIC_BASE_URL}/video/sender/{order['sender_token']}"
+
+        update_order(
+            order_id,
+            reaction_video_local=str(save_path),
+            reaction_video_public_url=public_url,
+            reaction_uploaded=1,
+        )
+
+        if not asset_exists(order_id, "reaction_video", public_url):
+            insert_asset(
+                order_id,
+                "reaction_video",
+                public_url,
+                "r2" if public_url.startswith(R2_PUBLIC_URL) else "local",
+            )
+
+        try:
+            updated_order = get_order_by_id(order_id)
+            try_send_sender_sms(updated_order)
+        except Exception as e:
+            log_error("upload_reaction sender sms", e)
+
+        print("🎥 REACCION GUARDADA:", public_url)
+
+        return {
+            "status": "ok",
+            "url": public_url,
+        }
 
     except Exception as e:
         print("❌ ERROR SUBIENDO REACCION:", e)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
+        
         # =========================================================
 # SUBIR REACCIÓN
 # =========================================================
