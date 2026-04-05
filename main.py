@@ -3236,184 +3236,355 @@ def mi_video(recipient_token: str):
 # SENDER PACK
 # =========================================================
 
-from fastapi.responses import HTMLResponse
-
+@app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str):
-    original_video_url = "/static/eterna-base.mp4"  # ajusta si hace falta
-    reaction_video_url = "/static/reaction.mp4"     # ajusta si hace falta
+    order = get_order_by_sender_token_or_404(sender_token)
 
-    html = f"""
+    original_video_url = (order.get("experience_video_url") or "").strip()
+    reaction_video_url = (order.get("reaction_video_public_url") or "").strip()
+
+    if not reaction_video_url:
+        local_fallback = order.get("reaction_video_local")
+        if local_fallback and os.path.exists(local_fallback):
+            reaction_video_url = f"{PUBLIC_BASE_URL}/video/sender/{sender_token}"
+
+    if not original_video_url:
+        return HTMLResponse("""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                html, body {
+                    margin: 0;
+                    min-height: 100%;
+                    background: #000;
+                }
+                body {
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 24px;
+                }
+                .box {
+                    max-width: 720px;
+                }
+                h1 {
+                    font-size: 34px;
+                    margin-bottom: 18px;
+                    line-height: 1.4;
+                }
+                p {
+                    font-size: 18px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.65);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h1>Tu ETERNA aún se está preparando</h1>
+                <p>El vídeo original todavía no está disponible.</p>
+            </div>
+        </body>
+        </html>
+        """)
+
+    if not reaction_video_url:
+        return HTMLResponse("""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                html, body {
+                    margin: 0;
+                    min-height: 100%;
+                    background: #000;
+                }
+                body {
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 24px;
+                }
+                .box {
+                    max-width: 720px;
+                }
+                h1 {
+                    font-size: 34px;
+                    margin-bottom: 18px;
+                    line-height: 1.4;
+                }
+                p {
+                    font-size: 18px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.65);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h1>Tu ETERNA ha vuelto</h1>
+                <p>La reacción todavía se está guardando. Vuelve a entrar en unos segundos.</p>
+            </div>
+        </body>
+        </html>
+        """)
+
+    original_video_type = guess_media_type_from_url(original_video_url)
+    reaction_video_type = guess_media_type_from_url(reaction_video_url)
+
+    return HTMLResponse(f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="es">
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
 
         <style>
+            * {{ box-sizing: border-box; }}
+
+            html, body {{
+                margin: 0;
+                min-height: 100%;
+                background: #000;
+            }}
+
             body {{
-                background: black;
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
                 color: white;
                 font-family: Arial, sans-serif;
-                text-align: center;
-                margin: 0;
                 padding: 20px;
+            }}
+
+            .wrap {{
+                width: 100%;
+                max-width: 560px;
+                margin: 0 auto;
+                text-align: center;
+            }}
+
+            h1 {{
+                font-size: 32px;
+                line-height: 1.35;
+                margin: 8px 0 12px 0;
+            }}
+
+            .sub {{
+                color: rgba(255,255,255,0.62);
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 24px;
             }}
 
             .videos {{
                 display: flex;
                 flex-direction: column;
-                gap: 20px;
-                max-width: 400px;
-                margin: auto;
+                gap: 18px;
+            }}
+
+            .video-card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 22px;
+                padding: 14px;
+            }}
+
+            .video-label {{
+                text-align: left;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1.2px;
+                color: rgba(255,255,255,0.45);
+                margin-bottom: 10px;
             }}
 
             video {{
                 width: 100%;
-                border-radius: 10px;
-                background: black;
+                border-radius: 16px;
+                background: #000;
+                display: block;
             }}
 
             .btn {{
-                margin-top: 20px;
-                padding: 12px 20px;
+                margin-top: 18px;
+                width: 100%;
+                padding: 16px 20px;
                 background: white;
                 color: black;
                 border: none;
-                border-radius: 8px;
+                border-radius: 999px;
                 cursor: pointer;
-                font-size: 16px;
+                font-size: 15px;
+                font-weight: bold;
+            }}
+
+            .hint {{
+                margin-top: 14px;
+                color: rgba(255,255,255,0.44);
+                font-size: 13px;
+                line-height: 1.7;
             }}
         </style>
     </head>
 
     <body>
+        <div class="wrap">
+            <h1>Tu ETERNA ha vuelto</h1>
+            <div class="sub">
+                Aquí tienes el momento completo.<br>
+                El vídeo original y su reacción, juntos.
+            </div>
 
-        <h2>Tu ETERNA ha vuelto</h2>
+            <div class="videos">
+                <div class="video-card">
+                    <div class="video-label">Vídeo original</div>
+                    <video
+                        id="videoOriginal"
+                        controls
+                        playsinline
+                        preload="metadata"
+                    >
+                        <source src="{safe_attr(original_video_url)}" type="{safe_attr(original_video_type)}">
+                    </video>
+                </div>
 
-        <div class="videos">
-            <video
-                id="videoOriginal"
-                controls
-                playsinline
-                preload="metadata"
-                src="{original_video_url}"
-            ></video>
+                <div class="video-card">
+                    <div class="video-label">Reacción</div>
+                    <video
+                        id="videoReaction"
+                        controls
+                        playsinline
+                        preload="metadata"
+                    >
+                        <source src="{safe_attr(reaction_video_url)}" type="{safe_attr(reaction_video_type)}">
+                    </video>
+                </div>
+            </div>
 
-            <video
-                id="videoReaction"
-                controls
-                playsinline
-                preload="metadata"
-                src="{reaction_video_url}"
-            ></video>
+            <button id="toggleAudio" class="btn">
+                Activar sonido reacción
+            </button>
+
+            <div class="hint">
+                Puedes reproducirlos juntos y escuchar la reacción cuando quieras.
+            </div>
         </div>
 
-        <button id="toggleAudio" class="btn">
-            Activar sonido reacción
-        </button>
+        <script>
+            const original = document.getElementById("videoOriginal");
+            const reaction = document.getElementById("videoReaction");
+            const toggleBtn = document.getElementById("toggleAudio");
 
+            let syncing = false;
+            let endedHandled = false;
+
+            function safePlay(v) {{
+                if (!v) return Promise.resolve();
+                try {{
+                    const p = v.play();
+                    if (p && typeof p.then === "function") return p.catch(() => {{}});
+                }} catch (e) {{}}
+                return Promise.resolve();
+            }}
+
+            function safePause(v) {{
+                if (!v) return;
+                try {{
+                    v.pause();
+                }} catch (e) {{}}
+            }}
+
+            function syncFrom(source, target) {{
+                if (!source || !target || syncing) return;
+                syncing = true;
+                try {{
+                    const drift = Math.abs((target.currentTime || 0) - (source.currentTime || 0));
+                    if (drift > 0.35) {{
+                        target.currentTime = source.currentTime || 0;
+                    }}
+                }} catch (e) {{}}
+                syncing = false;
+            }}
+
+            function updateToggleText() {{
+                if (!reaction || !toggleBtn) return;
+                toggleBtn.textContent = reaction.muted
+                    ? "Activar sonido reacción"
+                    : "Silenciar reacción";
+            }}
+
+            if (reaction) {{
+                reaction.muted = true;
+            }}
+
+            if (toggleBtn) {{
+                toggleBtn.addEventListener("click", function () {{
+                    if (!reaction) return;
+                    reaction.muted = !reaction.muted;
+                    updateToggleText();
+                }});
+                updateToggleText();
+            }}
+
+            if (original && reaction) {{
+                original.addEventListener("play", function () {{
+                    safePlay(reaction);
+                }});
+
+                reaction.addEventListener("play", function () {{
+                    safePlay(original);
+                }});
+
+                original.addEventListener("pause", function () {{
+                    safePause(reaction);
+                }});
+
+                reaction.addEventListener("pause", function () {{
+                    safePause(original);
+                }});
+
+                original.addEventListener("timeupdate", function () {{
+                    syncFrom(original, reaction);
+                }});
+
+                reaction.addEventListener("timeupdate", function () {{
+                    syncFrom(reaction, original);
+                }});
+
+                original.addEventListener("ended", function () {{
+                    if (endedHandled) return;
+                    endedHandled = true;
+                    safePause(reaction);
+                }});
+
+                reaction.addEventListener("ended", function () {{
+                    if (endedHandled) return;
+                    endedHandled = true;
+                    safePause(original);
+                }});
+            }}
+        </script>
     </body>
     </html>
-    """
-
-    script = """
-    <script>
-    const original = document.getElementById("videoOriginal");
-    const reaction = document.getElementById("videoReaction");
-    const toggleBtn = document.getElementById("toggleAudio");
-
-    let syncing = false;
-    let endedHandled = false;
-
-    function safePlay(v) {
-        if (!v) return Promise.resolve();
-        try {
-            return v.play();
-        } catch (e) {
-            return Promise.resolve();
-        }
-    }
-
-    function safePause(v) {
-        if (!v) return;
-        try {
-            v.pause();
-        } catch (e) {}
-    }
-
-    function syncFrom(source, target) {
-        if (!source || !target || syncing) return;
-        syncing = true;
-        try {
-            const drift = Math.abs((target.currentTime || 0) - (source.currentTime || 0));
-            if (drift > 0.35) {
-                target.currentTime = source.currentTime || 0;
-            }
-        } catch (e) {}
-        syncing = false;
-    }
-
-    function updateToggleText() {
-        if (!reaction || !toggleBtn) return;
-        toggleBtn.textContent = reaction.muted
-            ? "Activar sonido reacción"
-            : "Silenciar reacción";
-    }
-
-    if (reaction) {
-        reaction.muted = true;
-    }
-
-    if (toggleBtn) {
-        toggleBtn.addEventListener("click", function () {
-            if (!reaction) return;
-            reaction.muted = !reaction.muted;
-            updateToggleText();
-        });
-        updateToggleText();
-    }
-
-    if (original && reaction) {
-        original.addEventListener("play", function () {
-            safePlay(reaction);
-        });
-
-        reaction.addEventListener("play", function () {
-            safePlay(original);
-        });
-
-        original.addEventListener("pause", function () {
-            safePause(reaction);
-        });
-
-        reaction.addEventListener("pause", function () {
-            safePause(original);
-        });
-
-        original.addEventListener("timeupdate", function () {
-            syncFrom(original, reaction);
-        });
-
-        reaction.addEventListener("timeupdate", function () {
-            syncFrom(reaction, original);
-        });
-
-        original.addEventListener("ended", function () {
-            if (endedHandled) return;
-            endedHandled = true;
-            safePause(reaction);
-        });
-
-        reaction.addEventListener("ended", function () {
-            if (endedHandled) return;
-            endedHandled = true;
-            safePause(original);
-        });
-    }
-    </script>
-    """
-
-    return HTMLResponse(html + script)
+    """)
 
 
 # =========================================================
