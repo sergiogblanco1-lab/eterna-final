@@ -2765,71 +2765,100 @@ let mediaRecorder;
 let recordedChunks = [];
 let stream;
 
-async function startExperience() {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+async function startExperience() {{
+    try {{
+        stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
 
         mediaRecorder = new MediaRecorder(stream);
 
-        mediaRecorder.ondataavailable = function(event) {
-            if (event.data.size > 0) 
+        mediaRecorder.ondataavailable = function(event) {{
+            if (event.data.size > 0) {{
                 recordedChunks.push(event.data);
-            }
-        };
+            }}
+        }};
 
-        mediaRecorder.onstop = async function() {
-            try {
-                const blob = new Blob(recordedChunks, { type: "video/webm" });
-                const formData = new FormData();
-                formData.append("file", blob, "reaction.webm");
+        mediaRecorder.onstop = async function() {{
+            const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
 
-                await fetch("/upload-reaction/" + recipient_token, {
+            const formData = new FormData();
+            formData.append("file", blob, "reaction.webm");
+
+            try {{
+                await fetch(`/upload-reaction/${{recipient_token}}`, {{
                     method: "POST",
                     body: formData
-                });
+                }});
+            }} catch (e) {{
+                console.error("Error subiendo reacción:", e);
+            }}
 
-                console.log("✅ Reacción subida");
-            } catch (e) {
-                console.error("❌ Error subiendo reacción:", e);
-            }
-        };
+            window.location.href = `/mi-video/${{recipient_token}}`;
+        }};
 
         mediaRecorder.start();
-        await video.play();
 
-    } catch (err) {
-        console.error("❌ Error accediendo a cámara:", err);
-    }
-}
+        video.play();
 
-video.addEventListener("play", () => {
-    if (video.requestFullscreen) {
-        video.requestFullscreen();
-    } else if (video.webkitEnterFullscreen) {
-        video.webkitEnterFullscreen();
-    }
-});
+        if (video.requestFullscreen) {{
+            video.requestFullscreen();
+        }} else if (video.webkitEnterFullscreen) {{
+            video.webkitEnterFullscreen();
+        }}
 
-video.onended = async () => {
-    try {
-        console.log("🎬 Video terminado");
+    }} catch (e) {{
+        console.error("Error iniciando experiencia:", e);
+    }}
+}}
 
-        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+video.onended = async () => {{
+    try {{
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {{
             mediaRecorder.stop();
-        }
+        }}
 
-        if (stream) {
+        if (stream) {{
             stream.getTracks().forEach(track => track.stop());
-        }
+        }}
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+    }} catch (e) {{
+        console.error("Error finalizando:", e);
+    }}
+}};
 
-        window.location.href = "/mi-video/" + recipient_token;
+// Botón start
+const startBtn = document.getElementById("startBtn");
+if (startBtn) {{
+    startBtn.addEventListener("click", startExperience);
+}}
 
-    } catch (e) {
-        console.error("❌ Error finalizando experiencia:", e);
-    }
-};
+// Replay
+const replayBtn = document.getElementById("replay");
+if (replayBtn) {{
+    replayBtn.addEventListener("click", () => {{
+        video.currentTime = 0;
+        video.play();
+    }});
+}}
+
+// Share
+const shareBtn = document.getElementById("share");
+if (shareBtn) {{
+    shareBtn.addEventListener("click", async () => {{
+        const url = window.location.href;
+
+        if (navigator.share) {{
+            try {{
+                await navigator.share({{
+                    title: "ETERNA",
+                    text: "Quiero compartir este momento contigo",
+                    url: url
+                }});
+            }} catch (e) {{}}
+        }} else {{
+            window.open(url, "_blank");
+        }}
+    }});
+}}
 </script>
 
 </body>
