@@ -2022,454 +2022,144 @@ def experiencia(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not order["paid"]:
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+        return RedirectResponse(url="/pedido/" + recipient_token, status_code=303)
 
     if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+        return RedirectResponse(url="/pedido/" + recipient_token, status_code=303)
 
     if bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+        return RedirectResponse(url="/cobrar/" + recipient_token, status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
-    experience_video_type = guess_media_type_from_url(experience_video_url)
-
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>ETERNA</title>
-        <style>
-            * {{
-                box-sizing: border-box;
-                -webkit-tap-highlight-color: transparent;
-            }}
-
-            html, body {{
-                margin: 0;
-                width: 100%;
-                height: 100%;
-                background: #000;
-                overflow: hidden;
-                font-family: Arial, sans-serif;
-            }}
-
-            body {{
-                position: fixed;
-                inset: 0;
-                background: #000;
-                color: white;
-            }}
-
-            .screen {{
-                position: fixed;
-                inset: 0;
-                width: 100vw;
-                height: 100vh;
-                background: #000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }}
-
-            .video-wrap {{
-                position: fixed;
-                inset: 0;
-                width: 100vw;
-                height: 100vh;
-                background: #000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }}
-
-            video {{
-                width: 100vw;
-                height: 100vh;
-                object-fit: contain;
-                background: #000;
-                display: block;
-            }}
-
-            .overlay {{
-                position: fixed;
-                inset: 0;
-                background:
-                    linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.42) 100%);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 28px;
-                z-index: 5;
-            }}
-
-            .card {{
-                width: 100%;
-                max-width: 760px;
-                text-align: center;
-            }}
-
-            .eyebrow {{
-                font-size: 12px;
-                letter-spacing: 0.18em;
-                text-transform: uppercase;
-                color: rgba(255,255,255,0.34);
-                margin-bottom: 20px;
-            }}
-
-            h1 {{
-                margin: 0;
-                font-size: 42px;
-                line-height: 1.2;
-                font-weight: 700;
-            }}
-
-            .line {{
-                margin-top: 22px;
-                font-size: 24px;
-                line-height: 1.75;
-                color: rgba(255,255,255,0.90);
-            }}
-
-            .warn {{
-                margin: 28px auto 0 auto;
-                max-width: 620px;
-                font-size: 18px;
-                line-height: 1.9;
-                color: rgba(255,255,255,0.62);
-            }}
-
-            .btn {{
-                width: 100%;
-                max-width: 460px;
-                margin-top: 34px;
-                padding: 18px 22px;
-                border-radius: 999px;
-                border: 0;
-                background: white;
-                color: black;
-                font-weight: bold;
-                font-size: 18px;
-                cursor: pointer;
-            }}
-
-            .status {{
-                position: fixed;
-                left: 0;
-                right: 0;
-                bottom: 24px;
-                padding: 0 20px;
-                text-align: center;
-                font-size: 15px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.62);
-                z-index: 6;
-            }}
-
-            .loading {{
-                position: fixed;
-                inset: 0;
-                background: #000;
-                display: none;
-                align-items: center;
-                justify-content: center;
-                flex-direction: column;
-                padding: 28px;
-                text-align: center;
-                z-index: 20;
-            }}
-
-            .loading.show {{
-                display: flex;
-            }}
-
-            .loading-title {{
-                font-size: 34px;
-                line-height: 1.25;
-                margin: 0 0 18px 0;
-            }}
-
-            .loading-text {{
-                font-size: 18px;
-                line-height: 1.8;
-                color: rgba(255,255,255,0.60);
-                max-width: 620px;
-            }}
-
-            @media (max-width: 640px) {{
-                h1 {{
-                    font-size: 34px;
-                }}
-
-                .line {{
-                    font-size: 22px;
-                }}
-
-                .warn {{
-                    font-size: 17px;
-                }}
-
-                .btn {{
-                    font-size: 17px;
-                }}
-
-                .loading-title {{
-                    font-size: 30px;
-                }}
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="screen">
-            <div class="video-wrap">
-                <video id="videoPrincipal" playsinline preload="auto">
-                    <source src="{safe_attr(experience_video_url)}" type="{safe_attr(experience_video_type)}">
-                    Tu navegador no puede reproducir este vídeo.
-                </video>
-            </div>
-        </div>
-
-        <div class="overlay" id="introOverlay">
-            <div class="card">
-                <div class="eyebrow">ETERNA</div>
-                <h1>Antes de empezar…</h1>
-
-                <div class="line">
-                    Busca un lugar tranquilo.<br>
-                    Sube el volumen.
-                </div>
-
-                <div class="warn">
-                    Este momento es solo para ti.<br>
-                    Cuando estés listo, empieza.
-                </div>
-
-                <button class="btn" id="startBtn">Empezar</button>
-            </div>
-        </div>
-
-        <div class="status" id="statusMsg"></div>
-
-        <div class="loading" id="loadingScreen">
-            <div class="loading-title">Guardando este momento…</div>
-            <div class="loading-text">
-                Espera unos segundos.<br>
-                Estamos preparando lo que viene después.
-            </div>
-        </div>
-
-        <script>
-            const RECIPIENT_TOKEN = "{safe_attr(recipient_token)}";
-
-            let mediaRecorder = null;
-            let chunks = [];
-            let streamRef = null;
-            let experienceStarted = false;
-            let uploadStarted = false;
-            let endedHandled = false;
-
-            const introOverlay = document.getElementById("introOverlay");
-            const startBtn = document.getElementById("startBtn");
-            const video = document.getElementById("videoPrincipal");
-            const statusMsg = document.getElementById("statusMsg");
-            const loadingScreen = document.getElementById("loadingScreen");
-
-            function setStatus(text) {{
-                statusMsg.textContent = text || "";
-            }}
-
-            function showLoading() {{
-                loadingScreen.classList.add("show");
-            }}
-
-            async function lockExperienceStart() {{
-                const formData = new FormData();
-                formData.append("recipient_token", RECIPIENT_TOKEN);
-
-                const response = await fetch("/start-experience", {{
-                    method: "POST",
-                    body: formData
-                }});
-
-                const data = await response.json();
-
-                if (data.status === "already_completed") {{
-                    window.location.href = data.redirect_url || `/cobrar/${{RECIPIENT_TOKEN}}`;
-                    return false;
-                }}
-
-                if (data.status === "video_not_ready") {{
-                    window.location.href = `/pedido/${{RECIPIENT_TOKEN}}`;
-                    return false;
-                }}
-
-                return true;
-            }}
-
-            async function startRecording() {{
-                streamRef = await navigator.mediaDevices.getUserMedia({{
-                    video: {{
-                        width: 640,
-                        height: 480,
-                        facingMode: "user"
-                    }},
-                    audio: true
-                }});
-
-                let options = {{}};
-                if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
-                    options = {{ mimeType: "video/webm;codecs=vp8,opus" }};
-                }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
-                    options = {{ mimeType: "video/webm" }};
-                }}
-
-                mediaRecorder = new MediaRecorder(streamRef, options);
-                chunks = [];
-
-                mediaRecorder.ondataavailable = (e) => {{
-                    if (e.data && e.data.size > 0) {{
-                        chunks.push(e.data);
-                    }}
-                }};
-
-                mediaRecorder.start(250);
-                console.log("🎥 Grabacion iniciada");
-            }}
-
-            async function uploadReactionAndFinish() {{
-                if (uploadStarted) return;
-                uploadStarted = true;
-
-                showLoading();
-                setStatus("Guardando este momento…");
-
-                try {{
-                    if (mediaRecorder && mediaRecorder.state !== "inactive") {{
-                        await new Promise((resolve) => {{
-                            const prevOnStop = mediaRecorder.onstop;
-                            mediaRecorder.onstop = () => {{
-                                try {{
-                                    if (typeof prevOnStop === "function") prevOnStop();
-                                }} catch (e) {{}}
-                                resolve();
-                            }};
-                            mediaRecorder.stop();
-                        }});
-                    }}
-
-                    if (streamRef) {{
-                        streamRef.getTracks().forEach(track => track.stop());
-                        streamRef = null;
-                    }}
-
-                    const blob = new Blob(chunks, {{
-                        type: "video/webm"
-                    }});
-
-                    if (!blob || blob.size === 0) {{
-                        throw new Error("reaction_blob_empty");
-                    }}
-
-                    const formData = new FormData();
-                    formData.append("recipient_token", RECIPIENT_TOKEN);
-                    formData.append("video", blob, "reaction.webm");
-
-                    const response = await fetch("/upload-video", {{
-                        method: "POST",
-                        body: formData
-                    }});
-
-                    const data = await response.json();
-
-                    if (!response.ok) {{
-                        throw new Error(data.detail || "upload_failed");
-                    }}
-
-                    if (!data.cashout_url) {{
-                        throw new Error("missing_cashout_url");
-                    }}
-
-                    window.location.href = data.cashout_url;
-
-                }} catch (e) {{
-                    console.error("❌ ERROR FINALIZANDO EXPERIENCIA:", e);
-                    alert("No hemos podido guardar bien este momento. Intentalo otra vez.");
-                    window.location.href = `/pedido/${{RECIPIENT_TOKEN}}`;
-                }}
-            }}
-
-            startBtn.addEventListener("click", async function () {{
-                if (experienceStarted) return;
-
-                startBtn.disabled = true;
-                startBtn.textContent = "Preparando...";
-
-                try {{
-                    const lockOk = await lockExperienceStart();
-                    if (!lockOk) {{
-                        startBtn.disabled = false;
-                        startBtn.textContent = "Empezar";
-                        return;
-                    }}
-
-                    await startRecording();
-
-                    experienceStarted = true;
-                    introOverlay.style.display = "none";
-                    setStatus("Viviendo este momento…");
-
-                    try {{
-                        video.currentTime = 0;
-                    }} catch (e) {{}}
-
-                    const playPromise = video.play();
-                    if (playPromise && typeof playPromise.then === "function") {{
-                        await playPromise;
-                    }}
-
-                    try {{
-                        if (video.requestFullscreen) {{
-                            await video.requestFullscreen();
-                        }} else if (video.webkitEnterFullscreen) {{
-                            video.webkitEnterFullscreen();
-                        }}
-                    }} catch (e) {{
-                        console.log("Fullscreen no disponible");
-                    }}
-
-                }} catch (e) {{
-                    console.error("❌ ERROR INICIANDO EXPERIENCIA:", e);
-
-                    if (streamRef) {{
-                        streamRef.getTracks().forEach(track => track.stop());
-                        streamRef = null;
-                    }}
-
-                    alert("Necesitamos acceso a camara y microfono para continuar.");
-                    startBtn.disabled = false;
-                    startBtn.textContent = "Empezar";
-                }}
-            }});
-
-            video.addEventListener("play", function () {{
-                if (!experienceStarted) {{
-                    try {{
-                        video.pause();
-                        video.currentTime = 0;
-                    }} catch (e) {{}}
-                }}
-            }});
-
-            video.addEventListener("ended", async function () {{
-                if (endedHandled) return;
-                endedHandled = true;
-                await uploadReactionAndFinish();
-            }});
-        </script>
-    </body>
-    </html>
-    """)
+
+    return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+button {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 14px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.primary {
+    background: white;
+    color: black;
+}
+
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <video id="video" playsinline preload="metadata">
+        <source src="""" + experience_video_url + """" type="video/mp4">
+    </video>
+
+    <button id="startBtn" class="primary">Empezar</button>
+</div>
+
+<script>
+const video = document.getElementById("video");
+const startBtn = document.getElementById("startBtn");
+
+let mediaRecorder;
+let recordedChunks = [];
+let stream;
+
+startBtn.onclick = async () => {
+    startBtn.style.display = "none";
+
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async function() {
+            const blob = new Blob(recordedChunks, { type: "video/webm" });
+            const formData = new FormData();
+            formData.append("file", blob, "reaction.webm");
+
+            await fetch("/upload-reaction/""" + recipient_token + """", {
+                method: "POST",
+                body: formData
+            });
+
+            window.location.href = "/mi-video/""" + recipient_token + """";
+        };
+
+        mediaRecorder.start();
+
+        video.play();
+
+        if (video.requestFullscreen) {
+            video.requestFullscreen();
+        }
+
+    } catch (e) {
+        alert("Error accediendo a cámara");
+    }
+};
+
+video.onended = () => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+    }
+
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+};
+</script>
+
+</body>
+</html>
+""")
 
 
 # =========================================================
@@ -3110,7 +2800,7 @@ let recordedChunks = [];
 let stream;
 
 async function startExperience() {
-    try {
+    try {{
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
         mediaRecorder = new MediaRecorder(stream);
