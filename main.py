@@ -2251,7 +2251,7 @@ def latido_page(recipient_token: str):
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(recipient_token: str):
 
-por este bloque entero:
+
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(recipient_token: str):
