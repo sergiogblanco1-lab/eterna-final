@@ -2019,80 +2019,150 @@ def resumen(order_id: str):
 
 
 # =========================================================
-# PRELUDIO / EXPERIENCE
+# EXPERIENCIA (PEDIDO)
 # =========================================================
 
 @app.get("/pedido/{recipient_token}", response_class=HTMLResponse)
 def pedido(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if not order["paid"]:
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="es">
-        <body style="background:#000;color:white;text-align:center;padding-top:100px;font-family:Arial;">
-            <h1>Esta ETERNA aún no está disponible</h1>
-        </body>
-        </html>
-        """)
+    video_url = order.get("experience_video_url") or "/static/eterna-base.mp4"
 
-    if not original_video_ready(order):
-        return HTMLResponse(f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta http-equiv="refresh" content="6">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                html, body {{ margin: 0; min-height: 100%; background: #000; }}
-                body {{
-                    min-height: 100vh;
-                    background:
-                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                        linear-gradient(180deg, #050505 0%, #000000 100%);
-                    color: white;
-                    font-family: Arial, sans-serif;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    text-align: center;
-                    padding: 24px;
-                }}
-                .card {{
-                    width: 100%;
-                    max-width: 720px;
-                    background: rgba(255,255,255,0.04);
-                    border: 1px solid rgba(255,255,255,0.08);
-                    border-radius: 28px;
-                    padding: 40px 28px;
-                }}
-                h1 {{ font-size: 38px; margin: 0 0 18px 0; line-height: 1.25; }}
-                .line {{
-                    font-size: 20px;
-                    line-height: 1.8;
-                    color: rgba(255,255,255,0.82);
-                    margin-top: 8px;
-                }}
-                .soft {{
-                    margin-top: 18px;
-                    color: rgba(255,255,255,0.48);
-                    line-height: 1.7;
-                    font-size: 14px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <h1>Tu ETERNA se está preparando</h1>
-                <div class="line">Estamos terminando de crear este momento.</div>
-                <div class="line">En cuanto esté listo, podrás verlo aquí.</div>
-                <div class="soft">Esta página se actualizará sola.</div>
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ETERNA</title>
+
+        <style>
+            body {{
+                margin: 0;
+                background: #000;
+                color: white;
+                font-family: Arial, sans-serif;
+                text-align: center;
+            }}
+
+            .container {{
+                padding: 20px;
+            }}
+
+            video {{
+                width: 100%;
+                max-width: 420px;
+                border-radius: 20px;
+                margin-top: 20px;
+            }}
+
+            .btn {{
+                margin-top: 30px;
+                padding: 18px;
+                width: 100%;
+                max-width: 420px;
+                border-radius: 999px;
+                border: none;
+                background: white;
+                color: black;
+                font-size: 18px;
+                font-weight: bold;
+            }}
+
+            .warning {{
+                margin-top: 30px;
+                font-size: 16px;
+                line-height: 1.6;
+                color: rgba(255,255,255,0.7);
+            }}
+        </style>
+    </head>
+
+    <body>
+
+        <div class="container">
+
+            <div class="warning">
+                Antes de empezar…<br><br>
+                Busca un lugar tranquilo.<br>
+                Ponte el volumen.<br><br>
+                Este momento es solo para ti.
             </div>
-        </body>
-        </html>
-        """)
+
+            <button class="btn" onclick="startExperience()">Empezar</button>
+
+            <video id="videoPrincipal" src="{video_url}" playsinline></video>
+
+            <video id="preview" autoplay muted playsinline style="display:none;"></video>
+
+        </div>
+
+        <script>
+        const RECIPIENT_TOKEN = "{recipient_token}";
+
+        let mediaRecorder;
+        let chunks = [];
+        let started = false;
+
+        async function startExperience() {{
+
+            if (started) return;
+            started = true;
+
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{
+                    video: true,
+                    audio: true
+                }});
+
+                const preview = document.getElementById("preview");
+                preview.srcObject = stream;
+
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = e => {{
+                    if (e.data.size > 0) chunks.push(e.data);
+                }};
+
+                mediaRecorder.onstop = async () => {{
+                    const blob = new Blob(chunks, {{ type: "video/mp4" }});
+                    chunks = [];
+
+                    const formData = new FormData();
+                    formData.append("file", blob, "reaction.mp4");
+
+                    try {{
+                        const res = await fetch(`/upload-reaction/{recipient_token}`, {{
+                            method: "POST",
+                            body: formData
+                        }});
+
+                        const data = await res.json();
+                        console.log("🎥 REACCIÓN SUBIDA:", data);
+
+                    }} catch (e) {{
+                        console.error("❌ ERROR SUBIENDO:", e);
+                    }}
+                }};
+
+                mediaRecorder.start();
+
+                const video = document.getElementById("videoPrincipal");
+                video.play();
+
+                video.onended = () => {{
+                    if (mediaRecorder) mediaRecorder.stop();
+                }};
+
+            }} catch (e) {{
+                alert("Necesitamos acceso a tu cámara para continuar");
+            }}
+        }}
+        </script>
+
+    </body>
+    </html>
+    """)
 
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
