@@ -2900,7 +2900,7 @@ def sender_pack(sender_token: str):
             reaction_video_url = f"{PUBLIC_BASE_URL}/video/sender/{sender_token}"
 
     if not original_video_url:
-        return HTMLResponse("""
+        return HTMLResponse(f"""
         <!DOCTYPE html>
         <html lang="es">
         <head>
