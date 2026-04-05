@@ -2759,58 +2759,77 @@ video {{
 
 <script>
 const video = document.getElementById("video");
-const startBtn = document.getElementById("startBtn");
-const replayBtn = document.getElementById("replay");
-const shareBtn = document.getElementById("share");
+const recipient_token = "{safe_attr(recipient_token)}";
 
-async function start() {{
-    startBtn.classList.add("hidden");
-    video.classList.add("fullscreen");
+let mediaRecorder;
+let recordedChunks = [];
+let stream;
 
-    try {{
-        const playPromise = video.play();
-        if (playPromise && typeof playPromise.then === "function") {{
-            await playPromise;
-        }}
-    }} catch (e) {{
-        console.log("Error reproduciendo video", e);
-    }}
+async function startExperience() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
-    try {{
-        if (video.requestFullscreen) {{
-            await video.requestFullscreen();
-        }} else if (video.webkitEnterFullscreen) {{
-            video.webkitEnterFullscreen();
-        }}
-    }} catch (e) {{
-        console.log("Fullscreen no disponible");
-    }}
-}}
+        mediaRecorder = new MediaRecorder(stream);
 
-video.addEventListener("ended", function () {{
-    video.classList.remove("fullscreen");
-    replayBtn.classList.remove("hidden");
-    shareBtn.classList.remove("hidden");
-}});
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
 
-function replay() {{
-    replayBtn.classList.add("hidden");
-    shareBtn.classList.add("hidden");
-    video.currentTime = 0;
-    start();
-}}
+        mediaRecorder.onstop = async function() {
+            try {
+                const blob = new Blob(recordedChunks, { type: "video/webm" });
+                const formData = new FormData();
+                formData.append("file", blob, "reaction.webm");
 
-function shareVideo() {{
-    if (navigator.share) {{
-        navigator.share({{
-            title: "ETERNA",
-            text: "Mira este momento",
-            url: window.location.href
-        }});
-    }} else {{
-        alert("Comparte este enlace manualmente");
-    }}
-}}
+                await fetch("/upload-reaction/" + recipient_token, {
+                    method: "POST",
+                    body: formData
+                });
+
+                console.log("✅ Reacción subida");
+            } catch (e) {
+                console.error("❌ Error subiendo reacción:", e);
+            }
+        };
+
+        mediaRecorder.start();
+        await video.play();
+
+    } catch (err) {
+        console.error("❌ Error accediendo a cámara:", err);
+    }
+}
+
+video.addEventListener("play", () => {
+    if (video.requestFullscreen) {
+        video.requestFullscreen();
+    } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+    }
+});
+
+video.onended = async () => {
+    try {
+        console.log("🎬 Video terminado");
+
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+        }
+
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        window.location.href = "/mi-video/" + recipient_token;
+
+    } catch (e) {
+        console.error("❌ Error finalizando experiencia:", e);
+    }
+};
 </script>
 
 </body>
@@ -3058,80 +3077,85 @@ video {{
 
 <script>
 let mediaRecorder;
-let chunks = [];
+let recordedChunks = [];
+let stream;
 
-async function start() {{
-    const video = document.getElementById("video");
-    const reaction = document.getElementById("reaction");
-
-    video.classList.add("fullscreen");
-
-    try {{
-        const stream = await navigator.mediaDevices.getUserMedia({{
-            video: true,
-            audio: true
-        }});
-
-        reaction.srcObject = stream;
+async function startExperience() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
         mediaRecorder = new MediaRecorder(stream);
 
-        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
 
-        mediaRecorder.onstop = upload;
+        mediaRecorder.onstop = async function() {
+            try {
+                const blob = new Blob(recordedChunks, { type: "video/webm" });
+                const formData = new FormData();
+                formData.append("file", blob, "reaction.webm");
+
+                await fetch("/upload-reaction/" + recipient_token, {
+                    method: "POST",
+                    body: formData
+                });
+
+                console.log("✅ Reacción subida");
+
+            } catch (e) {
+                console.error("❌ Error subiendo reacción:", e);
+            }
+        };
 
         mediaRecorder.start();
 
-    }} catch (e) {{
-        console.log("No camera:", e);
-    }}
+        // autoplay vídeo
+        video.play();
 
-    video.play();
-}}
+    } catch (err) {
+        console.error("❌ Error accediendo a cámara:", err);
+    }
+}
 
-document.getElementById("video").addEventListener("ended", () => {{
-    if (mediaRecorder) {{
-        mediaRecorder.stop();
-    }}
 
-    document.getElementById("replay").classList.remove("hidden");
-    document.getElementById("share").classList.remove("hidden");
-}});
+// 🔥 FULLSCREEN AUTOMÁTICO
+video.addEventListener("play", () => {
+    if (video.requestFullscreen) {
+        video.requestFullscreen();
+    } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+    }
+});
 
-function replay() {{
-    const video = document.getElementById("video");
-    video.currentTime = 0;
-    video.play();
-}}
 
-async function upload() {{
-    const blob = new Blob(chunks, {{ type: "video/webm" }});
+// 💣 FINAL DEL VÍDEO (CLAVE)
+video.onended = async () => {
+    try {
+        console.log("🎬 Video terminado");
 
-    const form = new FormData();
-    form.append("file", blob, "reaction.webm");
+        // parar grabación
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+        }
 
-    try {{
-        await fetch("/upload-reaction/{recipient_token}", {{
-            method: "POST",
-            body: form
-        }});
-        console.log("Reaccion subida");
-    }} catch(e) {{
-        console.log("Error subida", e);
-    }}
-}}
+        // cerrar cámara
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
 
-function share() {{
-    if (navigator.share) {{
-        navigator.share({{
-            title: "ETERNA",
-            text: "Mira este momento",
-            url: window.location.href
-        }});
-    }} else {{
-        alert("Comparte este enlace manualmente");
-    }}
-}}
+        // pequeño delay para asegurar subida
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // redirigir al final
+        window.location.href = "/mi-video/" + recipient_token;
+
+    } catch (e) {
+        console.error("❌ Error finalizando experiencia:", e);
+    }
+};
 </script>
 
 </body>
@@ -3844,7 +3868,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
         print("❌ ERROR SUBIENDO REACCION:", e)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-        
+
         # =========================================================
 # SUBIR REACCIÓN
 # =========================================================
