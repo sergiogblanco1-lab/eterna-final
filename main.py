@@ -2840,7 +2840,7 @@ async function startExperience() {
 }
 
 
-// 🔥 FULLSCREEN AUTOMÁTICO
+    # FULLSCREEN AUTOMÁTICO
 video.addEventListener("play", () => {
     if (video.requestFullscreen) {
         video.requestFullscreen();
