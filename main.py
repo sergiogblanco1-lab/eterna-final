@@ -2944,18 +2944,22 @@ def mi_video(recipient_token: str):
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
 
-    if bool(order.get("gift_refunded")):
+    if cashout_status == "gift_refunded":
         status_text = "Este regalo ha sido cancelado."
     elif gift_amount <= 0:
         status_text = "Este momento ya es tuyo."
     elif cashout_status == "completed":
-        status_text = "Tu regalo ya ha sido enviado."
+        status_text = "Tu dinero ya se ha enviado correctamente."
     elif cashout_status == "processing":
-        status_text = "Estamos procesando el envío de tu regalo."
+        status_text = "Estamos procesando el envío de tu dinero."
     elif cashout_status == "ready_to_send":
-        status_text = "Tu regalo está listo para enviarse."
+        status_text = "Tu dinero está listo para enviarse."
     else:
-        status_text = "Este momento ya es tuyo."
+        status_text = "Para recibir tu regalo, completa el proceso."
+
+    onboarding_hint = ""
+    if gift_amount > 0 and cashout_status == "pending":
+        onboarding_hint = "Para recibir tu regalo, completa el proceso seguro de Stripe."
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -2966,13 +2970,7 @@ def mi_video(recipient_token: str):
         <title>Mi vídeo</title>
         <style>
             * {{ box-sizing: border-box; }}
-
-            html, body {{
-                margin: 0;
-                min-height: 100%;
-                background: #000;
-            }}
-
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
             body {{
                 min-height: 100vh;
                 background:
@@ -2981,87 +2979,48 @@ def mi_video(recipient_token: str):
                 color: white;
                 font-family: Arial, sans-serif;
             }}
-
-            .wrap {{
-                min-height: 100vh;
+            .wrap {{ min-height: 100vh; display: flex; flex-direction: column; }}
+            .header {{ padding: 28px 20px 10px; text-align: center; }}
+            .header-title {{ font-size: 24px; line-height: 1.5; color: rgba(255,255,255,0.92); }}
+            .top {{
+                flex: 1;
+                min-height: 50vh;
                 display: flex;
-                flex-direction: column;
-                padding: 22px 16px 34px;
+                align-items: center;
+                justify-content: center;
+                padding: 0 16px;
             }}
-
-            .header {{
-                text-align: center;
-                margin-bottom: 20px;
-            }}
-
-            .eyebrow {{
-                font-size: 12px;
-                letter-spacing: 0.16em;
-                text-transform: uppercase;
-                color: rgba(255,255,255,0.34);
-                margin-bottom: 12px;
-            }}
-
-            .title {{
-                font-size: 34px;
-                line-height: 1.2;
-                color: rgba(255,255,255,0.94);
-            }}
-
-            .video-shell {{
-                width: 100%;
-                max-width: 420px;
-                margin: 0 auto;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 24px;
-                padding: 14px;
-            }}
-
             video {{
                 width: 100%;
-                max-width: 100%;
+                max-width: 460px;
                 border-radius: 18px;
-                background: #000;
+                background: #111;
                 display: block;
-                margin: 0 auto;
             }}
-
             .status {{
-                max-width: 700px;
-                margin: 22px auto 0 auto;
+                max-width: 760px;
+                margin: 0 auto;
+                padding: 0 16px;
                 text-align: center;
-                color: rgba(255,255,255,0.66);
-                line-height: 1.8;
+                color: rgba(255,255,255,0.70);
+                line-height: 1.7;
                 font-size: 15px;
             }}
-
-            .buttons {{
-                display: grid;
-                gap: 12px;
-                max-width: 460px;
-                width: 100%;
-                margin: 26px auto 0 auto;
-            }}
-
+            .actions {{ padding: 24px 16px 30px; }}
+            .buttons {{ display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }}
             .btn {{
                 width: 100%;
-                padding: 17px 22px;
+                padding: 16px 24px;
                 border-radius: 999px;
                 border: 0;
                 font-weight: bold;
-                font-size: 16px;
+                font-size: 15px;
                 cursor: pointer;
+                display: inline-block;
                 text-decoration: none;
                 text-align: center;
-                display: inline-block;
             }}
-
-            .primary {{
-                background: white;
-                color: black;
-            }}
-
+            .primary {{ background: white; color: black; }}
             .ghost {{
                 background: rgba(255,255,255,0.10);
                 color: white;
@@ -3072,12 +3031,11 @@ def mi_video(recipient_token: str):
     <body>
         <div class="wrap">
             <div class="header">
-                <div class="eyebrow">ETERNA</div>
-                <div class="title">Ya puedes volver a verlo</div>
+                <div class="header-title">Este momento ya es tuyo</div>
             </div>
 
-            <div class="video-shell">
-                <video id="finalVideo" playsinline controls preload="metadata">
+            <div class="top">
+                <video playsinline controls preload="metadata">
                     <source src="{safe_attr(experience_video_url)}" type="{safe_attr(video_type)}">
                     Tu navegador no puede reproducir este vídeo.
                 </video>
@@ -3085,47 +3043,25 @@ def mi_video(recipient_token: str):
 
             <div class="status">
                 {safe_text(status_text)}
+                {"<br><br>" + safe_text(onboarding_hint) if onboarding_hint else ""}
             </div>
 
-            <div class="buttons">
-                <button class="btn primary" onclick="watchFullscreen()">Ver a pantalla completa</button>
-                <button class="btn ghost" onclick="shareVideo()">Compartir</button>
-                <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
+            <div class="actions">
+                <div class="buttons">
+                    <button class="btn primary" onclick="sharePage()">Compartir</button>
+                    <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
+                </div>
             </div>
         </div>
 
         <script>
-            async function watchFullscreen() {{
-                const video = document.getElementById("finalVideo");
-
-                try {{
-                    video.currentTime = 0;
-                }} catch (e) {{}}
-
-                try {{
-                    const playPromise = video.play();
-                    if (playPromise && typeof playPromise.then === "function") {{
-                        await playPromise;
-                    }}
-                }} catch (e) {{}}
-
-                try {{
-                    if (video.requestFullscreen) {{
-                        await video.requestFullscreen();
-                    }} else if (video.webkitEnterFullscreen) {{
-                        video.webkitEnterFullscreen();
-                    }}
-                }} catch (e) {{}}
-            }}
-
-            async function shareVideo() {{
+            async function sharePage() {{
                 const url = window.location.href;
-
                 if (navigator.share) {{
                     try {{
                         await navigator.share({{
                             title: "ETERNA",
-                            text: "Quiero compartir este momento contigo.",
+                            text: "Este momento ya es tuyo",
                             url: url
                         }});
                     }} catch (e) {{}}
@@ -3285,184 +3221,179 @@ def mi_video(recipient_token: str):
 
     if not experience_video_url:
         return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                html, body {
-                    margin: 0;
-                    min-height: 100%;
-                    background: #000;
-                }
-                body {
-                    min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-family: Arial, sans-serif;
-                    text-align: center;
-                    padding: 24px;
-                }
-                .box {
-                    max-width: 720px;
-                }
-                h1 {
-                    font-size: 34px;
-                    margin-bottom: 18px;
-                    line-height: 1.4;
-                }
-                p {
-                    font-size: 18px;
-                    line-height: 1.8;
-                    color: rgba(255,255,255,0.65);
-                }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <h1>Estamos creando tu ETERNA…</h1>
-                <p>Tu vídeo original aún no está listo. Vuelve a entrar en unos segundos.</p>
-            </div>
-        </body>
+        <html>
+            <body style="background:black;color:white;text-align:center;padding-top:40%">
+                Tu video aun se esta preparando...
+            </body>
         </html>
         """)
 
-    video_type = guess_media_type_from_url(experience_video_url)
-    gift_amount = float(order.get("gift_amount") or 0)
-
-    if bool(order.get("gift_refunded")):
-        status_text = "Este regalo ha sido cancelado."
-    elif gift_amount <= 0:
-        status_text = "Este momento ya es tuyo."
-    elif bool(order.get("transfer_completed")) or bool(order.get("cashout_completed")):
-        status_text = "Tu dinero ya se ha enviado correctamente."
-    elif bool(order.get("transfer_in_progress")):
-        status_text = "Estamos procesando el envío de tu dinero."
-    elif bool(order.get("connect_onboarding_completed")):
-        status_text = "Tu dinero está listo para enviarse."
-    else:
-        status_text = "Para recibir tu regalo, completa el proceso."
-
-    onboarding_hint = ""
-    if gift_amount > 0 and not bool(order.get("connect_onboarding_completed")) and not bool(order.get("gift_refunded")):
-        onboarding_hint = "Para recibir tu regalo, completa el proceso seguro de Stripe."
-
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mi vídeo</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-            }}
-            .wrap {{ min-height: 100vh; display: flex; flex-direction: column; }}
-            .header {{ padding: 28px 20px 10px; text-align: center; }}
-            .header-title {{ font-size: 24px; line-height: 1.5; color: rgba(255,255,255,0.92); }}
-            .top {{
-                flex: 1;
-                min-height: 50vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0 16px;
-            }}
-            video {{
-                width: 100%;
-                max-width: 460px;
-                border-radius: 18px;
-                background: #111;
-                display: block;
-            }}
-            .status {{
-                max-width: 760px;
-                margin: 0 auto;
-                padding: 0 16px;
-                text-align: center;
-                color: rgba(255,255,255,0.70);
-                line-height: 1.7;
-                font-size: 15px;
-            }}
-            .actions {{ padding: 24px 16px 30px; }}
-            .buttons {{ display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }}
-            .btn {{
-                width: 100%;
-                padding: 16px 24px;
-                border-radius: 999px;
-                border: 0;
-                font-weight: bold;
-                font-size: 15px;
-                cursor: pointer;
-                display: inline-block;
-                text-decoration: none;
-                text-align: center;
-            }}
-            .primary {{ background: white; color: black; }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <div class="header">
-                <div class="header-title">Este momento ya es tuyo</div>
-            </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-            <div class="top">
-                <video playsinline controls preload="metadata">
-                    <source src="{safe_attr(experience_video_url)}" type="{safe_attr(video_type)}">
-                    Tu navegador no puede reproducir este vídeo.
-                </video>
-            </div>
+<title>ETERNA</title>
 
-            <div class="status">
-                {safe_text(status_text)}
-                {"<br><br>" + safe_text(onboarding_hint) if onboarding_hint else ""}
-            </div>
+<style>
+html, body {{
+    margin:0;
+    padding:0;
+    background:black;
+    color:white;
+    font-family: Arial;
+}}
 
-            <div class="actions">
-                <div class="buttons">
-                    <button class="btn primary" onclick="sharePage()">Compartir</button>
-                    <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
-                </div>
-            </div>
-        </div>
+.container {{
+    width:100%;
+    max-width:420px;
+    margin:0 auto;
+    padding:16px;
+}}
 
-        <script>
-            async function sharePage() {{
-                const url = window.location.href;
-                if (navigator.share) {{
-                    try {{
-                        await navigator.share({{
-                            title: "ETERNA",
-                            text: "Este momento ya es tuyo",
-                            url: url
-                        }});
-                    }} catch (e) {{}}
-                }} else {{
-                    window.open(url, "_blank");
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """)
+video {{
+    width:100%;
+    border-radius:14px;
+    background:black;
+}}
+
+.fullscreen {{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+    z-index:999;
+    background:black;
+    object-fit:cover;
+}}
+
+.btn {{
+    margin-top:16px;
+    padding:16px;
+    width:100%;
+    border-radius:999px;
+    border:none;
+    font-weight:bold;
+}}
+
+.primary {{
+    background:white;
+    color:black;
+}}
+
+.secondary {{
+    background:#222;
+    color:white;
+}}
+
+.hidden {{
+    display:none;
+}}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <video id="video" playsinline>
+        <source src="{experience_video_url}" type="video/mp4">
+    </video>
+
+    <video id="reaction" class="hidden" playsinline muted></video>
+
+    <button class="btn primary" onclick="start()">Ver a pantalla completa</button>
+
+    <button id="replay" class="btn secondary hidden" onclick="replay()">Ver otra vez</button>
+
+    <button id="share" class="btn secondary hidden" onclick="share()">Compartir</button>
+
+</div>
+
+<script>
+let mediaRecorder;
+let chunks = [];
+
+async function start() {{
+    const video = document.getElementById("video");
+    const reaction = document.getElementById("reaction");
+
+    video.classList.add("fullscreen");
+
+    try {{
+        const stream = await navigator.mediaDevices.getUserMedia({{
+            video: true,
+            audio: true
+        }});
+
+        reaction.srcObject = stream;
+
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+
+        mediaRecorder.onstop = upload;
+
+        mediaRecorder.start();
+
+    }} catch (e) {{
+        console.log("No camera:", e);
+    }}
+
+    video.play();
+}}
+
+document.getElementById("video").addEventListener("ended", () => {{
+    if (mediaRecorder) {{
+        mediaRecorder.stop();
+    }}
+
+    document.getElementById("replay").classList.remove("hidden");
+    document.getElementById("share").classList.remove("hidden");
+}});
+
+function replay() {{
+    const video = document.getElementById("video");
+    video.currentTime = 0;
+    video.play();
+}}
+
+async function upload() {{
+    const blob = new Blob(chunks, {{ type: "video/webm" }});
+
+    const form = new FormData();
+    form.append("file", blob, "reaction.webm");
+
+    try {{
+        await fetch("/upload-reaction/{recipient_token}", {{
+            method: "POST",
+            body: form
+        }});
+        console.log("Reaccion subida");
+    }} catch(e) {{
+        console.log("Error subida", e);
+    }}
+}}
+
+function share() {{
+    if (navigator.share) {{
+        navigator.share({{
+            title: "ETERNA",
+            text: "Mira este momento",
+            url: window.location.href
+        }});
+    }} else {{
+        alert("Comparte este enlace manualmente");
+    }}
+}}
+</script>
+
+</body>
+</html>
+""")
 
 
 # =========================================================
@@ -4095,53 +4026,38 @@ def cobrar(recipient_token: str):
 
 
 # =========================================================
-# VIDEO READY CALLBACK
+# UPLOAD REACTION VIDEO
 # =========================================================
 
-@app.post("/video-ready")
-async def video_ready(request: Request):
+@app.post("/upload-reaction/{recipient_token}")
+async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
     try:
-        data = await request.json()
+        order = get_order_by_recipient_token_or_404(recipient_token)
 
-        order_id = (data.get("order_id") or "").strip()
-        video_url = (data.get("video_url") or "").strip()
+        order_id = order["id"]
 
-        print("🎬 CALLBACK RECIBIDO")
-        print("order_id:", order_id)
-        print("video_url:", video_url)
+        os.makedirs("videos", exist_ok=True)
 
-        if not order_id or not video_url:
-            raise HTTPException(status_code=400, detail="Datos incompletos")
+        path = f"videos/reaction_{order_id}.webm"
 
-        order = get_order_by_id(order_id)
+        with open(path, "wb") as f:
+            f.write(await file.read())
 
-        update_order(
-            order_id,
-            experience_video_url=video_url,
-        )
-
-        print("✅ VIDEO GUARDADO EN ORDEN")
-
-        updated_order = get_order_by_id(order_id)
-
-        try:
-            sms_result = try_send_recipient_sms(updated_order)
-            print("📩 Resultado SMS callback:", sms_result)
-        except Exception as e:
-            print("⚠️ Error enviando SMS:", e)
-
-        return JSONResponse({
-            "status": "ok",
-            "order_id": order_id,
-            "video_url": video_url,
+        update_order(order_id, {
+            "reaction_video_local": path,
+            "reaction_uploaded": 1,
+            "updated_at": now_iso()
         })
 
-    except HTTPException:
-        raise
+        print("🎥 REACCION GUARDADA:", path)
+
+        return {"ok": True}
+
     except Exception as e:
-        print("❌ ERROR CALLBACK:", e)
+        print("❌ ERROR SUBIENDO REACCION:", e)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
         # =========================================================
 # SUBIR REACCIÓN
 # =========================================================
