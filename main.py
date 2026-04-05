@@ -1,4 +1,3 @@
-
 print("🔥 DEPLOY TEST 🔥")
 print("🔥 VERSION NUEVA CARGADA 🔥")
 print("🔥 CALLBACK READY VERSION 🔥")
@@ -2668,186 +2667,97 @@ def mi_video(recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or "").strip()
 
     if not experience_video_url:
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                html, body {
-                    margin: 0;
-                    min-height: 100%;
-                    background: #000;
-                }
-                body {
-                    min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-family: Arial, sans-serif;
-                    text-align: center;
-                    padding: 24px;
-                }
-                .box {
-                    max-width: 720px;
-                }
-                h1 {
-                    font-size: 34px;
-                    margin-bottom: 18px;
-                    line-height: 1.4;
-                }
-                p {
-                    font-size: 18px;
-                    line-height: 1.8;
-                    color: rgba(255,255,255,0.65);
-                }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <h1>Estamos creando tu ETERNA…</h1>
-                <p>Tu vídeo original aún no está listo. Vuelve a entrar en unos segundos.</p>
-            </div>
-        </body>
-        </html>
-        """)
+       return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
 
-    video_type = guess_media_type_from_url(experience_video_url)
-    gift_amount = float(order.get("gift_amount") or 0)
-    cashout_status = compute_cashout_status(order)
+<style>
+body {{
+    margin: 0;
+    background: black;
+}}
 
-    if cashout_status == "gift_refunded":
-        status_text = "Este regalo ha sido cancelado."
-    elif gift_amount <= 0:
-        status_text = "Este momento ya es tuyo."
-    elif cashout_status == "completed":
-        status_text = "Tu dinero ya se ha enviado correctamente."
-    elif cashout_status == "processing":
-        status_text = "Estamos procesando el envío de tu dinero."
-    elif cashout_status == "ready_to_send":
-        status_text = "Tu dinero está listo para enviarse."
-    else:
-        status_text = "Para recibir tu regalo, completa el proceso."
+video {{
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+}}
 
-    onboarding_hint = ""
-    if gift_amount > 0 and cashout_status == "pending":
-        onboarding_hint = "Para recibir tu regalo, completa el proceso seguro de Stripe."
+#final {{
+    display: none;
+    position: fixed;
+    bottom: 40px;
+    width: 100%;
+    text-align: center;
+}}
 
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mi vídeo</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-            }}
-            .wrap {{ min-height: 100vh; display: flex; flex-direction: column; }}
-            .header {{ padding: 28px 20px 10px; text-align: center; }}
-            .header-title {{ font-size: 24px; line-height: 1.5; color: rgba(255,255,255,0.92); }}
-            .top {{
-                flex: 1;
-                min-height: 50vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0 16px;
-            }}
-            video {{
-                width: 100%;
-                max-width: 460px;
-                border-radius: 18px;
-                background: #111;
-                display: block;
-            }}
-            .status {{
-                max-width: 760px;
-                margin: 0 auto;
-                padding: 0 16px;
-                text-align: center;
-                color: rgba(255,255,255,0.70);
-                line-height: 1.7;
-                font-size: 15px;
-            }}
-            .actions {{ padding: 24px 16px 30px; }}
-            .buttons {{ display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }}
-            .btn {{
-                width: 100%;
-                padding: 16px 24px;
-                border-radius: 999px;
-                border: 0;
-                font-weight: bold;
-                font-size: 15px;
-                cursor: pointer;
-                display: inline-block;
-                text-decoration: none;
-                text-align: center;
-            }}
-            .primary {{ background: white; color: black; }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <div class="header">
-                <div class="header-title">Este momento ya es tuyo</div>
-            </div>
+button {{
+    padding: 16px 24px;
+    border-radius: 30px;
+    border: none;
+    font-size: 16px;
+    margin: 10px;
+}}
+</style>
+</head>
 
-            <div class="top">
-                <video playsinline controls preload="metadata">
-                    <source src="{safe_attr(experience_video_url)}" type="{safe_attr(video_type)}">
-                    Tu navegador no puede reproducir este vídeo.
-                </video>
-            </div>
+<body>
 
-            <div class="status">
-                {safe_text(status_text)}
-                {"<br><br>" + safe_text(onboarding_hint) if onboarding_hint else ""}
-            </div>
+<video id="video" autoplay playsinline>
+    <source src="{experience_video_url}" type="video/mp4">
+</video>
 
-            <div class="actions">
-                <div class="buttons">
-                    <button class="btn primary" onclick="sharePage()">Compartir</button>
-                    <a class="btn ghost" href="/crear">Crear otra ETERNA</a>
-                </div>
-            </div>
-        </div>
+<div id="final">
+    <button onclick="replay()">Volver a ver</button>
+    <button onclick="share()">Compartir</button>
+</div>
 
-        <script>
-            async function sharePage() {{
-                const url = window.location.href;
-                if (navigator.share) {{
-                    try {{
-                        await navigator.share({{
-                            title: "ETERNA",
-                            text: "Este momento ya es tuyo",
-                            url: url
-                        }});
-                    }} catch (e) {{}}
-                }} else {{
-                    window.open(url, "_blank");
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """)
+<script>
+
+const video = document.getElementById("video");
+
+// Mostrar opciones al terminar
+video.onended = () => {{
+    document.getElementById("final").style.display = "block";
+}};
+
+// Repetir vídeo
+function replay() {{
+    video.currentTime = 0;
+    video.play();
+}}
+
+// Compartir
+function share() {{
+    const url = window.location.href;
+
+    if (navigator.share) {{
+        navigator.share({{
+            title: "ETERNA",
+            text: "Quiero compartir este momento contigo",
+            url: url
+        }});
+    }} else {{
+        window.open(url, "_blank");
+    }}
+}}
+
+// Forzar fullscreen
+video.addEventListener("play", () => {{
+    if (video.requestFullscreen) {{
+        video.requestFullscreen();
+    }}
+});
+
+</script>
+
+</body>
+</html>
+""")
 
 
 @app.get("/iniciar-cobro-real/{recipient_token}")
