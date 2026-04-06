@@ -2193,6 +2193,59 @@ def start_experience(recipient_token: str = Form(...)):
 
 
 # =========================================================
+# EXPERIENCE LOCK
+# =========================================================
+
+@app.post("/start-experience")
+def start_experience(recipient_token: str = Form(...)):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+    result = try_start_experience(order["id"])
+
+    if result == "not_paid":
+        raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    if result == "video_not_ready":
+        return JSONResponse({
+            "status": "video_not_ready",
+            "redirect_url": f"/pedido/{recipient_token}",
+        })
+
+    if result == "already_completed":
+        return JSONResponse({
+            "status": "already_completed",
+            "redirect_url": f"/mi-video/{recipient_token}",
+        })
+
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/finalizar-experiencia/{recipient_token}")
+def finalizar_experiencia(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    if not bool(order.get("experience_started")):
+        raise HTTPException(status_code=403, detail="La experiencia no ha empezado")
+
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="Vídeo original no disponible")
+
+    update_order(
+        order["id"],
+        experience_completed=1,
+        delivered_to_recipient=1,
+        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
+
+    return JSONResponse({
+        "status": "ok",
+        "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
+    })
+
+
+# =========================================================
 # EXPERIENCE
 # =========================================================
 
@@ -2309,6 +2362,37 @@ video {{
 .blackout.show {{
     opacity: 1;
 }}
+
+.final-overlay {{
+    position: absolute;
+    inset: 0;
+    background: black;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+    z-index: 6;
+}}
+
+.final-overlay.show {{
+    display: flex;
+}}
+
+.final-title {{
+    font-size: 30px;
+    line-height: 1.25;
+    color: white;
+    margin-bottom: 14px;
+}}
+
+.final-soft {{
+    font-size: 16px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.68);
+    max-width: 560px;
+}}
 </style>
 </head>
 <body>
@@ -2334,14 +2418,21 @@ video {{
     </div>
 
     <div class="blackout" id="blackout"></div>
+
+    <div class="final-overlay" id="finalOverlay">
+        <div class="final-title">Un instante…</div>
+        <div class="final-soft">
+            Estamos cerrando este momento.
+        </div>
+    </div>
 </div>
 
 <script>
-const container = document.getElementById("experienceContainer");
 const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
 const blackout = document.getElementById("blackout");
+const finalOverlay = document.getElementById("finalOverlay");
 
 const recipientToken = "{safe_attr(recipient_token)}";
 
@@ -2349,58 +2440,117 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
 let finished = false;
+let uploadStarted = false;
 
-function goNext() {{
+function safeRedirectToCashout() {{
     if (finished) return;
     finished = true;
     window.location.replace("/cobrar/" + recipientToken);
 }}
 
-async function stopAll() {{
+async function markExperienceFinished() {{
+    try {{
+        await fetch("/finalizar-experiencia/" + recipientToken, {{
+            method: "POST"
+        }});
+    }} catch (e) {{
+        console.error("finalizar-experiencia error", e);
+    }}
+}}
+
+async function stopRecorderSafely() {{
     try {{
         if (mediaRecorder && mediaRecorder.state !== "inactive") {{
-            await new Promise(res => {{
-                mediaRecorder.onstop = res;
-                mediaRecorder.stop();
+            await new Promise((resolve) => {{
+                const timeout = setTimeout(resolve, 2500);
+
+                const oldOnStop = mediaRecorder.onstop;
+                mediaRecorder.onstop = function(event) {{
+                    clearTimeout(timeout);
+                    if (typeof oldOnStop === "function") {{
+                        try {{
+                            oldOnStop.call(mediaRecorder, event);
+                        }} catch (_) {{}}
+                    }}
+                    resolve();
+                }};
+
+                try {{
+                    mediaRecorder.stop();
+                }} catch (_) {{
+                    clearTimeout(timeout);
+                    resolve();
+                }}
             }});
         }}
-    }} catch (e) {{}}
+    }} catch (e) {{
+        console.error("stopRecorderSafely error", e);
+    }}
 
     try {{
         if (stream) {{
             stream.getTracks().forEach(t => t.stop());
         }}
-    }} catch (e) {{}}
-}}
-
-async function upload() {{
-    const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
-    if (!blob || blob.size === 0) return;
-
-    const formData = new FormData();
-    formData.append("file", blob, "reaction.webm");
-
-    try {{
-        await fetch("/upload-reaction/" + recipientToken, {{
-            method: "POST",
-            body: formData
-        }});
     }} catch (e) {{
-        console.error(e);
+        console.error("stream stop error", e);
     }}
 }}
 
-async function finish() {{
+function uploadInBackground() {{
+    if (uploadStarted) return;
+    uploadStarted = true;
+
+    try {{
+        const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
+
+        if (!blob || blob.size === 0) {{
+            console.warn("No hay blob de reacción");
+            return;
+        }}
+
+        const formData = new FormData();
+        formData.append("file", blob, "reaction.webm");
+
+        fetch("/upload-reaction/" + recipientToken, {{
+            method: "POST",
+            body: formData,
+            keepalive: true
+        }})
+        .then(async (res) => {{
+            try {{
+                const data = await res.json();
+                console.log("upload-reaction OK", data);
+            }} catch (_) {{
+                console.log("upload-reaction completado");
+            }}
+        }})
+        .catch((e) => {{
+            console.error("upload-reaction error", e);
+        }});
+    }} catch (e) {{
+        console.error("uploadInBackground error", e);
+    }}
+}}
+
+async function finishExperience() {{
     if (finished) return;
 
     blackout.classList.add("show");
+    finalOverlay.classList.add("show");
 
-    video.pause();
+    try {{
+        video.pause();
+    }} catch (e) {{
+        console.error(e);
+    }}
 
-    await stopAll();
-    await upload();
+    await stopRecorderSafely();
+    await markExperienceFinished();
+    uploadInBackground();
 
-    goNext();
+    setTimeout(() => {{
+        safeRedirectToCashout();
+    }}, 900);
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -2438,13 +2588,15 @@ startBtn.addEventListener("click", async () => {{
 
         mediaRecorder = new MediaRecorder(stream);
 
-        mediaRecorder.ondataavailable = e => {{
+        recordedChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {{
             if (e.data && e.data.size > 0) {{
                 recordedChunks.push(e.data);
             }}
         }};
 
-        mediaRecorder.start(200);
+        mediaRecorder.start(250);
 
         overlay.classList.add("hidden");
 
@@ -2456,7 +2608,7 @@ startBtn.addEventListener("click", async () => {{
     }}
 }});
 
-video.addEventListener("ended", finish);
+video.addEventListener("ended", finishExperience);
 </script>
 </body>
 </html>
@@ -2481,7 +2633,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
         if not original_video_ready(order):
             raise HTTPException(status_code=403, detail="Vídeo original no disponible")
 
-        if bool(order.get("experience_completed")) and reaction_exists(order):
+        if bool(order.get("reaction_uploaded")) and reaction_exists(order):
             return JSONResponse({
                 "status": "already_uploaded",
                 "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}",
@@ -2554,7 +2706,8 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
 
         try:
             updated_order = get_order_by_id(order["id"])
-            try_send_sender_sms(updated_order)
+            sender_sms_result = try_send_sender_sms(updated_order)
+            print("📩 Resultado SMS sender:", sender_sms_result)
         except Exception as e:
             log_error("upload_reaction_sender_sms", e)
 
