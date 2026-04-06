@@ -2839,9 +2839,42 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
 # CASHOUT / CONNECT
 # =========================================================
 
+def maybe_finalize_cashout(order: dict) -> dict:
+    order = get_order_by_id(order["id"])
+
+    gift_amount = float(order.get("gift_amount") or 0)
+
+    # Caso: sin regalo
+    if gift_amount <= 0:
+        update_order(
+            order["id"],
+            connect_onboarding_completed=1,
+            transfer_completed=1,
+            cashout_completed=1,
+            transfer_in_progress=0,
+        )
+        return {"status": "no_gift"}
+
+    # Ya completado
+    if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
+        return {"status": "completed"}
+
+    # En proceso
+    if bool(order.get("transfer_in_progress")):
+        return {"status": "processing"}
+
+    # Ya tiene onboarding → intentar transferir
+    if bool(order.get("connect_onboarding_completed")):
+        result = process_gift_transfer_for_order(order)
+        return result
+
+    # Aún no hizo onboarding
+    return {"status": "pending_onboarding"}
+
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
 def cobrar(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -3086,6 +3119,11 @@ def cobrar(recipient_token: str):
 @app.get("/connect/onboarding/{recipient_token}")
 def connect_onboarding(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
+    # 🔥 AUTO CASHOUT ENGINE
+    cashout_result = maybe_finalize_cashout(order)
+    order = get_order_by_id(order["id"])
+
 
     if not bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
