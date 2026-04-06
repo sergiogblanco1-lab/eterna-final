@@ -2278,11 +2278,44 @@ video {{
     color: #ffb3b3;
     font-size: 14px;
 }}
+.finish-screen {{
+    position: absolute;
+    inset: 0;
+    background: black;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+    z-index: 20;
+}}
+.finish-screen.show {{
+    display: flex;
+}}
+.finish-title {{
+    font-size: 30px;
+    line-height: 1.2;
+    margin-bottom: 14px;
+}}
+.finish-soft {{
+    font-size: 16px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.72);
+    max-width: 560px;
+}}
 </style>
 </head>
 <body>
 <div class="container">
-    <video id="video" playsinline preload="auto" webkit-playsinline disablepictureinpicture controlslist="nodownload noplaybackrate noremoteplayback">
+    <video
+        id="video"
+        playsinline
+        preload="auto"
+        webkit-playsinline
+        disablepictureinpicture
+        controlslist="nodownload noplaybackrate noremoteplayback"
+    >
         <source src="{safe_attr(experience_video_url)}" type="{safe_attr(guess_media_type_from_url(experience_video_url))}">
     </video>
 
@@ -2295,6 +2328,13 @@ video {{
         <button id="startBtn" class="btn">Empezar</button>
         <div id="errorBox" class="error hidden"></div>
     </div>
+
+    <div class="finish-screen" id="finishScreen">
+        <div class="finish-title">Un momento más…</div>
+        <div class="finish-soft">
+            Estamos guardando tu emoción y preparando tu regalo.
+        </div>
+    </div>
 </div>
 
 <script>
@@ -2302,16 +2342,37 @@ const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
 const errorBox = document.getElementById("errorBox");
+const finishScreen = document.getElementById("finishScreen");
 const recipientToken = "{safe_attr(recipient_token)}";
 
 let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
 let uploaded = false;
+let experienceStarted = false;
+let experienceFinished = false;
+let redirectScheduled = false;
 
 function showError(msg) {{
     errorBox.textContent = msg;
     errorBox.classList.remove("hidden");
+}}
+
+function showFinishScreen() {{
+    finishScreen.classList.add("show");
+}}
+
+function scheduleRedirect() {{
+    if (redirectScheduled) return;
+    redirectScheduled = true;
+
+    setTimeout(() => {{
+        window.location.href = "/cobrar/" + recipientToken;
+    }}, 2500);
+
+    setTimeout(() => {{
+        window.location.href = "/cobrar/" + recipientToken;
+    }}, 7000);
 }}
 
 async function uploadReaction() {{
@@ -2319,7 +2380,7 @@ async function uploadReaction() {{
     uploaded = true;
 
     if (!recordedChunks.length) {{
-        window.location.href = "/cobrar/" + recipientToken;
+        scheduleRedirect();
         return;
     }}
 
@@ -2330,16 +2391,52 @@ async function uploadReaction() {{
     try {{
         await fetch("/upload-reaction/" + recipientToken, {{
             method: "POST",
-            body: formData
+            body: formData,
+            keepalive: true
         }});
     }} catch (e) {{
         console.error("Error subiendo reacción:", e);
     }}
 
-    window.location.href = "/cobrar/" + recipientToken;
+    scheduleRedirect();
 }}
 
-async function stopEverything() {{
+async function stopTracksOnly() {{
+    try {{
+        if (stream) {{
+            stream.getTracks().forEach(track => track.stop());
+        }}
+    }} catch (e) {{
+        console.error("Error cerrando tracks:", e);
+    }}
+}}
+
+async function finishExperience() {{
+    if (experienceFinished) return;
+    experienceFinished = true;
+
+    showFinishScreen();
+
+    try {{
+        video.pause();
+    }} catch (e) {{
+        console.error(e);
+    }}
+
+    try {{
+        video.currentTime = video.duration || video.currentTime;
+    }} catch (e) {{
+        console.error(e);
+    }}
+
+    try {{
+        if (document.fullscreenElement && document.exitFullscreen) {{
+            await document.exitFullscreen();
+        }}
+    }} catch (e) {{
+        console.error("exitFullscreen:", e);
+    }}
+
     try {{
         if (mediaRecorder && mediaRecorder.state !== "inactive") {{
             mediaRecorder.stop();
@@ -2347,20 +2444,17 @@ async function stopEverything() {{
             await uploadReaction();
         }}
     }} catch (e) {{
-        console.error(e);
+        console.error("Error cerrando grabación:", e);
         await uploadReaction();
     }}
 
-    try {{
-        if (stream) {{
-            stream.getTracks().forEach(track => track.stop());
-        }}
-    }} catch (e) {{
-        console.error(e);
-    }}
+    await stopTracksOnly();
+    scheduleRedirect();
 }}
 
 startBtn.addEventListener("click", async () => {{
+    if (experienceStarted) return;
+
     startBtn.disabled = true;
     errorBox.classList.add("hidden");
 
@@ -2402,6 +2496,7 @@ startBtn.addEventListener("click", async () => {{
         }};
 
         mediaRecorder.start();
+        experienceStarted = true;
         overlay.classList.add("hidden");
 
         try {{
@@ -2422,7 +2517,22 @@ startBtn.addEventListener("click", async () => {{
 }});
 
 video.addEventListener("ended", async () => {{
-    await stopEverything();
+    await finishExperience();
+}});
+
+video.addEventListener("pause", async () => {{
+    if (!experienceStarted) return;
+    if (experienceFinished) return;
+    if (video.ended) return;
+}});
+
+document.addEventListener("visibilitychange", async () => {{
+    if (!experienceStarted) return;
+    if (experienceFinished) return;
+}});
+
+window.addEventListener("pagehide", () => {{
+    stopTracksOnly();
 }});
 </script>
 </body>
