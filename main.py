@@ -2351,6 +2351,10 @@ def finalizar_experiencia(recipient_token: str):
     })
 
 
+# =========================================================
+# EXPERIENCE
+# =========================================================
+
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
@@ -2361,7 +2365,7 @@ def experiencia(recipient_token: str):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if bool(order.get("reaction_uploaded")) and reaction_exists(order):
+    if bool(order.get("experience_completed")) and reaction_exists(order):
         return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
@@ -2544,17 +2548,27 @@ let stream = null;
 let finished = false;
 let uploadStarted = false;
 
-function forceCashoutNow() {{
+function safeRedirectToCashout() {{
     if (finished) return;
     finished = true;
-    window.location.replace("/cobrar/" + recipientToken + "?force_cashout=1");
+    window.location.replace("/cobrar/" + recipientToken);
+}}
+
+async function markExperienceFinished() {{
+    try {{
+        await fetch("/finalizar-experiencia/" + recipientToken, {{
+            method: "POST"
+        }});
+    }} catch (e) {{
+        console.error("finalizar-experiencia error", e);
+    }}
 }}
 
 async function stopRecorderSafely() {{
     try {{
         if (mediaRecorder && mediaRecorder.state !== "inactive") {{
             await new Promise((resolve) => {{
-                const timeout = setTimeout(resolve, 1800);
+                const timeout = setTimeout(resolve, 2500);
 
                 const oldOnStop = mediaRecorder.onstop;
                 mediaRecorder.onstop = function(event) {{
@@ -2632,19 +2646,17 @@ async function finishExperience() {{
 
     try {{
         video.pause();
-    }} catch (e) {{}}
+    }} catch (e) {{
+        console.error(e);
+    }}
 
     await stopRecorderSafely();
+    await markExperienceFinished();
+    uploadInBackground();
 
-    // 🔥 FORZAR COBRO INMEDIATAMENTE
     setTimeout(() => {{
-        forceCashoutNow();
-    }}, 250);
-
-    // 🔥 SUBIR EMOCIÓN DESPUÉS EN SEGUNDO PLANO
-    setTimeout(() => {{
-        uploadInBackground();
-    }}, 500);
+        safeRedirectToCashout();
+    }}, 900);
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -2860,8 +2872,9 @@ def maybe_finalize_cashout(order: dict) -> dict:
     return {"status": "pending_onboarding"}
 
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
-def cobrar(recipient_token: str, force_cashout: int = 0):
+def cobrar(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -2869,23 +2882,58 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
     if not bool(order.get("experience_started")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    # 🔥 SI VIENE DEL FINAL DEL VÍDEO, FORZAMOS PASO A COBRO AUNQUE LA EMOCIÓN SIGA SUBIENDO
-    if force_cashout == 1 and not bool(order.get("experience_completed")):
-        update_order(
-            order["id"],
-            experience_completed=1,
-            delivered_to_recipient=1,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-        )
-
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    try:
-        maybe_finalize_cashout(order)
-    except Exception as e:
-        log_error("cobrar_maybe_finalize_cashout", e)
-
-    order = get_order_by_recipient_token_or_404(recipient_token)
+    if not bool(order.get("experience_completed")):
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="4">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                * {{ box-sizing: border-box; }}
+                html, body {{ margin: 0; min-height: 100%; background: #000; }}
+                body {{
+                    min-height: 100vh;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    padding: 24px;
+                }}
+                .wrap {{
+                    width: 100%;
+                    max-width: 720px;
+                    margin: 0 auto;
+                }}
+                h1 {{
+                    margin: 0 0 18px 0;
+                    font-size: 42px;
+                    line-height: 1.2;
+                }}
+                .soft {{
+                    font-size: 18px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.62);
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <h1>Un instante…</h1>
+                <div class="soft">
+                    Estamos cerrando este momento.
+                </div>
+            </div>
+        </body>
+        </html>
+        """)
 
     cashout_status = compute_cashout_status(order)
     gift_amount_display = format_amount_display(order.get("gift_amount") or 0)
@@ -2945,7 +2993,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         </div>
         """
 
-    refresh = '<meta http-equiv="refresh" content="6">' if cashout_status in {"pending", "processing", "ready_to_send"} else ""
+    refresh = '<meta http-equiv="refresh" content="8">' if cashout_status in {"pending", "processing", "ready_to_send"} else ""
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
