@@ -2165,8 +2165,7 @@ def resumen(order_id: str):
     </html>
     """)
 
-
-# =========================================================
+    # =========================================================
 # EXPERIENCE LOCK
 # =========================================================
 
@@ -2408,10 +2407,29 @@ startBtn.addEventListener("click", async () => {{
     startBtn.disabled = true;
 
     try {{
-        await fetch("/start-experience", {{
+        const formData = new FormData();
+        formData.append("recipient_token", recipientToken);
+
+        const response = await fetch("/start-experience", {{
             method: "POST",
-            body: new FormData()
+            body: formData
         }});
+
+        const data = await response.json();
+
+        if (!response.ok) {{
+            throw new Error(data.detail || "start_experience_error");
+        }}
+
+        if (data.status === "already_completed" && data.redirect_url) {{
+            window.location.replace(data.redirect_url);
+            return;
+        }}
+
+        if (data.status === "video_not_ready" && data.redirect_url) {{
+            window.location.replace(data.redirect_url);
+            return;
+        }}
 
         stream = await navigator.mediaDevices.getUserMedia({{
             video: true,
@@ -2561,7 +2579,6 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
 # =========================================================
 # CASHOUT / CONNECT
 # =========================================================
-
 
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
 def cobrar(recipient_token: str):
@@ -3197,6 +3214,8 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
         "sender_sms_attempts": updated.get("sender_sms_attempts"),
         "sender_sms_error": updated.get("sender_sms_error"),
     })
+
+
 # =========================================================
 # MAIN
 # =========================================================
