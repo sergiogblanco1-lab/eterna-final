@@ -2297,12 +2297,6 @@ video {{
     display: none;
 }}
 
-.error {{
-    margin-top: 18px;
-    color: #ffb3b3;
-    font-size: 14px;
-}}
-
 .blackout {{
     position: absolute;
     inset: 0;
@@ -2315,53 +2309,6 @@ video {{
 
 .blackout.show {{
     opacity: 1;
-}}
-
-.status-layer {{
-    position: absolute;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 24px;
-    background: black;
-    color: white;
-    z-index: 5;
-}}
-
-.status-layer.show {{
-    display: flex;
-}}
-
-.status-inner {{
-    max-width: 560px;
-}}
-
-.status-title {{
-    font-size: 28px;
-    line-height: 1.3;
-    margin-bottom: 14px;
-}}
-
-.status-text {{
-    font-size: 16px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.68);
-}}
-
-@media (max-width: 640px) {{
-    .title {{
-        font-size: 29px;
-    }}
-
-    .soft {{
-        font-size: 15px;
-    }}
-
-    .status-title {{
-        font-size: 24px;
-    }}
 }}
 </style>
 </head>
@@ -2385,19 +2332,9 @@ video {{
             y comenzará la grabación de tu reacción.
         </div>
         <button id="startBtn" class="btn">Empezar</button>
-        <div id="errorBox" class="error hidden"></div>
     </div>
 
     <div class="blackout" id="blackout"></div>
-
-    <div class="status-layer" id="statusLayer">
-        <div class="status-inner">
-            <div class="status-title">Un instante…</div>
-            <div class="status-text">
-                Estamos cerrando este momento.
-            </div>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -2405,242 +2342,103 @@ const container = document.getElementById("experienceContainer");
 const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
-const errorBox = document.getElementById("errorBox");
 const blackout = document.getElementById("blackout");
-const statusLayer = document.getElementById("statusLayer");
 
 const recipientToken = "{safe_attr(recipient_token)}";
 
 let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
-let uploaded = false;
-let experienceStarted = false;
-let experienceFinished = false;
-let redirectDone = false;
-let finishingNow = false;
-let durationWatcher = null;
-let pageExitHandled = false;
-
-function showError(msg) {{
-    errorBox.textContent = msg;
-    errorBox.classList.remove("hidden");
-}}
-
-function showClosingState() {{
-    blackout.classList.add("show");
-    statusLayer.classList.add("show");
-}}
-
-function clearWatcher() {{
-    if (durationWatcher) {{
-        clearInterval(durationWatcher);
-        durationWatcher = null;
-    }}
-}}
+let finished = false;
 
 function goNext() {{
-    if (redirectDone) return;
-    redirectDone = true;
+    if (finished) return;
+    finished = true;
     window.location.replace("/cobrar/" + recipientToken);
 }}
 
-async function uploadReactionInBackground() {{
-    if (uploaded) return;
-    uploaded = true;
-
-    if (!recordedChunks.length) {{
-        return;
-    }}
-
-    let mimeType = "video/webm";
-    try {{
-        if (mediaRecorder && mediaRecorder.mimeType) {{
-            mimeType = mediaRecorder.mimeType;
-        }}
-    }} catch (e) {{
-        console.error(e);
-    }}
-
-    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-    const blob = new Blob(recordedChunks, {{ type: mimeType || "video/webm" }});
-    const formData = new FormData();
-    formData.append("file", blob, "reaction." + ext);
-
-    try {{
-        fetch("/upload-reaction/" + recipientToken, {{
-            method: "POST",
-            body: formData,
-            keepalive: true
-        }}).catch((e) => console.error("Error subiendo reacción:", e));
-    }} catch (e) {{
-        console.error("Error subiendo reacción:", e);
-    }}
-}}
-
-async function stopTracksOnly() {{
-    try {{
-        if (stream) {{
-            stream.getTracks().forEach(track => track.stop());
-        }}
-    }} catch (e) {{
-        console.error(e);
-    }}
-}}
-
-async function exitFullscreenSafe() {{
-    try {{
-        if (document.fullscreenElement && document.exitFullscreen) {{
-            await document.exitFullscreen();
-        }}
-    }} catch (e) {{
-        console.error("exitFullscreen:", e);
-    }}
-}}
-
-async function finishExperience() {{
-    if (experienceFinished || finishingNow) return;
-    finishingNow = true;
-    experienceFinished = true;
-
-    clearWatcher();
-    showClosingState();
-
-    try {{
-        video.pause();
-    }} catch (e) {{
-        console.error("video.pause:", e);
-    }}
-
+async function stopAll() {{
     try {{
         if (mediaRecorder && mediaRecorder.state !== "inactive") {{
-            mediaRecorder.stop();
+            await new Promise(res => {{
+                mediaRecorder.onstop = res;
+                mediaRecorder.stop();
+            }});
         }}
-    }} catch (e) {{
-        console.error("mediaRecorder.stop:", e);
-    }}
+    }} catch (e) {{}}
 
-    await stopTracksOnly();
-    await exitFullscreenSafe();
-    uploadReactionInBackground();
-
-    setTimeout(() => {{
-        goNext();
-    }}, 250);
-}}
-
-async function enterFullscreenSafe() {{
     try {{
-        if (container.requestFullscreen) {{
-            await container.requestFullscreen();
+        if (stream) {{
+            stream.getTracks().forEach(t => t.stop());
         }}
+    }} catch (e) {{}}
+}}
+
+async function upload() {{
+    const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
+    if (!blob || blob.size === 0) return;
+
+    const formData = new FormData();
+    formData.append("file", blob, "reaction.webm");
+
+    try {{
+        await fetch("/upload-reaction/" + recipientToken, {{
+            method: "POST",
+            body: formData
+        }});
     }} catch (e) {{
-        console.error("fullscreen:", e);
+        console.error(e);
     }}
 }}
 
-function startEndWatcher() {{
-    clearWatcher();
+async function finish() {{
+    if (finished) return;
 
-    durationWatcher = setInterval(() => {{
-        try {{
-            if (!experienceStarted || experienceFinished) return;
-            if (!video.duration || !isFinite(video.duration)) return;
+    blackout.classList.add("show");
 
-            if (video.currentTime >= Math.max(0, video.duration - 0.2)) {{
-                finishExperience();
-            }}
-        }} catch (e) {{
-            console.error("durationWatcher:", e);
-        }}
-    }}, 300);
+    video.pause();
+
+    await stopAll();
+    await upload();
+
+    goNext();
 }}
 
 startBtn.addEventListener("click", async () => {{
-    if (experienceStarted) return;
-
     startBtn.disabled = true;
-    errorBox.classList.add("hidden");
 
     try {{
-        const startForm = new FormData();
-        startForm.append("recipient_token", recipientToken);
-
-        const startResponse = await fetch("/start-experience", {{
+        await fetch("/start-experience", {{
             method: "POST",
-            body: startForm
+            body: new FormData()
         }});
-
-        const startData = await startResponse.json();
-
-        if (!startResponse.ok || (startData.status && startData.status !== "ok")) {{
-            if (startData.redirect_url) {{
-                window.location.href = startData.redirect_url;
-                return;
-            }}
-            throw new Error("No se pudo iniciar la experiencia");
-        }}
 
         stream = await navigator.mediaDevices.getUserMedia({{
             video: true,
             audio: true
         }});
 
-        recordedChunks = [];
         mediaRecorder = new MediaRecorder(stream);
 
-        mediaRecorder.ondataavailable = function(event) {{
-            if (event.data && event.data.size > 0) {{
-                recordedChunks.push(event.data);
+        mediaRecorder.ondataavailable = e => {{
+            if (e.data && e.data.size > 0) {{
+                recordedChunks.push(e.data);
             }}
         }};
 
-        mediaRecorder.onstop = function() {{
-            uploadReactionInBackground();
-        }};
-
-        mediaRecorder.start();
-        experienceStarted = true;
+        mediaRecorder.start(200);
 
         overlay.classList.add("hidden");
 
-        await enterFullscreenSafe();
         await video.play();
-        startEndWatcher();
 
     }} catch (e) {{
         console.error(e);
         startBtn.disabled = false;
-        showError("No hemos podido iniciar la cámara o la experiencia.");
     }}
 }});
 
-video.addEventListener("ended", async () => {{
-    await finishExperience();
-}});
-
-video.addEventListener("pause", async () => {{
-    if (experienceStarted && !experienceFinished && !video.ended) {{
-        try {{
-            await video.play();
-        }} catch (e) {{
-            console.error("video.pause replay guard:", e);
-        }}
-    }}
-}});
-
-document.addEventListener("visibilitychange", () => {{
-    if (document.visibilityState === "hidden" && experienceStarted && !pageExitHandled) {{
-        pageExitHandled = true;
-        stopTracksOnly();
-    }}
-}});
-
-window.addEventListener("pagehide", () => {{
-    if (pageExitHandled) return;
-    pageExitHandled = true;
-    stopTracksOnly();
-}});
+video.addEventListener("ended", finish);
 </script>
 </body>
 </html>
@@ -2764,6 +2562,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
 # CASHOUT / CONNECT
 # =========================================================
 
+
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
 def cobrar(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
@@ -2771,10 +2570,61 @@ def cobrar(recipient_token: str):
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_completed")):
-        if original_video_ready(order):
-            return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+    if not bool(order.get("experience_started")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not bool(order.get("experience_completed")):
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="4">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                * {{ box-sizing: border-box; }}
+                html, body {{ margin: 0; min-height: 100%; background: #000; }}
+                body {{
+                    min-height: 100vh;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    padding: 24px;
+                }}
+                .wrap {{
+                    width: 100%;
+                    max-width: 720px;
+                    margin: 0 auto;
+                }}
+                h1 {{
+                    margin: 0 0 18px 0;
+                    font-size: 42px;
+                    line-height: 1.2;
+                }}
+                .soft {{
+                    font-size: 18px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.62);
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <h1>Un instante…</h1>
+                <div class="soft">
+                    Estamos cerrando este momento.
+                </div>
+            </div>
+        </body>
+        </html>
+        """)
 
     cashout_status = compute_cashout_status(order)
     gift_amount_display = format_amount_display(order.get("gift_amount") or 0)
@@ -3347,8 +3197,6 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
         "sender_sms_attempts": updated.get("sender_sms_attempts"),
         "sender_sms_error": updated.get("sender_sms_error"),
     })
-
-
 # =========================================================
 # MAIN
 # =========================================================
@@ -3357,8 +3205,7 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
 def health():
     return {"status": "ok"}
 
-
-if __name__ == "__main__":
+    if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
