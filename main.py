@@ -2246,6 +2246,59 @@ def finalizar_experiencia(recipient_token: str):
 
 
 # =========================================================
+# EXPERIENCE LOCK
+# =========================================================
+
+@app.post("/start-experience")
+def start_experience(recipient_token: str = Form(...)):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+    result = try_start_experience(order["id"])
+
+    if result == "not_paid":
+        raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    if result == "video_not_ready":
+        return JSONResponse({
+            "status": "video_not_ready",
+            "redirect_url": f"/pedido/{recipient_token}",
+        })
+
+    if result == "already_completed":
+        return JSONResponse({
+            "status": "already_completed",
+            "redirect_url": f"/mi-video/{recipient_token}",
+        })
+
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/finalizar-experiencia/{recipient_token}")
+def finalizar_experiencia(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    if not bool(order.get("experience_started")):
+        raise HTTPException(status_code=403, detail="La experiencia no ha empezado")
+
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="Vídeo original no disponible")
+
+    update_order(
+        order["id"],
+        experience_completed=1,
+        delivered_to_recipient=1,
+        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
+
+    return JSONResponse({
+        "status": "ok",
+        "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
+    })
+
+
+# =========================================================
 # EXPERIENCE
 # =========================================================
 
