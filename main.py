@@ -2278,32 +2278,6 @@ video {{
     color: #ffb3b3;
     font-size: 14px;
 }}
-.finish-screen {{
-    position: absolute;
-    inset: 0;
-    background: black;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-    padding: 24px;
-    z-index: 20;
-}}
-.finish-screen.show {{
-    display: flex;
-}}
-.finish-title {{
-    font-size: 30px;
-    line-height: 1.2;
-    margin-bottom: 14px;
-}}
-.finish-soft {{
-    font-size: 16px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.72);
-    max-width: 560px;
-}}
 </style>
 </head>
 <body>
@@ -2328,13 +2302,6 @@ video {{
         <button id="startBtn" class="btn">Empezar</button>
         <div id="errorBox" class="error hidden"></div>
     </div>
-
-    <div class="finish-screen" id="finishScreen">
-        <div class="finish-title">Un momento más…</div>
-        <div class="finish-soft">
-            Estamos guardando tu emoción y preparando tu regalo.
-        </div>
-    </div>
 </div>
 
 <script>
@@ -2342,7 +2309,6 @@ const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
 const errorBox = document.getElementById("errorBox");
-const finishScreen = document.getElementById("finishScreen");
 const recipientToken = "{safe_attr(recipient_token)}";
 
 let mediaRecorder = null;
@@ -2351,36 +2317,24 @@ let stream = null;
 let uploaded = false;
 let experienceStarted = false;
 let experienceFinished = false;
-let redirectScheduled = false;
+let redirectDone = false;
 
 function showError(msg) {{
     errorBox.textContent = msg;
     errorBox.classList.remove("hidden");
 }}
 
-function showFinishScreen() {{
-    finishScreen.classList.add("show");
+function goNext() {{
+    if (redirectDone) return;
+    redirectDone = true;
+    window.location.href = "/cobrar/" + recipientToken;
 }}
 
-function scheduleRedirect() {{
-    if (redirectScheduled) return;
-    redirectScheduled = true;
-
-    setTimeout(() => {{
-        window.location.href = "/cobrar/" + recipientToken;
-    }}, 2500);
-
-    setTimeout(() => {{
-        window.location.href = "/cobrar/" + recipientToken;
-    }}, 7000);
-}}
-
-async function uploadReaction() {{
+async function uploadReactionInBackground() {{
     if (uploaded) return;
     uploaded = true;
 
     if (!recordedChunks.length) {{
-        scheduleRedirect();
         return;
     }}
 
@@ -2389,16 +2343,14 @@ async function uploadReaction() {{
     formData.append("file", blob, "reaction.webm");
 
     try {{
-        await fetch("/upload-reaction/" + recipientToken, {{
+        fetch("/upload-reaction/" + recipientToken, {{
             method: "POST",
             body: formData,
             keepalive: true
-        }});
+        }}).catch((e) => console.error("Error subiendo reacción:", e));
     }} catch (e) {{
         console.error("Error subiendo reacción:", e);
     }}
-
-    scheduleRedirect();
 }}
 
 async function stopTracksOnly() {{
@@ -2407,7 +2359,7 @@ async function stopTracksOnly() {{
             stream.getTracks().forEach(track => track.stop());
         }}
     }} catch (e) {{
-        console.error("Error cerrando tracks:", e);
+        console.error(e);
     }}
 }}
 
@@ -2415,16 +2367,8 @@ async function finishExperience() {{
     if (experienceFinished) return;
     experienceFinished = true;
 
-    showFinishScreen();
-
     try {{
         video.pause();
-    }} catch (e) {{
-        console.error(e);
-    }}
-
-    try {{
-        video.currentTime = video.duration || video.currentTime;
     }} catch (e) {{
         console.error(e);
     }}
@@ -2440,17 +2384,15 @@ async function finishExperience() {{
     try {{
         if (mediaRecorder && mediaRecorder.state !== "inactive") {{
             mediaRecorder.stop();
-        }} else {{
-            await uploadReaction();
         }}
     }} catch (e) {{
-        console.error("Error cerrando grabación:", e);
-        await uploadReaction();
+        console.error("mediaRecorder.stop:", e);
     }}
 
     await stopTracksOnly();
-    scheduleRedirect();
-}}
+    uploadReactionInBackground();
+    goNext();
+}
 
 startBtn.addEventListener("click", async () => {{
     if (experienceStarted) return;
@@ -2491,8 +2433,8 @@ startBtn.addEventListener("click", async () => {{
             }}
         }};
 
-        mediaRecorder.onstop = async function() {{
-            await uploadReaction();
+        mediaRecorder.onstop = function() {{
+            uploadReactionInBackground();
         }};
 
         mediaRecorder.start();
@@ -2518,17 +2460,6 @@ startBtn.addEventListener("click", async () => {{
 
 video.addEventListener("ended", async () => {{
     await finishExperience();
-}});
-
-video.addEventListener("pause", async () => {{
-    if (!experienceStarted) return;
-    if (experienceFinished) return;
-    if (video.ended) return;
-}});
-
-document.addEventListener("visibilitychange", async () => {{
-    if (!experienceStarted) return;
-    if (experienceFinished) return;
 }});
 
 window.addEventListener("pagehide", () => {{
@@ -2800,8 +2731,81 @@ def cobrar(recipient_token: str):
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_completed")):
+    if not bool(order.get("experience_started")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not bool(order.get("experience_completed")):
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="3">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ETERNA</title>
+            <style>
+                * {{ box-sizing: border-box; }}
+                html, body {{
+                    margin: 0;
+                    min-height: 100%;
+                    background: #000;
+                }}
+                body {{
+                    min-height: 100vh;
+                    background:
+                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                        linear-gradient(180deg, #050505 0%, #000000 100%);
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    padding: 24px;
+                }}
+                .wrap {{
+                    width: 100%;
+                    max-width: 720px;
+                    margin: 0 auto;
+                }}
+                .eyebrow {{
+                    font-size: 13px;
+                    letter-spacing: 0.16em;
+                    text-transform: uppercase;
+                    color: rgba(255,255,255,0.34);
+                    margin-bottom: 18px;
+                }}
+                h1 {{
+                    margin: 0;
+                    font-size: 42px;
+                    line-height: 1.12;
+                    font-weight: 700;
+                }}
+                .main {{
+                    margin-top: 24px;
+                    font-size: 22px;
+                    line-height: 1.7;
+                    color: rgba(255,255,255,0.88);
+                }}
+                .soft {{
+                    margin: 28px auto 0 auto;
+                    max-width: 620px;
+                    font-size: 16px;
+                    line-height: 1.8;
+                    color: rgba(255,255,255,0.46);
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <div class="eyebrow">ETERNA</div>
+                <h1>Un instante más</h1>
+                <div class="main">Estamos terminando de preparar tu regalo.</div>
+                <div class="soft">Esta pantalla se actualizará sola en unos segundos.</div>
+            </div>
+        </body>
+        </html>
+        """)
 
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
@@ -2959,7 +2963,6 @@ def cobrar(recipient_token: str):
     </body>
     </html>
     """)
-
 
 # =========================================================
 # INICIAR COBRO REAL
