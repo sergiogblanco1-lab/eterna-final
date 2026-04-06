@@ -3205,7 +3205,8 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
 def health():
     return {"status": "ok"}
 
-    if __name__ == "__main__":
+
+if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
