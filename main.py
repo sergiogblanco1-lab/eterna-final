@@ -2165,32 +2165,6 @@ def resumen(order_id: str):
     </html>
     """)
 
-    # =========================================================
-# EXPERIENCE LOCK
-# =========================================================
-
-@app.post("/start-experience")
-def start_experience(recipient_token: str = Form(...)):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    result = try_start_experience(order["id"])
-
-    if result == "not_paid":
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if result == "video_not_ready":
-        return JSONResponse({
-            "status": "video_not_ready",
-            "redirect_url": f"/pedido/{recipient_token}",
-        })
-
-    if result == "already_completed":
-        return JSONResponse({
-            "status": "already_completed",
-            "redirect_url": f"/mi-video/{recipient_token}",
-        })
-
-    return JSONResponse({"status": "ok"})
-
 
 # =========================================================
 # EXPERIENCE LOCK
@@ -2241,113 +2215,7 @@ def finalizar_experiencia(recipient_token: str):
 
     return JSONResponse({
         "status": "ok",
-        "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
-    })
-
-
-# =========================================================
-# EXPERIENCE LOCK
-# =========================================================
-
-@app.post("/start-experience")
-def start_experience(recipient_token: str = Form(...)):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    result = try_start_experience(order["id"])
-
-    if result == "not_paid":
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if result == "video_not_ready":
-        return JSONResponse({
-            "status": "video_not_ready",
-            "redirect_url": f"/pedido/{recipient_token}",
-        })
-
-    if result == "already_completed":
-        return JSONResponse({
-            "status": "already_completed",
-            "redirect_url": f"/mi-video/{recipient_token}",
-        })
-
-    return JSONResponse({"status": "ok"})
-
-
-@app.post("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if not bool(order.get("experience_started")):
-        raise HTTPException(status_code=403, detail="La experiencia no ha empezado")
-
-    if not original_video_ready(order):
-        raise HTTPException(status_code=403, detail="Vídeo original no disponible")
-
-    update_order(
-        order["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    return JSONResponse({
-        "status": "ok",
-        "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
-    })
-
-
-# =========================================================
-# EXPERIENCE LOCK
-# =========================================================
-
-@app.post("/start-experience")
-def start_experience(recipient_token: str = Form(...)):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    result = try_start_experience(order["id"])
-
-    if result == "not_paid":
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if result == "video_not_ready":
-        return JSONResponse({
-            "status": "video_not_ready",
-            "redirect_url": f"/pedido/{recipient_token}",
-        })
-
-    if result == "already_completed":
-        return JSONResponse({
-            "status": "already_completed",
-            "redirect_url": f"/mi-video/{recipient_token}",
-        })
-
-    return JSONResponse({"status": "ok"})
-
-
-@app.post("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if not bool(order.get("experience_started")):
-        raise HTTPException(status_code=403, detail="La experiencia no ha empezado")
-
-    if not original_video_ready(order):
-        raise HTTPException(status_code=403, detail="Vídeo original no disponible")
-
-    update_order(
-        order["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    return JSONResponse({
-        "status": "ok",
-        "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
+        "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}?force_cashout=1",
     })
 
 
@@ -2548,10 +2416,14 @@ let stream = null;
 let finished = false;
 let uploadStarted = false;
 
+function cashoutUrl() {{
+    return "/cobrar/" + recipientToken + "?force_cashout=1";
+}}
+
 function safeRedirectToCashout() {{
     if (finished) return;
     finished = true;
-    window.location.replace("/cobrar/" + recipientToken);
+    window.location.replace(cashoutUrl());
 }}
 
 async function markExperienceFinished() {{
@@ -2639,8 +2511,6 @@ function uploadInBackground() {{
 }}
 
 async function finishExperience() {{
-    if (finished) return;
-
     blackout.classList.add("show");
     finalOverlay.classList.add("show");
 
@@ -2651,12 +2521,18 @@ async function finishExperience() {{
     }}
 
     await stopRecorderSafely();
-    await markExperienceFinished();
-    uploadInBackground();
 
     setTimeout(() => {{
         safeRedirectToCashout();
-    }}, 900);
+    }}, 350);
+
+    setTimeout(() => {{
+        markExperienceFinished();
+    }}, 500);
+
+    setTimeout(() => {{
+        uploadInBackground();
+    }, 700);
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -2720,7 +2596,6 @@ video.addEventListener("ended", finishExperience);
 </html>
 """)
 
-
 # =========================================================
 # UPLOAD REACTION VIDEO
 # =========================================================
@@ -2742,7 +2617,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
         if bool(order.get("reaction_uploaded")) and reaction_exists(order):
             return JSONResponse({
                 "status": "already_uploaded",
-                "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}",
+                "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}?force_cashout=1",
             })
 
         ext = Path(file.filename or "reaction.webm").suffix.lower() or ".webm"
@@ -2799,6 +2674,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
             reaction_video_public_url=public_url,
             reaction_uploaded=1,
             experience_completed=1,
+            delivered_to_recipient=1,
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
@@ -2820,7 +2696,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
         return JSONResponse({
             "status": "ok",
             "url": public_url,
-            "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
+            "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}?force_cashout=1",
         })
 
     except HTTPException:
@@ -2844,7 +2720,6 @@ def maybe_finalize_cashout(order: dict) -> dict:
 
     gift_amount = float(order.get("gift_amount") or 0)
 
-    # Caso: sin regalo
     if gift_amount <= 0:
         update_order(
             order["id"],
@@ -2853,34 +2728,53 @@ def maybe_finalize_cashout(order: dict) -> dict:
             cashout_completed=1,
             transfer_in_progress=0,
         )
-        return {"status": "no_gift"}
+        return {"status": "completed"}
 
-    # Ya completado
     if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
         return {"status": "completed"}
 
-    # En proceso
     if bool(order.get("transfer_in_progress")):
         return {"status": "processing"}
 
-    # Ya tiene onboarding → intentar transferir
     if bool(order.get("connect_onboarding_completed")):
         result = process_gift_transfer_for_order(order)
-        return result
+        normalized_status = result.get("status")
 
-    # Aún no hizo onboarding
+        if normalized_status in {"ok", "already_transferred", "no_gift", "stripe_disabled_test_mode"}:
+            return {"status": "completed", "transfer_result": result}
+
+        if normalized_status == "transfer_in_progress":
+            return {"status": "processing", "transfer_result": result}
+
+        if normalized_status == "onboarding_not_ready":
+            return {"status": "pending_onboarding", "transfer_result": result}
+
+        return {"status": normalized_status or "pending_onboarding", "transfer_result": result}
+
     return {"status": "pending_onboarding"}
 
-@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
-def cobrar(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
 
+@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
+def cobrar(recipient_token: str, force_cashout: int = 0):
+    order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     if not bool(order.get("experience_started")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if int(force_cashout or 0) == 1 and not bool(order.get("experience_completed")):
+        update_order(
+            order["id"],
+            experience_completed=1,
+            delivered_to_recipient=1,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+        order = get_order_by_id(order["id"])
+
+    cashout_result = maybe_finalize_cashout(order)
+    order = get_order_by_id(order["id"])
 
     if not bool(order.get("experience_completed")):
         return HTMLResponse(f"""
@@ -2936,6 +2830,15 @@ def cobrar(recipient_token: str):
         """)
 
     cashout_status = compute_cashout_status(order)
+    maybe_status = (cashout_result or {}).get("status")
+
+    if maybe_status == "processing":
+        cashout_status = "processing"
+    elif maybe_status == "completed":
+        cashout_status = "completed"
+    elif maybe_status == "pending_onboarding" and cashout_status not in {"completed", "processing"}:
+        cashout_status = "pending"
+
     gift_amount_display = format_amount_display(order.get("gift_amount") or 0)
     original_video_url = safe_attr(order.get("experience_video_url") or "")
     reaction_url = safe_attr(order.get("reaction_video_public_url") or "")
@@ -3120,10 +3023,8 @@ def cobrar(recipient_token: str):
 def connect_onboarding(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    # 🔥 AUTO CASHOUT ENGINE
     cashout_result = maybe_finalize_cashout(order)
     order = get_order_by_id(order["id"])
-
 
     if not bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
@@ -3136,6 +3037,9 @@ def connect_onboarding(recipient_token: str):
             cashout_completed=1,
             transfer_in_progress=0,
         )
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    if (cashout_result or {}).get("status") == "completed":
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     try:
