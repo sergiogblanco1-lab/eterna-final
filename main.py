@@ -1,8 +1,10 @@
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
 print("🔥 WEBHOOK + CALLBACK + EXPERIENCE LOCK + REACTION SAVE 🔥")
 print("🔥 FINAL UX LOCKED + CASHOUT HARDENED + SENDER PACK READY 🔥")
+print("🔥 REACTION RETRY + ETERNA COMPLETE SAFE VERSION 🔥")
 
 import html
+import json
 import mimetypes
 import os
 import secrets
@@ -276,6 +278,22 @@ def init_db():
     add_column_if_missing("orders", "recipient_sms_error", "ALTER TABLE orders ADD COLUMN recipient_sms_error TEXT")
     add_column_if_missing("orders", "sender_sms_error", "ALTER TABLE orders ADD COLUMN sender_sms_error TEXT")
 
+    add_column_if_missing(
+        "orders",
+        "reaction_upload_pending",
+        "ALTER TABLE orders ADD COLUMN reaction_upload_pending INTEGER NOT NULL DEFAULT 0",
+    )
+    add_column_if_missing(
+        "orders",
+        "reaction_upload_error",
+        "ALTER TABLE orders ADD COLUMN reaction_upload_error TEXT",
+    )
+    add_column_if_missing(
+        "orders",
+        "eterna_completed",
+        "ALTER TABLE orders ADD COLUMN eterna_completed INTEGER NOT NULL DEFAULT 0",
+    )
+
 
 init_db()
 
@@ -502,6 +520,30 @@ def reaction_exists(order: dict) -> bool:
         return True
     local_path = (order.get("reaction_video_local") or "").strip()
     return bool(local_path) and os.path.exists(local_path)
+
+
+def is_eterna_complete(order: dict) -> bool:
+    return (
+        original_video_ready(order)
+        and bool(order.get("reaction_uploaded"))
+        and reaction_exists(order)
+    )
+
+
+def maybe_mark_eterna_completed(order_id: str) -> dict:
+    order = get_order_by_id(order_id)
+
+    if is_eterna_complete(order):
+        update_order(
+            order_id,
+            eterna_completed=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+        )
+    else:
+        update_order(order_id, eterna_completed=0)
+
+    return get_order_by_id(order_id)
 
 
 def video_engine_headers() -> dict:
@@ -801,6 +843,16 @@ def try_send_recipient_sms(order: dict) -> dict:
 
 
 def try_send_sender_sms(order: dict) -> dict:
+    order = get_order_by_id(order["id"])
+
+    if not is_eterna_complete(order):
+        return {
+            "ok": False,
+            "sid": None,
+            "already_sent": False,
+            "error": "eterna_not_complete",
+        }
+
     if order.get("sender_sms_sent_at"):
         return {
             "ok": True,
@@ -880,7 +932,7 @@ def try_start_experience(order_id: str) -> str:
     if not original_video_ready(order):
         return "video_not_ready"
 
-    if bool(order.get("experience_completed")) and reaction_exists(order):
+    if bool(order.get("experience_completed")):
         return "already_completed"
 
     update_order(
@@ -1594,7 +1646,7 @@ async def create_order_and_redirect(
     """, (recipient_name, recipient_phone_norm, created_at))
     recipient_id = cur.lastrowid
 
-    placeholders = ", ".join(["?"] * 46)
+    placeholders = ", ".join(["?"] * 49)
 
     cur.execute(f"""
         INSERT INTO orders (
@@ -1612,6 +1664,7 @@ async def create_order_and_redirect(
             gift_refund_deadline_at,
             recipient_sms_sent_at, sender_sms_sent_at, recipient_sms_sid, sender_sms_sid,
             recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
+            reaction_upload_pending, reaction_upload_error, eterna_completed,
             created_at, updated_at
         )
         VALUES ({placeholders})
@@ -1630,6 +1683,7 @@ async def create_order_and_redirect(
         None,
         None, None, None, None,
         0, 0, None, None,
+        0, None, 0,
         created_at, created_at
     ))
 
@@ -1788,7 +1842,7 @@ def pedido(recipient_token: str):
         button_href = "#"
         button_text = "Preparando..."
         disabled = True
-    elif bool(order.get("experience_completed")) and reaction_exists(order):
+    elif bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
     else:
         title = "Hay algo para ti"
@@ -2079,7 +2133,7 @@ async def internal_video_ready(request: Request):
                 storage_provider="video_engine",
             )
 
-        updated_order = get_order_by_id(order_id)
+        updated_order = maybe_mark_eterna_completed(order_id)
 
         try:
             sms_result = try_send_recipient_sms(updated_order)
@@ -2165,7 +2219,6 @@ def resumen(order_id: str):
     </html>
     """)
 
-
 # =========================================================
 # EXPERIENCE LOCK
 # =========================================================
@@ -2219,6 +2272,20 @@ def finalizar_experiencia(recipient_token: str):
     })
 
 
+@app.get("/reaction-upload-status/{recipient_token}")
+def reaction_upload_status(recipient_token: str):
+    order = maybe_mark_eterna_completed(get_order_by_recipient_token_or_404(recipient_token)["id"])
+    return JSONResponse({
+        "status": "ok",
+        "reaction_uploaded": bool(order.get("reaction_uploaded")),
+        "reaction_exists": reaction_exists(order),
+        "reaction_upload_pending": bool(order.get("reaction_upload_pending")),
+        "reaction_upload_error": order.get("reaction_upload_error"),
+        "eterna_completed": bool(order.get("eterna_completed")),
+        "experience_completed": bool(order.get("experience_completed")),
+    })
+
+
 # =========================================================
 # EXPERIENCE
 # =========================================================
@@ -2233,7 +2300,7 @@ def experiencia(recipient_token: str):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if bool(order.get("experience_completed")) and reaction_exists(order):
+    if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
@@ -2255,12 +2322,10 @@ html, body {{
     overflow: hidden;
     font-family: Arial, sans-serif;
 }}
-
 body {{
     position: fixed;
     inset: 0;
 }}
-
 .container {{
     position: fixed;
     inset: 0;
@@ -2269,7 +2334,6 @@ body {{
     background: black;
     overflow: hidden;
 }}
-
 video {{
     position: absolute;
     inset: 0;
@@ -2279,7 +2343,6 @@ video {{
     background: black;
     pointer-events: none;
 }}
-
 .overlay {{
     position: absolute;
     inset: 0;
@@ -2292,21 +2355,18 @@ video {{
     padding: 24px;
     z-index: 3;
 }}
-
 .title {{
     font-size: 34px;
     line-height: 1.2;
     margin-bottom: 18px;
     color: white;
 }}
-
 .soft {{
     max-width: 560px;
     font-size: 16px;
     line-height: 1.7;
     color: rgba(255,255,255,0.76);
 }}
-
 .btn {{
     margin-top: 28px;
     padding: 16px 28px;
@@ -2318,11 +2378,9 @@ video {{
     color: black;
     cursor: pointer;
 }}
-
 .hidden {{
     display: none;
 }}
-
 .blackout {{
     position: absolute;
     inset: 0;
@@ -2332,11 +2390,9 @@ video {{
     z-index: 4;
     transition: opacity 0.25s ease;
 }}
-
 .blackout.show {{
     opacity: 1;
 }}
-
 .final-overlay {{
     position: absolute;
     inset: 0;
@@ -2349,18 +2405,15 @@ video {{
     padding: 24px;
     z-index: 6;
 }}
-
 .final-overlay.show {{
     display: flex;
 }}
-
 .final-title {{
     font-size: 30px;
     line-height: 1.25;
     color: white;
     margin-bottom: 14px;
 }}
-
 .final-soft {{
     font-size: 16px;
     line-height: 1.7;
@@ -2414,7 +2467,6 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
 let finished = false;
-let uploadStarted = false;
 
 function cashoutUrl() {{
     return "/cobrar/" + recipientToken + "?force_cashout=1";
@@ -2436,11 +2488,129 @@ async function markExperienceFinished() {{
     }}
 }}
 
+function openReactionDB() {{
+    return new Promise((resolve, reject) => {{
+        const request = indexedDB.open("eternaReactionDB", 1);
+        request.onupgradeneeded = function(event) {{
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains("reactions")) {{
+                db.createObjectStore("reactions");
+            }}
+        }};
+        request.onsuccess = function() {{
+            resolve(request.result);
+        }};
+        request.onerror = function() {{
+            reject(request.error || new Error("indexeddb_open_error"));
+        }};
+    }});
+}}
+
+async function savePendingReaction(blob) {{
+    const db = await openReactionDB();
+    await new Promise((resolve, reject) => {{
+        const tx = db.transaction("reactions", "readwrite");
+        tx.objectStore("reactions").put(blob, recipientToken);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("indexeddb_put_error"));
+    }});
+    db.close();
+}}
+
+async function loadPendingReaction() {{
+    const db = await openReactionDB();
+    const blob = await new Promise((resolve, reject) => {{
+        const tx = db.transaction("reactions", "readonly");
+        const req = tx.objectStore("reactions").get(recipientToken);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
+    }});
+    db.close();
+    return blob;
+}}
+
+async function deletePendingReaction() {{
+    const db = await openReactionDB();
+    await new Promise((resolve, reject) => {{
+        const tx = db.transaction("reactions", "readwrite");
+        tx.objectStore("reactions").delete(recipientToken);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("indexeddb_delete_error"));
+    }});
+    db.close();
+}}
+
+async function fetchReactionStatus() {{
+    try {{
+        const res = await fetch("/reaction-upload-status/" + recipientToken, {{
+            cache: "no-store"
+        }});
+        if (!res.ok) return null;
+        return await res.json();
+    }} catch (e) {{
+        console.error("reaction status error", e);
+        return null;
+    }}
+}}
+
+async function uploadReactionBlob(blob) {{
+    const formData = new FormData();
+    formData.append("file", blob, "reaction.webm");
+
+    const res = await fetch("/upload-reaction/" + recipientToken, {{
+        method: "POST",
+        body: formData
+    }});
+
+    let data = null;
+    try {{
+        data = await res.json();
+    }} catch (_) {{
+        data = null;
+    }}
+
+    if (!res.ok) {{
+        throw new Error((data && data.detail) || "upload_reaction_error");
+    }}
+
+    return data;
+}}
+
+async function retryReactionUpload(maxAttempts = 8) {{
+    const existingStatus = await fetchReactionStatus();
+    if (existingStatus && existingStatus.reaction_uploaded && existingStatus.reaction_exists) {{
+        await deletePendingReaction().catch(() => null);
+        return true;
+    }}
+
+    const blob = await loadPendingReaction();
+    if (!blob || !blob.size) {{
+        return false;
+    }}
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {{
+        try {{
+            await uploadReactionBlob(blob);
+            const status = await fetchReactionStatus();
+            if (status && status.reaction_uploaded && status.reaction_exists) {{
+                await deletePendingReaction().catch(() => null);
+                return true;
+            }}
+        }} catch (e) {{
+            console.error("retryReactionUpload attempt error", attempt, e);
+        }}
+
+        await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
+    }}
+
+    return false;
+}}
+
 async function stopRecorderSafely() {{
     try {{
         if (mediaRecorder && mediaRecorder.state !== "inactive") {{
             await new Promise((resolve) => {{
-                const timeout = setTimeout(resolve, 2500);
+                const timeout = setTimeout(resolve, 3000);
 
                 const oldOnStop = mediaRecorder.onstop;
                 mediaRecorder.onstop = function(event) {{
@@ -2474,42 +2644,6 @@ async function stopRecorderSafely() {{
     }}
 }}
 
-function uploadInBackground() {{
-    if (uploadStarted) return;
-    uploadStarted = true;
-
-    try {{
-        const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
-
-        if (!blob || blob.size === 0) {{
-            console.warn("No hay blob de reacción");
-            return;
-        }}
-
-        const formData = new FormData();
-        formData.append("file", blob, "reaction.webm");
-
-        fetch("/upload-reaction/" + recipientToken, {{
-            method: "POST",
-            body: formData,
-            keepalive: true
-        }})
-        .then(async (res) => {{
-            try {{
-                const data = await res.json();
-                console.log("upload-reaction OK", data);
-            }} catch (_) {{
-                console.log("upload-reaction completado");
-            }}
-        }})
-        .catch((e) => {{
-            console.error("upload-reaction error", e);
-        }});
-    }} catch (e) {{
-        console.error("uploadInBackground error", e);
-    }}
-}}
-
 async function finishExperience() {{
     blackout.classList.add("show");
     finalOverlay.classList.add("show");
@@ -2522,17 +2656,27 @@ async function finishExperience() {{
 
     await stopRecorderSafely();
 
+    const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
+
+    if (blob && blob.size > 0) {{
+        try {{
+            await savePendingReaction(blob);
+        }} catch (e) {{
+            console.error("savePendingReaction error", e);
+        }}
+    }}
+
     setTimeout(() => {{
         safeRedirectToCashout();
     }}, 350);
 
     setTimeout(() => {{
         markExperienceFinished();
-    }}, 500);
+    }}, 450);
 
     setTimeout(() => {{
-        uploadInBackground();
-    }, 700);
+        retryReactionUpload().catch((e) => console.error("retryReactionUpload error", e));
+    }}, 600);
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -2569,7 +2713,6 @@ startBtn.addEventListener("click", async () => {{
         }});
 
         mediaRecorder = new MediaRecorder(stream);
-
         recordedChunks = [];
 
         mediaRecorder.ondataavailable = (e) => {{
@@ -2579,9 +2722,7 @@ startBtn.addEventListener("click", async () => {{
         }};
 
         mediaRecorder.start(250);
-
         overlay.classList.add("hidden");
-
         await video.play();
 
     }} catch (e) {{
@@ -2595,6 +2736,7 @@ video.addEventListener("ended", finishExperience);
 </body>
 </html>
 """)
+
 
 # =========================================================
 # UPLOAD REACTION VIDEO
@@ -2615,10 +2757,18 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
             raise HTTPException(status_code=403, detail="Vídeo original no disponible")
 
         if bool(order.get("reaction_uploaded")) and reaction_exists(order):
+            updated_order = maybe_mark_eterna_completed(order["id"])
             return JSONResponse({
                 "status": "already_uploaded",
                 "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}?force_cashout=1",
+                "eterna_completed": bool(updated_order.get("eterna_completed")),
             })
+
+        update_order(
+            order["id"],
+            reaction_upload_pending=1,
+            reaction_upload_error=None,
+        )
 
         ext = Path(file.filename or "reaction.webm").suffix.lower() or ".webm"
         if ext not in {".webm", ".mp4"}:
@@ -2626,6 +2776,12 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
 
         content_type = (file.content_type or "").lower().strip()
         if content_type and content_type not in ALLOWED_VIDEO_TYPES:
+            update_order(
+                order["id"],
+                reaction_upload_pending=0,
+                reaction_upload_error="Formato de vídeo no permitido",
+                eterna_completed=0,
+            )
             raise HTTPException(status_code=400, detail="Formato de vídeo no permitido")
 
         extension = ext.replace(".", "")
@@ -2646,11 +2802,24 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
                         pass
                     if os.path.exists(save_path):
                         os.remove(save_path)
+
+                    update_order(
+                        order["id"],
+                        reaction_upload_pending=0,
+                        reaction_upload_error="Vídeo demasiado grande",
+                        eterna_completed=0,
+                    )
                     raise HTTPException(status_code=400, detail="Vídeo demasiado grande")
 
                 f.write(chunk)
 
         if not os.path.exists(save_path) or os.path.getsize(save_path) == 0:
+            update_order(
+                order["id"],
+                reaction_upload_pending=0,
+                reaction_upload_error="Archivo vacío",
+                eterna_completed=0,
+            )
             raise HTTPException(status_code=400, detail="Archivo vacío")
 
         public_url = None
@@ -2673,6 +2842,8 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
             reaction_video_local=save_path,
             reaction_video_public_url=public_url,
             reaction_uploaded=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
             experience_completed=1,
             delivered_to_recipient=1,
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
@@ -2686,8 +2857,9 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
                 "r2" if R2_PUBLIC_URL and public_url.startswith(R2_PUBLIC_URL) else "local",
             )
 
+        updated_order = maybe_mark_eterna_completed(order["id"])
+
         try:
-            updated_order = get_order_by_id(order["id"])
             sender_sms_result = try_send_sender_sms(updated_order)
             print("📩 Resultado SMS sender:", sender_sms_result)
         except Exception as e:
@@ -2697,12 +2869,25 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
             "status": "ok",
             "url": public_url,
             "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}?force_cashout=1",
+            "reaction_uploaded": bool(updated_order.get("reaction_uploaded")),
+            "reaction_exists": reaction_exists(updated_order),
+            "eterna_completed": bool(updated_order.get("eterna_completed")),
         })
 
     except HTTPException:
         raise
     except Exception as e:
         log_error("upload_reaction", e)
+        try:
+            order = get_order_by_recipient_token_or_404(recipient_token)
+            update_order(
+                order["id"],
+                reaction_upload_pending=0,
+                reaction_upload_error=str(e),
+                eterna_completed=0,
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         try:
@@ -2774,7 +2959,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         order = get_order_by_id(order["id"])
 
     cashout_result = maybe_finalize_cashout(order)
-    order = get_order_by_id(order["id"])
+    order = maybe_mark_eterna_completed(order["id"])
 
     if not bool(order.get("experience_completed")):
         return HTMLResponse(f"""
@@ -2841,9 +3026,37 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
 
     gift_amount_display = format_amount_display(order.get("gift_amount") or 0)
     original_video_url = safe_attr(order.get("experience_video_url") or "")
-    reaction_url = safe_attr(order.get("reaction_video_public_url") or "")
-
     gift_amount_value = float(order.get("gift_amount") or 0)
+
+    reaction_uploaded = bool(order.get("reaction_uploaded"))
+    reaction_ok = reaction_exists(order)
+    reaction_pending = bool(order.get("reaction_upload_pending"))
+    reaction_error = safe_text(order.get("reaction_upload_error") or "")
+    eterna_completed = bool(order.get("eterna_completed"))
+
+    if eterna_completed:
+        eterna_state_title = "ETERNA está completa"
+        eterna_state_text = "Tu vídeo y tu emoción han quedado guardados correctamente."
+    elif reaction_pending:
+        eterna_state_title = "Estamos guardando tu emoción"
+        eterna_state_text = "Tu ETERNA aún no está completa. El sistema seguirá intentando guardar la reacción."
+    elif reaction_uploaded and not reaction_ok:
+        eterna_state_title = "Estamos recuperando tu emoción"
+        eterna_state_text = "La reacción figura subida, pero aún no está disponible correctamente. Seguiremos insistiendo."
+    elif reaction_error:
+        eterna_state_title = "La emoción sigue pendiente"
+        eterna_state_text = "Tu ETERNA todavía no está completa. Seguiremos intentando guardar la reacción."
+    else:
+        eterna_state_title = "Tu emoción sigue en proceso"
+        eterna_state_text = "Hasta que la reacción quede guardada bien, ETERNA no se considera completa."
+
+    retry_note = ""
+    if reaction_error:
+        retry_note = f"""
+        <div class="alert">
+            Último estado de reacción: {reaction_error}
+        </div>
+        """
 
     if gift_amount_value <= 0:
         title = "Todo ha quedado guardado"
@@ -2878,15 +3091,6 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
             <button class="btn ghost" onclick="navigator.share ? navigator.share({{title:'ETERNA', url:window.location.origin + '/mi-video/{safe_attr(recipient_token)}'}}) : alert('Comparte este enlace desde tu navegador: ' + window.location.origin + '/mi-video/{safe_attr(recipient_token)}')">Compartir</button>
         '''
 
-    reaction_block = ""
-    if reaction_url:
-        reaction_block = f"""
-        <div class="video-card">
-            <div class="video-title">Tu emoción</div>
-            <video controls playsinline preload="metadata" src="{reaction_url}"></video>
-        </div>
-        """
-
     original_block = ""
     if original_video_url:
         original_block = f"""
@@ -2896,7 +3100,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         </div>
         """
 
-    refresh = '<meta http-equiv="refresh" content="8">' if cashout_status in {"pending", "processing", "ready_to_send"} else ""
+    refresh = '<meta http-equiv="refresh" content="6">' if not eterna_completed or cashout_status in {"pending", "processing", "ready_to_send"} else ""
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -2932,6 +3136,34 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
                 font-size: 20px;
                 line-height: 1.7;
                 color: rgba(255,255,255,0.82);
+            }}
+            .status-card {{
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.10);
+                border-radius: 24px;
+                padding: 18px;
+                margin: 0 auto 24px auto;
+            }}
+            .status-title {{
+                font-size: 18px;
+                line-height: 1.5;
+                color: white;
+                margin-bottom: 8px;
+            }}
+            .status-text {{
+                font-size: 15px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.68);
+            }}
+            .alert {{
+                margin-top: 12px;
+                padding: 12px 14px;
+                border-radius: 16px;
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.10);
+                color: rgba(255,255,255,0.74);
+                font-size: 14px;
+                line-height: 1.6;
             }}
             .actions {{
                 display: grid;
@@ -2998,6 +3230,12 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
                 <div class="sub">{safe_text(subtitle)}</div>
             </div>
 
+            <div class="status-card">
+                <div class="status-title">{safe_text(eterna_state_title)}</div>
+                <div class="status-text">{safe_text(eterna_state_text)}</div>
+                {retry_note}
+            </div>
+
             <div class="actions">
                 {action_html}
                 <a class="btn ghost" href="/mi-video/{safe_attr(recipient_token)}">Volver a verlo</a>
@@ -3006,14 +3244,134 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
 
             <div class="grid">
                 {original_block}
-                {reaction_block}
             </div>
 
             <div class="soft">
                 Lo importante ya pasó.<br>
-                Ahora este momento también es tuyo.
+                ETERNA solo queda completa cuando existen el vídeo y la emoción.
             </div>
         </div>
+
+<script>
+const recipientToken = "{safe_attr(recipient_token)}";
+
+function openReactionDB() {{
+    return new Promise((resolve, reject) => {{
+        const request = indexedDB.open("eternaReactionDB", 1);
+        request.onupgradeneeded = function(event) {{
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains("reactions")) {{
+                db.createObjectStore("reactions");
+            }}
+        }};
+        request.onsuccess = function() {{
+            resolve(request.result);
+        }};
+        request.onerror = function() {{
+            reject(request.error || new Error("indexeddb_open_error"));
+        }};
+    }});
+}}
+
+async function loadPendingReaction() {{
+    const db = await openReactionDB();
+    const blob = await new Promise((resolve, reject) => {{
+        const tx = db.transaction("reactions", "readonly");
+        const req = tx.objectStore("reactions").get(recipientToken);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
+    }});
+    db.close();
+    return blob;
+}}
+
+async function deletePendingReaction() {{
+    const db = await openReactionDB();
+    await new Promise((resolve, reject) => {{
+        const tx = db.transaction("reactions", "readwrite");
+        tx.objectStore("reactions").delete(recipientToken);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("indexeddb_delete_error"));
+    }});
+    db.close();
+}}
+
+async function fetchReactionStatus() {{
+    try {{
+        const res = await fetch("/reaction-upload-status/" + recipientToken, {{
+            cache: "no-store"
+        }});
+        if (!res.ok) return null;
+        return await res.json();
+    }} catch (e) {{
+        console.error("reaction status error", e);
+        return null;
+    }}
+}}
+
+async function uploadReactionBlob(blob) {{
+    const formData = new FormData();
+    formData.append("file", blob, "reaction.webm");
+
+    const res = await fetch("/upload-reaction/" + recipientToken, {{
+        method: "POST",
+        body: formData
+    }});
+
+    let data = null;
+    try {{
+        data = await res.json();
+    }} catch (_) {{
+        data = null;
+    }}
+
+    if (!res.ok) {{
+        throw new Error((data && data.detail) || "upload_reaction_error");
+    }}
+
+    return data;
+}}
+
+async function retryReactionUpload(maxAttempts = 8) {{
+    const existingStatus = await fetchReactionStatus();
+    if (existingStatus && existingStatus.reaction_uploaded && existingStatus.reaction_exists) {{
+        await deletePendingReaction().catch(() => null);
+        return true;
+    }}
+
+    const blob = await loadPendingReaction();
+    if (!blob || !blob.size) {{
+        return false;
+    }}
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {{
+        try {{
+            await uploadReactionBlob(blob);
+            const status = await fetchReactionStatus();
+            if (status && status.reaction_uploaded && status.reaction_exists) {{
+                await deletePendingReaction().catch(() => null);
+                return true;
+            }}
+        }} catch (e) {{
+            console.error("retryReactionUpload attempt error", attempt, e);
+        }}
+
+        await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
+    }}
+
+    return false;
+}}
+
+window.addEventListener("load", () => {{
+    retryReactionUpload().catch((e) => console.error("retryReactionUpload load error", e));
+}});
+
+document.addEventListener("visibilitychange", () => {{
+    if (document.visibilityState === "visible") {{
+        retryReactionUpload().catch((e) => console.error("retryReactionUpload visible error", e));
+    }}
+}});
+</script>
     </body>
     </html>
     """)
@@ -3024,7 +3382,7 @@ def connect_onboarding(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     cashout_result = maybe_finalize_cashout(order)
-    order = get_order_by_id(order["id"])
+    order = maybe_mark_eterna_completed(order["id"])
 
     if not bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
@@ -3078,7 +3436,7 @@ def connect_return(recipient_token: str):
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
 def mi_video(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
+    order = maybe_mark_eterna_completed(get_order_by_recipient_token_or_404(recipient_token)["id"])
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -3087,24 +3445,47 @@ def mi_video(recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     original_video_url = safe_attr(order.get("experience_video_url") or "")
-    reaction_url = safe_attr(order.get("reaction_video_public_url") or "")
     cashout_status = compute_cashout_status(order)
     cashout_cta = "Cobrar regalo" if cashout_status not in {"completed", "processing"} else "Ver regalo"
 
-    reaction_block = ""
-    if reaction_url:
-        reaction_block = f"""
-        <div class="card">
-            <div class="card-title">Tu emoción</div>
-            <video controls playsinline preload="metadata" src="{reaction_url}"></video>
+    eterna_completed = bool(order.get("eterna_completed"))
+    reaction_pending = bool(order.get("reaction_upload_pending"))
+    reaction_error = safe_text(order.get("reaction_upload_error") or "")
+
+    reaction_state = ""
+    if eterna_completed:
+        reaction_state = """
+        <div class="info-box">
+            ETERNA está completa: vídeo y emoción guardados correctamente.
         </div>
         """
+    elif reaction_pending:
+        reaction_state = """
+        <div class="info-box">
+            La emoción sigue guardándose. ETERNA todavía no está completa.
+        </div>
+        """
+    elif reaction_error:
+        reaction_state = f"""
+        <div class="info-box">
+            La emoción sigue pendiente. Último estado: {reaction_error}
+        </div>
+        """
+    else:
+        reaction_state = """
+        <div class="info-box">
+            La emoción aún no está lista. ETERNA no está completa todavía.
+        </div>
+        """
+
+    refresh = '<meta http-equiv="refresh" content="6">' if not eterna_completed else ""
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        {refresh}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
         <style>
@@ -3124,6 +3505,18 @@ def mi_video(recipient_token: str):
                 text-align: center;
                 font-size: 42px;
                 margin: 0 0 26px 0;
+            }}
+            .info-box {{
+                max-width: 720px;
+                margin: 0 auto 22px auto;
+                padding: 16px 18px;
+                border-radius: 20px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.72);
+                line-height: 1.7;
+                text-align: center;
+                font-size: 15px;
             }}
             .grid {{
                 display: grid;
@@ -3177,12 +3570,13 @@ def mi_video(recipient_token: str):
         <div class="wrap">
             <h1>Tu momento</h1>
 
+            {reaction_state}
+
             <div class="grid">
                 <div class="card">
                     <div class="card-title">Tu ETERNA</div>
                     <video controls playsinline preload="metadata" src="{original_video_url}"></video>
                 </div>
-                {reaction_block}
             </div>
 
             <div class="actions">
@@ -3190,6 +3584,127 @@ def mi_video(recipient_token: str):
                 <button class="btn ghost" onclick="navigator.share ? navigator.share({{title:'ETERNA', url:window.location.href}}) : alert(window.location.href)">Compartir</button>
             </div>
         </div>
+
+<script>
+const recipientToken = "{safe_attr(recipient_token)}";
+
+function openReactionDB() {{
+    return new Promise((resolve, reject) => {{
+        const request = indexedDB.open("eternaReactionDB", 1);
+        request.onupgradeneeded = function(event) {{
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains("reactions")) {{
+                db.createObjectStore("reactions");
+            }}
+        }};
+        request.onsuccess = function() {{
+            resolve(request.result);
+        }};
+        request.onerror = function() {{
+            reject(request.error || new Error("indexeddb_open_error"));
+        }};
+    }});
+}}
+
+async function loadPendingReaction() {{
+    const db = await openReactionDB();
+    const blob = await new Promise((resolve, reject) => {{
+        const tx = db.transaction("reactions", "readonly");
+        const req = tx.objectStore("reactions").get(recipientToken);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
+    }});
+    db.close();
+    return blob;
+}}
+
+async function deletePendingReaction() {{
+    const db = await openReactionDB();
+    await new Promise((resolve, reject) => {{
+        const tx = db.transaction("reactions", "readwrite");
+        tx.objectStore("reactions").delete(recipientToken);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("indexeddb_delete_error"));
+    }});
+    db.close();
+}}
+
+async function fetchReactionStatus() {{
+    try {{
+        const res = await fetch("/reaction-upload-status/" + recipientToken, {{
+            cache: "no-store"
+        }});
+        if (!res.ok) return null;
+        return await res.json();
+    }} catch (e) {{
+        console.error("reaction status error", e);
+        return null;
+    }}
+}}
+
+async function uploadReactionBlob(blob) {{
+    const formData = new FormData();
+    formData.append("file", blob, "reaction.webm");
+
+    const res = await fetch("/upload-reaction/" + recipientToken, {{
+        method: "POST",
+        body: formData
+    }});
+
+    let data = null;
+    try {{
+        data = await res.json();
+    }} catch (_) {{
+        data = null;
+    }}
+
+    if (!res.ok) {{
+        throw new Error((data && data.detail) || "upload_reaction_error");
+    }}
+
+    return data;
+}}
+
+async function retryReactionUpload(maxAttempts = 8) {{
+    const existingStatus = await fetchReactionStatus();
+    if (existingStatus && existingStatus.reaction_uploaded && existingStatus.reaction_exists) {{
+        await deletePendingReaction().catch(() => null);
+        return true;
+    }}
+
+    const blob = await loadPendingReaction();
+    if (!blob || !blob.size) {{
+        return false;
+    }}
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {{
+        try {{
+            await uploadReactionBlob(blob);
+            const status = await fetchReactionStatus();
+            if (status && status.reaction_uploaded && status.reaction_exists) {{
+                await deletePendingReaction().catch(() => null);
+                return true;
+            }}
+        }} catch (e) {{
+            console.error("retryReactionUpload attempt error", attempt, e);
+        }}
+
+        await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
+    }}
+
+    return false;
+}}
+
+window.addEventListener("load", () => {{
+    retryReactionUpload().catch((e) => console.error("retryReactionUpload load error", e));
+}});
+
+document.addEventListener("visibilitychange", () => {{
+    if (document.visibilityState === "visible") {{
+        retryReactionUpload().catch((e) => console.error("retryReactionUpload visible error", e));
+    }}
+}});
+</script>
     </body>
     </html>
     """)
@@ -3197,7 +3712,7 @@ def mi_video(recipient_token: str):
 
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str):
-    order = get_order_by_sender_token_or_404(sender_token)
+    order = maybe_mark_eterna_completed(get_order_by_sender_token_or_404(sender_token)["id"])
 
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="Pedido no pagado")
@@ -3206,6 +3721,35 @@ def sender_pack(sender_token: str):
     reaction_url = safe_attr(order.get("reaction_video_public_url") or "")
     recipient_name = safe_text(order.get("recipient_name") or "esa persona")
     gift_amount = format_amount_display(order.get("gift_amount") or 0)
+    eterna_completed = bool(order.get("eterna_completed"))
+    reaction_pending = bool(order.get("reaction_upload_pending"))
+    reaction_error = safe_text(order.get("reaction_upload_error") or "")
+
+    state_html = ""
+    if eterna_completed:
+        state_html = """
+        <div class="state-box">
+            ETERNA completa: el vídeo y la emoción ya están guardados.
+        </div>
+        """
+    elif reaction_pending:
+        state_html = """
+        <div class="state-box">
+            La emoción sigue guardándose. El sender pack todavía no está completo del todo.
+        </div>
+        """
+    elif reaction_error:
+        state_html = f"""
+        <div class="state-box">
+            La emoción sigue pendiente. Último estado: {reaction_error}
+        </div>
+        """
+    else:
+        state_html = """
+        <div class="state-box">
+            La emoción aún no está lista. Este sender pack todavía no está completo.
+        </div>
+        """
 
     reaction_block = ""
     if reaction_url:
@@ -3216,11 +3760,14 @@ def sender_pack(sender_token: str):
         </div>
         """
 
+    refresh = '<meta http-equiv="refresh" content="6">' if not eterna_completed else ""
+
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        {refresh}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
         <style>
@@ -3248,6 +3795,18 @@ def sender_pack(sender_token: str):
                 font-size: 20px;
                 line-height: 1.7;
                 color: rgba(255,255,255,0.82);
+            }}
+            .state-box {{
+                max-width: 760px;
+                margin: 0 auto 24px auto;
+                padding: 16px 18px;
+                border-radius: 20px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.72);
+                line-height: 1.7;
+                text-align: center;
+                font-size: 15px;
             }}
             .grid {{
                 display: grid;
@@ -3290,6 +3849,8 @@ def sender_pack(sender_token: str):
                 </div>
             </div>
 
+            {state_html}
+
             <div class="grid">
                 <div class="card">
                     <div class="card-title">El vídeo que enviaste</div>
@@ -3299,8 +3860,8 @@ def sender_pack(sender_token: str):
             </div>
 
             <div class="meta">
-                Esto ya no es solo un recuerdo.<br>
-                Ahora también es respuesta.
+                ETERNA solo está completa cuando existen las dos partes:<br>
+                el vídeo original y la emoción guardada.
             </div>
         </div>
     </body>
@@ -3343,21 +3904,6 @@ def get_sender_reaction_video(sender_token: str):
     )
 
 
-@app.get("/video/reaction/{recipient_token}")
-def get_recipient_reaction_video(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    local_path = (order.get("reaction_video_local") or "").strip()
-
-    if not local_path or not os.path.exists(local_path):
-        raise HTTPException(status_code=404, detail="Vídeo no encontrado")
-
-    return FileResponse(
-        local_path,
-        media_type=guess_media_type_from_path(local_path),
-        filename=os.path.basename(local_path),
-    )
-
-
 # =========================================================
 # OPTIONAL ADMIN
 # =========================================================
@@ -3367,7 +3913,7 @@ def admin_order(order_id: str, token: str):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="unauthorized")
 
-    order = get_order_by_id(order_id)
+    order = maybe_mark_eterna_completed(order_id)
     assets = list_assets(order_id)
 
     return {
@@ -3376,6 +3922,7 @@ def admin_order(order_id: str, token: str):
         "cashout_status": compute_cashout_status(order),
         "original_video_ready": original_video_ready(order),
         "reaction_exists": reaction_exists(order),
+        "eterna_completed": bool(order.get("eterna_completed")),
     }
 
 
@@ -3403,7 +3950,7 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
 
-    order = get_order_by_id(order_id)
+    order = maybe_mark_eterna_completed(order_id)
     result = try_send_sender_sms(order)
     updated = get_order_by_id(order_id)
 
@@ -3414,6 +3961,7 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
         "sender_sms_sid": updated.get("sender_sms_sid"),
         "sender_sms_attempts": updated.get("sender_sms_attempts"),
         "sender_sms_error": updated.get("sender_sms_error"),
+        "eterna_completed": bool(updated.get("eterna_completed")),
     })
 
 
