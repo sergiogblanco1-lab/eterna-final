@@ -2139,6 +2139,13 @@ async def internal_video_ready(request: Request):
 
             updated_order = maybe_mark_eterna_completed(order_id)
 
+            print("📲 CALLBACK -> intentando SMS recipient")
+            print("📲 paid:", updated_order.get("paid"))
+            print("📲 experience_video_url:", updated_order.get("experience_video_url"))
+            print("📲 recipient_phone raw:", updated_order.get("recipient_phone"))
+            print("📲 recipient_phone e164:", to_e164(updated_order.get("recipient_phone", "")))
+            print("📲 twilio_enabled:", twilio_enabled())
+
         try:
             sms_result = try_send_recipient_sms(updated_order)
             print("📩 Resultado SMS callback:", sms_result)
