@@ -2133,7 +2133,11 @@ async def internal_video_ready(request: Request):
                 storage_provider="video_engine",
             )
 
-        updated_order = maybe_mark_eterna_completed(order_id)
+            update_order(order_id, experience_video_url=video_url)
+
+            order = get_order_by_id(order_id)  # 🔥 RECARGA REAL
+
+            updated_order = maybe_mark_eterna_completed(order_id)
 
         try:
             sms_result = try_send_recipient_sms(updated_order)
