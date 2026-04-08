@@ -1107,270 +1107,499 @@ def privacidad(request: Request):
 
 def render_create_form() -> str:
     return f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crear ETERNA</title>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Crear ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            body {{
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                padding: 24px;
+            }}
+            .wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
+            .card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 28px;
+                padding: 28px;
+            }}
+            h1 {{ margin: 0 0 12px 0; font-size: 36px; text-align: center; letter-spacing: 2px; }}
+            .subtitle {{ text-align: center; color: rgba(255,255,255,0.7); line-height: 1.7; margin-bottom: 10px; }}
+            .intro-soft {{
+                text-align: center;
+                color: rgba(255,255,255,0.48);
+                line-height: 1.8;
+                margin: 0 auto 26px auto;
+                max-width: 620px;
+                font-size: 14px;
+            }}
+            .section-title {{
+                margin: 22px 0 10px 0;
+                font-size: 13px;
+                letter-spacing: 1.4px;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.55);
+            }}
+            input {{
+                width: 100%;
+                padding: 15px 16px;
+                margin: 8px 0;
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.10);
+                background: rgba(255,255,255,0.05);
+                color: white;
+                outline: none;
+                font-size: 15px;
+            }}
+            input::placeholder {{ color: rgba(255,255,255,0.4); }}
 
-<style>
-* {{ box-sizing: border-box; }}
-html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            .photo-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+                margin-top: 12px;
+            }}
+            .photo-card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 22px;
+                padding: 16px;
+            }}
+            .photo-label {{
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1.2px;
+                color: rgba(255,255,255,0.45);
+                margin-bottom: 8px;
+            }}
+            .photo-guide {{
+                font-size: 15px;
+                color: rgba(255,255,255,0.92);
+                line-height: 1.5;
+                margin-bottom: 12px;
+                min-height: 44px;
+            }}
+            .photo-box {{
+                position: relative;
+                border: 1px dashed rgba(255,255,255,0.18);
+                border-radius: 18px;
+                min-height: 210px;
+                overflow: hidden;
+                background: rgba(255,255,255,0.03);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 16px;
+                cursor: pointer;
+            }}
+            .photo-box input[type="file"] {{
+                position: absolute;
+                inset: 0;
+                opacity: 0;
+                cursor: pointer;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 3;
+            }}
+            .photo-placeholder {{
+                color: rgba(255,255,255,0.48);
+                line-height: 1.7;
+                font-size: 14px;
+                position: relative;
+                z-index: 1;
+                pointer-events: none;
+            }}
+            .photo-preview {{
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: none;
+                z-index: 2;
+                border-radius: 18px;
+            }}
+            .mini-note {{
+                margin-top: 10px;
+                color: rgba(255,255,255,0.42);
+                font-size: 12px;
+                line-height: 1.6;
+            }}
 
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
-    padding: 24px;
-}}
+            .emotion-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 14px;
+                margin-top: 12px;
+            }}
+            .emotion-card {{
+                padding: 18px 18px;
+                border-radius: 20px;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                cursor: pointer;
+                transition: all 0.25s ease;
+            }}
+            .emotion-card.selected {{
+                border: 1px solid rgba(255,255,255,0.32);
+                background: rgba(255,255,255,0.08);
+            }}
+            .emotion-title {{ font-size: 16px; font-weight: 600; margin-bottom: 6px; }}
+            .emotion-sub {{ font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.45; }}
 
-.wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
+            .mode-box {{
+                margin-top: 14px;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 18px;
+                padding: 12px 14px;
+            }}
+            .radio-row {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin: 10px 0;
+                color: rgba(255,255,255,0.88);
+                font-size: 14px;
+            }}
+            .radio-row input {{ width: auto; margin: 0; }}
+            .recommended {{ opacity: 0.5; font-size: 12px; margin-left: 4px; }}
+            .phrases-manual.hidden {{ display: none; }}
 
-.card {{
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 28px;
-    padding: 28px;
-}}
+            .price-box {{
+                margin-top: 12px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 16px;
+                padding: 14px 16px;
+                font-size: 14px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.82);
+            }}
+            .hint {{
+                margin-top: 10px;
+                font-size: 13px;
+                line-height: 1.7;
+                color: rgba(255,255,255,0.45);
+                text-align: center;
+            }}
+            .buttons {{ display: grid; gap: 12px; margin-top: 24px; }}
+            .btn, button {{
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                border: 0;
+                font-weight: bold;
+                font-size: 15px;
+                text-decoration: none;
+                text-align: center;
+                cursor: pointer;
+            }}
+            button {{ background: white; color: black; }}
+            .ghost {{
+                display: inline-block;
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
 
-h1 {{
-    margin: 0 0 12px 0;
-    font-size: 36px;
-    text-align: center;
-    letter-spacing: 2px;
-}}
+            @media (max-width: 760px) {{
+                .photo-grid,
+                .emotion-grid {{
+                    grid-template-columns: 1fr;
+                }}
+                body {{ padding: 16px; }}
+                .card {{ padding: 22px; }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="card">
+                <h1>CREAR ETERNA</h1>
+                <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
+                <div class="intro-soft">
+                    Shhh…<br>
+                    Esto no es un vídeo.<br>
+                    No es solo un momento.<br>
+                    Esto es magia.
+                </div>
 
-.subtitle {{
-    text-align: center;
-    color: rgba(255,255,255,0.7);
-    margin-bottom: 10px;
-}}
+                <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
+                    <div class="section-title">Tus datos</div>
+                    <input name="customer_name" placeholder="Tu nombre" required>
+                    <input name="customer_email" type="email" placeholder="Tu email">
+                    <input name="customer_phone" placeholder="Tu teléfono (ej. 674123456)" required>
 
-.intro-soft {{
-    text-align: center;
-    color: rgba(255,255,255,0.48);
-    margin-bottom: 26px;
-}}
+                    <div class="section-title">Persona que recibe</div>
+                    <input name="recipient_name" placeholder="Nombre de la persona" required>
+                    <input name="recipient_phone" placeholder="Teléfono de la persona (ej. 674123456)" required>
 
-.section-title {{
-    margin: 22px 0 10px 0;
-    font-size: 13px;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.55);
-}}
+                    <div class="section-title">Tus 6 fotos</div>
+                    <div class="photo-grid">
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 1</div>
+                            <div class="photo-guide">Una imagen solo suya.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo1">
+                                <div class="photo-placeholder" id="placeholder_photo1">Añadir foto</div>
+                                <input type="file" name="photo1" id="photo1" accept="image/*" required>
+                            </label>
+                        </div>
 
-input {{
-    width: 100%;
-    padding: 15px;
-    margin: 8px 0;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.10);
-    background: rgba(255,255,255,0.05);
-    color: white;
-}}
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 2</div>
+                            <div class="photo-guide">Ese momento que lo dice todo.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo2">
+                                <div class="photo-placeholder" id="placeholder_photo2">Añadir foto</div>
+                                <input type="file" name="photo2" id="photo2" accept="image/*" required>
+                            </label>
+                        </div>
 
-.photo-grid {{
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-}}
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 3</div>
+                            <div class="photo-guide">Algo que os una.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo3">
+                                <div class="photo-placeholder" id="placeholder_photo3">Añadir foto</div>
+                                <input type="file" name="photo3" id="photo3" accept="image/*" required>
+                            </label>
+                        </div>
 
-.photo-card {{
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 22px;
-    padding: 16px;
-}}
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 4</div>
+                            <div class="photo-guide">Un recuerdo que duela bonito.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo4">
+                                <div class="photo-placeholder" id="placeholder_photo4">Añadir foto</div>
+                                <input type="file" name="photo4" id="photo4" accept="image/*" required>
+                            </label>
+                        </div>
 
-.photo-box {{
-    position: relative;
-    border: 1px dashed rgba(255,255,255,0.18);
-    border-radius: 18px;
-    min-height: 180px;
-    overflow: hidden;
-}}
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 5</div>
+                            <div class="photo-guide">Algo especial, solo vuestro.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo5">
+                                <div class="photo-placeholder" id="placeholder_photo5">Añadir foto</div>
+                                <input type="file" name="photo5" id="photo5" accept="image/*" required>
+                            </label>
+                        </div>
 
-.photo-box input {{
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-}}
+                        <div class="photo-card">
+                            <div class="photo-label">Foto 6</div>
+                            <div class="photo-guide">La que nunca olvidará.</div>
+                            <label class="photo-box">
+                                <img class="photo-preview" id="preview_photo6">
+                                <div class="photo-placeholder" id="placeholder_photo6">Añadir foto</div>
+                                <input type="file" name="photo6" id="photo6" accept="image/*" required>
+                            </label>
+                        </div>
+                    </div>
 
-.photo-preview {{
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: none;
-}}
+                    <div class="mini-note">
+                        Recomendación: mejor verticales. Idealmente 2 fotos suyas, 2 juntos y 2 finales suyas.
+                    </div>
 
-.photo-placeholder {{
-    text-align: center;
-    padding: 40px;
-    color: rgba(255,255,255,0.4);
-}}
+                    <div class="section-title">Elige la emoción</div>
 
-.emotion-grid {{
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-}}
+                    <div class="emotion-grid">
+                        <div class="emotion-card" data-type="cumpleanos">
+                            <div class="emotion-title">Cumpleaños</div>
+                            <div class="emotion-sub">Un día que merece quedarse</div>
+                        </div>
+                        <div class="emotion-card" data-type="amor">
+                            <div class="emotion-title">Amor</div>
+                            <div class="emotion-sub">Cuando lo que sientes ya no cabe dentro</div>
+                        </div>
+                        <div class="emotion-card" data-type="familia">
+                            <div class="emotion-title">Familia</div>
+                            <div class="emotion-sub">Para quien siempre ha estado</div>
+                        </div>
+                        <div class="emotion-card" data-type="superacion">
+                            <div class="emotion-title">Superación</div>
+                            <div class="emotion-sub">Para recordar todo lo que vale</div>
+                        </div>
+                        <div class="emotion-card" data-type="esfuerzo">
+                            <div class="emotion-title">Esfuerzo</div>
+                            <div class="emotion-sub">Para reconocer lo que otros no siempre ven</div>
+                        </div>
+                        <div class="emotion-card" data-type="sorpresa">
+                            <div class="emotion-title">Sorpresa</div>
+                            <div class="emotion-sub">Cuando quieres tocar el corazón sin avisar</div>
+                        </div>
+                    </div>
 
-.emotion-card {{
-    padding: 16px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    cursor: pointer;
-}}
+                    <input type="hidden" name="message_type" id="messageType" required>
 
-.emotion-card.selected {{
-    border: 1px solid white;
-}}
+                    <div class="mode-box">
+                        <div class="radio-row">
+                            <input type="radio" id="mode_auto" name="phrase_mode" value="auto" checked>
+                            <label for="mode_auto">
+                                Que ETERNA lo haga por mí
+                                <span class="recommended">(recomendado)</span>
+                            </label>
+                        </div>
 
-.buttons {{
-    margin-top: 24px;
-}}
+                        <div class="radio-row">
+                            <input type="radio" id="mode_manual" name="phrase_mode" value="manual">
+                            <label for="mode_manual">Quiero escribir mis frases</label>
+                        </div>
+                    </div>
 
-button {{
-    width: 100%;
-    padding: 16px;
-    border-radius: 999px;
-    border: 0;
-    font-weight: bold;
-    background: white;
-    color: black;
-}}
+                    <div class="phrases-manual hidden" id="manualPhrases">
+                        <div class="section-title">Tus 3 frases</div>
+                        <input name="phrase_1" placeholder="Frase para foto 2" maxlength="160">
+                        <input name="phrase_2" placeholder="Frase para foto 4" maxlength="160">
+                        <input name="phrase_3" placeholder="Frase para foto 6" maxlength="160">
+                    </div>
 
-@media (max-width: 760px) {{
-    .photo-grid,
-    .emotion-grid {{
-        grid-template-columns: 1fr;
-    }}
-}}
-</style>
-</head>
+                    <div class="section-title">Dinero a regalar</div>
+                    <input
+                        name="gift_amount"
+                        placeholder="Dinero a regalar (€)"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value="0"
+                        required
+                    >
 
-<body>
+                    <div class="price-box">
+                        Precio base ETERNA: {money(BASE_PRICE)}€<br>
+                        Comisión regalo: {money(FIXED_PLATFORM_FEE)}€ + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado
+                    </div>
 
-<div class="wrap">
-<div class="card">
+                    <div class="hint">No es un vídeo. Es un momento.</div>
 
-<h1>CREAR ETERNA</h1>
+                    <div class="buttons">
+                        <button type="submit" id="submitBtn">CONTINUAR</button>
+                        <a class="btn ghost" href="/">Volver</a>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-<div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
-
-<div class="intro-soft">
-Shhh…<br>
-Esto no es un vídeo.<br>
-No es solo un momento.<br>
-Esto es magia.
-</div>
-
-<form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
-
-<div class="section-title">Tus datos</div>
-<input name="customer_name" placeholder="Tu nombre" required>
-<input name="customer_email" type="email" placeholder="Tu email">
-<input name="customer_phone" placeholder="Tu teléfono" required>
-
-<div class="section-title">Persona que recibe</div>
-<input name="recipient_name" placeholder="Nombre" required>
-<input name="recipient_phone" placeholder="Teléfono" required>
-
-<div class="section-title">Fotos</div>
-
-<div class="photo-grid">
-{"".join([f'''
-<div class="photo-card">
-<label class="photo-box">
-<img class="photo-preview" id="preview_photo{i}">
-<div class="photo-placeholder" id="placeholder_photo{i}">Añadir foto</div>
-<input type="file" name="photo{i}" id="photo{i}" accept="image/*" required>
-</label>
-</div>
-''' for i in range(1,7)])}
-</div>
-
-<div class="section-title">Emoción</div>
-
-<div class="emotion-grid">
-<div class="emotion-card" data-type="cumpleanos">Cumpleaños</div>
-<div class="emotion-card" data-type="amor">Amor</div>
-<div class="emotion-card" data-type="familia">Familia</div>
-<div class="emotion-card" data-type="superacion">Superación</div>
-<div class="emotion-card" data-type="esfuerzo">Esfuerzo</div>
-<div class="emotion-card" data-type="sorpresa">Sorpresa</div>
-</div>
-
-<input type="hidden" name="message_type" id="messageType" required>
-
-<div class="section-title">Dinero</div>
-<input name="gift_amount" type="number" value="0" step="0.01">
-
-<div class="buttons">
-<button type="submit" id="submitBtn">CONTINUAR</button>
-</div>
-
-</form>
-</div>
-</div>
-
-<script>
+        <script>
 document.addEventListener("DOMContentLoaded", function () {{
+    const cards = document.querySelectorAll(".emotion-card");
+    const messageTypeInput = document.getElementById("messageType");
+    const autoRadio = document.getElementById("mode_auto");
+    const manualRadio = document.getElementById("mode_manual");
+    const manualPhrases = document.getElementById("manualPhrases");
+    const form = document.getElementById("createForm");
+    const button = document.getElementById("submitBtn");
 
-const form = document.getElementById("createForm");
-const button = document.getElementById("submitBtn");
-const messageTypeInput = document.getElementById("messageType");
-
-document.querySelectorAll(".emotion-card").forEach(card => {{
-    card.onclick = () => {{
-        document.querySelectorAll(".emotion-card").forEach(c => c.classList.remove("selected"));
-        card.classList.add("selected");
-        messageTypeInput.value = card.dataset.type;
-    }};
-}});
-
-for (let i=1;i<=6;i++) {{
-    const input = document.getElementById("photo"+i);
-    const preview = document.getElementById("preview_photo"+i);
-    const placeholder = document.getElementById("placeholder_photo"+i);
-
-    input.onchange = () => {{
-        const file = input.files[0];
-        if (!file) return;
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
-        placeholder.style.display = "none";
-    }};
-}}
-
-form.onsubmit = function(e) {{
-
-    if (!form.checkValidity()) {{
-        e.preventDefault();
-        alert("Completa todos los campos");
-        return;
+    function updatePhraseMode() {{
+        if (!manualPhrases) return;
+        if (manualRadio && manualRadio.checked) {{
+            manualPhrases.classList.remove("hidden");
+        }} else {{
+            manualPhrases.classList.add("hidden");
+        }}
     }}
 
-    if (!messageTypeInput.value) {{
-        e.preventDefault();
-        alert("Selecciona una emoción");
-        return;
+    cards.forEach((card) => {{
+        card.addEventListener("click", function () {{
+            cards.forEach((c) => c.classList.remove("selected"));
+            card.classList.add("selected");
+            if (messageTypeInput) {{
+                messageTypeInput.value = card.dataset.type || "";
+            }}
+        }});
+    }});
+
+    if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
+    if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
+    updatePhraseMode();
+
+    function bindPreview(inputId) {{
+        const fileInput = document.getElementById(inputId);
+        const preview = document.getElementById("preview_" + inputId);
+        const placeholder = document.getElementById("placeholder_" + inputId);
+
+        if (!fileInput) return;
+
+        fileInput.addEventListener("change", function () {{
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) return;
+
+            const url = URL.createObjectURL(file);
+
+            if (preview) {{
+                preview.src = url;
+                preview.style.display = "block";
+            }}
+
+            if (placeholder) {{
+                placeholder.style.display = "none";
+            }}
+        }});
     }}
 
-    button.disabled = true;
-    button.innerText = "Procesando...";
-}};
+    ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
+
+    if (!form) return;
+
+    form.addEventListener("submit", function (e) {{
+        if (!form.checkValidity()) {{
+            e.preventDefault();
+            alert("Revisa los campos. Falta información.");
+            return;
+        }}
+
+        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
+        if (!messageType) {{
+            e.preventDefault();
+            alert("Selecciona una emoción.");
+            return;
+        }}
+
+        const inputs = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
+        for (let id of inputs) {{
+            const input = document.getElementById(id);
+            if (!input || !input.files || input.files.length === 0) {{
+                e.preventDefault();
+                alert("Faltan fotos.");
+                return;
+            }}
+        }}
+
+        if (manualRadio && manualRadio.checked) {{
+            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
+            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
+            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
+
+            if (!phrase1 || !phrase2 || !phrase3) {{
+                e.preventDefault();
+                alert("Escribe tus 3 frases.");
+                return;
+            }}
+        }}
+
+        if (button) {{
+            button.disabled = true;
+            button.innerText = "Procesando...";
+        }}
+    }});
 }});
 </script>
-
-</body>
-</html>
-"""
+    </body>
+    </html>
+    """
     
 
 
