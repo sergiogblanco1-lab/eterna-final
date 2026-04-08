@@ -1680,93 +1680,294 @@ def render_create_form() -> str:
        <script>
 document.addEventListener("DOMContentLoaded", function () {{
 
+    const STORAGE_KEY = "eterna_create_form_v2";
+
     const form = document.getElementById("createForm");
     const button = document.getElementById("submitBtn");
+    const errorBox = document.getElementById("errorBox");
+    const cards = document.querySelectorAll(".emotion-card");
+    const messageTypeInput = document.getElementById("messageType");
+    const autoRadio = document.getElementById("mode_auto");
+    const manualRadio = document.getElementById("mode_manual");
+    const manualPhrases = document.getElementById("manualPhrases");
 
-    function validateBeforeSubmit() {{
-        if (!form.checkValidity()) {{
-            alert("Revisa los campos.");
-            return false;
+    function showError(message) {{
+        if (!errorBox) return;
+        errorBox.style.display = "block";
+        errorBox.innerText = message || "Ha ocurrido un error.";
+    }}
+
+    function clearError() {{
+        if (!errorBox) return;
+        errorBox.style.display = "none";
+        errorBox.innerText = "";
+    }}
+
+    function getPersistableData() {{
+        return {{
+            customer_name: document.getElementById("customer_name")?.value || "",
+            customer_email: document.getElementById("customer_email")?.value || "",
+            customer_phone: document.getElementById("customer_phone")?.value || "",
+            recipient_name: document.getElementById("recipient_name")?.value || "",
+            recipient_phone: document.getElementById("recipient_phone")?.value || "",
+            message_type: document.getElementById("messageType")?.value || "",
+            phrase_mode: manualRadio && manualRadio.checked ? "manual" : "auto",
+            phrase_1: document.getElementById("phrase_1")?.value || "",
+            phrase_2: document.getElementById("phrase_2")?.value || "",
+            phrase_3: document.getElementById("phrase_3")?.value || "",
+            gift_amount: document.getElementById("gift_amount")?.value || "0"
+        }};
+    }}
+
+    function saveFormState() {{
+        try {{
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(getPersistableData()));
+        }} catch (e) {{
+            console.error("saveFormState error", e);
+        }}
+    }}
+
+    function restoreFormState() {{
+        try {{
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+
+            const data = JSON.parse(raw);
+
+            const ids = [
+                "customer_name",
+                "customer_email",
+                "customer_phone",
+                "recipient_name",
+                "recipient_phone",
+                "phrase_1",
+                "phrase_2",
+                "phrase_3",
+                "gift_amount"
+            ];
+
+            ids.forEach((id) => {{
+                const el = document.getElementById(id);
+                if (el && typeof data[id] !== "undefined") {{
+                    el.value = data[id];
+                }}
+            }});
+
+            if (data.phrase_mode === "manual") {{
+                if (manualRadio) manualRadio.checked = true;
+                if (autoRadio) autoRadio.checked = false;
+            }} else {{
+                if (autoRadio) autoRadio.checked = true;
+                if (manualRadio) manualRadio.checked = false;
+            }}
+
+            updatePhraseMode();
+
+            if (data.message_type && messageTypeInput) {{
+                messageTypeInput.value = data.message_type;
+                cards.forEach((card) => {{
+                    if ((card.dataset.type || "") === data.message_type) {{
+                        card.classList.add("selected");
+                    }} else {{
+                        card.classList.remove("selected");
+                    }}
+                }});
+            }}
+        }} catch (e) {{
+            console.error("restoreFormState error", e);
+        }}
+    }}
+
+    function bindAutosave() {{
+        const selectors = [
+            "#customer_name",
+            "#customer_email",
+            "#customer_phone",
+            "#recipient_name",
+            "#recipient_phone",
+            "#phrase_1",
+            "#phrase_2",
+            "#phrase_3",
+            "#gift_amount",
+            "#mode_auto",
+            "#mode_manual"
+        ];
+
+        selectors.forEach((selector) => {{
+            const el = document.querySelector(selector);
+            if (!el) return;
+
+            el.addEventListener("input", saveFormState);
+            el.addEventListener("change", saveFormState);
+        }});
+    }}
+
+    function updatePhraseMode() {{
+        if (!manualPhrases) return;
+
+        if (manualRadio && manualRadio.checked) {{
+            manualPhrases.classList.remove("hidden");
+        }} else {{
+            manualPhrases.classList.add("hidden");
         }}
 
-        const messageType = document.getElementById("messageType")?.value || "";
-        if (!messageType) {{
-            alert("Elige una emoción.");
-            return false;
+        saveFormState();
+    }}
+
+    cards.forEach((card) => {{
+        card.addEventListener("click", function () {{
+            cards.forEach((c) => c.classList.remove("selected"));
+            card.classList.add("selected");
+            if (messageTypeInput) {{
+                messageTypeInput.value = card.dataset.type || "";
+            }}
+            saveFormState();
+            clearError();
+        }});
+    }});
+
+    if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
+    if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
+
+    function updatePhotoUI(inputId, file) {{
+        const preview = document.getElementById("preview_" + inputId);
+        const placeholder = document.getElementById("placeholder_" + inputId);
+        const status = document.getElementById("status_" + inputId);
+
+        if (!file) {{
+            if (preview) {{
+                preview.src = "";
+                preview.style.display = "none";
+            }}
+            if (placeholder) {{
+                placeholder.style.display = "block";
+            }}
+            if (status) {{
+                status.innerText = "Aún no has elegido esta foto.";
+            }}
+            return;
         }}
 
-        const photos = ["photo1","photo2","photo3","photo4","photo5","photo6"];
-        for (const id of photos) {{
+        const url = URL.createObjectURL(file);
+
+        if (preview) {{
+            preview.src = url;
+            preview.style.display = "block";
+        }}
+
+        if (placeholder) {{
+            placeholder.style.display = "none";
+        }}
+
+        if (status) {{
+            status.innerText = "Foto elegida correctamente.";
+        }}
+    }}
+
+    function bindPreview(inputId) {{
+        const fileInput = document.getElementById(inputId);
+        if (!fileInput) return;
+
+        fileInput.addEventListener("change", function () {{
+            clearError();
+
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {{
+                updatePhotoUI(inputId, null);
+                return;
+            }}
+
+            if (!(file.type || "").startsWith("image/")) {{
+                fileInput.value = "";
+                updatePhotoUI(inputId, null);
+                showError("Una de las fotos no parece una imagen válida.");
+                return;
+            }}
+
+            updatePhotoUI(inputId, file);
+            saveFormState();
+        }});
+    }}
+
+    ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
+
+    function allPhotosPresent() {{
+        const ids = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
+        for (const id of ids) {{
             const input = document.getElementById(id);
             if (!input || !input.files || input.files.length === 0) {{
-                alert("Faltan fotos.");
+                return false;
+            }}
+        }}
+        return true;
+    }}
+
+    function validateBeforeSubmit() {{
+        if (!form) {{
+            showError("Formulario no disponible.");
+            return false;
+        }}
+
+        if (!form.checkValidity()) {{
+            showError("Revisa los campos. Falta información.");
+            return false;
+        }}
+
+        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
+        if (!messageType) {{
+            showError("Elige la emoción que quieres dejar.");
+            return false;
+        }}
+
+        if (!allPhotosPresent()) {{
+            showError("Necesitas elegir las 6 fotos.");
+            return false;
+        }}
+
+        if (manualRadio && manualRadio.checked) {{
+            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
+            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
+            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
+
+            if (!phrase1 || !phrase2 || !phrase3) {{
+                showError("Escribe tus 3 frases.");
                 return false;
             }}
         }}
 
+        const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
+        if (Number.isNaN(giftAmount) || giftAmount < 0) {{
+            showError("El importe no es válido.");
+            return false;
+        }}
+
+        clearError();
         return true;
     }}
 
-    async function submitWithNativeRedirect() {{
-        const tempForm = document.createElement("form");
-        tempForm.method = "POST";
-        tempForm.action = "/crear";
-        tempForm.enctype = "multipart/form-data";
+    if (!form) return;
 
-        function add(name, value) {{
-            const i = document.createElement("input");
-            i.type = "hidden";
-            i.name = name;
-            i.value = value || "";
-            tempForm.appendChild(i);
+    restoreFormState();
+    bindAutosave();
+    updatePhraseMode();
+
+    form.addEventListener("submit", function (e) {{
+        if (!validateBeforeSubmit()) {{
+            e.preventDefault();
+            return;
         }}
 
-        add("customer_name", document.getElementById("customer_name")?.value);
-        add("customer_email", document.getElementById("customer_email")?.value);
-        add("customer_phone", document.getElementById("customer_phone")?.value);
-        add("recipient_name", document.getElementById("recipient_name")?.value);
-        add("recipient_phone", document.getElementById("recipient_phone")?.value);
-        add("message_type", document.getElementById("messageType")?.value);
-        add("phrase_mode", document.getElementById("mode_manual")?.checked ? "manual" : "auto");
-        add("phrase_1", document.getElementById("phrase_1")?.value);
-        add("phrase_2", document.getElementById("phrase_2")?.value);
-        add("phrase_3", document.getElementById("phrase_3")?.value);
-        add("gift_amount", document.getElementById("gift_amount")?.value || "0");
+        clearError();
 
-        const photoIds = ["photo1","photo2","photo3","photo4","photo5","photo6"];
-
-        for (const photoId of photoIds) {{
-            const input = document.getElementById(photoId);
-
-            const dt = new DataTransfer();
-            dt.items.add(input.files[0]);
-
-            const fileInput = document.createElement("input");
-            fileInput.type = "file";
-            fileInput.name = photoId;
-            fileInput.files = dt.files;
-
-            tempForm.appendChild(fileInput);
+        if (button) {{
+            button.disabled = true;
+            button.innerText = "Entrando a pago...";
         }}
-
-        document.body.appendChild(tempForm);
-        tempForm.submit();
-    }}
-
-    form.addEventListener("submit", async function (e) {{
-        e.preventDefault();
-
-        if (!validateBeforeSubmit()) return;
-
-        button.disabled = true;
-        button.innerText = "Entrando a pago...";
 
         try {{
-            await submitWithNativeRedirect();
+            localStorage.removeItem(STORAGE_KEY);
         }} catch (err) {{
-            console.error(err);
-            alert("Error preparando el pago");
-            button.disabled = false;
+            console.error("localStorage remove error", err);
         }}
     }});
 
