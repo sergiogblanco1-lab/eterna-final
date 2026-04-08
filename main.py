@@ -1484,53 +1484,109 @@ def render_create_form() -> str:
         </div>
 
         <script>
-            const cards = document.querySelectorAll(".emotion-card");
-            const input = document.getElementById("messageType");
-            const autoRadio = document.getElementById("mode_auto");
-            const manualRadio = document.getElementById("mode_manual");
-            const manualPhrases = document.getElementById("manualPhrases");
-            const form = document.getElementById("createForm");
-            const button = document.getElementById("submitBtn");
+document.addEventListener("DOMContentLoaded", function () {
+    const cards = document.querySelectorAll(".emotion-card");
+    const messageTypeInput = document.getElementById("messageType");
+    const autoRadio = document.getElementById("mode_auto");
+    const manualRadio = document.getElementById("mode_manual");
+    const manualPhrases = document.getElementById("manualPhrases");
+    const form = document.getElementById("createForm");
+    const button = document.getElementById("submitBtn");
 
-            cards.forEach(card => {{
-                card.addEventListener("click", () => {{
-                    cards.forEach(c => c.classList.remove("selected"));
-                    card.classList.add("selected");
-                    input.value = card.dataset.type;
-                }});
-            }});
+    function updatePhraseMode() {
+        if (!manualPhrases) return;
+        if (manualRadio && manualRadio.checked) {
+            manualPhrases.classList.remove("hidden");
+        } else {
+            manualPhrases.classList.add("hidden");
+        }
+    }
 
-            function updatePhraseMode() {{
-                if (manualRadio.checked) manualPhrases.classList.remove("hidden");
-                else manualPhrases.classList.add("hidden");
-            }}
+    cards.forEach((card) => {
+        card.addEventListener("click", function () {
+            cards.forEach((c) => c.classList.remove("selected"));
+            card.classList.add("selected");
+            if (messageTypeInput) {
+                messageTypeInput.value = card.dataset.type || "";
+            }
+        });
+    });
 
-            autoRadio.addEventListener("change", updatePhraseMode);
-            manualRadio.addEventListener("change", updatePhraseMode);
-            updatePhraseMode();
+    if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
+    if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
+    updatePhraseMode();
 
-            function bindPreview(inputId) {{
-                const fileInput = document.getElementById(inputId);
-                const preview = document.getElementById("preview_" + inputId);
-                const placeholder = document.getElementById("placeholder_" + inputId);
+    function bindPreview(inputId) {
+        const fileInput = document.getElementById(inputId);
+        const preview = document.getElementById("preview_" + inputId);
+        const placeholder = document.getElementById("placeholder_" + inputId);
 
-                fileInput.addEventListener("change", function() {{
-                    const file = this.files && this.files[0];
-                    if (!file) return;
-                    const url = URL.createObjectURL(file);
-                    preview.src = url;
-                    preview.style.display = "block";
-                    placeholder.style.display = "none";
-                }});
-            }}
+        if (!fileInput) return;
 
-            ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
+        fileInput.addEventListener("change", function () {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) return;
 
-            form.addEventListener("submit", function () {{
-                button.disabled = true;
-                button.textContent = "Procesando...";
-            }});
-        </script>
+            const url = URL.createObjectURL(file);
+
+            if (preview) {
+                preview.src = url;
+                preview.style.display = "block";
+            }
+
+            if (placeholder) {
+                placeholder.style.display = "none";
+            }
+        });
+    }
+
+    ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
+
+    if (!form) return;
+
+    form.addEventListener("submit", function (e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            alert("Revisa los campos. Falta información.");
+            return;
+        }
+
+        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
+        if (!messageType) {
+            e.preventDefault();
+            alert("Selecciona una emoción.");
+            return;
+        }
+
+        const inputs = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
+        for (let id of inputs) {
+            const input = document.getElementById(id);
+            if (!input || !input.files || input.files.length === 0) {
+                e.preventDefault();
+                alert("Faltan fotos.");
+                return;
+            }
+        }
+
+        if (manualRadio && manualRadio.checked) {
+            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
+            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
+            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
+
+            if (!phrase1 || !phrase2 || !phrase3) {
+                e.preventDefault();
+                alert("Escribe tus 3 frases.");
+                return;
+            }
+        }
+
+        if (button) {
+            button.disabled = true;
+            button.innerText = "Procesando...";
+        }
+    });
+});
+</script>
     </body>
     </html>
     """
