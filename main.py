@@ -1107,221 +1107,1005 @@ def privacidad(request: Request):
 
 def render_create_form() -> str:
     return f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crear ETERNA</title>
-
-<style>
-* {{ box-sizing: border-box; }}
-body {{
-    margin: 0;
-    background: black;
-    color: white;
-    font-family: Arial;
-    padding: 20px;
-}}
-
-.wrap {{ max-width: 700px; margin: auto; }}
-
-input {{
-    width: 100%;
-    padding: 14px;
-    margin: 8px 0;
-    border-radius: 12px;
-    border: 1px solid #333;
-    background: #111;
-    color: white;
-}}
-
-.photo-box {{
-    border: 1px dashed #555;
-    border-radius: 14px;
-    padding: 10px;
-    text-align: center;
-    position: relative;
-}}
-
-.photo-box img {{
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    display: none;
-    border-radius: 10px;
-}}
-
-button {{
-    width: 100%;
-    padding: 16px;
-    border-radius: 999px;
-    border: none;
-    background: white;
-    color: black;
-    font-weight: bold;
-    margin-top: 20px;
-}}
-
-.status {{
-    font-size: 12px;
-    opacity: 0.6;
-}}
-</style>
-</head>
-
-<body>
-<div class="wrap">
-
-<h2>Crear ETERNA</h2>
-
-<form id="form">
-
-<input name="customer_name" placeholder="Tu nombre" required>
-<input name="customer_phone" placeholder="Tu teléfono" required>
-
-<input name="recipient_name" placeholder="Nombre destinatario" required>
-<input name="recipient_phone" placeholder="Teléfono destinatario" required>
-
-<h3>Fotos</h3>
-
-{''.join([f'''
-<div class="photo-box">
-    <img id="preview{i}">
-    <input type="file" id="photo{i}" accept="image/*" capture="environment" required>
-    <div class="status" id="status{i}">Añadir foto</div>
-</div>
-''' for i in range(1,7)])}
-
-<h3>Frases</h3>
-<input name="phrase_1" placeholder="Frase 1">
-<input name="phrase_2" placeholder="Frase 2">
-<input name="phrase_3" placeholder="Frase 3">
-
-<input name="gift_amount" type="number" value="0">
-
-<button id="submitBtn">CONTINUAR</button>
-
-</form>
-</div>
-
-<script>
-
-// ===============================
-// COMPRESIÓN IMAGEN (CLAVE)
-// ===============================
-async function compressImage(file) {{
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-
-    await new Promise(r => img.onload = r);
-
-    const canvas = document.createElement("canvas");
-    const maxWidth = 1200;
-
-    const scale = maxWidth / img.width;
-    canvas.width = maxWidth;
-    canvas.height = img.height * scale;
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    return new Promise(resolve => {{
-        canvas.toBlob(blob => {{
-            resolve(new File([blob], file.name, {{
-                type: "image/jpeg"
-            }}));
-        }}, "image/jpeg", 0.8);
-    }});
-}}
-
-// ===============================
-// PREVIEW + ESTADO
-// ===============================
-for (let i = 1; i <= 6; i++) {{
-    const input = document.getElementById("photo" + i);
-    const preview = document.getElementById("preview" + i);
-    const status = document.getElementById("status" + i);
-
-    input.addEventListener("change", () => {{
-        const file = input.files[0];
-        if (!file) return;
-
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
-
-        status.innerText = "✔ lista";
-    }});
-}}
-
-// ===============================
-// SUBMIT ROBUSTO
-// ===============================
-document.getElementById("form").addEventListener("submit", async (e) => {{
-    e.preventDefault();
-
-    const btn = document.getElementById("submitBtn");
-    btn.disabled = true;
-    btn.innerText = "Preparando fotos...";
-
-    try {{
-
-        const formData = new FormData();
-
-        // inputs normales
-        const inputs = e.target.querySelectorAll("input[name]");
-        inputs.forEach(i => {{
-            if (i.type !== "file") {{
-                formData.append(i.name, i.value);
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Crear ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            body {{
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                padding: 24px;
             }}
+            .wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
+            .card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 28px;
+                padding: 28px;
+                overflow: hidden;
+            }}
+
+            h1 {{
+                margin: 0 0 12px 0;
+                font-size: 34px;
+                text-align: center;
+                letter-spacing: 2px;
+            }}
+
+            .subtitle {{
+                text-align: center;
+                color: rgba(255,255,255,0.68);
+                line-height: 1.7;
+                margin-bottom: 18px;
+            }}
+
+            .intro {{
+                text-align: center;
+                margin: 8px auto 30px auto;
+                max-width: 560px;
+                min-height: 128px;
+            }}
+
+            .intro-line {{
+                margin: 0;
+                font-size: 20px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.92);
+                opacity: 0;
+                transform: translateY(10px);
+                animation: fadeUp 0.8s ease forwards;
+            }}
+
+            .intro-line.l1 {{ animation-delay: 0.2s; }}
+            .intro-line.l2 {{ animation-delay: 1.6s; }}
+            .intro-line.l3 {{ animation-delay: 3.2s; }}
+            .intro-line.l4 {{
+                animation-delay: 4.9s;
+                font-weight: 700;
+                letter-spacing: 1.5px;
+            }}
+
+            @keyframes fadeUp {{
+                to {{
+                    opacity: 1;
+                    transform: translateY(0);
+                }}
+            }}
+
+            .section {{
+                opacity: 0;
+                transform: translateY(14px);
+                animation: sectionFade 0.8s ease forwards;
+            }}
+
+            .section.s1 {{ animation-delay: 0.8s; }}
+            .section.s2 {{ animation-delay: 1.2s; }}
+            .section.s3 {{ animation-delay: 1.6s; }}
+            .section.s4 {{ animation-delay: 2.0s; }}
+            .section.s5 {{ animation-delay: 2.4s; }}
+            .section.s6 {{ animation-delay: 2.8s; }}
+
+            @keyframes sectionFade {{
+                to {{
+                    opacity: 1;
+                    transform: translateY(0);
+                }}
+            }}
+
+            .section-title {{
+                margin: 22px 0 10px 0;
+                font-size: 13px;
+                letter-spacing: 1.4px;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.55);
+            }}
+
+            input {{
+                width: 100%;
+                padding: 15px 16px;
+                margin: 8px 0;
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.10);
+                background: rgba(255,255,255,0.05);
+                color: white;
+                outline: none;
+                font-size: 15px;
+            }}
+
+            input::placeholder {{
+                color: rgba(255,255,255,0.4);
+            }}
+
+            .soft-copy {{
+                color: rgba(255,255,255,0.56);
+                line-height: 1.8;
+                font-size: 14px;
+                margin-bottom: 14px;
+                text-align: center;
+            }}
+
+            .photo-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+                margin-top: 12px;
+            }}
+
+            .photo-card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 22px;
+                padding: 16px;
+            }}
+
+            .photo-label {{
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1.2px;
+                color: rgba(255,255,255,0.45);
+                margin-bottom: 8px;
+            }}
+
+            .photo-guide {{
+                font-size: 15px;
+                color: rgba(255,255,255,0.92);
+                line-height: 1.5;
+                margin-bottom: 12px;
+                min-height: 44px;
+            }}
+
+            .photo-box {{
+                position: relative;
+                border: 1px dashed rgba(255,255,255,0.18);
+                border-radius: 18px;
+                min-height: 210px;
+                overflow: hidden;
+                background: rgba(255,255,255,0.03);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 16px;
+                cursor: pointer;
+            }}
+
+            .photo-box input[type="file"] {{
+                position: absolute;
+                inset: 0;
+                opacity: 0;
+                cursor: pointer;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 3;
+            }}
+
+            .photo-placeholder {{
+                color: rgba(255,255,255,0.58);
+                line-height: 1.7;
+                font-size: 14px;
+                position: relative;
+                z-index: 1;
+                pointer-events: none;
+                max-width: 180px;
+            }}
+
+            .photo-preview {{
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: none;
+                z-index: 2;
+                border-radius: 18px;
+            }}
+
+            .photo-status {{
+                margin-top: 10px;
+                color: rgba(255,255,255,0.48);
+                font-size: 12px;
+                line-height: 1.6;
+                min-height: 20px;
+            }}
+
+            .mini-note {{
+                margin-top: 12px;
+                color: rgba(255,255,255,0.42);
+                font-size: 12px;
+                line-height: 1.6;
+                text-align: center;
+            }}
+
+            .emotion-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 14px;
+                margin-top: 12px;
+            }}
+
+            .emotion-card {{
+                padding: 18px 18px;
+                border-radius: 20px;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                cursor: pointer;
+                transition: all 0.25s ease;
+            }}
+
+            .emotion-card.selected {{
+                border: 1px solid rgba(255,255,255,0.32);
+                background: rgba(255,255,255,0.08);
+            }}
+
+            .emotion-title {{
+                font-size: 16px;
+                font-weight: 600;
+                margin-bottom: 6px;
+            }}
+
+            .emotion-sub {{
+                font-size: 13px;
+                color: rgba(255,255,255,0.55);
+                line-height: 1.45;
+            }}
+
+            .mode-box {{
+                margin-top: 14px;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 18px;
+                padding: 12px 14px;
+            }}
+
+            .radio-row {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin: 10px 0;
+                color: rgba(255,255,255,0.88);
+                font-size: 14px;
+            }}
+
+            .radio-row input {{
+                width: auto;
+                margin: 0;
+            }}
+
+            .recommended {{
+                opacity: 0.5;
+                font-size: 12px;
+                margin-left: 4px;
+            }}
+
+            .phrases-manual.hidden {{
+                display: none;
+            }}
+
+            .price-box {{
+                margin-top: 12px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 16px;
+                padding: 14px 16px;
+                font-size: 14px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.82);
+            }}
+
+            .hint {{
+                margin-top: 12px;
+                font-size: 14px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.48);
+                text-align: center;
+            }}
+
+            .buttons {{
+                display: grid;
+                gap: 12px;
+                margin-top: 24px;
+            }}
+
+            .btn, button {{
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                border: 0;
+                font-weight: bold;
+                font-size: 15px;
+                text-decoration: none;
+                text-align: center;
+                cursor: pointer;
+            }}
+
+            button {{
+                background: white;
+                color: black;
+            }}
+
+            button:disabled {{
+                opacity: 0.7;
+                cursor: default;
+            }}
+
+            .ghost {{
+                display: inline-block;
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
+
+            .error-box {{
+                display: none;
+                margin-top: 14px;
+                padding: 14px 16px;
+                border-radius: 16px;
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.10);
+                color: rgba(255,255,255,0.82);
+                font-size: 14px;
+                line-height: 1.7;
+            }}
+
+            @media (max-width: 760px) {{
+                .photo-grid,
+                .emotion-grid {{
+                    grid-template-columns: 1fr;
+                }}
+
+                body {{
+                    padding: 16px;
+                }}
+
+                .card {{
+                    padding: 22px;
+                }}
+
+                .intro {{
+                    min-height: 150px;
+                }}
+
+                .intro-line {{
+                    font-size: 18px;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="card">
+                <h1>CREAR ETERNA</h1>
+                <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
+
+                <div class="intro">
+                    <p class="intro-line l1">Esto no es un vídeo…</p>
+                    <p class="intro-line l2">No es solo un momento…</p>
+                    <p class="intro-line l3">Esto es……..</p>
+                    <p class="intro-line l4">MAGIA.</p>
+                </div>
+
+                <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
+                    <div class="section s1">
+                        <div class="section-title">Tus datos</div>
+                        <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
+                        <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
+                        <input name="customer_phone" id="customer_phone" placeholder="Tu teléfono (ej. 674123456)" required>
+                    </div>
+
+                    <div class="section s2">
+                        <div class="section-title">La persona que lo va a recibir</div>
+                        <input name="recipient_name" id="recipient_name" placeholder="Su nombre" required>
+                        <input name="recipient_phone" id="recipient_phone" placeholder="Su teléfono (ej. 674123456)" required>
+                    </div>
+
+                    <div class="section s3">
+                        <div class="section-title">Sus recuerdos</div>
+                        <div class="soft-copy">
+                            Elige 6 fotos que merezcan volver a sentirse.
+                        </div>
+
+                        <div class="photo-grid">
+                            <div class="photo-card">
+                                <div class="photo-label">Foto 1</div>
+                                <div class="photo-guide">Una foto suya que diga quién es.</div>
+                                <label class="photo-box">
+                                    <img class="photo-preview" id="preview_photo1">
+                                    <div class="photo-placeholder" id="placeholder_photo1">Toca para elegir una foto de tu galería</div>
+                                    <input type="file" name="photo1" id="photo1" accept="image/*" required>
+                                </label>
+                                <div class="photo-status" id="status_photo1">Aún no has elegido esta foto.</div>
+                            </div>
+
+                            <div class="photo-card">
+                                <div class="photo-label">Foto 2</div>
+                                <div class="photo-guide">Un instante que te lleve directo a ella.</div>
+                                <label class="photo-box">
+                                    <img class="photo-preview" id="preview_photo2">
+                                    <div class="photo-placeholder" id="placeholder_photo2">Toca para elegir una foto de tu galería</div>
+                                    <input type="file" name="photo2" id="photo2" accept="image/*" required>
+                                </label>
+                                <div class="photo-status" id="status_photo2">Aún no has elegido esta foto.</div>
+                            </div>
+
+                            <div class="photo-card">
+                                <div class="photo-label">Foto 3</div>
+                                <div class="photo-guide">Algo que os una sin necesidad de explicarlo.</div>
+                                <label class="photo-box">
+                                    <img class="photo-preview" id="preview_photo3">
+                                    <div class="photo-placeholder" id="placeholder_photo3">Toca para elegir una foto de tu galería</div>
+                                    <input type="file" name="photo3" id="photo3" accept="image/*" required>
+                                </label>
+                                <div class="photo-status" id="status_photo3">Aún no has elegido esta foto.</div>
+                            </div>
+
+                            <div class="photo-card">
+                                <div class="photo-label">Foto 4</div>
+                                <div class="photo-guide">Un recuerdo que todavía vive dentro.</div>
+                                <label class="photo-box">
+                                    <img class="photo-preview" id="preview_photo4">
+                                    <div class="photo-placeholder" id="placeholder_photo4">Toca para elegir una foto de tu galería</div>
+                                    <input type="file" name="photo4" id="photo4" accept="image/*" required>
+                                </label>
+                                <div class="photo-status" id="status_photo4">Aún no has elegido esta foto.</div>
+                            </div>
+
+                            <div class="photo-card">
+                                <div class="photo-label">Foto 5</div>
+                                <div class="photo-guide">Una imagen que solo vosotros entendéis.</div>
+                                <label class="photo-box">
+                                    <img class="photo-preview" id="preview_photo5">
+                                    <div class="photo-placeholder" id="placeholder_photo5">Toca para elegir una foto de tu galería</div>
+                                    <input type="file" name="photo5" id="photo5" accept="image/*" required>
+                                </label>
+                                <div class="photo-status" id="status_photo5">Aún no has elegido esta foto.</div>
+                            </div>
+
+                            <div class="photo-card">
+                                <div class="photo-label">Foto 6</div>
+                                <div class="photo-guide">La foto que jamás querrías perder.</div>
+                                <label class="photo-box">
+                                    <img class="photo-preview" id="preview_photo6">
+                                    <div class="photo-placeholder" id="placeholder_photo6">Toca para elegir una foto de tu galería</div>
+                                    <input type="file" name="photo6" id="photo6" accept="image/*" required>
+                                </label>
+                                <div class="photo-status" id="status_photo6">Aún no has elegido esta foto.</div>
+                            </div>
+                        </div>
+
+                        <div class="mini-note">
+                            Recomendación: mejor verticales. Idealmente 2 fotos suyas, 2 juntos y 2 finales suyas.
+                        </div>
+                    </div>
+
+                    <div class="section s4">
+                        <div class="section-title">La emoción que quieres dejar</div>
+
+                        <div class="emotion-grid">
+                            <div class="emotion-card" data-type="cumpleanos">
+                                <div class="emotion-title">Cumpleaños</div>
+                                <div class="emotion-sub">Un día que merece quedarse para siempre.</div>
+                            </div>
+                            <div class="emotion-card" data-type="amor">
+                                <div class="emotion-title">Amor</div>
+                                <div class="emotion-sub">Cuando lo que sientes ya no cabe dentro.</div>
+                            </div>
+                            <div class="emotion-card" data-type="familia">
+                                <div class="emotion-title">Familia</div>
+                                <div class="emotion-sub">Para quien siempre ha estado.</div>
+                            </div>
+                            <div class="emotion-card" data-type="superacion">
+                                <div class="emotion-title">Superación</div>
+                                <div class="emotion-sub">Para recordarle todo lo que vale.</div>
+                            </div>
+                            <div class="emotion-card" data-type="esfuerzo">
+                                <div class="emotion-title">Esfuerzo</div>
+                                <div class="emotion-sub">Para reconocer lo que a veces no se dice.</div>
+                            </div>
+                            <div class="emotion-card" data-type="sorpresa">
+                                <div class="emotion-title">Sorpresa</div>
+                                <div class="emotion-sub">Cuando quieres tocar el corazón sin avisar.</div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="message_type" id="messageType" required>
+                    </div>
+
+                    <div class="section s5">
+                        <div class="section-title">Tus palabras</div>
+
+                        <div class="mode-box">
+                            <div class="radio-row">
+                                <input type="radio" id="mode_auto" name="phrase_mode" value="auto" checked>
+                                <label for="mode_auto">
+                                    Quiero que ETERNA encuentre las palabras
+                                    <span class="recommended">(recomendado)</span>
+                                </label>
+                            </div>
+
+                            <div class="radio-row">
+                                <input type="radio" id="mode_manual" name="phrase_mode" value="manual">
+                                <label for="mode_manual">Quiero escribir lo que siento</label>
+                            </div>
+                        </div>
+
+                        <div class="phrases-manual hidden" id="manualPhrases">
+                            <input name="phrase_1" id="phrase_1" placeholder="Lo que nunca quieres que olvide" maxlength="160">
+                            <input name="phrase_2" id="phrase_2" placeholder="Eso que sientes y a veces no dices" maxlength="160">
+                            <input name="phrase_3" id="phrase_3" placeholder="La frase que quieres dejarle para siempre" maxlength="160">
+                        </div>
+                    </div>
+
+                    <div class="section s6">
+                        <div class="section-title">Dinero a regalar</div>
+                        <input
+                            name="gift_amount"
+                            id="gift_amount"
+                            placeholder="Dinero a regalar (€)"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value="0"
+                            required
+                        >
+
+                        <div class="price-box">
+                            Precio base ETERNA: {money(BASE_PRICE)}€<br>
+                            Comisión regalo: {money(FIXED_PLATFORM_FEE)}€ + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado
+                        </div>
+
+                        <div class="hint">Lo importante no es subir fotos. Es lo que va a sentir cuando lo reciba.</div>
+
+                        <div class="error-box" id="errorBox"></div>
+
+                        <div class="buttons">
+                            <button type="submit" id="submitBtn">SEGUIR CREANDO</button>
+                            <a class="btn ghost" href="/">Volver</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+document.addEventListener("DOMContentLoaded", function () {{
+    const STORAGE_KEY = "eterna_create_form_v2";
+
+    const form = document.getElementById("createForm");
+    const button = document.getElementById("submitBtn");
+    const errorBox = document.getElementById("errorBox");
+    const cards = document.querySelectorAll(".emotion-card");
+    const messageTypeInput = document.getElementById("messageType");
+    const autoRadio = document.getElementById("mode_auto");
+    const manualRadio = document.getElementById("mode_manual");
+    const manualPhrases = document.getElementById("manualPhrases");
+
+    function showError(message) {{
+        if (!errorBox) return;
+        errorBox.style.display = "block";
+        errorBox.innerText = message || "Ha ocurrido un error.";
+    }}
+
+    function clearError() {{
+        if (!errorBox) return;
+        errorBox.style.display = "none";
+        errorBox.innerText = "";
+    }}
+
+    function getPersistableData() {{
+        return {{
+            customer_name: document.getElementById("customer_name")?.value || "",
+            customer_email: document.getElementById("customer_email")?.value || "",
+            customer_phone: document.getElementById("customer_phone")?.value || "",
+            recipient_name: document.getElementById("recipient_name")?.value || "",
+            recipient_phone: document.getElementById("recipient_phone")?.value || "",
+            message_type: document.getElementById("messageType")?.value || "",
+            phrase_mode: manualRadio && manualRadio.checked ? "manual" : "auto",
+            phrase_1: document.getElementById("phrase_1")?.value || "",
+            phrase_2: document.getElementById("phrase_2")?.value || "",
+            phrase_3: document.getElementById("phrase_3")?.value || "",
+            gift_amount: document.getElementById("gift_amount")?.value || "0"
+        }};
+    }}
+
+    function saveFormState() {{
+        try {{
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(getPersistableData()));
+        }} catch (e) {{
+            console.error("saveFormState error", e);
+        }}
+    }}
+
+    function restoreFormState() {{
+        try {{
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+
+            const data = JSON.parse(raw);
+
+            const ids = [
+                "customer_name",
+                "customer_email",
+                "customer_phone",
+                "recipient_name",
+                "recipient_phone",
+                "phrase_1",
+                "phrase_2",
+                "phrase_3",
+                "gift_amount"
+            ];
+
+            ids.forEach((id) => {{
+                const el = document.getElementById(id);
+                if (el && typeof data[id] !== "undefined") {{
+                    el.value = data[id];
+                }}
+            }});
+
+            if (data.phrase_mode === "manual") {{
+                if (manualRadio) manualRadio.checked = true;
+                if (autoRadio) autoRadio.checked = false;
+            }} else {{
+                if (autoRadio) autoRadio.checked = true;
+                if (manualRadio) manualRadio.checked = false;
+            }}
+
+            updatePhraseMode();
+
+            if (data.message_type && messageTypeInput) {{
+                messageTypeInput.value = data.message_type;
+                cards.forEach((card) => {{
+                    if ((card.dataset.type || "") === data.message_type) {{
+                        card.classList.add("selected");
+                    }} else {{
+                        card.classList.remove("selected");
+                    }}
+                }});
+            }}
+        }} catch (e) {{
+            console.error("restoreFormState error", e);
+        }}
+    }}
+
+    function bindAutosave() {{
+        const selectors = [
+            "#customer_name",
+            "#customer_email",
+            "#customer_phone",
+            "#recipient_name",
+            "#recipient_phone",
+            "#phrase_1",
+            "#phrase_2",
+            "#phrase_3",
+            "#gift_amount",
+            "#mode_auto",
+            "#mode_manual"
+        ];
+
+        selectors.forEach((selector) => {{
+            const el = document.querySelector(selector);
+            if (!el) return;
+
+            el.addEventListener("input", saveFormState);
+            el.addEventListener("change", saveFormState);
         }});
+    }}
 
-        // fotos comprimidas
-        for (let i = 1; i <= 6; i++) {{
-            const input = document.getElementById("photo" + i);
+    function updatePhraseMode() {{
+        if (!manualPhrases) return;
 
-            if (!input.files[0]) {{
-                alert("Faltan fotos");
-                btn.disabled = false;
+        if (manualRadio && manualRadio.checked) {{
+            manualPhrases.classList.remove("hidden");
+        }} else {{
+            manualPhrases.classList.add("hidden");
+        }}
+
+        saveFormState();
+    }}
+
+    cards.forEach((card) => {{
+        card.addEventListener("click", function () {{
+            cards.forEach((c) => c.classList.remove("selected"));
+            card.classList.add("selected");
+            if (messageTypeInput) {{
+                messageTypeInput.value = card.dataset.type || "";
+            }}
+            saveFormState();
+        }});
+    }});
+
+    if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
+    if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
+
+    function updatePhotoUI(inputId, file) {{
+        const preview = document.getElementById("preview_" + inputId);
+        const placeholder = document.getElementById("placeholder_" + inputId);
+        const status = document.getElementById("status_" + inputId);
+
+        if (!file) {{
+            if (preview) {{
+                preview.src = "";
+                preview.style.display = "none";
+            }}
+            if (placeholder) {{
+                placeholder.style.display = "block";
+            }}
+            if (status) {{
+                status.innerText = "Aún no has elegido esta foto.";
+            }}
+            return;
+        }}
+
+        const url = URL.createObjectURL(file);
+
+        if (preview) {{
+            preview.src = url;
+            preview.style.display = "block";
+        }}
+
+        if (placeholder) {{
+            placeholder.style.display = "none";
+        }}
+
+        if (status) {{
+            status.innerText = "Foto elegida correctamente.";
+        }}
+    }}
+
+    function bindPreview(inputId) {{
+        const fileInput = document.getElementById(inputId);
+        if (!fileInput) return;
+
+        fileInput.addEventListener("change", function () {{
+            clearError();
+
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {{
+                updatePhotoUI(inputId, null);
                 return;
             }}
 
-            document.getElementById("status"+i).innerText = "Procesando...";
+            if (!(file.type || "").startsWith("image/")) {{
+                fileInput.value = "";
+                updatePhotoUI(inputId, null);
+                showError("Una de las fotos no parece una imagen válida.");
+                return;
+            }}
 
-            const compressed = await compressImage(input.files[0]);
-
-            document.getElementById("status"+i).innerText = "✔ optimizada";
-
-            formData.append("photo"+i, compressed);
-        }}
-
-        btn.innerText = "Subiendo...";
-
-        const res = await fetch("/crear", {{
-            method: "POST",
-            body: formData
+            updatePhotoUI(inputId, file);
         }});
-
-        if (res.redirected) {{
-            window.location.href = res.url;
-        }} else {{
-            const text = await res.text();
-            document.body.innerHTML = text;
-        }}
-
-    }} catch (err) {{
-        console.error(err);
-        alert("Error subiendo. Intenta otra vez.");
-        btn.disabled = false;
-        btn.innerText = "CONTINUAR";
     }}
 
+    ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
+
+    function fileToImage(file) {{
+        return new Promise((resolve, reject) => {{
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+
+            img.onload = function () {{
+                URL.revokeObjectURL(objectUrl);
+                resolve(img);
+            }};
+
+            img.onerror = function () {{
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error("image_load_error"));
+            }};
+
+            img.src = objectUrl;
+        }});
+    }}
+
+    async function compressImage(file) {{
+        const img = await fileToImage(file);
+
+        const maxWidth = 1600;
+        const maxHeight = 1600;
+
+        let width = img.width;
+        let height = img.height;
+
+        const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const blob = await new Promise((resolve, reject) => {{
+            canvas.toBlob((result) => {{
+                if (result) {{
+                    resolve(result);
+                }} else {{
+                    reject(new Error("image_compress_error"));
+                }}
+            }}, "image/jpeg", 0.82);
+        }});
+
+        const baseName = (file.name || "image").replace(/\\.[^/.]+$/, "");
+        return new File([blob], baseName + ".jpg", {{
+            type: "image/jpeg"
+        }});
+    }}
+
+    function allPhotosPresent() {{
+        const ids = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
+        for (const id of ids) {{
+            const input = document.getElementById(id);
+            if (!input || !input.files || input.files.length === 0) {{
+                return false;
+            }}
+        }}
+        return true;
+    }}
+
+    function validateBeforeSubmit() {{
+        if (!form.checkValidity()) {{
+            showError("Revisa los campos. Falta información.");
+            return false;
+        }}
+
+        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
+        if (!messageType) {{
+            showError("Elige la emoción que quieres dejar.");
+            return false;
+        }}
+
+        if (!allPhotosPresent()) {{
+            showError("Necesitas elegir las 6 fotos.");
+            return false;
+        }}
+
+        if (manualRadio && manualRadio.checked) {{
+            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
+            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
+            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
+
+            if (!phrase1 || !phrase2 || !phrase3) {{
+                showError("Escribe tus 3 frases.");
+                return false;
+            }}
+        }}
+
+        const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
+        if (Number.isNaN(giftAmount) || giftAmount < 0) {{
+            showError("El importe no es válido.");
+            return false;
+        }}
+
+        clearError();
+        return true;
+    }}
+
+    if (!form) return;
+
+    restoreFormState();
+    bindAutosave();
+    updatePhraseMode();
+
+    form.addEventListener("submit", async function (e) {{
+        e.preventDefault();
+
+        if (!validateBeforeSubmit()) {{
+            return;
+        }}
+
+        clearError();
+
+        if (button) {{
+            button.disabled = true;
+            button.innerText = "Preparando recuerdos...";
+        }}
+
+        try {{
+            const formData = new FormData();
+
+            formData.append("customer_name", document.getElementById("customer_name")?.value || "");
+            formData.append("customer_email", document.getElementById("customer_email")?.value || "");
+            formData.append("customer_phone", document.getElementById("customer_phone")?.value || "");
+            formData.append("recipient_name", document.getElementById("recipient_name")?.value || "");
+            formData.append("recipient_phone", document.getElementById("recipient_phone")?.value || "");
+            formData.append("message_type", document.getElementById("messageType")?.value || "");
+            formData.append("phrase_mode", manualRadio && manualRadio.checked ? "manual" : "auto");
+            formData.append("phrase_1", document.getElementById("phrase_1")?.value || "");
+            formData.append("phrase_2", document.getElementById("phrase_2")?.value || "");
+            formData.append("phrase_3", document.getElementById("phrase_3")?.value || "");
+            formData.append("gift_amount", document.getElementById("gift_amount")?.value || "0");
+
+            const photoIds = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
+
+            for (const photoId of photoIds) {{
+                const input = document.getElementById(photoId);
+                const status = document.getElementById("status_" + photoId);
+
+                if (!input || !input.files || !input.files[0]) {{
+                    throw new Error("missing_" + photoId);
+                }}
+
+                if (status) {{
+                    status.innerText = "Preparando foto…";
+                }}
+
+                const compressedFile = await compressImage(input.files[0]);
+
+                if (status) {{
+                    status.innerText = "Foto lista.";
+                }}
+
+                formData.append(photoId, compressedFile, compressedFile.name);
+            }}
+
+            if (button) {{
+                button.innerText = "Subiendo...";
+            }}
+
+            const response = await fetch("/crear", {{
+                method: "POST",
+                body: formData,
+                redirect: "follow"
+            }});
+
+            if (response.redirected) {{
+                localStorage.removeItem(STORAGE_KEY);
+                window.location.href = response.url;
+                return;
+            }}
+
+            const contentType = response.headers.get("content-type") || "";
+
+            if (response.ok && contentType.includes("text/html")) {{
+                localStorage.removeItem(STORAGE_KEY);
+                const html = await response.text();
+                document.open();
+                document.write(html);
+                document.close();
+                return;
+            }}
+
+            let errorText = "No se ha podido continuar. Inténtalo otra vez.";
+            try {{
+                const data = await response.json();
+                if (data && data.detail) {{
+                    errorText = data.detail;
+                }}
+            }} catch (_) {{
+                try {{
+                    errorText = await response.text();
+                }} catch (_) {{}}
+            }}
+
+            throw new Error(errorText);
+
+        }} catch (err) {{
+            console.error(err);
+            showError(err?.message || "Ha ocurrido un error preparando ETERNA.");
+
+            if (button) {{
+                button.disabled = false;
+                button.innerText = "SEGUIR CREANDO";
+            }}
+        }}
+    }});
 }});
 </script>
-
-</body>
-</html>
-"""
+    </body>
+    </html>
+    """
     
 
 
