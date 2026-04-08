@@ -1677,8 +1677,8 @@ def render_create_form() -> str:
             </div>
         </div>
 
-        <script>
-document.addEventListener("DOMContentLoaded", function () {{
+       <script>
+document.addEventListener("DOMContentLoaded", function () {
     const STORAGE_KEY = "eterna_create_form_v2";
 
     const form = document.getElementById("createForm");
@@ -1690,20 +1690,20 @@ document.addEventListener("DOMContentLoaded", function () {{
     const manualRadio = document.getElementById("mode_manual");
     const manualPhrases = document.getElementById("manualPhrases");
 
-    function showError(message) {{
+    function showError(message) {
         if (!errorBox) return;
         errorBox.style.display = "block";
         errorBox.innerText = message || "Ha ocurrido un error.";
-    }}
+    }
 
-    function clearError() {{
+    function clearError() {
         if (!errorBox) return;
         errorBox.style.display = "none";
         errorBox.innerText = "";
-    }}
+    }
 
-    function getPersistableData() {{
-        return {{
+    function getPersistableData() {
+        return {
             customer_name: document.getElementById("customer_name")?.value || "",
             customer_email: document.getElementById("customer_email")?.value || "",
             customer_phone: document.getElementById("customer_phone")?.value || "",
@@ -1715,19 +1715,19 @@ document.addEventListener("DOMContentLoaded", function () {{
             phrase_2: document.getElementById("phrase_2")?.value || "",
             phrase_3: document.getElementById("phrase_3")?.value || "",
             gift_amount: document.getElementById("gift_amount")?.value || "0"
-        }};
-    }}
+        };
+    }
 
-    function saveFormState() {{
-        try {{
+    function saveFormState() {
+        try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(getPersistableData()));
-        }} catch (e) {{
+        } catch (e) {
             console.error("saveFormState error", e);
-        }}
-    }}
+        }
+    }
 
-    function restoreFormState() {{
-        try {{
+    function restoreFormState() {
+        try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return;
 
@@ -1745,39 +1745,39 @@ document.addEventListener("DOMContentLoaded", function () {{
                 "gift_amount"
             ];
 
-            ids.forEach((id) => {{
+            ids.forEach((id) => {
                 const el = document.getElementById(id);
-                if (el && typeof data[id] !== "undefined") {{
+                if (el && typeof data[id] !== "undefined") {
                     el.value = data[id];
-                }}
-            }});
+                }
+            });
 
-            if (data.phrase_mode === "manual") {{
+            if (data.phrase_mode === "manual") {
                 if (manualRadio) manualRadio.checked = true;
                 if (autoRadio) autoRadio.checked = false;
-            }} else {{
+            } else {
                 if (autoRadio) autoRadio.checked = true;
                 if (manualRadio) manualRadio.checked = false;
-            }}
+            }
 
             updatePhraseMode();
 
-            if (data.message_type && messageTypeInput) {{
+            if (data.message_type && messageTypeInput) {
                 messageTypeInput.value = data.message_type;
-                cards.forEach((card) => {{
-                    if ((card.dataset.type || "") === data.message_type) {{
+                cards.forEach((card) => {
+                    if ((card.dataset.type || "") === data.message_type) {
                         card.classList.add("selected");
-                    }} else {{
+                    } else {
                         card.classList.remove("selected");
-                    }}
-                }});
-            }}
-        }} catch (e) {{
+                    }
+                });
+            }
+        } catch (e) {
             console.error("restoreFormState error", e);
-        }}
-    }}
+        }
+    }
 
-    function bindAutosave() {{
+    function bindAutosave() {
         const selectors = [
             "#customer_name",
             "#customer_email",
@@ -1792,122 +1792,122 @@ document.addEventListener("DOMContentLoaded", function () {{
             "#mode_manual"
         ];
 
-        selectors.forEach((selector) => {{
+        selectors.forEach((selector) => {
             const el = document.querySelector(selector);
             if (!el) return;
 
             el.addEventListener("input", saveFormState);
             el.addEventListener("change", saveFormState);
-        }});
-    }}
+        });
+    }
 
-    function updatePhraseMode() {{
+    function updatePhraseMode() {
         if (!manualPhrases) return;
 
-        if (manualRadio && manualRadio.checked) {{
+        if (manualRadio && manualRadio.checked) {
             manualPhrases.classList.remove("hidden");
-        }} else {{
+        } else {
             manualPhrases.classList.add("hidden");
-        }}
+        }
 
         saveFormState();
-    }}
+    }
 
-    cards.forEach((card) => {{
-        card.addEventListener("click", function () {{
+    cards.forEach((card) => {
+        card.addEventListener("click", function () {
             cards.forEach((c) => c.classList.remove("selected"));
             card.classList.add("selected");
-            if (messageTypeInput) {{
+            if (messageTypeInput) {
                 messageTypeInput.value = card.dataset.type || "";
-            }}
+            }
             saveFormState();
-        }});
-    }});
+        });
+    });
 
     if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
     if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
 
-    function updatePhotoUI(inputId, file) {{
+    function updatePhotoUI(inputId, file) {
         const preview = document.getElementById("preview_" + inputId);
         const placeholder = document.getElementById("placeholder_" + inputId);
         const status = document.getElementById("status_" + inputId);
 
-        if (!file) {{
-            if (preview) {{
+        if (!file) {
+            if (preview) {
                 preview.src = "";
                 preview.style.display = "none";
-            }}
-            if (placeholder) {{
+            }
+            if (placeholder) {
                 placeholder.style.display = "block";
-            }}
-            if (status) {{
+            }
+            if (status) {
                 status.innerText = "Aún no has elegido esta foto.";
-            }}
+            }
             return;
-        }}
+        }
 
         const url = URL.createObjectURL(file);
 
-        if (preview) {{
+        if (preview) {
             preview.src = url;
             preview.style.display = "block";
-        }}
+        }
 
-        if (placeholder) {{
+        if (placeholder) {
             placeholder.style.display = "none";
-        }}
+        }
 
-        if (status) {{
+        if (status) {
             status.innerText = "Foto elegida correctamente.";
-        }}
-    }}
+        }
+    }
 
-    function bindPreview(inputId) {{
+    function bindPreview(inputId) {
         const fileInput = document.getElementById(inputId);
         if (!fileInput) return;
 
-        fileInput.addEventListener("change", function () {{
+        fileInput.addEventListener("change", function () {
             clearError();
 
             const file = fileInput.files && fileInput.files[0];
-            if (!file) {{
+            if (!file) {
                 updatePhotoUI(inputId, null);
                 return;
-            }}
+            }
 
-            if (!(file.type || "").startsWith("image/")) {{
+            if (!(file.type || "").startsWith("image/")) {
                 fileInput.value = "";
                 updatePhotoUI(inputId, null);
                 showError("Una de las fotos no parece una imagen válida.");
                 return;
-            }}
+            }
 
             updatePhotoUI(inputId, file);
-        }});
-    }}
+        });
+    }
 
     ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
 
-    function fileToImage(file) {{
-        return new Promise((resolve, reject) => {{
+    function fileToImage(file) {
+        return new Promise((resolve, reject) => {
             const img = new Image();
             const objectUrl = URL.createObjectURL(file);
 
-            img.onload = function () {{
+            img.onload = function () {
                 URL.revokeObjectURL(objectUrl);
                 resolve(img);
-            }};
+            };
 
-            img.onerror = function () {{
+            img.onerror = function () {
                 URL.revokeObjectURL(objectUrl);
                 reject(new Error("image_load_error"));
-            }};
+            };
 
             img.src = objectUrl;
-        }});
-    }}
+        });
+    }
 
-    async function compressImage(file) {{
+    async function compressImage(file) {
         const img = await fileToImage(file);
 
         const maxWidth = 1600;
@@ -1927,70 +1927,133 @@ document.addEventListener("DOMContentLoaded", function () {{
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
 
-        const blob = await new Promise((resolve, reject) => {{
-            canvas.toBlob((result) => {{
-                if (result) {{
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob((result) => {
+                if (result) {
                     resolve(result);
-                }} else {{
+                } else {
                     reject(new Error("image_compress_error"));
-                }}
-            }}, "image/jpeg", 0.82);
-        }});
+                }
+            }, "image/jpeg", 0.82);
+        });
 
-        const baseName = (file.name || "image").replace(/\\.[^/.]+$/, "");
-        return new File([blob], baseName + ".jpg", {{
+        const baseName = (file.name || "image").replace(/\.[^/.]+$/, "");
+        return new File([blob], baseName + ".jpg", {
             type: "image/jpeg"
-        }});
-    }}
+        });
+    }
 
-    function allPhotosPresent() {{
+    function allPhotosPresent() {
         const ids = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
-        for (const id of ids) {{
+        for (const id of ids) {
             const input = document.getElementById(id);
-            if (!input || !input.files || input.files.length === 0) {{
+            if (!input || !input.files || input.files.length === 0) {
                 return false;
-            }}
-        }}
+            }
+        }
         return true;
-    }}
+    }
 
-    function validateBeforeSubmit() {{
-        if (!form.checkValidity()) {{
+    function validateBeforeSubmit() {
+        if (!form.checkValidity()) {
             showError("Revisa los campos. Falta información.");
             return false;
-        }}
+        }
 
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
-        if (!messageType) {{
+        if (!messageType) {
             showError("Elige la emoción que quieres dejar.");
             return false;
-        }}
+        }
 
-        if (!allPhotosPresent()) {{
+        if (!allPhotosPresent()) {
             showError("Necesitas elegir las 6 fotos.");
             return false;
-        }}
+        }
 
-        if (manualRadio && manualRadio.checked) {{
+        if (manualRadio && manualRadio.checked) {
             const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
             const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
             const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
 
-            if (!phrase1 || !phrase2 || !phrase3) {{
+            if (!phrase1 || !phrase2 || !phrase3) {
                 showError("Escribe tus 3 frases.");
                 return false;
-            }}
-        }}
+            }
+        }
 
         const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
-        if (Number.isNaN(giftAmount) || giftAmount < 0) {{
+        if (Number.isNaN(giftAmount) || giftAmount < 0) {
             showError("El importe no es válido.");
             return false;
-        }}
+        }
 
         clearError();
         return true;
-    }}
+    }
+
+    async function submitWithNativeRedirect() {
+        const tempForm = document.createElement("form");
+        tempForm.method = "POST";
+        tempForm.action = "/crear";
+        tempForm.enctype = "multipart/form-data";
+        tempForm.style.display = "none";
+
+        function appendHidden(name, value) {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = value ?? "";
+            tempForm.appendChild(input);
+        }
+
+        appendHidden("customer_name", document.getElementById("customer_name")?.value || "");
+        appendHidden("customer_email", document.getElementById("customer_email")?.value || "");
+        appendHidden("customer_phone", document.getElementById("customer_phone")?.value || "");
+        appendHidden("recipient_name", document.getElementById("recipient_name")?.value || "");
+        appendHidden("recipient_phone", document.getElementById("recipient_phone")?.value || "");
+        appendHidden("message_type", document.getElementById("messageType")?.value || "");
+        appendHidden("phrase_mode", manualRadio && manualRadio.checked ? "manual" : "auto");
+        appendHidden("phrase_1", document.getElementById("phrase_1")?.value || "");
+        appendHidden("phrase_2", document.getElementById("phrase_2")?.value || "");
+        appendHidden("phrase_3", document.getElementById("phrase_3")?.value || "");
+        appendHidden("gift_amount", document.getElementById("gift_amount")?.value || "0");
+
+        const photoIds = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
+
+        for (const photoId of photoIds) {
+            const input = document.getElementById(photoId);
+            const status = document.getElementById("status_" + photoId);
+
+            if (!input || !input.files || !input.files[0]) {
+                throw new Error("missing_" + photoId);
+            }
+
+            if (status) {
+                status.innerText = "Preparando foto…";
+            }
+
+            const compressedFile = await compressImage(input.files[0]);
+
+            if (status) {
+                status.innerText = "Foto lista.";
+            }
+
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(compressedFile);
+
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.name = photoId;
+            fileInput.files = dataTransfer.files;
+            fileInput.style.display = "none";
+            tempForm.appendChild(fileInput);
+        }
+
+        document.body.appendChild(tempForm);
+        localStorage.removeItem(STORAGE_KEY);
+        tempForm.submit();
+    }
 
     if (!form) return;
 
@@ -1998,110 +2061,33 @@ document.addEventListener("DOMContentLoaded", function () {{
     bindAutosave();
     updatePhraseMode();
 
-    form.addEventListener("submit", async function (e) {{
+    form.addEventListener("submit", async function (e) {
         e.preventDefault();
 
-        if (!validateBeforeSubmit()) {{
+        if (!validateBeforeSubmit()) {
             return;
-        }}
+        }
 
         clearError();
 
-        if (button) {{
+        if (button) {
             button.disabled = true;
             button.innerText = "Preparando recuerdos...";
-        }}
+        }
 
-        try {{
-            const formData = new FormData();
-
-            formData.append("customer_name", document.getElementById("customer_name")?.value || "");
-            formData.append("customer_email", document.getElementById("customer_email")?.value || "");
-            formData.append("customer_phone", document.getElementById("customer_phone")?.value || "");
-            formData.append("recipient_name", document.getElementById("recipient_name")?.value || "");
-            formData.append("recipient_phone", document.getElementById("recipient_phone")?.value || "");
-            formData.append("message_type", document.getElementById("messageType")?.value || "");
-            formData.append("phrase_mode", manualRadio && manualRadio.checked ? "manual" : "auto");
-            formData.append("phrase_1", document.getElementById("phrase_1")?.value || "");
-            formData.append("phrase_2", document.getElementById("phrase_2")?.value || "");
-            formData.append("phrase_3", document.getElementById("phrase_3")?.value || "");
-            formData.append("gift_amount", document.getElementById("gift_amount")?.value || "0");
-
-            const photoIds = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
-
-            for (const photoId of photoIds) {{
-                const input = document.getElementById(photoId);
-                const status = document.getElementById("status_" + photoId);
-
-                if (!input || !input.files || !input.files[0]) {{
-                    throw new Error("missing_" + photoId);
-                }}
-
-                if (status) {{
-                    status.innerText = "Preparando foto…";
-                }}
-
-                const compressedFile = await compressImage(input.files[0]);
-
-                if (status) {{
-                    status.innerText = "Foto lista.";
-                }}
-
-                formData.append(photoId, compressedFile, compressedFile.name);
-            }}
-
-            if (button) {{
-                button.innerText = "Subiendo...";
-            }}
-
-            const response = await fetch("/crear", {{
-                method: "POST",
-                body: formData,
-                redirect: "follow"
-            }});
-
-            if (response.redirected) {{
-                localStorage.removeItem(STORAGE_KEY);
-                window.location.href = response.url;
-                return;
-            }}
-
-            const contentType = response.headers.get("content-type") || "";
-
-            if (response.ok && contentType.includes("text/html")) {{
-                localStorage.removeItem(STORAGE_KEY);
-                const html = await response.text();
-                document.open();
-                document.write(html);
-                document.close();
-                return;
-            }}
-
-            let errorText = "No se ha podido continuar. Inténtalo otra vez.";
-            try {{
-                const data = await response.json();
-                if (data && data.detail) {{
-                    errorText = data.detail;
-                }}
-            }} catch (_) {{
-                try {{
-                    errorText = await response.text();
-                }} catch (_) {{}}
-            }}
-
-            throw new Error(errorText);
-
-        }} catch (err) {{
+        try {
+            await submitWithNativeRedirect();
+        } catch (err) {
             console.error(err);
             showError(err?.message || "Ha ocurrido un error preparando ETERNA.");
 
-            if (button) {{
+            if (button) {
                 button.disabled = false;
                 button.innerText = "SEGUIR CREANDO";
-            }}
-        }}
-    }});
-}});
+            }
+        }
+    });
+});
 </script>
     </body>
     </html>
