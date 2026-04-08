@@ -2135,16 +2135,14 @@ async def internal_video_ready(request: Request):
 
             update_order(order_id, experience_video_url=video_url)
 
-            order = get_order_by_id(order_id)  # 🔥 RECARGA REAL
+        updated_order = maybe_mark_eterna_completed(order_id)
 
-            updated_order = maybe_mark_eterna_completed(order_id)
-
-            print("📲 CALLBACK -> intentando SMS recipient")
-            print("📲 paid:", updated_order.get("paid"))
-            print("📲 experience_video_url:", updated_order.get("experience_video_url"))
-            print("📲 recipient_phone raw:", updated_order.get("recipient_phone"))
-            print("📲 recipient_phone e164:", to_e164(updated_order.get("recipient_phone", "")))
-            print("📲 twilio_enabled:", twilio_enabled())
+        print("📲 CALLBACK -> intentando SMS recipient")
+        print("📲 paid:", updated_order.get("paid"))
+        print("📲 experience_video_url:", updated_order.get("experience_video_url"))
+        print("📲 recipient_phone raw:", updated_order.get("recipient_phone"))
+        print("📲 recipient_phone e164:", to_e164(updated_order.get("recipient_phone", "")))
+        print("📲 twilio_enabled:", twilio_enabled())
 
         try:
             sms_result = try_send_recipient_sms(updated_order)
@@ -2229,6 +2227,7 @@ def resumen(order_id: str):
     </body>
     </html>
     """)
+
 
 # =========================================================
 # EXPERIENCE LOCK
@@ -2747,7 +2746,6 @@ video.addEventListener("ended", finishExperience);
 </body>
 </html>
 """)
-
 
 # =========================================================
 # UPLOAD REACTION VIDEO
@@ -3386,7 +3384,6 @@ document.addEventListener("visibilitychange", () => {{
     </body>
     </html>
     """)
-
 
 @app.get("/connect/onboarding/{recipient_token}")
 def connect_onboarding(recipient_token: str):
