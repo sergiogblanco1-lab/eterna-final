@@ -2,6 +2,7 @@ print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
 print("🔥 WEBHOOK + CALLBACK + EXPERIENCE LOCK + REACTION SAVE 🔥")
 print("🔥 FINAL UX LOCKED + CASHOUT HARDENED + SENDER PACK READY 🔥")
 print("🔥 REACTION RETRY + ETERNA COMPLETE SAFE VERSION 🔥")
+print("🔥 SCHEDULED DELIVERY LOCKED VERSION 🔥")
 
 import html
 import json
@@ -23,6 +24,11 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 try:
     from twilio.rest import Client
@@ -233,6 +239,15 @@ def init_db():
         recipient_sms_error TEXT,
         sender_sms_error TEXT,
 
+        reaction_upload_pending INTEGER NOT NULL DEFAULT 0,
+        reaction_upload_error TEXT,
+        eterna_completed INTEGER NOT NULL DEFAULT 0,
+
+        scheduled_delivery_at TEXT,
+        delivery_locked INTEGER NOT NULL DEFAULT 0,
+        delivery_sent INTEGER NOT NULL DEFAULT 0,
+        delivery_sent_at TEXT,
+
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
 
@@ -294,6 +309,27 @@ def init_db():
         "ALTER TABLE orders ADD COLUMN eterna_completed INTEGER NOT NULL DEFAULT 0",
     )
 
+    add_column_if_missing(
+        "orders",
+        "scheduled_delivery_at",
+        "ALTER TABLE orders ADD COLUMN scheduled_delivery_at TEXT",
+    )
+    add_column_if_missing(
+        "orders",
+        "delivery_locked",
+        "ALTER TABLE orders ADD COLUMN delivery_locked INTEGER NOT NULL DEFAULT 0",
+    )
+    add_column_if_missing(
+        "orders",
+        "delivery_sent",
+        "ALTER TABLE orders ADD COLUMN delivery_sent INTEGER NOT NULL DEFAULT 0",
+    )
+    add_column_if_missing(
+        "orders",
+        "delivery_sent_at",
+        "ALTER TABLE orders ADD COLUMN delivery_sent_at TEXT",
+    )
+
 
 init_db()
 
@@ -331,6 +367,65 @@ def format_amount_display(value) -> str:
         return f"{float(value):.2f} €".replace(".", ",")
     except Exception:
         return "0,00 €"
+
+
+def parse_iso_dt(value: str) -> Optional[datetime]:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def parse_scheduled_delivery_local(delivery_date: str, delivery_time: str) -> Optional[str]:
+    delivery_date = (delivery_date or "").strip()
+    delivery_time = (delivery_time or "").strip()
+
+    if not delivery_date:
+        return None
+
+    if not delivery_time:
+        delivery_time = "12:00"
+
+    try:
+        naive_local = datetime.fromisoformat(f"{delivery_date}T{delivery_time}")
+    except Exception:
+        return None
+
+    try:
+        if ZoneInfo is not None:
+            madrid = ZoneInfo("Europe/Madrid")
+            local_dt = naive_local.replace(tzinfo=madrid)
+            utc_dt = local_dt.astimezone(timezone.utc)
+            return utc_dt.isoformat()
+    except Exception:
+        pass
+
+    return naive_local.replace(tzinfo=timezone.utc).isoformat()
+
+
+def scheduled_delivery_display(order: dict) -> str:
+    raw = (order.get("scheduled_delivery_at") or "").strip()
+    if not raw:
+        return "Sin fecha programada"
+
+    dt = parse_iso_dt(raw)
+    if not dt:
+        return "Sin fecha programada"
+
+    try:
+        if ZoneInfo is not None:
+            madrid = ZoneInfo("Europe/Madrid")
+            dt = dt.astimezone(madrid)
+    except Exception:
+        pass
+
+    return dt.strftime("%d/%m/%Y a las %H:%M")
 
 
 def normalize_phone(p: str) -> str:
@@ -520,6 +615,51 @@ def reaction_exists(order: dict) -> bool:
         return True
     local_path = (order.get("reaction_video_local") or "").strip()
     return bool(local_path) and os.path.exists(local_path)
+
+
+def scheduled_delivery_ready(order: dict) -> bool:
+    raw = (order.get("scheduled_delivery_at") or "").strip()
+    if not raw:
+        return True
+
+    dt = parse_iso_dt(raw)
+    if not dt:
+        return True
+
+    return now_dt() >= dt
+
+
+def delivery_locked(order: dict) -> bool:
+    return bool(order.get("delivery_locked"))
+
+
+def delivery_already_sent(order: dict) -> bool:
+    return bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at"))
+
+    def delivery_is_unlocked(order: dict) -> bool:
+    if delivery_already_sent(order):
+        return True
+
+    if scheduled_delivery_ready(order):
+        return True
+
+    return False
+
+
+def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
+    if not bool(order.get("paid")):
+        return False, "order_not_paid"
+
+    if not original_video_ready(order):
+        return False, "original_video_not_ready"
+
+    if delivery_already_sent(order):
+        return False, "delivery_already_sent"
+
+    if not scheduled_delivery_ready(order):
+        return False, "scheduled_delivery_not_ready"
+
+    return True, "ok"
 
 
 def is_eterna_complete(order: dict) -> bool:
@@ -806,40 +946,79 @@ def send_sms(phone: str, message: str) -> dict:
         return {"ok": False, "sid": None, "error": str(e)}
 
 
-def try_send_recipient_sms(order: dict) -> dict:
-    if order.get("recipient_sms_sent_at"):
+def process_scheduled_recipient_delivery(order_id: str) -> dict:
+    order = get_order_by_id(order_id)
+    allowed, reason = can_send_recipient_delivery(order)
+
+    if not allowed:
         return {
-            "ok": True,
-            "sid": order.get("recipient_sms_sid"),
-            "already_sent": True,
-            "error": None,
+            "ok": False,
+            "reason": reason,
+            "delivery_sent": bool(order.get("delivery_sent")),
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
         }
 
-    if not bool(order.get("paid")):
-        return {"ok": False, "sid": None, "already_sent": False, "error": "order_not_paid"}
-
-    if not original_video_ready(order):
-        return {"ok": False, "sid": None, "already_sent": False, "error": "original_video_not_ready"}
-
     attempts = int(order.get("recipient_sms_attempts") or 0) + 1
+
+    if not twilio_enabled():
+        update_order(
+            order_id,
+            recipient_sms_attempts=attempts,
+            recipient_sms_error="twilio_not_configured_test_mode",
+        )
+        refreshed = get_order_by_id(order_id)
+        return {
+            "ok": False,
+            "reason": "twilio_not_configured_test_mode",
+            "delivery_sent": bool(refreshed.get("delivery_sent")),
+            "delivery_sent_at": refreshed.get("delivery_sent_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(refreshed),
+            "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
+            "recipient_url": recipient_experience_url_from_order(refreshed),
+        }
+
     result = send_sms(order.get("recipient_phone", ""), build_recipient_message(order))
 
-    if result["ok"]:
+    if result.get("ok"):
+        sent_at = now_iso()
         update_order(
-            order["id"],
-            recipient_sms_sent_at=now_iso(),
-            recipient_sms_sid=result["sid"],
+            order_id,
             recipient_sms_attempts=attempts,
             recipient_sms_error=None,
+            recipient_sms_sid=result.get("sid"),
+            recipient_sms_sent_at=sent_at,
+            delivery_sent=1,
+            delivery_sent_at=sent_at,
+            delivered_to_recipient=1,
         )
-        return {"ok": True, "sid": result["sid"], "already_sent": False, "error": None}
+        refreshed = get_order_by_id(order_id)
+        return {
+            "ok": True,
+            "reason": "sent",
+            "sid": result.get("sid"),
+            "delivery_sent": bool(refreshed.get("delivery_sent")),
+            "delivery_sent_at": refreshed.get("delivery_sent_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(refreshed),
+            "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
+        }
 
     update_order(
-        order["id"],
+        order_id,
         recipient_sms_attempts=attempts,
-        recipient_sms_error=result["error"],
+        recipient_sms_error=result.get("error"),
     )
-    return {"ok": False, "sid": None, "already_sent": False, "error": result["error"]}
+
+    refreshed = get_order_by_id(order_id)
+    return {
+        "ok": False,
+        "reason": result.get("error") or "sms_error",
+        "delivery_sent": bool(refreshed.get("delivery_sent")),
+        "delivery_sent_at": refreshed.get("delivery_sent_at"),
+        "scheduled_delivery_display": scheduled_delivery_display(refreshed),
+        "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
+    }
 
 
 def try_send_sender_sms(order: dict) -> dict:
@@ -1193,6 +1372,7 @@ def render_create_form() -> str:
             .section.s4 {{ animation-delay: 2.0s; }}
             .section.s5 {{ animation-delay: 2.4s; }}
             .section.s6 {{ animation-delay: 2.8s; }}
+            .section.s7 {{ animation-delay: 3.2s; }}
 
             @keyframes sectionFade {{
                 to {{
@@ -1219,6 +1399,11 @@ def render_create_form() -> str:
                 color: white;
                 outline: none;
                 font-size: 15px;
+            }}
+
+            input[type="date"],
+            input[type="time"] {{
+                color-scheme: dark;
             }}
 
             input::placeholder {{
@@ -1392,6 +1577,37 @@ def render_create_form() -> str:
                 display: none;
             }}
 
+            .delivery-box {{
+                margin-top: 12px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 18px;
+                padding: 18px 16px;
+            }}
+
+            .delivery-copy {{
+                color: rgba(255,255,255,0.86);
+                line-height: 1.8;
+                font-size: 15px;
+                text-align: center;
+                margin-bottom: 10px;
+            }}
+
+            .delivery-grid {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-top: 12px;
+            }}
+
+            .delivery-hint {{
+                color: rgba(255,255,255,0.48);
+                line-height: 1.8;
+                font-size: 13px;
+                text-align: center;
+                margin-top: 10px;
+            }}
+
             .price-box {{
                 margin-top: 12px;
                 background: rgba(255,255,255,0.05);
@@ -1460,7 +1676,8 @@ def render_create_form() -> str:
 
             @media (max-width: 760px) {{
                 .photo-grid,
-                .emotion-grid {{
+                .emotion-grid,
+                .delivery-grid {{
                     grid-template-columns: 1fr;
                 }}
 
@@ -1647,6 +1864,36 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s6">
+                        <div class="section-title">Cuándo debe llegar</div>
+
+                        <div class="delivery-box">
+                            <div class="delivery-copy">
+                                Elige el momento exacto en el que ETERNA debe llegar.
+                            </div>
+
+                            <div class="delivery-grid">
+                                <input
+                                    type="date"
+                                    name="delivery_date"
+                                    id="delivery_date"
+                                    required
+                                >
+                                <input
+                                    type="time"
+                                    name="delivery_time"
+                                    id="delivery_time"
+                                    required
+                                >
+                            </div>
+
+                            <div class="delivery-hint">
+                                No llegará cuando esté. Llegará cuando deba llegar.<br>
+                                La fecha de entrega será definitiva tras el pago y no podrá modificarse después.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section s7">
                         <div class="section-title">Dinero a regalar</div>
                         <input
                             name="gift_amount"
@@ -1680,7 +1927,7 @@ def render_create_form() -> str:
        <script>
 document.addEventListener("DOMContentLoaded", function () {{
 
-    const STORAGE_KEY = "eterna_create_form_v2";
+    const STORAGE_KEY = "eterna_create_form_v3";
 
     const form = document.getElementById("createForm");
     const button = document.getElementById("submitBtn");
@@ -1715,6 +1962,8 @@ document.addEventListener("DOMContentLoaded", function () {{
             phrase_1: document.getElementById("phrase_1")?.value || "",
             phrase_2: document.getElementById("phrase_2")?.value || "",
             phrase_3: document.getElementById("phrase_3")?.value || "",
+            delivery_date: document.getElementById("delivery_date")?.value || "",
+            delivery_time: document.getElementById("delivery_time")?.value || "",
             gift_amount: document.getElementById("gift_amount")?.value || "0"
         }};
     }}
@@ -1743,6 +1992,8 @@ document.addEventListener("DOMContentLoaded", function () {{
                 "phrase_1",
                 "phrase_2",
                 "phrase_3",
+                "delivery_date",
+                "delivery_time",
                 "gift_amount"
             ];
 
@@ -1788,6 +2039,8 @@ document.addEventListener("DOMContentLoaded", function () {{
             "#phrase_1",
             "#phrase_2",
             "#phrase_3",
+            "#delivery_date",
+            "#delivery_time",
             "#gift_amount",
             "#mode_auto",
             "#mode_manual"
@@ -1935,6 +2188,27 @@ document.addEventListener("DOMContentLoaded", function () {{
             }}
         }}
 
+        const deliveryDate = document.getElementById("delivery_date")?.value || "";
+        const deliveryTime = document.getElementById("delivery_time")?.value || "";
+
+        if (!deliveryDate || !deliveryTime) {{
+            showError("Elige la fecha y la hora de entrega.");
+            return false;
+        }}
+
+        const deliveryLocal = new Date(deliveryDate + "T" + deliveryTime);
+        const now = new Date();
+
+        if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {{
+            showError("La fecha de entrega no es válida.");
+            return false;
+        }}
+
+        if (deliveryLocal.getTime() <= now.getTime()) {{
+            showError("La fecha de entrega debe estar en el futuro.");
+            return false;
+        }}
+
         const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
         if (Number.isNaN(giftAmount) || giftAmount < 0) {{
             showError("El importe no es válido.");
@@ -1976,7 +2250,6 @@ document.addEventListener("DOMContentLoaded", function () {{
     </body>
     </html>
     """
-    
 
 
 async def create_order_and_redirect(
@@ -1990,6 +2263,8 @@ async def create_order_and_redirect(
     phrase_1: str,
     phrase_2: str,
     phrase_3: str,
+    delivery_date: str,
+    delivery_time: str,
     gift_amount: float,
     photo1: UploadFile,
     photo2: UploadFile,
@@ -2008,6 +2283,9 @@ async def create_order_and_redirect(
     phrase_2 = (phrase_2 or "").strip()
     phrase_3 = (phrase_3 or "").strip()
 
+    delivery_date = (delivery_date or "").strip()
+    delivery_time = (delivery_time or "").strip()
+
     if not customer_name:
         raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
 
@@ -2025,6 +2303,14 @@ async def create_order_and_redirect(
 
     if len(phrase_1) > 160 or len(phrase_2) > 160 or len(phrase_3) > 160:
         raise HTTPException(status_code=400, detail="Las frases son demasiado largas")
+
+    scheduled_delivery_at = parse_scheduled_delivery_local(delivery_date, delivery_time)
+    if not scheduled_delivery_at:
+        raise HTTPException(status_code=400, detail="La fecha de entrega no es válida")
+
+    scheduled_dt = parse_iso_dt(scheduled_delivery_at)
+    if not scheduled_dt or scheduled_dt <= now_dt():
+        raise HTTPException(status_code=400, detail="La fecha de entrega debe estar en el futuro")
 
     try:
         gift_amount = round(float(gift_amount or 0), 2)
@@ -2089,7 +2375,7 @@ async def create_order_and_redirect(
     """, (recipient_name, recipient_phone_norm, created_at))
     recipient_id = cur.lastrowid
 
-    placeholders = ", ".join(["?"] * 49)
+    placeholders = ", ".join(["?"] * 53)
 
     cur.execute(f"""
         INSERT INTO orders (
@@ -2108,6 +2394,7 @@ async def create_order_and_redirect(
             recipient_sms_sent_at, sender_sms_sent_at, recipient_sms_sid, sender_sms_sid,
             recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
             reaction_upload_pending, reaction_upload_error, eterna_completed,
+            scheduled_delivery_at, delivery_locked, delivery_sent, delivery_sent_at,
             created_at, updated_at
         )
         VALUES ({placeholders})
@@ -2127,6 +2414,7 @@ async def create_order_and_redirect(
         None, None, None, None,
         0, 0, None, None,
         0, None, 0,
+        scheduled_delivery_at, 1, 0, None,
         created_at, created_at
     ))
 
@@ -2234,6 +2522,8 @@ async def crear_post(
     phrase_1: str = Form(""),
     phrase_2: str = Form(""),
     phrase_3: str = Form(""),
+    delivery_date: str = Form(...),
+    delivery_time: str = Form(...),
     gift_amount: float = Form(0),
     photo1: UploadFile = File(...),
     photo2: UploadFile = File(...),
@@ -2253,6 +2543,8 @@ async def crear_post(
         phrase_1=phrase_1,
         phrase_2=phrase_2,
         phrase_3=phrase_3,
+        delivery_date=delivery_date,
+        delivery_time=delivery_time,
         gift_amount=gift_amount,
         photo1=photo1,
         photo2=photo2,
@@ -2261,9 +2553,7 @@ async def crear_post(
         photo5=photo5,
         photo6=photo6,
     )
-
-
-# =========================================================
+    # =========================================================
 # RECIPIENT ENTRY
 # =========================================================
 
@@ -2278,6 +2568,7 @@ def pedido(recipient_token: str):
         button_href = "#"
         button_text = "Esperando..."
         disabled = True
+
     elif not original_video_ready(order):
         title = "Tu ETERNA ya está en camino"
         text = "Estamos terminando de preparar lo que alguien quiso hacerte llegar."
@@ -2285,8 +2576,21 @@ def pedido(recipient_token: str):
         button_href = "#"
         button_text = "Preparando..."
         disabled = True
+
+    elif not delivery_is_unlocked(order):
+        title = "Aún no es el momento"
+        text = "ETERNA ya está guardada."
+        soft = (
+            f"Todo está preparado para llegar el {scheduled_delivery_display(order)}. "
+            "No se abrirá antes."
+        )
+        button_href = "#"
+        button_text = "Esperando su momento..."
+        disabled = True
+
     elif bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+
     else:
         title = "Hay algo para ti"
         text = "Alguien quiso dejarte un momento que no se olvida."
@@ -2398,7 +2702,6 @@ def pedido(recipient_token: str):
     </html>
     """)
 
-
 # =========================================================
 # CHECKOUT / WEBHOOK / CALLBACK
 # =========================================================
@@ -2498,6 +2801,7 @@ async def stripe_webhook(request: Request):
             stripe_payment_status=stripe_payment_status,
             stripe_payment_intent_id=stripe_payment_intent_id,
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+            delivery_locked=1,
         )
 
         order = get_order_by_id(order_id)
@@ -2579,62 +2883,26 @@ async def internal_video_ready(request: Request):
         order = get_order_by_id(order_id)
 
         print("🔥 CALLBACK VIDEO READY 🔥")
-
-        recipient_url = f"{PUBLIC_BASE_URL}/pedido/{order['recipient_token']}"
-        sender_url = f"{PUBLIC_BASE_URL}/sender/{order['sender_token']}"
-
         print("🎬 VIDEO GENERADO")
-        print(f"➡️ Recipient experience: {recipient_url}")
-        print(f"➡️ Sender pack: {sender_url}")
+        print("➡️ Recipient experience:", recipient_experience_url_from_order(order))
+        print("➡️ Sender pack:", sender_pack_url_from_order(order))
+        print("🕒 scheduled_delivery_at:", order.get("scheduled_delivery_at"))
+        print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
+        print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
+        print("📦 delivery_sent:", bool(order.get("delivery_sent")))
 
-        # =========================================
-        # MODO SIN TWILIO (PRUEBAS)
-        # =========================================
-
-        if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
-            print("⚠️ TWILIO DESACTIVADO → MODO TEST")
-            print("👉 Usa este link para probar:")
-            print(recipient_url)
-
-            update_order(
-                order_id,
-                recipient_sms_sent_at=now_iso(),
-                recipient_sms_error="test_no_sms",
-            )
-
-            return JSONResponse({
-                "ok": True,
-                "mode": "test_no_sms",
-                "recipient_url": recipient_url,
-                "sender_url": sender_url,
-                "video_url": video_url,
-            })
-
-        # =========================================
-        # TWILIO NORMAL
-        # =========================================
-
-        updated_order = maybe_mark_eterna_completed(order_id)
-
-        print("📲 CALLBACK -> intentando SMS recipient")
-        print("📲 paid:", updated_order.get("paid"))
-        print("📲 experience_video_url:", updated_order.get("experience_video_url"))
-        print("📲 recipient_phone raw:", updated_order.get("recipient_phone"))
-        print("📲 recipient_phone e164:", to_e164(updated_order.get("recipient_phone", "")))
-        print("📲 twilio_enabled:", twilio_enabled())
-
-        try:
-            sms_result = try_send_recipient_sms(updated_order)
-            print("📩 Resultado SMS callback:", sms_result)
-        except Exception as e:
-            log_error("recipient_sms_after_callback", e)
+        delivery_result = process_scheduled_recipient_delivery(order_id)
+        print("📩 Resultado entrega programada callback:", delivery_result)
 
         return JSONResponse({
             "status": "ok",
             "order_id": order_id,
             "video_url": video_url,
-            "recipient_url": recipient_url,
-            "sender_url": sender_url,
+            "recipient_url": recipient_experience_url_from_order(order),
+            "sender_url": sender_pack_url_from_order(order),
+            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "delivery_result": delivery_result,
         })
 
     except Exception as e:
@@ -2665,22 +2933,26 @@ def resumen(order_id: str):
 
     recipient_name = safe_text(order.get("recipient_name") or "esa persona")
     video_ready = original_video_ready(order)
-    sms_sent = bool(order.get("recipient_sms_sent_at"))
+    delivery_sent_flag = bool(order.get("delivery_sent"))
+    delivery_display = safe_text(scheduled_delivery_display(order))
 
-    if video_ready and sms_sent:
+    if delivery_sent_flag:
         status_line = "Tu ETERNA ya ha salido"
         sub_line = f"{recipient_name} ya tiene su mensaje."
-        soft_line = "Ahora el momento ya está en marcha."
+        soft_line = "El momento ya está ocurriendo exactamente cuando debía ocurrir."
     elif video_ready:
-        status_line = "Tu ETERNA está lista"
-        sub_line = f"{recipient_name} ya puede vivir su momento."
-        soft_line = "El vídeo ya existe y el flujo puede continuar."
+        status_line = "Tu ETERNA ya está guardada"
+        sub_line = f"Todo quedará listo para llegar el {delivery_display}."
+        soft_line = "No se enviará antes. Llegará exactamente cuando debe llegar."
     else:
         status_line = "Pago confirmado"
-        sub_line = "La fábrica de ETERNA ya está haciendo magia."
-        soft_line = "Estamos preparando este momento. Cuando esté listo, todo seguirá su curso."
+        sub_line = "ETERNA ya se está preparando."
+        soft_line = (
+            f"Cuando todo esté listo, quedará guardada para llegar el {delivery_display}. "
+            "No se enviará antes."
+        )
 
-    refresh = '<meta http-equiv="refresh" content="8">' if not video_ready else ""
+    refresh = '<meta http-equiv="refresh" content="8">' if not delivery_sent_flag else ""
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -2692,13 +2964,21 @@ def resumen(order_id: str):
         <title>ETERNA</title>
     </head>
     <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
-        <div style="max-width:720px;width:100%;">
+        <div style="max-width:760px;width:100%;">
             <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
                 {status_line}
             </h1>
 
             <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
                 {sub_line}
+            </div>
+
+            <div style="margin-top:24px;font-size:17px;line-height:1.8;color:rgba(255,255,255,0.62);">
+                Fecha fijada de entrega: {delivery_display}
+            </div>
+
+            <div style="margin-top:14px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.44);">
+                La fecha de entrega ya ha quedado fijada y no podrá modificarse después del pago.
             </div>
 
             <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
@@ -2717,6 +2997,22 @@ def resumen(order_id: str):
 @app.post("/start-experience")
 def start_experience(recipient_token: str = Form(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    if not original_video_ready(order):
+        return JSONResponse({
+            "status": "video_not_ready",
+            "redirect_url": f"/pedido/{recipient_token}",
+        })
+
+    if not delivery_is_unlocked(order):
+        return JSONResponse({
+            "status": "not_unlocked_yet",
+            "redirect_url": f"/pedido/{recipient_token}",
+        })
+
     result = try_start_experience(order["id"])
 
     if result == "not_paid":
@@ -2736,47 +3032,6 @@ def start_experience(recipient_token: str = Form(...)):
 
     return JSONResponse({"status": "ok"})
 
-
-@app.post("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if not bool(order.get("experience_started")):
-        raise HTTPException(status_code=403, detail="La experiencia no ha empezado")
-
-    if not original_video_ready(order):
-        raise HTTPException(status_code=403, detail="Vídeo original no disponible")
-
-    update_order(
-        order["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    return JSONResponse({
-        "status": "ok",
-        "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}?force_cashout=1",
-    })
-
-
-@app.get("/reaction-upload-status/{recipient_token}")
-def reaction_upload_status(recipient_token: str):
-    order = maybe_mark_eterna_completed(get_order_by_recipient_token_or_404(recipient_token)["id"])
-    return JSONResponse({
-        "status": "ok",
-        "reaction_uploaded": bool(order.get("reaction_uploaded")),
-        "reaction_exists": reaction_exists(order),
-        "reaction_upload_pending": bool(order.get("reaction_upload_pending")),
-        "reaction_upload_error": order.get("reaction_upload_error"),
-        "eterna_completed": bool(order.get("eterna_completed")),
-        "experience_completed": bool(order.get("experience_completed")),
-    })
-
-
 # =========================================================
 # EXPERIENCE
 # =========================================================
@@ -2789,6 +3044,9 @@ def experiencia(recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     if not original_video_ready(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not delivery_is_unlocked(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     if bool(order.get("experience_completed")):
@@ -3202,6 +3460,7 @@ video.addEventListener("ended", finishExperience);
 </html>
 """)
 
+
 # =========================================================
 # UPLOAD REACTION VIDEO
 # =========================================================
@@ -3601,6 +3860,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
     </body>
     </html>
     """)
+
 
 @app.get("/connect/onboarding/{recipient_token}")
 def connect_onboarding(recipient_token: str):
@@ -4095,7 +4355,31 @@ def admin_order(order_id: str, token: str):
         "original_video_ready": original_video_ready(order),
         "reaction_exists": reaction_exists(order),
         "eterna_completed": bool(order.get("eterna_completed")),
+        "scheduled_delivery_ready": scheduled_delivery_ready(order),
+        "scheduled_delivery_display": scheduled_delivery_display(order),
+        "delivery_locked": bool(order.get("delivery_locked")),
+        "delivery_sent": bool(order.get("delivery_sent")),
+        "delivery_sent_at": order.get("delivery_sent_at"),
     }
+
+
+@app.get("/admin/process-scheduled-delivery/{order_id}")
+def admin_process_scheduled_delivery(order_id: str, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    result = process_scheduled_recipient_delivery(order_id)
+    updated = get_order_by_id(order_id)
+
+    return JSONResponse({
+        "ok": result.get("ok", False),
+        "result": result,
+        "scheduled_delivery_at": updated.get("scheduled_delivery_at"),
+        "scheduled_delivery_display": scheduled_delivery_display(updated),
+        "delivery_sent": bool(updated.get("delivery_sent")),
+        "delivery_sent_at": updated.get("delivery_sent_at"),
+        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+    })
 
 
 @app.get("/admin/retry-recipient-message/{order_id}")
@@ -4103,8 +4387,7 @@ def admin_retry_recipient_message(order_id: str, token: str = ""):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
 
-    order = get_order_by_id(order_id)
-    result = try_send_recipient_sms(order)
+    result = process_scheduled_recipient_delivery(order_id)
     updated = get_order_by_id(order_id)
 
     return JSONResponse({
@@ -4114,6 +4397,10 @@ def admin_retry_recipient_message(order_id: str, token: str = ""):
         "recipient_sms_sid": updated.get("recipient_sms_sid"),
         "recipient_sms_attempts": updated.get("recipient_sms_attempts"),
         "recipient_sms_error": updated.get("recipient_sms_error"),
+        "scheduled_delivery_at": updated.get("scheduled_delivery_at"),
+        "scheduled_delivery_display": scheduled_delivery_display(updated),
+        "delivery_sent": bool(updated.get("delivery_sent")),
+        "delivery_sent_at": updated.get("delivery_sent_at"),
     })
 
 
