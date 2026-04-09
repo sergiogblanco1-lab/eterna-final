@@ -2576,7 +2576,43 @@ async def internal_video_ready(request: Request):
                 storage_provider="video_engine",
             )
 
-            update_order(order_id, experience_video_url=video_url)
+        order = get_order_by_id(order_id)
+
+        print("🔥 CALLBACK VIDEO READY 🔥")
+
+        recipient_url = f"{PUBLIC_BASE_URL}/pedido/{order['recipient_token']}"
+        sender_url = f"{PUBLIC_BASE_URL}/sender/{order['sender_token']}"
+
+        print("🎬 VIDEO GENERADO")
+        print(f"➡️ Recipient experience: {recipient_url}")
+        print(f"➡️ Sender pack: {sender_url}")
+
+        # =========================================
+        # MODO SIN TWILIO (PRUEBAS)
+        # =========================================
+
+        if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
+            print("⚠️ TWILIO DESACTIVADO → MODO TEST")
+            print("👉 Usa este link para probar:")
+            print(recipient_url)
+
+            update_order(
+                order_id,
+                recipient_sms_sent_at=now_iso(),
+                recipient_sms_error="test_no_sms",
+            )
+
+            return JSONResponse({
+                "ok": True,
+                "mode": "test_no_sms",
+                "recipient_url": recipient_url,
+                "sender_url": sender_url,
+                "video_url": video_url,
+            })
+
+        # =========================================
+        # TWILIO NORMAL
+        # =========================================
 
         updated_order = maybe_mark_eterna_completed(order_id)
 
@@ -2597,6 +2633,8 @@ async def internal_video_ready(request: Request):
             "status": "ok",
             "order_id": order_id,
             "video_url": video_url,
+            "recipient_url": recipient_url,
+            "sender_url": sender_url,
         })
 
     except Exception as e:
