@@ -2664,23 +2664,23 @@ def resumen(order_id: str):
     order = get_order_by_id(order_id)
 
     recipient_name = safe_text(order.get("recipient_name") or "esa persona")
-    sms_sent = bool(order.get("recipient_sms_sent_at"))
     video_ready = original_video_ready(order)
+    sms_sent = bool(order.get("recipient_sms_sent_at"))
 
-    if sms_sent:
+    if video_ready and sms_sent:
         status_line = "Tu ETERNA ya ha salido"
         sub_line = f"{recipient_name} ya tiene su mensaje."
         soft_line = "Ahora el momento ya está en marcha."
     elif video_ready:
         status_line = "Tu ETERNA está lista"
-        sub_line = f"Estamos enviando el mensaje a {recipient_name}."
-        soft_line = "El aviso solo sale cuando el vídeo ya existe de verdad."
+        sub_line = f"{recipient_name} ya puede vivir su momento."
+        soft_line = "El vídeo ya existe y el flujo puede continuar."
     else:
         status_line = "Pago confirmado"
         sub_line = "La fábrica de ETERNA ya está haciendo magia."
-        soft_line = "Estamos preparando este momento. Cuando esté listo y salga, todo seguirá su curso."
+        soft_line = "Estamos preparando este momento. Cuando esté listo, todo seguirá su curso."
 
-    refresh = '<meta http-equiv="refresh" content="8">' if not sms_sent else ""
+    refresh = '<meta http-equiv="refresh" content="8">' if not video_ready else ""
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
