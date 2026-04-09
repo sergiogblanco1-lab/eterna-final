@@ -2799,7 +2799,7 @@ video {{
 .overlay {{
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.72) 100%);
+    background: linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.78) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2817,7 +2817,7 @@ video {{
 .soft {{
     max-width: 560px;
     font-size: 16px;
-    line-height: 1.7;
+    line-height: 1.8;
     color: rgba(255,255,255,0.76);
 }}
 .btn {{
@@ -2846,32 +2846,13 @@ video {{
 .blackout.show {{
     opacity: 1;
 }}
-.final-overlay {{
-    position: absolute;
-    inset: 0;
-    background: black;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-    padding: 24px;
-    z-index: 6;
-}}
-.final-overlay.show {{
-    display: flex;
-}}
-.final-title {{
-    font-size: 30px;
-    line-height: 1.25;
-    color: white;
-    margin-bottom: 14px;
-}}
-.final-soft {{
-    font-size: 16px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.68);
-    max-width: 560px;
+@media (max-width: 640px) {{
+    .title {{
+        font-size: 30px;
+    }}
+    .soft {{
+        font-size: 15px;
+    }}
 }}
 </style>
 </head>
@@ -2889,22 +2870,15 @@ video {{
     </video>
 
     <div class="overlay" id="overlay">
-        <div class="title">Hay algo para ti</div>
+        <div class="title">Esto no es un vídeo.</div>
         <div class="soft">
-            Cuando pulses empezar, se abrirá la experiencia completa
-            y comenzará la grabación de tu reacción.
+            Lo que estás a punto de vivir no se repite.<br>
+            Cuando pulses empezar, todo comenzará.
         </div>
         <button id="startBtn" class="btn">Empezar</button>
     </div>
 
     <div class="blackout" id="blackout"></div>
-
-    <div class="final-overlay" id="finalOverlay">
-        <div class="final-title">Un instante…</div>
-        <div class="final-soft">
-            Estamos cerrando este momento.
-        </div>
-    </div>
 </div>
 
 <script>
@@ -2912,7 +2886,6 @@ const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
 const blackout = document.getElementById("blackout");
-const finalOverlay = document.getElementById("finalOverlay");
 
 const recipientToken = "{safe_attr(recipient_token)}";
 
@@ -2921,14 +2894,14 @@ let recordedChunks = [];
 let stream = null;
 let finished = false;
 
-function cashoutUrl() {{
-    return "/cobrar/" + recipientToken + "?force_cashout=1";
+function finalUrl() {{
+    return "/mi-video/" + recipientToken;
 }}
 
-function safeRedirectToCashout() {{
+function safeRedirectFinal() {{
     if (finished) return;
     finished = true;
-    window.location.replace(cashoutUrl());
+    window.location.replace(finalUrl());
 }}
 
 async function markExperienceFinished() {{
@@ -3098,8 +3071,9 @@ async function stopRecorderSafely() {{
 }}
 
 async function finishExperience() {{
+    if (finished) return;
+
     blackout.classList.add("show");
-    finalOverlay.classList.add("show");
 
     try {{
         video.pause();
@@ -3120,16 +3094,16 @@ async function finishExperience() {{
     }}
 
     setTimeout(() => {{
-        safeRedirectToCashout();
-    }}, 350);
+        safeRedirectFinal();
+    }}, 250);
 
     setTimeout(() => {{
         markExperienceFinished();
-    }}, 450);
+    }}, 350);
 
     setTimeout(() => {{
         retryReactionUpload().catch((e) => console.error("retryReactionUpload error", e));
-    }}, 600);
+    }}, 500);
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -3174,8 +3148,8 @@ startBtn.addEventListener("click", async () => {{
             }}
         }};
 
-        mediaRecorder.start(250);
         overlay.classList.add("hidden");
+        mediaRecorder.start(250);
         await video.play();
 
     }} catch (e) {{
@@ -3459,7 +3433,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
             <div class="wrap">
                 <h1>Un instante…</h1>
                 <div class="soft">
-                    Estamos cerrando este momento.
+                    Todo está terminando de colocarse.
                 </div>
             </div>
         </body>
@@ -3477,47 +3451,13 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         cashout_status = "pending"
 
     gift_amount_display = format_amount_display(order.get("gift_amount") or 0)
-    original_video_url = safe_attr(order.get("experience_video_url") or "")
     gift_amount_value = float(order.get("gift_amount") or 0)
-
-    reaction_uploaded = bool(order.get("reaction_uploaded"))
-    reaction_ok = reaction_exists(order)
-    reaction_pending = bool(order.get("reaction_upload_pending"))
-    reaction_error = safe_text(order.get("reaction_upload_error") or "")
-    eterna_completed = bool(order.get("eterna_completed"))
-
-    if eterna_completed:
-        eterna_state_title = "ETERNA está completa"
-        eterna_state_text = "Tu vídeo y tu emoción han quedado guardados correctamente."
-    elif reaction_pending:
-        eterna_state_title = "Estamos guardando tu emoción"
-        eterna_state_text = "Tu ETERNA aún no está completa. El sistema seguirá intentando guardar la reacción."
-    elif reaction_uploaded and not reaction_ok:
-        eterna_state_title = "Estamos recuperando tu emoción"
-        eterna_state_text = "La reacción figura subida, pero aún no está disponible correctamente. Seguiremos insistiendo."
-    elif reaction_error:
-        eterna_state_title = "La emoción sigue pendiente"
-        eterna_state_text = "Tu ETERNA todavía no está completa. Seguiremos intentando guardar la reacción."
-    else:
-        eterna_state_title = "Tu emoción sigue en proceso"
-        eterna_state_text = "Hasta que la reacción quede guardada bien, ETERNA no se considera completa."
-
-    retry_note = ""
-    if reaction_error:
-        retry_note = f"""
-        <div class="alert">
-            Último estado de reacción: {reaction_error}
-        </div>
-        """
 
     if gift_amount_value <= 0:
         title = "Todo ha quedado guardado"
         subtitle = "Este momento ya forma parte de ETERNA."
         action_html = f'''
-            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Ver mi vídeo</a>
-        '''
-        share_html = f'''
-            <button class="btn ghost" onclick="navigator.share ? navigator.share({{title:'ETERNA', url:window.location.origin + '/mi-video/{safe_attr(recipient_token)}'}}) : alert('Comparte este enlace desde tu navegador: ' + window.location.origin + '/mi-video/{safe_attr(recipient_token)}')">Compartir</button>
+            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a verlo</a>
         '''
     else:
         if cashout_status == "completed":
@@ -3539,20 +3479,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
                 <a class="btn" href="/connect/onboarding/{safe_attr(recipient_token)}">Cobrar ahora</a>
             '''
 
-        share_html = f'''
-            <button class="btn ghost" onclick="navigator.share ? navigator.share({{title:'ETERNA', url:window.location.origin + '/mi-video/{safe_attr(recipient_token)}'}}) : alert('Comparte este enlace desde tu navegador: ' + window.location.origin + '/mi-video/{safe_attr(recipient_token)}')">Compartir</button>
-        '''
-
-    original_block = ""
-    if original_video_url:
-        original_block = f"""
-        <div class="video-card">
-            <div class="video-title">Tu ETERNA</div>
-            <video controls playsinline preload="metadata" src="{original_video_url}"></video>
-        </div>
-        """
-
-    refresh = '<meta http-equiv="refresh" content="6">' if not eterna_completed or cashout_status in {"pending", "processing", "ready_to_send"} else ""
+    refresh = '<meta http-equiv="refresh" content="6">' if cashout_status in {"pending", "processing", "ready_to_send"} else ""
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -3589,34 +3516,6 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
                 line-height: 1.7;
                 color: rgba(255,255,255,0.82);
             }}
-            .status-card {{
-                background: rgba(255,255,255,0.05);
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 24px;
-                padding: 18px;
-                margin: 0 auto 24px auto;
-            }}
-            .status-title {{
-                font-size: 18px;
-                line-height: 1.5;
-                color: white;
-                margin-bottom: 8px;
-            }}
-            .status-text {{
-                font-size: 15px;
-                line-height: 1.8;
-                color: rgba(255,255,255,0.68);
-            }}
-            .alert {{
-                margin-top: 12px;
-                padding: 12px 14px;
-                border-radius: 16px;
-                background: rgba(255,255,255,0.06);
-                border: 1px solid rgba(255,255,255,0.10);
-                color: rgba(255,255,255,0.74);
-                font-size: 14px;
-                line-height: 1.6;
-            }}
             .actions {{
                 display: grid;
                 gap: 12px;
@@ -3637,41 +3536,12 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
                 color: black;
                 cursor: pointer;
             }}
-            .btn.ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.12);
-            }}
-            .grid {{
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 20px;
-                margin-top: 26px;
-            }}
-            .video-card {{
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 24px;
-                padding: 18px;
-            }}
-            .video-title {{
-                font-size: 14px;
-                text-transform: uppercase;
-                letter-spacing: 1.3px;
-                color: rgba(255,255,255,0.46);
-                margin-bottom: 12px;
-            }}
-            video {{
-                width: 100%;
-                border-radius: 18px;
-                background: black;
-            }}
             .soft {{
                 margin-top: 20px;
                 text-align: center;
                 font-size: 14px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.42);
+                line-height: 1.8;
+                color: rgba(255,255,255,0.44);
             }}
         </style>
     </head>
@@ -3682,148 +3552,14 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
                 <div class="sub">{safe_text(subtitle)}</div>
             </div>
 
-            <div class="status-card">
-                <div class="status-title">{safe_text(eterna_state_title)}</div>
-                <div class="status-text">{safe_text(eterna_state_text)}</div>
-                {retry_note}
-            </div>
-
             <div class="actions">
                 {action_html}
-                <a class="btn ghost" href="/mi-video/{safe_attr(recipient_token)}">Volver a verlo</a>
-                {share_html}
-            </div>
-
-            <div class="grid">
-                {original_block}
             </div>
 
             <div class="soft">
-                Lo importante ya pasó.<br>
-                ETERNA solo queda completa cuando existen el vídeo y la emoción.
+                Lo importante ya pasó.
             </div>
         </div>
-
-<script>
-const recipientToken = "{safe_attr(recipient_token)}";
-
-function openReactionDB() {{
-    return new Promise((resolve, reject) => {{
-        const request = indexedDB.open("eternaReactionDB", 1);
-        request.onupgradeneeded = function(event) {{
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains("reactions")) {{
-                db.createObjectStore("reactions");
-            }}
-        }};
-        request.onsuccess = function() {{
-            resolve(request.result);
-        }};
-        request.onerror = function() {{
-            reject(request.error || new Error("indexeddb_open_error"));
-        }};
-    }});
-}}
-
-async function loadPendingReaction() {{
-    const db = await openReactionDB();
-    const blob = await new Promise((resolve, reject) => {{
-        const tx = db.transaction("reactions", "readonly");
-        const req = tx.objectStore("reactions").get(recipientToken);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
-    }});
-    db.close();
-    return blob;
-}}
-
-async function deletePendingReaction() {{
-    const db = await openReactionDB();
-    await new Promise((resolve, reject) => {{
-        const tx = db.transaction("reactions", "readwrite");
-        tx.objectStore("reactions").delete(recipientToken);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error || new Error("indexeddb_delete_error"));
-    }});
-    db.close();
-}}
-
-async function fetchReactionStatus() {{
-    try {{
-        const res = await fetch("/reaction-upload-status/" + recipientToken, {{
-            cache: "no-store"
-        }});
-        if (!res.ok) return null;
-        return await res.json();
-    }} catch (e) {{
-        console.error("reaction status error", e);
-        return null;
-    }}
-}}
-
-async function uploadReactionBlob(blob) {{
-    const formData = new FormData();
-    formData.append("file", blob, "reaction.webm");
-
-    const res = await fetch("/upload-reaction/" + recipientToken, {{
-        method: "POST",
-        body: formData
-    }});
-
-    let data = null;
-    try {{
-        data = await res.json();
-    }} catch (_) {{
-        data = null;
-    }}
-
-    if (!res.ok) {{
-        throw new Error((data && data.detail) || "upload_reaction_error");
-    }}
-
-    return data;
-}}
-
-async function retryReactionUpload(maxAttempts = 8) {{
-    const existingStatus = await fetchReactionStatus();
-    if (existingStatus && existingStatus.reaction_uploaded && existingStatus.reaction_exists) {{
-        await deletePendingReaction().catch(() => null);
-        return true;
-    }}
-
-    const blob = await loadPendingReaction();
-    if (!blob || !blob.size) {{
-        return false;
-    }}
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {{
-        try {{
-            await uploadReactionBlob(blob);
-            const status = await fetchReactionStatus();
-            if (status && status.reaction_uploaded && status.reaction_exists) {{
-                await deletePendingReaction().catch(() => null);
-                return true;
-            }}
-        }} catch (e) {{
-            console.error("retryReactionUpload attempt error", attempt, e);
-        }}
-
-        await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
-    }}
-
-    return false;
-}}
-
-window.addEventListener("load", () => {{
-    retryReactionUpload().catch((e) => console.error("retryReactionUpload load error", e));
-}});
-
-document.addEventListener("visibilitychange", () => {{
-    if (document.visibilityState === "visible") {{
-        retryReactionUpload().catch((e) => console.error("retryReactionUpload visible error", e));
-    }}
-}});
-</script>
     </body>
     </html>
     """)
@@ -3899,44 +3635,11 @@ def mi_video(recipient_token: str):
     cashout_status = compute_cashout_status(order)
     cashout_cta = "Cobrar regalo" if cashout_status not in {"completed", "processing"} else "Ver regalo"
 
-    eterna_completed = bool(order.get("eterna_completed"))
-    reaction_pending = bool(order.get("reaction_upload_pending"))
-    reaction_error = safe_text(order.get("reaction_upload_error") or "")
-
-    reaction_state = ""
-    if eterna_completed:
-        reaction_state = """
-        <div class="info-box">
-            ETERNA está completa: vídeo y emoción guardados correctamente.
-        </div>
-        """
-    elif reaction_pending:
-        reaction_state = """
-        <div class="info-box">
-            La emoción sigue guardándose. ETERNA todavía no está completa.
-        </div>
-        """
-    elif reaction_error:
-        reaction_state = f"""
-        <div class="info-box">
-            La emoción sigue pendiente. Último estado: {reaction_error}
-        </div>
-        """
-    else:
-        reaction_state = """
-        <div class="info-box">
-            La emoción aún no está lista. ETERNA no está completa todavía.
-        </div>
-        """
-
-    refresh = '<meta http-equiv="refresh" content="6">' if not eterna_completed else ""
-
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        {refresh}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
         <style>
@@ -3956,18 +3659,6 @@ def mi_video(recipient_token: str):
                 text-align: center;
                 font-size: 42px;
                 margin: 0 0 26px 0;
-            }}
-            .info-box {{
-                max-width: 720px;
-                margin: 0 auto 22px auto;
-                padding: 16px 18px;
-                border-radius: 20px;
-                background: rgba(255,255,255,0.05);
-                border: 1px solid rgba(255,255,255,0.08);
-                color: rgba(255,255,255,0.72);
-                line-height: 1.7;
-                text-align: center;
-                font-size: 15px;
             }}
             .grid {{
                 display: grid;
@@ -4010,18 +3701,11 @@ def mi_video(recipient_token: str):
                 background: white;
                 color: black;
             }}
-            .btn.ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.12);
-            }}
         </style>
     </head>
     <body>
         <div class="wrap">
             <h1>Tu momento</h1>
-
-            {reaction_state}
 
             <div class="grid">
                 <div class="card">
@@ -4032,7 +3716,6 @@ def mi_video(recipient_token: str):
 
             <div class="actions">
                 <a class="btn" href="/cobrar/{safe_attr(recipient_token)}">{safe_text(cashout_cta)}</a>
-                <button class="btn ghost" onclick="navigator.share ? navigator.share({{title:'ETERNA', url:window.location.href}}) : alert(window.location.href)">Compartir</button>
             </div>
         </div>
 
