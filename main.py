@@ -636,7 +636,8 @@ def delivery_locked(order: dict) -> bool:
 def delivery_already_sent(order: dict) -> bool:
     return bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at"))
 
-    def delivery_is_unlocked(order: dict) -> bool:
+
+def delivery_is_unlocked(order: dict) -> bool:
     if delivery_already_sent(order):
         return True
 
