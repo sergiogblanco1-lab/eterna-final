@@ -4,6 +4,7 @@ print("🔥 FINAL UX LOCKED + CASHOUT HARDENED + SENDER PACK READY 🔥")
 print("🔥 REACTION RETRY + ETERNA COMPLETE SAFE VERSION 🔥")
 print("🔥 SCHEDULED DELIVERY LOCKED VERSION 🔥")
 print("🔥 DELIVERY WORKER REAL VERSION 🔥")
+print("🔥 GLOBAL PHONE READY VERSION 🔥")
 
 import html
 import json
@@ -111,6 +112,19 @@ DELIVERY_WORKER_INTERVAL_SECONDS = int(os.getenv("DELIVERY_WORKER_INTERVAL_SECON
 DELIVERY_WORKER_ENABLED = os.getenv("DELIVERY_WORKER_ENABLED", "1").strip() != "0"
 DELIVERY_WORKER_STARTED = False
 DELIVERY_WORKER_LOCK = threading.Lock()
+
+KNOWN_COUNTRY_CODES = [
+    "+351",
+    "+57",
+    "+54",
+    "+52",
+    "+49",
+    "+44",
+    "+39",
+    "+34",
+    "+33",
+    "+1",
+]
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
@@ -300,43 +314,13 @@ def init_db():
     add_column_if_missing("orders", "sender_sms_attempts", "ALTER TABLE orders ADD COLUMN sender_sms_attempts INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "recipient_sms_error", "ALTER TABLE orders ADD COLUMN recipient_sms_error TEXT")
     add_column_if_missing("orders", "sender_sms_error", "ALTER TABLE orders ADD COLUMN sender_sms_error TEXT")
-
-    add_column_if_missing(
-        "orders",
-        "reaction_upload_pending",
-        "ALTER TABLE orders ADD COLUMN reaction_upload_pending INTEGER NOT NULL DEFAULT 0",
-    )
-    add_column_if_missing(
-        "orders",
-        "reaction_upload_error",
-        "ALTER TABLE orders ADD COLUMN reaction_upload_error TEXT",
-    )
-    add_column_if_missing(
-        "orders",
-        "eterna_completed",
-        "ALTER TABLE orders ADD COLUMN eterna_completed INTEGER NOT NULL DEFAULT 0",
-    )
-
-    add_column_if_missing(
-        "orders",
-        "scheduled_delivery_at",
-        "ALTER TABLE orders ADD COLUMN scheduled_delivery_at TEXT",
-    )
-    add_column_if_missing(
-        "orders",
-        "delivery_locked",
-        "ALTER TABLE orders ADD COLUMN delivery_locked INTEGER NOT NULL DEFAULT 0",
-    )
-    add_column_if_missing(
-        "orders",
-        "delivery_sent",
-        "ALTER TABLE orders ADD COLUMN delivery_sent INTEGER NOT NULL DEFAULT 0",
-    )
-    add_column_if_missing(
-        "orders",
-        "delivery_sent_at",
-        "ALTER TABLE orders ADD COLUMN delivery_sent_at TEXT",
-    )
+    add_column_if_missing("orders", "reaction_upload_pending", "ALTER TABLE orders ADD COLUMN reaction_upload_pending INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "reaction_upload_error", "ALTER TABLE orders ADD COLUMN reaction_upload_error TEXT")
+    add_column_if_missing("orders", "eterna_completed", "ALTER TABLE orders ADD COLUMN eterna_completed INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "scheduled_delivery_at", "ALTER TABLE orders ADD COLUMN scheduled_delivery_at TEXT")
+    add_column_if_missing("orders", "delivery_locked", "ALTER TABLE orders ADD COLUMN delivery_locked INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "delivery_sent", "ALTER TABLE orders ADD COLUMN delivery_sent INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "delivery_sent_at", "ALTER TABLE orders ADD COLUMN delivery_sent_at TEXT")
 
 
 init_db()
@@ -462,6 +446,38 @@ def to_e164(phone: str) -> str:
         return f"+{normalized}"
 
     return ""
+
+
+def build_global_phone(code: str, phone: str) -> str:
+    code = (code or "+34").strip()
+    phone = (phone or "").strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+
+    if not code.startswith("+"):
+        code = f"+{code}"
+
+    if phone.startswith("+"):
+        final_phone = phone
+    elif phone.startswith("00"):
+        final_phone = "+" + phone[2:]
+    else:
+        final_phone = f"{code}{phone}"
+
+    return final_phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+
+
+def split_phone_for_form(phone: str) -> tuple[str, str]:
+    raw = str(phone or "").strip()
+    if not raw:
+        return "+34", ""
+
+    if not raw.startswith("+"):
+        return "+34", raw
+
+    for code in KNOWN_COUNTRY_CODES:
+        if raw.startswith(code):
+            return code, raw[len(code):]
+
+    return "+34", raw
 
 
 def new_order_id() -> str:
@@ -1474,7 +1490,7 @@ def render_create_form() -> str:
                 color: rgba(255,255,255,0.55);
             }}
 
-            input {{
+            input, select {{
                 width: 100%;
                 padding: 15px 16px;
                 margin: 8px 0;
@@ -1484,6 +1500,12 @@ def render_create_form() -> str:
                 color: white;
                 outline: none;
                 font-size: 15px;
+            }}
+
+            select {{
+                appearance: none;
+                -webkit-appearance: none;
+                -moz-appearance: none;
             }}
 
             input[type="date"],
@@ -1501,6 +1523,22 @@ def render_create_form() -> str:
                 font-size: 14px;
                 margin-bottom: 14px;
                 text-align: center;
+            }}
+
+            .phone-row {{
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }}
+
+            .phone-code {{
+                min-width: 120px;
+                max-width: 140px;
+                flex: 0 0 120px;
+            }}
+
+            .phone-input {{
+                flex: 1;
             }}
 
             .photo-grid {{
@@ -1766,6 +1804,10 @@ def render_create_form() -> str:
                     grid-template-columns: 1fr;
                 }}
 
+                .phone-row {{
+                    flex-direction: row;
+                }}
+
                 body {{
                     padding: 16px;
                 }}
@@ -1802,43 +1844,57 @@ def render_create_form() -> str:
                         <div class="section-title">Tus datos</div>
                         <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
                         <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
-                    <div style="display:flex;gap:10px;align-items:center;">
-    <select name="customer_country_code" id="customer_country_code" style="
-        padding:15px 16px;
-        border-radius:16px;
-        border:1px solid rgba(255,255,255,0.10);
-        background:rgba(255,255,255,0.05);
-        color:white;
-        outline:none;
-        font-size:15px;
-        min-width:120px;
-    ">
-        <option value="+34">🇪🇸 +34</option>
-        <option value="+1">🇺🇸 +1</option>
-        <option value="+44">🇬🇧 +44</option>
-        <option value="+33">🇫🇷 +33</option>
-        <option value="+49">🇩🇪 +49</option>
-        <option value="+39">🇮🇹 +39</option>
-        <option value="+52">🇲🇽 +52</option>
-        <option value="+54">🇦🇷 +54</option>
-        <option value="+57">🇨🇴 +57</option>
-        <option value="+351">🇵🇹 +351</option>
-    </select>
 
-    <input
-        name="customer_phone"
-        id="customer_phone"
-        placeholder="Tu teléfono"
-        required
-        style="flex:1;"
-    >
-</div>    
+                        <div class="phone-row">
+                            <select name="customer_country_code" id="customer_country_code" class="phone-code">
+                                <option value="+34">🇪🇸 +34</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+33">🇫🇷 +33</option>
+                                <option value="+49">🇩🇪 +49</option>
+                                <option value="+39">🇮🇹 +39</option>
+                                <option value="+52">🇲🇽 +52</option>
+                                <option value="+54">🇦🇷 +54</option>
+                                <option value="+57">🇨🇴 +57</option>
+                                <option value="+351">🇵🇹 +351</option>
+                            </select>
+
+                            <input
+                                name="customer_phone"
+                                id="customer_phone"
+                                class="phone-input"
+                                placeholder="Tu teléfono"
+                                required
+                            >
+                        </div>
                     </div>
 
                     <div class="section s2">
                         <div class="section-title">La persona que lo va a recibir</div>
                         <input name="recipient_name" id="recipient_name" placeholder="Su nombre" required>
-                        <input name="recipient_phone" id="recipient_phone" placeholder="Su teléfono (ej. 674123456)" required>
+
+                        <div class="phone-row">
+                            <select name="recipient_country_code" id="recipient_country_code" class="phone-code">
+                                <option value="+34">🇪🇸 +34</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+33">🇫🇷 +33</option>
+                                <option value="+49">🇩🇪 +49</option>
+                                <option value="+39">🇮🇹 +39</option>
+                                <option value="+52">🇲🇽 +52</option>
+                                <option value="+54">🇦🇷 +54</option>
+                                <option value="+57">🇨🇴 +57</option>
+                                <option value="+351">🇵🇹 +351</option>
+                            </select>
+
+                            <input
+                                name="recipient_phone"
+                                id="recipient_phone"
+                                class="phone-input"
+                                placeholder="Su teléfono"
+                                required
+                            >
+                        </div>
                     </div>
 
                     <div class="section s3">
@@ -2039,8 +2095,8 @@ def render_create_form() -> str:
             </div>
         </div>
 
-       <script>
-document.addEventListener("DOMContentLoaded", function () {{
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
     const STORAGE_KEY = "eterna_create_form_v3";
 
@@ -2053,24 +2109,26 @@ document.addEventListener("DOMContentLoaded", function () {{
     const manualRadio = document.getElementById("mode_manual");
     const manualPhrases = document.getElementById("manualPhrases");
 
-    function showError(message) {{
+    function showError(message) {
         if (!errorBox) return;
         errorBox.style.display = "block";
         errorBox.innerText = message || "Ha ocurrido un error.";
-    }}
+    }
 
-    function clearError() {{
+    function clearError() {
         if (!errorBox) return;
         errorBox.style.display = "none";
         errorBox.innerText = "";
-    }}
+    }
 
-    function getPersistableData() {{
-        return {{
+    function getPersistableData() {
+        return {
             customer_name: document.getElementById("customer_name")?.value || "",
             customer_email: document.getElementById("customer_email")?.value || "",
+            customer_country_code: document.getElementById("customer_country_code")?.value || "+34",
             customer_phone: document.getElementById("customer_phone")?.value || "",
             recipient_name: document.getElementById("recipient_name")?.value || "",
+            recipient_country_code: document.getElementById("recipient_country_code")?.value || "+34",
             recipient_phone: document.getElementById("recipient_phone")?.value || "",
             message_type: document.getElementById("messageType")?.value || "",
             phrase_mode: manualRadio && manualRadio.checked ? "manual" : "auto",
@@ -2080,19 +2138,19 @@ document.addEventListener("DOMContentLoaded", function () {{
             delivery_date: document.getElementById("delivery_date")?.value || "",
             delivery_time: document.getElementById("delivery_time")?.value || "",
             gift_amount: document.getElementById("gift_amount")?.value || "0"
-        }};
-    }}
+        };
+    }
 
-    function saveFormState() {{
-        try {{
+    function saveFormState() {
+        try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(getPersistableData()));
-        }} catch (e) {{
+        } catch (e) {
             console.error("saveFormState error", e);
-        }}
-    }}
+        }
+    }
 
-    function restoreFormState() {{
-        try {{
+    function restoreFormState() {
+        try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return;
 
@@ -2101,8 +2159,10 @@ document.addEventListener("DOMContentLoaded", function () {{
             const ids = [
                 "customer_name",
                 "customer_email",
+                "customer_country_code",
                 "customer_phone",
                 "recipient_name",
+                "recipient_country_code",
                 "recipient_phone",
                 "phrase_1",
                 "phrase_2",
@@ -2112,44 +2172,46 @@ document.addEventListener("DOMContentLoaded", function () {{
                 "gift_amount"
             ];
 
-            ids.forEach((id) => {{
+            ids.forEach((id) => {
                 const el = document.getElementById(id);
-                if (el && typeof data[id] !== "undefined") {{
+                if (el && typeof data[id] !== "undefined") {
                     el.value = data[id];
-                }}
-            }});
+                }
+            });
 
-            if (data.phrase_mode === "manual") {{
+            if (data.phrase_mode === "manual") {
                 if (manualRadio) manualRadio.checked = true;
                 if (autoRadio) autoRadio.checked = false;
-            }} else {{
+            } else {
                 if (autoRadio) autoRadio.checked = true;
                 if (manualRadio) manualRadio.checked = false;
-            }}
+            }
 
             updatePhraseMode();
 
-            if (data.message_type && messageTypeInput) {{
+            if (data.message_type && messageTypeInput) {
                 messageTypeInput.value = data.message_type;
-                cards.forEach((card) => {{
-                    if ((card.dataset.type || "") === data.message_type) {{
+                cards.forEach((card) => {
+                    if ((card.dataset.type || "") === data.message_type) {
                         card.classList.add("selected");
-                    }} else {{
+                    } else {
                         card.classList.remove("selected");
-                    }}
-                }});
-            }}
-        }} catch (e) {{
+                    }
+                });
+            }
+        } catch (e) {
             console.error("restoreFormState error", e);
-        }}
-    }}
+        }
+    }
 
-    function bindAutosave() {{
+    function bindAutosave() {
         const selectors = [
             "#customer_name",
             "#customer_email",
+            "#customer_country_code",
             "#customer_phone",
             "#recipient_name",
+            "#recipient_country_code",
             "#recipient_phone",
             "#phrase_1",
             "#phrase_2",
@@ -2161,178 +2223,178 @@ document.addEventListener("DOMContentLoaded", function () {{
             "#mode_manual"
         ];
 
-        selectors.forEach((selector) => {{
+        selectors.forEach((selector) => {
             const el = document.querySelector(selector);
             if (!el) return;
 
             el.addEventListener("input", saveFormState);
             el.addEventListener("change", saveFormState);
-        }});
-    }}
+        });
+    }
 
-    function updatePhraseMode() {{
+    function updatePhraseMode() {
         if (!manualPhrases) return;
 
-        if (manualRadio && manualRadio.checked) {{
+        if (manualRadio && manualRadio.checked) {
             manualPhrases.classList.remove("hidden");
-        }} else {{
+        } else {
             manualPhrases.classList.add("hidden");
-        }}
+        }
 
         saveFormState();
-    }}
+    }
 
-    cards.forEach((card) => {{
-        card.addEventListener("click", function () {{
+    cards.forEach((card) => {
+        card.addEventListener("click", function () {
             cards.forEach((c) => c.classList.remove("selected"));
             card.classList.add("selected");
-            if (messageTypeInput) {{
+            if (messageTypeInput) {
                 messageTypeInput.value = card.dataset.type || "";
-            }}
+            }
             saveFormState();
             clearError();
-        }});
-    }});
+        });
+    });
 
     if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
     if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
 
-    function updatePhotoUI(inputId, file) {{
+    function updatePhotoUI(inputId, file) {
         const preview = document.getElementById("preview_" + inputId);
         const placeholder = document.getElementById("placeholder_" + inputId);
         const status = document.getElementById("status_" + inputId);
 
-        if (!file) {{
-            if (preview) {{
+        if (!file) {
+            if (preview) {
                 preview.src = "";
                 preview.style.display = "none";
-            }}
-            if (placeholder) {{
+            }
+            if (placeholder) {
                 placeholder.style.display = "block";
-            }}
-            if (status) {{
+            }
+            if (status) {
                 status.innerText = "Aún no has elegido esta foto.";
-            }}
+            }
             return;
-        }}
+        }
 
         const url = URL.createObjectURL(file);
 
-        if (preview) {{
+        if (preview) {
             preview.src = url;
             preview.style.display = "block";
-        }}
+        }
 
-        if (placeholder) {{
+        if (placeholder) {
             placeholder.style.display = "none";
-        }}
+        }
 
-        if (status) {{
+        if (status) {
             status.innerText = "Foto elegida correctamente.";
-        }}
-    }}
+        }
+    }
 
-    function bindPreview(inputId) {{
+    function bindPreview(inputId) {
         const fileInput = document.getElementById(inputId);
         if (!fileInput) return;
 
-        fileInput.addEventListener("change", function () {{
+        fileInput.addEventListener("change", function () {
             clearError();
 
             const file = fileInput.files && fileInput.files[0];
-            if (!file) {{
+            if (!file) {
                 updatePhotoUI(inputId, null);
                 return;
-            }}
+            }
 
-            if (!(file.type || "").startsWith("image/")) {{
+            if (!(file.type || "").startsWith("image/")) {
                 fileInput.value = "";
                 updatePhotoUI(inputId, null);
                 showError("Una de las fotos no parece una imagen válida.");
                 return;
-            }}
+            }
 
             updatePhotoUI(inputId, file);
             saveFormState();
-        }});
-    }}
+        });
+    }
 
     ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
 
-    function allPhotosPresent() {{
+    function allPhotosPresent() {
         const ids = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
-        for (const id of ids) {{
+        for (const id of ids) {
             const input = document.getElementById(id);
-            if (!input || !input.files || input.files.length === 0) {{
+            if (!input || !input.files || input.files.length === 0) {
                 return false;
-            }}
-        }}
+            }
+        }
         return true;
-    }}
+    }
 
-    function validateBeforeSubmit() {{
-        if (!form) {{
+    function validateBeforeSubmit() {
+        if (!form) {
             showError("Formulario no disponible.");
             return false;
-        }}
+        }
 
-        if (!form.checkValidity()) {{
+        if (!form.checkValidity()) {
             showError("Revisa los campos. Falta información.");
             return false;
-        }}
+        }
 
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
-        if (!messageType) {{
+        if (!messageType) {
             showError("Elige la emoción que quieres dejar.");
             return false;
-        }}
+        }
 
-        if (!allPhotosPresent()) {{
+        if (!allPhotosPresent()) {
             showError("Necesitas elegir las 6 fotos.");
             return false;
-        }}
+        }
 
-        if (manualRadio && manualRadio.checked) {{
+        if (manualRadio && manualRadio.checked) {
             const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
             const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
             const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
 
-            if (!phrase1 || !phrase2 || !phrase3) {{
+            if (!phrase1 || !phrase2 || !phrase3) {
                 showError("Escribe tus 3 frases.");
                 return false;
-            }}
-        }}
+            }
+        }
 
         const deliveryDate = document.getElementById("delivery_date")?.value || "";
         const deliveryTime = document.getElementById("delivery_time")?.value || "";
 
-        if (!deliveryDate || !deliveryTime) {{
+        if (!deliveryDate || !deliveryTime) {
             showError("Elige la fecha y la hora de entrega.");
             return false;
-        }}
+        }
 
         const deliveryLocal = new Date(deliveryDate + "T" + deliveryTime);
         const now = new Date();
 
-        if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {{
+        if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {
             showError("La fecha de entrega no es válida.");
             return false;
-        }}
+        }
 
-        if (deliveryLocal.getTime() <= now.getTime()) {{
+        if (deliveryLocal.getTime() <= now.getTime()) {
             showError("La fecha de entrega debe estar en el futuro.");
             return false;
-        }}
+        }
 
         const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
-        if (Number.isNaN(giftAmount) || giftAmount < 0) {{
+        if (Number.isNaN(giftAmount) || giftAmount < 0) {
             showError("El importe no es válido.");
             return false;
-        }}
+        }
 
         clearError();
         return true;
-    }}
+    }
 
     if (!form) return;
 
@@ -2340,38 +2402,39 @@ document.addEventListener("DOMContentLoaded", function () {{
     bindAutosave();
     updatePhraseMode();
 
-    form.addEventListener("submit", function (e) {{
-        if (!validateBeforeSubmit()) {{
+    form.addEventListener("submit", function (e) {
+        if (!validateBeforeSubmit()) {
             e.preventDefault();
             return;
-        }}
+        }
 
         clearError();
 
-        if (button) {{
+        if (button) {
             button.disabled = true;
             button.innerText = "Entrando a pago...";
-        }}
+        }
 
-        try {{
+        try {
             localStorage.removeItem(STORAGE_KEY);
-        }} catch (err) {{
+        } catch (err) {
             console.error("localStorage remove error", err);
-        }}
-    }});
+        }
+    });
 
-}});
+});
 </script>
     </body>
     </html>
     """
 
-
-async def create_order_and_redirect(
+    async def create_order_and_redirect(
     customer_name: str,
     customer_email: str,
+    customer_country_code: str,
     customer_phone: str,
     recipient_name: str,
+    recipient_country_code: str,
     recipient_phone: str,
     message_type: str,
     phrase_mode: str,
@@ -2390,7 +2453,13 @@ async def create_order_and_redirect(
 ):
     customer_name = (customer_name or "").strip()
     customer_email = (customer_email or "").strip()
+    customer_country_code = (customer_country_code or "+34").strip()
+    customer_phone = (customer_phone or "").strip()
+
     recipient_name = (recipient_name or "").strip()
+    recipient_country_code = (recipient_country_code or "+34").strip()
+    recipient_phone = (recipient_phone or "").strip()
+
     message_type = (message_type or "").strip()
     phrase_mode = (phrase_mode or "auto").strip()
 
@@ -2435,10 +2504,10 @@ async def create_order_and_redirect(
     if gift_amount < 0:
         raise HTTPException(status_code=400, detail="Importe no válido")
 
-    sender_phone = normalize_phone(customer_phone)
-    recipient_phone_norm = normalize_phone(recipient_phone)
+    sender_phone = to_e164(build_global_phone(customer_country_code, customer_phone))
+    recipient_phone_e164 = to_e164(build_global_phone(recipient_country_code, recipient_phone))
 
-    if not sender_phone or not recipient_phone_norm:
+    if not sender_phone or not recipient_phone_e164:
         raise HTTPException(status_code=400, detail="Teléfono no válido")
 
     photos = {
@@ -2487,7 +2556,7 @@ async def create_order_and_redirect(
     cur.execute("""
         INSERT INTO recipients (name, phone, created_at)
         VALUES (?, ?, ?)
-    """, (recipient_name, recipient_phone_norm, created_at))
+    """, (recipient_name, recipient_phone_e164, created_at))
     recipient_id = cur.lastrowid
 
     placeholders = ", ".join(["?"] * 53)
@@ -2629,8 +2698,10 @@ def crear_get():
 async def crear_post(
     customer_name: str = Form(...),
     customer_email: str = Form(""),
+    customer_country_code: str = Form("+34"),
     customer_phone: str = Form(...),
     recipient_name: str = Form(...),
+    recipient_country_code: str = Form("+34"),
     recipient_phone: str = Form(...),
     message_type: str = Form(...),
     phrase_mode: str = Form("auto"),
@@ -2650,8 +2721,10 @@ async def crear_post(
     return await create_order_and_redirect(
         customer_name=customer_name,
         customer_email=customer_email,
+        customer_country_code=customer_country_code,
         customer_phone=customer_phone,
         recipient_name=recipient_name,
+        recipient_country_code=recipient_country_code,
         recipient_phone=recipient_phone,
         message_type=message_type,
         phrase_mode=phrase_mode,
@@ -3054,6 +3127,9 @@ def resumen(order_id: str):
     delivery_sent_flag = bool(order.get("delivery_sent"))
     delivery_display = safe_text(scheduled_delivery_display(order))
 
+    sender_code, sender_number = split_phone_for_form(order.get("sender_phone") or "")
+    recipient_code, recipient_number = split_phone_for_form(order.get("recipient_phone") or "")
+
     if delivery_sent_flag:
         status_line = "Tu ETERNA ya ha salido"
         sub_line = f"{recipient_name} ya tiene su mensaje."
@@ -3075,9 +3151,11 @@ def resumen(order_id: str):
     preload_data = {
         "customer_name": order.get("sender_name") or "",
         "customer_email": order.get("sender_email") or "",
-        "customer_phone": order.get("sender_phone") or "",
+        "customer_country_code": sender_code,
+        "customer_phone": sender_number,
         "recipient_name": order.get("recipient_name") or "",
-        "recipient_phone": order.get("recipient_phone") or "",
+        "recipient_country_code": recipient_code,
+        "recipient_phone": recipient_number,
         "message_type": order.get("message_type") or "",
         "phrase_mode": order.get("phrase_mode") or "auto",
         "phrase_1": order.get("phrase_1") or "",
@@ -3416,7 +3494,7 @@ async function loadPendingReaction() {{
     const blob = await new Promise((resolve, reject) => {{
         const tx = db.transaction("reactions", "readonly");
         const req = tx.objectStore("reactions").get(recipientToken);
-         req.onsuccess = () => resolve(req.result || null);
+        req.onsuccess = () => resolve(req.result || null);
         req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
     }});
     db.close();
@@ -3891,13 +3969,9 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_started")):
+    if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    # IMPORTANTE:
-    # cobrar NO depende de sender pack, reaction_uploaded ni eterna_completed
-    # si el usuario ya terminó de vivir la experiencia o entra con force_cashout,
-    # le dejamos seguir con su cobro aunque la reacción siga subiendo en segundo plano
     if int(force_cashout or 0) == 1 and not bool(order.get("experience_completed")):
         update_order(
             order["id"],
@@ -3908,9 +3982,6 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         order = get_order_by_id(order["id"])
 
     cashout_result = maybe_finalize_cashout(order)
-
-    # esto solo actualiza estado interno de ETERNA
-    # NO debe bloquear el cobro
     order = maybe_mark_eterna_completed(order["id"])
 
     cashout_status = compute_cashout_status(order)
