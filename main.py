@@ -2429,35 +2429,35 @@ document.addEventListener("DOMContentLoaded", function () {{
     """
 
     async def create_order_and_redirect(
-        customer_name: str,
-        customer_email: str,
-        customer_country_code: str,
-        customer_phone: str,
-        recipient_name: str,
-        recipient_country_code: str,
-        recipient_phone: str,
-        message_type: str,
-        phrase_mode: str,
-        phrase_1: str,
-        phrase_2: str,
-        phrase_3: str,
-        delivery_date: str,
-        delivery_time: str,
-        gift_amount: float,
-        photo1: UploadFile,
-        photo2: UploadFile,
-        photo3: UploadFile,
-        photo4: UploadFile,
-        photo5: UploadFile,
-        photo6: UploadFile,
+    customer_name: str,
+    customer_email: str,
+    customer_country_code: str,
+    customer_phone: str,
+    recipient_name: str,
+    recipient_country_code: str,
+    recipient_phone: str,
+    message_type: str,
+    phrase_mode: str,
+    phrase_1: str,
+    phrase_2: str,
+    phrase_3: str,
+    delivery_date: str,
+    delivery_time: str,
+    gift_amount: float,
+    photo1: UploadFile,
+    photo2: UploadFile,
+    photo3: UploadFile,
+    photo4: UploadFile,
+    photo5: UploadFile,
+    photo6: UploadFile,
 ):
     customer_name = (customer_name or "").strip()
     customer_email = (customer_email or "").strip()
-    customer_country_code = (customer_country_code or "+34").strip()
+    customer_country_code = (customer_country_code or "").strip()
     customer_phone = (customer_phone or "").strip()
 
     recipient_name = (recipient_name or "").strip()
-    recipient_country_code = (recipient_country_code or "+34").strip()
+    recipient_country_code = (recipient_country_code or "").strip()
     recipient_phone = (recipient_phone or "").strip()
 
     message_type = (message_type or "").strip()
@@ -2504,10 +2504,22 @@ document.addEventListener("DOMContentLoaded", function () {{
     if gift_amount < 0:
         raise HTTPException(status_code=400, detail="Importe no válido")
 
-    sender_phone = to_e164(build_global_phone(customer_country_code, customer_phone))
-    recipient_phone_e164 = to_e164(build_global_phone(recipient_country_code, recipient_phone))
+    customer_country_code_digits = normalize_phone(customer_country_code)
+    recipient_country_code_digits = normalize_phone(recipient_country_code)
 
-    if not sender_phone or not recipient_phone_e164:
+    sender_phone_digits = normalize_phone(customer_phone)
+    recipient_phone_digits = normalize_phone(recipient_phone)
+
+    if not customer_country_code_digits or not recipient_country_code_digits:
+        raise HTTPException(status_code=400, detail="Prefijo telefónico no válido")
+
+    if not sender_phone_digits or not recipient_phone_digits:
+        raise HTTPException(status_code=400, detail="Teléfono no válido")
+
+    sender_phone = f"+{customer_country_code_digits}{sender_phone_digits}"
+    recipient_phone_norm = f"+{recipient_country_code_digits}{recipient_phone_digits}"
+
+    if not to_e164(sender_phone) or not to_e164(recipient_phone_norm):
         raise HTTPException(status_code=400, detail="Teléfono no válido")
 
     photos = {
@@ -2556,7 +2568,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     cur.execute("""
         INSERT INTO recipients (name, phone, created_at)
         VALUES (?, ?, ?)
-    """, (recipient_name, recipient_phone_e164, created_at))
+    """, (recipient_name, recipient_phone_norm, created_at))
     recipient_id = cur.lastrowid
 
     placeholders = ", ".join(["?"] * 53)
@@ -2678,6 +2690,69 @@ document.addEventListener("DOMContentLoaded", function () {{
         return RedirectResponse(url=session.url, status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
+
+
+# =========================================================
+# HOME / CREATE
+# =========================================================
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
+
+@app.get("/crear", response_class=HTMLResponse)
+def crear_get():
+    return render_create_form()
+
+
+@app.post("/crear")
+async def crear_post(
+    customer_name: str = Form(...),
+    customer_email: str = Form(""),
+    customer_country_code: str = Form("+34"),
+    customer_phone: str = Form(...),
+    recipient_name: str = Form(...),
+    recipient_country_code: str = Form("+34"),
+    recipient_phone: str = Form(...),
+    message_type: str = Form(...),
+    phrase_mode: str = Form("auto"),
+    phrase_1: str = Form(""),
+    phrase_2: str = Form(""),
+    phrase_3: str = Form(""),
+    delivery_date: str = Form(...),
+    delivery_time: str = Form(...),
+    gift_amount: float = Form(0),
+    photo1: UploadFile = File(...),
+    photo2: UploadFile = File(...),
+    photo3: UploadFile = File(...),
+    photo4: UploadFile = File(...),
+    photo5: UploadFile = File(...),
+    photo6: UploadFile = File(...),
+):
+    return await create_order_and_redirect(
+        customer_name=customer_name,
+        customer_email=customer_email,
+        customer_country_code=customer_country_code,
+        customer_phone=customer_phone,
+        recipient_name=recipient_name,
+        recipient_country_code=recipient_country_code,
+        recipient_phone=recipient_phone,
+        message_type=message_type,
+        phrase_mode=phrase_mode,
+        phrase_1=phrase_1,
+        phrase_2=phrase_2,
+        phrase_3=phrase_3,
+        delivery_date=delivery_date,
+        delivery_time=delivery_time,
+        gift_amount=gift_amount,
+        photo1=photo1,
+        photo2=photo2,
+        photo3=photo3,
+        photo4=photo4,
+        photo5=photo5,
+        photo6=photo6,
+    )
 
 
 # =========================================================
