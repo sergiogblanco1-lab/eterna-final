@@ -2125,8 +2125,10 @@ document.addEventListener("DOMContentLoaded", function () {{
         return {{
             customer_name: document.getElementById("customer_name")?.value || "",
             customer_email: document.getElementById("customer_email")?.value || "",
+            customer_country_code: document.getElementById("customer_country_code")?.value || "+34",
             customer_phone: document.getElementById("customer_phone")?.value || "",
             recipient_name: document.getElementById("recipient_name")?.value || "",
+            recipient_country_code: document.getElementById("recipient_country_code")?.value || "+34",
             recipient_phone: document.getElementById("recipient_phone")?.value || "",
             message_type: document.getElementById("messageType")?.value || "",
             phrase_mode: manualRadio && manualRadio.checked ? "manual" : "auto",
@@ -2157,8 +2159,10 @@ document.addEventListener("DOMContentLoaded", function () {{
             const ids = [
                 "customer_name",
                 "customer_email",
+                "customer_country_code",
                 "customer_phone",
                 "recipient_name",
+                "recipient_country_code",
                 "recipient_phone",
                 "phrase_1",
                 "phrase_2",
@@ -2204,8 +2208,10 @@ document.addEventListener("DOMContentLoaded", function () {{
         const selectors = [
             "#customer_name",
             "#customer_email",
+            "#customer_country_code",
             "#customer_phone",
             "#recipient_name",
+            "#recipient_country_code",
             "#recipient_phone",
             "#phrase_1",
             "#phrase_2",
@@ -2253,6 +2259,68 @@ document.addEventListener("DOMContentLoaded", function () {{
     if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
     if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
 
+    function updatePhotoUI(inputId, file) {{
+        const preview = document.getElementById("preview_" + inputId);
+        const placeholder = document.getElementById("placeholder_" + inputId);
+        const status = document.getElementById("status_" + inputId);
+
+        if (!file) {{
+            if (preview) {{
+                preview.src = "";
+                preview.style.display = "none";
+            }}
+            if (placeholder) {{
+                placeholder.style.display = "block";
+            }}
+            if (status) {{
+                status.innerText = "Aún no has elegido esta foto.";
+            }}
+            return;
+        }}
+
+        const url = URL.createObjectURL(file);
+
+        if (preview) {{
+            preview.src = url;
+            preview.style.display = "block";
+        }}
+
+        if (placeholder) {{
+            placeholder.style.display = "none";
+        }}
+
+        if (status) {{
+            status.innerText = "Foto elegida correctamente.";
+        }}
+    }}
+
+    function bindPreview(inputId) {{
+        const fileInput = document.getElementById(inputId);
+        if (!fileInput) return;
+
+        fileInput.addEventListener("change", function () {{
+            clearError();
+
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {{
+                updatePhotoUI(inputId, null);
+                return;
+            }}
+
+            if (!(file.type || "").startsWith("image/")) {{
+                fileInput.value = "";
+                updatePhotoUI(inputId, null);
+                showError("Una de las fotos no parece una imagen válida.");
+                return;
+            }}
+
+            updatePhotoUI(inputId, file);
+            saveFormState();
+        }});
+    }}
+
+    ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
+
     function allPhotosPresent() {{
         const ids = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
         for (const id of ids) {{
@@ -2271,12 +2339,56 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
 
         if (!form.checkValidity()) {{
-            showError("Revisa los campos.");
+            showError("Revisa los campos. Falta información.");
+            return false;
+        }}
+
+        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
+        if (!messageType) {{
+            showError("Elige la emoción que quieres dejar.");
             return false;
         }}
 
         if (!allPhotosPresent()) {{
             showError("Necesitas elegir las 6 fotos.");
+            return false;
+        }}
+
+        if (manualRadio && manualRadio.checked) {{
+            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
+            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
+            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
+
+            if (!phrase1 || !phrase2 || !phrase3) {{
+                showError("Escribe tus 3 frases.");
+                return false;
+            }}
+        }}
+
+        const deliveryDate = document.getElementById("delivery_date")?.value || "";
+        const deliveryTime = document.getElementById("delivery_time")?.value || "";
+
+        if (!deliveryDate || !deliveryTime) {{
+            showError("Elige la fecha y la hora de entrega.");
+            return false;
+        }}
+
+        const deliveryLocal = new Date(deliveryDate + "T" + deliveryTime);
+        const now = new Date();
+
+        if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {{
+            showError("La fecha de entrega no es válida.");
+            return false;
+        }}
+
+        if (deliveryLocal.getTime() <= now.getTime()) {{
+            showError("La fecha de entrega debe estar en el futuro.");
+            return false;
+        }}
+
+        const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
+        if (Number.isNaN(giftAmount) || giftAmount < 0) {{
+            showError("El importe no es válido.");
             return false;
         }}
 
@@ -2306,7 +2418,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         try {{
             localStorage.removeItem(STORAGE_KEY);
         }} catch (err) {{
-            console.error(err);
+            console.error("localStorage remove error", err);
         }}
     }});
 
