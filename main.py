@@ -3072,6 +3072,21 @@ def resumen(order_id: str):
             <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
                 {soft_line}
             </div>
+        <div style="margin-top:34px;display:grid;gap:12px;max-width:420px;margin-left:auto;margin-right:auto;">
+            <a
+            href="/crear"
+            style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;font-size:15px;"
+            >
+            Crear otra ETERNA
+            </a>
+
+            <a
+            href="/"
+            style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:rgba(255,255,255,0.10);color:white;text-decoration:none;font-weight:bold;font-size:15px;border:1px solid rgba(255,255,255,0.10);"
+            >
+        Volver al inicio
+    </a>
+</div>    
         </div>
     </body>
     </html>
