@@ -3042,6 +3042,22 @@ def resumen(order_id: str):
 
     refresh = '<meta http-equiv="refresh" content="8">' if not delivery_sent_flag else ""
 
+    preload_data = {
+        "customer_name": order.get("sender_name") or "",
+        "customer_email": order.get("sender_email") or "",
+        "customer_phone": order.get("sender_phone") or "",
+        "recipient_name": order.get("recipient_name") or "",
+        "recipient_phone": order.get("recipient_phone") or "",
+        "message_type": order.get("message_type") or "",
+        "phrase_mode": order.get("phrase_mode") or "auto",
+        "phrase_1": order.get("phrase_1") or "",
+        "phrase_2": order.get("phrase_2") or "",
+        "phrase_3": order.get("phrase_3") or "",
+        "gift_amount": str(order.get("gift_amount") or "0"),
+    }
+
+    preload_json = html.escape(json.dumps(preload_data), quote=True)
+
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
@@ -3072,22 +3088,44 @@ def resumen(order_id: str):
             <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
                 {soft_line}
             </div>
-        <div style="margin-top:34px;display:grid;gap:12px;max-width:420px;margin-left:auto;margin-right:auto;">
-            <a
-            href="/crear"
-            style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;font-size:15px;"
-            >
-            Crear otra ETERNA
-            </a>
 
-            <a
-            href="/"
-            style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:rgba(255,255,255,0.10);color:white;text-decoration:none;font-weight:bold;font-size:15px;border:1px solid rgba(255,255,255,0.10);"
-            >
-        Volver al inicio
-    </a>
-</div>    
+            <div style="margin-top:34px;display:grid;gap:12px;max-width:420px;margin-left:auto;margin-right:auto;">
+                <a
+                    href="#"
+                    id="createAgainBtn"
+                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;font-size:15px;"
+                >
+                    Crear otra ETERNA
+                </a>
+
+                <a
+                    href="/"
+                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:rgba(255,255,255,0.10);color:white;text-decoration:none;font-weight:bold;font-size:15px;border:1px solid rgba(255,255,255,0.10);"
+                >
+                    Volver al inicio
+                </a>
+            </div>
         </div>
+
+        <script>
+            const STORAGE_KEY = "eterna_create_form_v3";
+            const preloadData = JSON.parse("{preload_json}");
+            const btn = document.getElementById("createAgainBtn");
+
+            if (btn) {{
+                btn.addEventListener("click", function (e) {{
+                    e.preventDefault();
+
+                    try {{
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(preloadData));
+                    }} catch (err) {{
+                        console.error("preload eterna error", err);
+                    }}
+
+                    window.location.href = "/crear";
+                }});
+            }}
+        </script>
     </body>
     </html>
     """)
@@ -3786,6 +3824,9 @@ def maybe_finalize_cashout(order: dict) -> dict:
         )
         return {"status": "completed"}
 
+    if bool(order.get("gift_refunded")):
+        return {"status": "gift_refunded"}
+
     if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
         return {"status": "completed"}
 
@@ -3805,6 +3846,9 @@ def maybe_finalize_cashout(order: dict) -> dict:
         if normalized_status == "onboarding_not_ready":
             return {"status": "pending_onboarding", "transfer_result": result}
 
+        if normalized_status == "gift_already_refunded":
+            return {"status": "gift_refunded", "transfer_result": result}
+
         return {"status": normalized_status or "pending_onboarding", "transfer_result": result}
 
     return {"status": "pending_onboarding"}
@@ -3820,6 +3864,10 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
     if not bool(order.get("experience_started")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
+    # IMPORTANTE:
+    # cobrar NO depende de sender pack, reaction_uploaded ni eterna_completed
+    # si el usuario ya terminó de vivir la experiencia o entra con force_cashout,
+    # le dejamos seguir con su cobro aunque la reacción siga subiendo en segundo plano
     if int(force_cashout or 0) == 1 and not bool(order.get("experience_completed")):
         update_order(
             order["id"],
@@ -3830,60 +3878,10 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         order = get_order_by_id(order["id"])
 
     cashout_result = maybe_finalize_cashout(order)
-    order = maybe_mark_eterna_completed(order["id"])
 
-    if not bool(order.get("experience_completed")):
-        return HTMLResponse(f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta http-equiv="refresh" content="4">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                * {{ box-sizing: border-box; }}
-                html, body {{ margin: 0; min-height: 100%; background: #000; }}
-                body {{
-                    min-height: 100vh;
-                    background:
-                        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                        linear-gradient(180deg, #050505 0%, #000000 100%);
-                    color: white;
-                    font-family: Arial, sans-serif;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    text-align: center;
-                    padding: 24px;
-                }}
-                .wrap {{
-                    width: 100%;
-                    max-width: 720px;
-                    margin: 0 auto;
-                }}
-                h1 {{
-                    margin: 0 0 18px 0;
-                    font-size: 42px;
-                    line-height: 1.2;
-                }}
-                .soft {{
-                    font-size: 18px;
-                    line-height: 1.8;
-                    color: rgba(255,255,255,0.62);
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="wrap">
-                <h1>Un instante…</h1>
-                <div class="soft">
-                    Todo está terminando de colocarse.
-                </div>
-            </div>
-        </body>
-        </html>
-        """)
+    # esto solo actualiza estado interno de ETERNA
+    # NO debe bloquear el cobro
+    order = maybe_mark_eterna_completed(order["id"])
 
     cashout_status = compute_cashout_status(order)
     maybe_status = (cashout_result or {}).get("status")
@@ -3894,6 +3892,8 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         cashout_status = "completed"
     elif maybe_status == "pending_onboarding" and cashout_status not in {"completed", "processing"}:
         cashout_status = "pending"
+    elif maybe_status == "gift_refunded":
+        cashout_status = "gift_refunded"
 
     gift_amount_display = format_amount_display(order.get("gift_amount") or 0)
     gift_amount_value = float(order.get("gift_amount") or 0)
@@ -3904,6 +3904,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
         action_html = f'''
             <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a verlo</a>
         '''
+        soft_copy = "No había importe económico asociado a este regalo."
     else:
         if cashout_status == "completed":
             title = "Tu regalo ya está en camino"
@@ -3911,18 +3912,31 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
             action_html = f'''
                 <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Ver mi vídeo</a>
             '''
+            soft_copy = "Tu cobro ya está resuelto."
         elif cashout_status == "processing":
             title = "Estamos enviando tu regalo"
             subtitle = f"Importe: {gift_amount_display}"
             action_html = f'''
                 <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Ver mi vídeo</a>
             '''
+            soft_copy = "Tu cobro está en proceso."
+        elif cashout_status == "gift_refunded":
+            title = "Este regalo ya no está disponible"
+            subtitle = "El importe económico ya no puede cobrarse."
+            action_html = f'''
+                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Ver mi vídeo</a>
+            '''
+            soft_copy = "La experiencia sigue siendo tuya."
         else:
             title = "Tu regalo te espera"
             subtitle = f"Puedes recibir {gift_amount_display}"
             action_html = f'''
                 <a class="btn" href="/connect/onboarding/{safe_attr(recipient_token)}">Cobrar ahora</a>
             '''
+            soft_copy = (
+                "Tu cobro es independiente del sender pack. "
+                "Aunque la emoción siga terminando de guardarse, puedes cobrar igualmente."
+            )
 
     refresh = '<meta http-equiv="refresh" content="6">' if cashout_status in {"pending", "processing", "ready_to_send"} else ""
 
@@ -4002,7 +4016,7 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
             </div>
 
             <div class="soft">
-                Lo importante ya pasó.
+                {safe_text(soft_copy)}
             </div>
         </div>
     </body>
