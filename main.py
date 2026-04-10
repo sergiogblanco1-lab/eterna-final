@@ -3,6 +3,7 @@ print("🔥 WEBHOOK + CALLBACK + EXPERIENCE LOCK + REACTION SAVE 🔥")
 print("🔥 FINAL UX LOCKED + CASHOUT HARDENED + SENDER PACK READY 🔥")
 print("🔥 REACTION RETRY + ETERNA COMPLETE SAFE VERSION 🔥")
 print("🔥 SCHEDULED DELIVERY LOCKED VERSION 🔥")
+print("🔥 DELIVERY WORKER REAL VERSION 🔥")
 
 import html
 import json
@@ -12,6 +13,8 @@ import secrets
 import sqlite3
 import traceback
 import uuid
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -103,6 +106,11 @@ PHOTO_FOLDER = Path("uploads")
 PHOTO_FOLDER.mkdir(parents=True, exist_ok=True)
 
 DB_PATH = DATA_FOLDER / "eterna.db"
+
+DELIVERY_WORKER_INTERVAL_SECONDS = int(os.getenv("DELIVERY_WORKER_INTERVAL_SECONDS", "15"))
+DELIVERY_WORKER_ENABLED = os.getenv("DELIVERY_WORKER_ENABLED", "1").strip() != "0"
+DELIVERY_WORKER_STARTED = False
+DELIVERY_WORKER_LOCK = threading.Lock()
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
@@ -1061,6 +1069,82 @@ def try_send_sender_sms(order: dict) -> dict:
         sender_sms_error=result["error"],
     )
     return {"ok": False, "sid": None, "already_sent": False, "error": result["error"]}
+
+
+# =========================================================
+# DELIVERY WORKER
+# =========================================================
+
+def list_pending_scheduled_deliveries():
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE
+            paid = 1
+            AND COALESCE(delivery_sent, 0) = 0
+            AND COALESCE(experience_video_url, '') <> ''
+        ORDER BY created_at ASC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    return [r["id"] for r in rows]
+
+
+def process_all_due_scheduled_deliveries() -> list[dict]:
+    results = []
+    for order_id in list_pending_scheduled_deliveries():
+        try:
+            result = process_scheduled_recipient_delivery(order_id)
+            print("📦 Worker delivery:", order_id, result)
+            results.append({
+                "order_id": order_id,
+                "result": result,
+            })
+        except Exception as e:
+            log_error("delivery_worker_process", e)
+            results.append({
+                "order_id": order_id,
+                "result": {"ok": False, "reason": str(e)},
+            })
+    return results
+
+
+def delivery_worker_loop():
+    print("🚀 DELIVERY WORKER STARTED")
+    while True:
+        try:
+            process_all_due_scheduled_deliveries()
+        except Exception as e:
+            log_error("delivery_worker_loop", e)
+        time.sleep(max(5, DELIVERY_WORKER_INTERVAL_SECONDS))
+
+
+def ensure_delivery_worker_started():
+    global DELIVERY_WORKER_STARTED
+
+    if not DELIVERY_WORKER_ENABLED:
+        print("⏸ DELIVERY WORKER DISABLED")
+        return
+
+    with DELIVERY_WORKER_LOCK:
+        if DELIVERY_WORKER_STARTED:
+            return
+
+        thread = threading.Thread(
+            target=delivery_worker_loop,
+            daemon=True,
+            name="eterna-delivery-worker",
+        )
+        thread.start()
+        DELIVERY_WORKER_STARTED = True
+        print("✅ DELIVERY WORKER THREAD LANZADO")
+
+
+@app.on_event("startup")
+def startup_event():
+    ensure_delivery_worker_started()
 
 
 # =========================================================
@@ -2554,7 +2638,9 @@ async def crear_post(
         photo5=photo5,
         photo6=photo6,
     )
-    # =========================================================
+
+
+# =========================================================
 # RECIPIENT ENTRY
 # =========================================================
 
@@ -2702,6 +2788,7 @@ def pedido(recipient_token: str):
     </body>
     </html>
     """)
+
 
 # =========================================================
 # CHECKOUT / WEBHOOK / CALLBACK
@@ -3033,6 +3120,7 @@ def start_experience(recipient_token: str = Form(...)):
 
     return JSONResponse({"status": "ok"})
 
+
 # =========================================================
 # EXPERIENCE
 # =========================================================
@@ -3245,7 +3333,7 @@ async function loadPendingReaction() {{
     const blob = await new Promise((resolve, reject) => {{
         const tx = db.transaction("reactions", "readonly");
         const req = tx.objectStore("reactions").get(recipientToken);
-        req.onsuccess = () => resolve(req.result || null);
+         req.onsuccess = () => resolve(req.result || null);
         req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
     }});
     db.close();
@@ -3460,6 +3548,50 @@ video.addEventListener("ended", finishExperience);
 </body>
 </html>
 """)
+
+
+# =========================================================
+# EXPERIENCE FINALIZE + REACTION STATUS
+# =========================================================
+
+@app.post("/finalizar-experiencia/{recipient_token}")
+def finalizar_experiencia(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="Pedido no pagado")
+
+    update_order(
+        order["id"],
+        experience_completed=1,
+        delivered_to_recipient=1,
+        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
+
+    updated = maybe_mark_eterna_completed(order["id"])
+
+    return JSONResponse({
+        "status": "ok",
+        "experience_completed": bool(updated.get("experience_completed")),
+        "reaction_uploaded": bool(updated.get("reaction_uploaded")),
+        "reaction_exists": reaction_exists(updated),
+        "eterna_completed": bool(updated.get("eterna_completed")),
+    })
+
+
+@app.get("/reaction-upload-status/{recipient_token}")
+def reaction_upload_status(recipient_token: str):
+    order = maybe_mark_eterna_completed(get_order_by_recipient_token_or_404(recipient_token)["id"])
+
+    return JSONResponse({
+        "status": "ok",
+        "reaction_uploaded": bool(order.get("reaction_uploaded")),
+        "reaction_exists": reaction_exists(order),
+        "reaction_upload_pending": bool(order.get("reaction_upload_pending")),
+        "reaction_upload_error": order.get("reaction_upload_error"),
+        "experience_completed": bool(order.get("experience_completed")),
+        "eterna_completed": bool(order.get("eterna_completed")),
+    })
 
 
 # =========================================================
@@ -4004,7 +4136,7 @@ def mi_video(recipient_token: str):
     </head>
     <body>
         <div class="wrap">
-            <h1>Tu momento</h1>
+            <h1>Tu vídeo</h1>
 
             <div class="grid">
                 <div class="card">
@@ -4217,7 +4349,7 @@ def sender_pack(sender_token: str):
             }}
             .wrap {{ width: 100%; max-width: 920px; margin: 0 auto; }}
             .hero {{
-                text-align: center;
+               text-align: center;
                 margin-bottom: 26px;
             }}
             h1 {{
@@ -4422,6 +4554,33 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
         "sender_sms_attempts": updated.get("sender_sms_attempts"),
         "sender_sms_error": updated.get("sender_sms_error"),
         "eterna_completed": bool(updated.get("eterna_completed")),
+    })
+
+
+@app.get("/admin/delivery-worker-status")
+def admin_delivery_worker_status(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    return JSONResponse({
+        "delivery_worker_enabled": DELIVERY_WORKER_ENABLED,
+        "delivery_worker_started": DELIVERY_WORKER_STARTED,
+        "delivery_worker_interval_seconds": DELIVERY_WORKER_INTERVAL_SECONDS,
+        "pending_order_ids": list_pending_scheduled_deliveries(),
+    })
+
+
+@app.get("/admin/process-all-due-deliveries")
+def admin_process_all_due_deliveries(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    results = process_all_due_scheduled_deliveries()
+
+    return JSONResponse({
+        "ok": True,
+        "count": len(results),
+        "results": results,
     })
 
 
