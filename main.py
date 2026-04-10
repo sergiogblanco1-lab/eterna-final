@@ -1802,7 +1802,37 @@ def render_create_form() -> str:
                         <div class="section-title">Tus datos</div>
                         <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
                         <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
-                        <input name="customer_phone" id="customer_phone" placeholder="Tu teléfono (ej. 674123456)" required>
+                    <div style="display:flex;gap:10px;align-items:center;">
+    <select name="customer_country_code" id="customer_country_code" style="
+        padding:15px 16px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,0.10);
+        background:rgba(255,255,255,0.05);
+        color:white;
+        outline:none;
+        font-size:15px;
+        min-width:120px;
+    ">
+        <option value="+34">🇪🇸 +34</option>
+        <option value="+1">🇺🇸 +1</option>
+        <option value="+44">🇬🇧 +44</option>
+        <option value="+33">🇫🇷 +33</option>
+        <option value="+49">🇩🇪 +49</option>
+        <option value="+39">🇮🇹 +39</option>
+        <option value="+52">🇲🇽 +52</option>
+        <option value="+54">🇦🇷 +54</option>
+        <option value="+57">🇨🇴 +57</option>
+        <option value="+351">🇵🇹 +351</option>
+    </select>
+
+    <input
+        name="customer_phone"
+        id="customer_phone"
+        placeholder="Tu teléfono"
+        required
+        style="flex:1;"
+    >
+</div>    
                     </div>
 
                     <div class="section s2">
