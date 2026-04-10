@@ -2096,7 +2096,7 @@ def render_create_form() -> str:
         </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function () {{
 
     const STORAGE_KEY = "eterna_create_form_v3";
 
@@ -2109,26 +2109,24 @@ document.addEventListener("DOMContentLoaded", function () {
     const manualRadio = document.getElementById("mode_manual");
     const manualPhrases = document.getElementById("manualPhrases");
 
-    function showError(message) {
+    function showError(message) {{
         if (!errorBox) return;
         errorBox.style.display = "block";
         errorBox.innerText = message || "Ha ocurrido un error.";
-    }
+    }}
 
-    function clearError() {
+    function clearError() {{
         if (!errorBox) return;
         errorBox.style.display = "none";
         errorBox.innerText = "";
-    }
+    }}
 
-    function getPersistableData() {
-        return {
+    function getPersistableData() {{
+        return {{
             customer_name: document.getElementById("customer_name")?.value || "",
             customer_email: document.getElementById("customer_email")?.value || "",
-            customer_country_code: document.getElementById("customer_country_code")?.value || "+34",
             customer_phone: document.getElementById("customer_phone")?.value || "",
             recipient_name: document.getElementById("recipient_name")?.value || "",
-            recipient_country_code: document.getElementById("recipient_country_code")?.value || "+34",
             recipient_phone: document.getElementById("recipient_phone")?.value || "",
             message_type: document.getElementById("messageType")?.value || "",
             phrase_mode: manualRadio && manualRadio.checked ? "manual" : "auto",
@@ -2138,19 +2136,19 @@ document.addEventListener("DOMContentLoaded", function () {
             delivery_date: document.getElementById("delivery_date")?.value || "",
             delivery_time: document.getElementById("delivery_time")?.value || "",
             gift_amount: document.getElementById("gift_amount")?.value || "0"
-        };
-    }
+        }};
+    }}
 
-    function saveFormState() {
-        try {
+    function saveFormState() {{
+        try {{
             localStorage.setItem(STORAGE_KEY, JSON.stringify(getPersistableData()));
-        } catch (e) {
+        }} catch (e) {{
             console.error("saveFormState error", e);
-        }
-    }
+        }}
+    }}
 
-    function restoreFormState() {
-        try {
+    function restoreFormState() {{
+        try {{
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return;
 
@@ -2159,10 +2157,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const ids = [
                 "customer_name",
                 "customer_email",
-                "customer_country_code",
                 "customer_phone",
                 "recipient_name",
-                "recipient_country_code",
                 "recipient_phone",
                 "phrase_1",
                 "phrase_2",
@@ -2172,46 +2168,44 @@ document.addEventListener("DOMContentLoaded", function () {
                 "gift_amount"
             ];
 
-            ids.forEach((id) => {
+            ids.forEach((id) => {{
                 const el = document.getElementById(id);
-                if (el && typeof data[id] !== "undefined") {
+                if (el && typeof data[id] !== "undefined") {{
                     el.value = data[id];
-                }
-            });
+                }}
+            }});
 
-            if (data.phrase_mode === "manual") {
+            if (data.phrase_mode === "manual") {{
                 if (manualRadio) manualRadio.checked = true;
                 if (autoRadio) autoRadio.checked = false;
-            } else {
+            }} else {{
                 if (autoRadio) autoRadio.checked = true;
                 if (manualRadio) manualRadio.checked = false;
-            }
+            }}
 
             updatePhraseMode();
 
-            if (data.message_type && messageTypeInput) {
+            if (data.message_type && messageTypeInput) {{
                 messageTypeInput.value = data.message_type;
-                cards.forEach((card) => {
-                    if ((card.dataset.type || "") === data.message_type) {
+                cards.forEach((card) => {{
+                    if ((card.dataset.type || "") === data.message_type) {{
                         card.classList.add("selected");
-                    } else {
+                    }} else {{
                         card.classList.remove("selected");
-                    }
-                });
-            }
-        } catch (e) {
+                    }}
+                }});
+            }}
+        }} catch (e) {{
             console.error("restoreFormState error", e);
-        }
-    }
+        }}
+    }}
 
-    function bindAutosave() {
+    function bindAutosave() {{
         const selectors = [
             "#customer_name",
             "#customer_email",
-            "#customer_country_code",
             "#customer_phone",
             "#recipient_name",
-            "#recipient_country_code",
             "#recipient_phone",
             "#phrase_1",
             "#phrase_2",
@@ -2223,178 +2217,72 @@ document.addEventListener("DOMContentLoaded", function () {
             "#mode_manual"
         ];
 
-        selectors.forEach((selector) => {
+        selectors.forEach((selector) => {{
             const el = document.querySelector(selector);
             if (!el) return;
 
             el.addEventListener("input", saveFormState);
             el.addEventListener("change", saveFormState);
-        });
-    }
+        }});
+    }}
 
-    function updatePhraseMode() {
+    function updatePhraseMode() {{
         if (!manualPhrases) return;
 
-        if (manualRadio && manualRadio.checked) {
+        if (manualRadio && manualRadio.checked) {{
             manualPhrases.classList.remove("hidden");
-        } else {
+        }} else {{
             manualPhrases.classList.add("hidden");
-        }
+        }}
 
         saveFormState();
-    }
+    }}
 
-    cards.forEach((card) => {
-        card.addEventListener("click", function () {
+    cards.forEach((card) => {{
+        card.addEventListener("click", function () {{
             cards.forEach((c) => c.classList.remove("selected"));
             card.classList.add("selected");
-            if (messageTypeInput) {
+            if (messageTypeInput) {{
                 messageTypeInput.value = card.dataset.type || "";
-            }
+            }}
             saveFormState();
             clearError();
-        });
-    });
+        }});
+    }});
 
     if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
     if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
 
-    function updatePhotoUI(inputId, file) {
-        const preview = document.getElementById("preview_" + inputId);
-        const placeholder = document.getElementById("placeholder_" + inputId);
-        const status = document.getElementById("status_" + inputId);
-
-        if (!file) {
-            if (preview) {
-                preview.src = "";
-                preview.style.display = "none";
-            }
-            if (placeholder) {
-                placeholder.style.display = "block";
-            }
-            if (status) {
-                status.innerText = "Aún no has elegido esta foto.";
-            }
-            return;
-        }
-
-        const url = URL.createObjectURL(file);
-
-        if (preview) {
-            preview.src = url;
-            preview.style.display = "block";
-        }
-
-        if (placeholder) {
-            placeholder.style.display = "none";
-        }
-
-        if (status) {
-            status.innerText = "Foto elegida correctamente.";
-        }
-    }
-
-    function bindPreview(inputId) {
-        const fileInput = document.getElementById(inputId);
-        if (!fileInput) return;
-
-        fileInput.addEventListener("change", function () {
-            clearError();
-
-            const file = fileInput.files && fileInput.files[0];
-            if (!file) {
-                updatePhotoUI(inputId, null);
-                return;
-            }
-
-            if (!(file.type || "").startsWith("image/")) {
-                fileInput.value = "";
-                updatePhotoUI(inputId, null);
-                showError("Una de las fotos no parece una imagen válida.");
-                return;
-            }
-
-            updatePhotoUI(inputId, file);
-            saveFormState();
-        });
-    }
-
-    ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
-
-    function allPhotosPresent() {
+    function allPhotosPresent() {{
         const ids = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
-        for (const id of ids) {
+        for (const id of ids) {{
             const input = document.getElementById(id);
-            if (!input || !input.files || input.files.length === 0) {
+            if (!input || !input.files || input.files.length === 0) {{
                 return false;
-            }
-        }
+            }}
+        }}
         return true;
-    }
+    }}
 
-    function validateBeforeSubmit() {
-        if (!form) {
+    function validateBeforeSubmit() {{
+        if (!form) {{
             showError("Formulario no disponible.");
             return false;
-        }
+        }}
 
-        if (!form.checkValidity()) {
-            showError("Revisa los campos. Falta información.");
+        if (!form.checkValidity()) {{
+            showError("Revisa los campos.");
             return false;
-        }
+        }}
 
-        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
-        if (!messageType) {
-            showError("Elige la emoción que quieres dejar.");
-            return false;
-        }
-
-        if (!allPhotosPresent()) {
+        if (!allPhotosPresent()) {{
             showError("Necesitas elegir las 6 fotos.");
             return false;
-        }
-
-        if (manualRadio && manualRadio.checked) {
-            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
-            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
-            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
-
-            if (!phrase1 || !phrase2 || !phrase3) {
-                showError("Escribe tus 3 frases.");
-                return false;
-            }
-        }
-
-        const deliveryDate = document.getElementById("delivery_date")?.value || "";
-        const deliveryTime = document.getElementById("delivery_time")?.value || "";
-
-        if (!deliveryDate || !deliveryTime) {
-            showError("Elige la fecha y la hora de entrega.");
-            return false;
-        }
-
-        const deliveryLocal = new Date(deliveryDate + "T" + deliveryTime);
-        const now = new Date();
-
-        if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {
-            showError("La fecha de entrega no es válida.");
-            return false;
-        }
-
-        if (deliveryLocal.getTime() <= now.getTime()) {
-            showError("La fecha de entrega debe estar en el futuro.");
-            return false;
-        }
-
-        const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
-        if (Number.isNaN(giftAmount) || giftAmount < 0) {
-            showError("El importe no es válido.");
-            return false;
-        }
+        }}
 
         clearError();
         return true;
-    }
+    }}
 
     if (!form) return;
 
@@ -2402,27 +2290,27 @@ document.addEventListener("DOMContentLoaded", function () {
     bindAutosave();
     updatePhraseMode();
 
-    form.addEventListener("submit", function (e) {
-        if (!validateBeforeSubmit()) {
+    form.addEventListener("submit", function (e) {{
+        if (!validateBeforeSubmit()) {{
             e.preventDefault();
             return;
-        }
+        }}
 
         clearError();
 
-        if (button) {
+        if (button) {{
             button.disabled = true;
             button.innerText = "Entrando a pago...";
-        }
+        }}
 
-        try {
+        try {{
             localStorage.removeItem(STORAGE_KEY);
-        } catch (err) {
-            console.error("localStorage remove error", err);
-        }
-    });
+        }} catch (err) {{
+            console.error(err);
+        }}
+    }});
 
-});
+}});
 </script>
     </body>
     </html>
