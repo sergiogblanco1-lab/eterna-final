@@ -1117,25 +1117,40 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     attempts = int(order.get("sender_sms_attempts") or 0) + 1
-    result = send_sms(order.get("sender_phone", ""), build_sender_ready_message(order))
 
-    if result["ok"]:
+    message = build_sender_ready_message(order)
+
+    result = send_sms(order.get("sender_phone", ""), message)
+
+    if result.get("ok"):
         update_order(
             order["id"],
             sender_sms_sent_at=now_iso(),
-            sender_sms_sid=result["sid"],
+            sender_sms_sid=result.get("sid"),
             sender_sms_attempts=attempts,
             sender_sms_error=None,
             sender_notified=1,
         )
-        return {"ok": True, "sid": result["sid"], "already_sent": False, "error": None}
+        return {
+            "ok": True,
+            "sid": result.get("sid"),
+            "already_sent": False,
+            "error": None,
+        }
 
     update_order(
         order["id"],
         sender_sms_attempts=attempts,
-        sender_sms_error=result["error"],
+        sender_sms_error=result.get("error") or "sms_error",
+        sender_notified=0,
     )
-    return {"ok": False, "sid": None, "already_sent": False, "error": result["error"]}
+
+    return {
+        "ok": False,
+        "sid": None,
+        "already_sent": False,
+        "error": result.get("error") or "sms_error",
+    }
 
 
 # =========================================================
@@ -4187,21 +4202,44 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
             reaction_upload_error=None,
         )
 
-        ext = Path(file.filename or "reaction.webm").suffix.lower() or ".webm"
-        if ext not in {".webm", ".mp4"}:
-            ext = ".webm"
+        original_filename = (file.filename or "reaction.webm").strip()
+        original_content_type = (file.content_type or "").strip().lower()
 
-        content_type = (file.content_type or "").lower().strip()
-        if content_type and content_type not in ALLOWED_VIDEO_TYPES:
+        print("🎥 upload_reaction filename:", original_filename)
+        print("🎥 upload_reaction content_type:", original_content_type)
+
+        ext = Path(original_filename).suffix.lower().strip()
+        if ext not in {".webm", ".mp4", ".mov", ".m4v", ".bin"}:
+            ext = ""
+
+        # Safari/iPhone puede mandar tipos raros o vacíos.
+        allowed_content_types = {
+            "",
+            "video/webm",
+            "video/mp4",
+            "video/quicktime",
+            "application/octet-stream",
+            "binary/octet-stream",
+        }
+
+        if original_content_type not in allowed_content_types:
             update_order(
                 order["id"],
                 reaction_upload_pending=0,
-                reaction_upload_error="Formato de vídeo no permitido",
+                reaction_upload_error=f"Formato de vídeo no permitido: {original_content_type}",
                 eterna_completed=0,
             )
-            raise HTTPException(status_code=400, detail="Formato de vídeo no permitido")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Formato de vídeo no permitido: {original_content_type}"
+            )
 
-        extension = ext.replace(".", "")
+        # Normalizamos extensión final
+        if ext in {".mp4", ".mov", ".m4v"}:
+            extension = "mp4"
+        else:
+            extension = "webm"
+
         save_path = reaction_video_path(order["id"], extension)
 
         total_size = 0
@@ -4212,11 +4250,13 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
                     break
 
                 total_size += len(chunk)
+
                 if total_size > MAX_VIDEO_SIZE:
                     try:
                         f.close()
                     except Exception:
                         pass
+
                     if os.path.exists(save_path):
                         os.remove(save_path)
 
@@ -4230,7 +4270,10 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
 
                 f.write(chunk)
 
-        if not os.path.exists(save_path) or os.path.getsize(save_path) == 0:
+        print("🎥 upload_reaction total_size:", total_size)
+        print("🎥 upload_reaction save_path:", save_path)
+
+        if total_size <= 0 or not os.path.exists(save_path) or os.path.getsize(save_path) <= 0:
             update_order(
                 order["id"],
                 reaction_upload_pending=0,
