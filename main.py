@@ -7,6 +7,7 @@ print("🔥 DELIVERY WORKER REAL VERSION 🔥")
 print("🔥 GLOBAL PHONE READY VERSION 🔥")
 print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
+print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS RETRY VERSION 🔥")
 
 import html
 import json
@@ -75,10 +76,7 @@ CURRENCY = os.getenv("ETERNA_CURRENCY", "eur").strip().lower()
 GIFT_COMMISSION_RATE = float(os.getenv("GIFT_COMMISSION_RATE", "0.05"))
 FIXED_PLATFORM_FEE = float(os.getenv("ETERNA_FIXED_FEE", "2"))
 
-# 🔥 ESTA ES LA REGLA REAL:
-# +2€ SOLO SI EL CLIENTE ELIGE PROGRAMAR LA ENTREGA DEL VIDEO/EXPERIENCIA
 SCHEDULED_DELIVERY_FEE = float(os.getenv("SCHEDULED_DELIVERY_FEE", "2"))
-
 GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
 
 R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "").strip()
@@ -119,6 +117,8 @@ DELIVERY_WORKER_INTERVAL_SECONDS = int(os.getenv("DELIVERY_WORKER_INTERVAL_SECON
 DELIVERY_WORKER_ENABLED = os.getenv("DELIVERY_WORKER_ENABLED", "1").strip() != "0"
 DELIVERY_WORKER_STARTED = False
 DELIVERY_WORKER_LOCK = threading.Lock()
+
+COOKIE_SECURE = PUBLIC_BASE_URL.startswith("https://")
 
 KNOWN_COUNTRY_CODES = [
     "+351",
@@ -280,6 +280,12 @@ def init_db():
         delivery_sent INTEGER NOT NULL DEFAULT 0,
         delivery_sent_at TEXT,
 
+        video_render_requested INTEGER NOT NULL DEFAULT 0,
+        video_render_requested_at TEXT,
+
+        recipient_session_token TEXT,
+        recipient_session_claimed_at TEXT,
+
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
 
@@ -314,7 +320,7 @@ def init_db():
     add_column_if_missing("orders", "stripe_payment_intent_id", "ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT")
     add_column_if_missing("orders", "stripe_connected_account_id", "ALTER TABLE orders ADD COLUMN stripe_connected_account_id TEXT")
     add_column_if_missing("orders", "stripe_transfer_id", "ALTER TABLE orders ADD COLUMN stripe_transfer_id TEXT")
-    add_column_if_missing("orders", "gift_refund_deadline_at", "ALTER TABLE orders ADD COLUMN gift_refund_deadline_at TEXT")
+    add_column_if_missing("orders", "gift_refund_deadline_at", "ALTER TABLE orders ADD COLUMN gift_refund_deadLINE_at TEXT".replace("DEADLINE", "deadline"))
     add_column_if_missing("orders", "gift_refunded", "ALTER TABLE orders ADD COLUMN gift_refunded INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "stripe_gift_refund_id", "ALTER TABLE orders ADD COLUMN stripe_gift_refund_id TEXT")
     add_column_if_missing("orders", "recipient_sms_sent_at", "ALTER TABLE orders ADD COLUMN recipient_sms_sent_at TEXT")
@@ -334,6 +340,10 @@ def init_db():
     add_column_if_missing("orders", "delivery_locked", "ALTER TABLE orders ADD COLUMN delivery_locked INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "delivery_sent", "ALTER TABLE orders ADD COLUMN delivery_sent INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "delivery_sent_at", "ALTER TABLE orders ADD COLUMN delivery_sent_at TEXT")
+    add_column_if_missing("orders", "video_render_requested", "ALTER TABLE orders ADD COLUMN video_render_requested INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "video_render_requested_at", "ALTER TABLE orders ADD COLUMN video_render_requested_at TEXT")
+    add_column_if_missing("orders", "recipient_session_token", "ALTER TABLE orders ADD COLUMN recipient_session_token TEXT")
+    add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
 
 
 init_db()
@@ -690,6 +700,9 @@ def delivery_is_unlocked(order: dict) -> bool:
 
 
 def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
+    if order.get("delivery_sent"):
+        return False, "delivery_already_sent"
+
     if not bool(order.get("paid")):
         return False, "order_not_paid"
 
@@ -994,6 +1007,17 @@ def send_sms(phone: str, message: str) -> dict:
 
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
+
+    if order.get("delivery_sent"):
+        return {
+            "ok": True,
+            "reason": "already_sent",
+            "delivery_sent": True,
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+        }
+
     allowed, reason = can_send_recipient_delivery(order)
 
     if not allowed:
@@ -1109,82 +1133,6 @@ def try_send_sender_sms(order: dict) -> dict:
 
 
 # =========================================================
-# DELIVERY WORKER
-# =========================================================
-
-def list_pending_scheduled_deliveries():
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id
-        FROM orders
-        WHERE
-            paid = 1
-            AND COALESCE(delivery_sent, 0) = 0
-            AND COALESCE(experience_video_url, '') <> ''
-        ORDER BY created_at ASC
-    """)
-    rows = cur.fetchall()
-    conn.close()
-    return [r["id"] for r in rows]
-
-
-def process_all_due_scheduled_deliveries() -> list[dict]:
-    results = []
-    for order_id in list_pending_scheduled_deliveries():
-        try:
-            result = process_scheduled_recipient_delivery(order_id)
-            print("📦 Worker delivery:", order_id, result)
-            results.append({
-                "order_id": order_id,
-                "result": result,
-            })
-        except Exception as e:
-            log_error("delivery_worker_process", e)
-            results.append({
-                "order_id": order_id,
-                "result": {"ok": False, "reason": str(e)},
-            })
-    return results
-
-
-def delivery_worker_loop():
-    print("🚀 DELIVERY WORKER STARTED")
-    while True:
-        try:
-            process_all_due_scheduled_deliveries()
-        except Exception as e:
-            log_error("delivery_worker_loop", e)
-        time.sleep(max(5, DELIVERY_WORKER_INTERVAL_SECONDS))
-
-
-def ensure_delivery_worker_started():
-    global DELIVERY_WORKER_STARTED
-
-    if not DELIVERY_WORKER_ENABLED:
-        print("⏸ DELIVERY WORKER DISABLED")
-        return
-
-    with DELIVERY_WORKER_LOCK:
-        if DELIVERY_WORKER_STARTED:
-            return
-
-        thread = threading.Thread(
-            target=delivery_worker_loop,
-            daemon=True,
-            name="eterna-delivery-worker",
-        )
-        thread.start()
-        DELIVERY_WORKER_STARTED = True
-        print("✅ DELIVERY WORKER THREAD LANZADO")
-
-
-@app.on_event("startup")
-def startup_event():
-    ensure_delivery_worker_started()
-
-
-# =========================================================
 # HELPERS EXTRA
 # =========================================================
 
@@ -1236,12 +1184,175 @@ def try_start_experience(order_id: str) -> str:
     if bool(order.get("experience_completed")):
         return "already_completed"
 
+    if bool(order.get("experience_started")):
+        return "already_started"
+
     update_order(
         order_id,
         experience_started=1,
         delivered_to_recipient=1,
     )
     return "started"
+
+
+def render_request_already_marked(order: dict) -> bool:
+    return bool(order.get("video_render_requested"))
+
+
+def mark_video_render_requested(order_id: str):
+    update_order(
+        order_id,
+        video_render_requested=1,
+        video_render_requested_at=now_iso(),
+    )
+
+
+def clear_video_render_requested(order_id: str):
+    update_order(
+        order_id,
+        video_render_requested=0,
+        video_render_requested_at=None,
+    )
+
+
+def recipient_cookie_name(recipient_token: str) -> str:
+    return f"eterna_recipient_session_{recipient_token}"
+
+
+def get_recipient_cookie_value(request: Request, recipient_token: str) -> str:
+    return (request.cookies.get(recipient_cookie_name(recipient_token)) or "").strip()
+
+
+def has_valid_recipient_session(order: dict, request: Request) -> bool:
+    expected = (order.get("recipient_session_token") or "").strip()
+    if not expected:
+        return False
+
+    got = get_recipient_cookie_value(request, order["recipient_token"])
+    if not got:
+        return False
+
+    try:
+        return secrets.compare_digest(expected, got)
+    except Exception:
+        return False
+
+
+def attach_recipient_session_if_needed(order: dict, request: Request, response) -> bool:
+    expected = (order.get("recipient_session_token") or "").strip()
+
+    if expected:
+        if has_valid_recipient_session(order, request):
+            return True
+        return False
+
+    new_session = new_token()
+
+    update_order(
+        order["id"],
+        recipient_session_token=new_session,
+        recipient_session_claimed_at=now_iso(),
+    )
+
+    response.set_cookie(
+        key=recipient_cookie_name(order["recipient_token"]),
+        value=new_session,
+        max_age=60 * 60 * 24 * 365 * 5,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        path="/",
+    )
+    return True
+
+
+def render_viral_block_page() -> HTMLResponse:
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ETERNA</title>
+        <style>
+            * { box-sizing: border-box; }
+            html, body { margin: 0; min-height: 100%; background: #000; }
+            body {
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 24px;
+            }
+            .wrap {
+                width: 100%;
+                max-width: 760px;
+                margin: 0 auto;
+            }
+            h1 {
+                margin: 0 0 18px 0;
+                font-size: 42px;
+                line-height: 1.2;
+            }
+            .main {
+                font-size: 22px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.88);
+            }
+            .soft {
+                margin-top: 24px;
+                font-size: 16px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.46);
+            }
+            .actions {
+                display: grid;
+                gap: 12px;
+                max-width: 420px;
+                margin: 34px auto 0 auto;
+            }
+            .btn {
+                display: block;
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                background: white;
+                color: black;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 15px;
+            }
+            .ghost {
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <h1>Esto no era para ti</h1>
+            <div class="main">
+                Alguien compartió contigo un acceso privado.<br>
+                Pero esta experiencia solo podía vivirse una vez, por quien iba dirigida.
+            </div>
+            <div class="soft">
+                Puedes crear algo igual de especial para otra persona.
+            </div>
+            <div class="actions">
+                <a class="btn" href="/crear">Crear una ETERNA</a>
+                <a class="btn ghost" href="/">Volver al inicio</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
 
 
 # =========================================================
@@ -2638,7 +2749,7 @@ async def create_order_and_redirect(
     """, (recipient_name, recipient_phone_norm, created_at))
     recipient_id = cur.lastrowid
 
-    placeholders = ", ".join(["?"] * 57)
+    placeholders = ", ".join(["?"] * 60)
 
     cur.execute(f"""
         INSERT INTO orders (
@@ -2658,6 +2769,8 @@ async def create_order_and_redirect(
             recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
             reaction_upload_pending, reaction_upload_error, eterna_completed,
             delivery_mode, scheduled_delivery_at, delivery_locked, delivery_sent, delivery_sent_at,
+            video_render_requested, video_render_requested_at,
+            recipient_session_token, recipient_session_claimed_at,
             created_at, updated_at
         )
         VALUES ({placeholders})
@@ -2678,6 +2791,8 @@ async def create_order_and_redirect(
         0, 0, None, None,
         0, None, 0,
         delivery_mode, scheduled_delivery_at, 1, 0, None,
+        0, None,
+        None, None,
         created_at, created_at
     ))
 
@@ -2717,12 +2832,17 @@ async def create_order_and_redirect(
             paid=1,
             stripe_payment_status="test_no_stripe",
             gift_refund_deadline_at=gift_refund_deadline_iso(),
+            delivery_locked=1,
         )
 
         try:
-            trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
-            print("⏳ Render aceptado por el video engine. Esperando callback.")
+            order = get_order_by_id(order_id)
+            if not render_request_already_marked(order) and not original_video_ready(order):
+                mark_video_render_requested(order_id)
+                trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
+                print("⏳ Render aceptado por el video engine. Esperando callback.")
         except Exception as e:
+            clear_video_render_requested(order_id)
             log_error("video engine test_no_stripe", e)
 
         return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
@@ -2826,11 +2946,125 @@ async def crear_post(
 
 
 # =========================================================
+# DELIVERY WORKER
+# =========================================================
+
+def list_pending_scheduled_deliveries():
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE
+            paid = 1
+            AND COALESCE(delivery_sent, 0) = 0
+            AND COALESCE(experience_video_url, '') <> ''
+        ORDER BY created_at ASC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    return [r["id"] for r in rows]
+
+
+def list_pending_sender_notifications():
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE
+            paid = 1
+            AND COALESCE(sender_sms_sent_at, '') = ''
+            AND COALESCE(reaction_uploaded, 0) = 1
+        ORDER BY created_at ASC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    return [r["id"] for r in rows]
+
+
+def process_all_due_scheduled_deliveries() -> list[dict]:
+    results = []
+    for order_id in list_pending_scheduled_deliveries():
+        try:
+            result = process_scheduled_recipient_delivery(order_id)
+            print("📦 Worker delivery:", order_id, result)
+            results.append({
+                "order_id": order_id,
+                "result": result,
+            })
+        except Exception as e:
+            log_error("delivery_worker_process", e)
+            results.append({
+                "order_id": order_id,
+                "result": {"ok": False, "reason": str(e)},
+            })
+    return results
+
+
+def process_all_due_sender_notifications() -> list[dict]:
+    results = []
+    for order_id in list_pending_sender_notifications():
+        try:
+            order = maybe_mark_eterna_completed(order_id)
+            result = try_send_sender_sms(order)
+            print("📩 Worker sender sms:", order_id, result)
+            results.append({
+                "order_id": order_id,
+                "result": result,
+            })
+        except Exception as e:
+            log_error("sender_worker_process", e)
+            results.append({
+                "order_id": order_id,
+                "result": {"ok": False, "reason": str(e)},
+            })
+    return results
+
+
+def delivery_worker_loop():
+    print("🚀 DELIVERY WORKER STARTED")
+    while True:
+        try:
+            process_all_due_scheduled_deliveries()
+            process_all_due_sender_notifications()
+        except Exception as e:
+            log_error("delivery_worker_loop", e)
+        time.sleep(max(5, DELIVERY_WORKER_INTERVAL_SECONDS))
+
+
+def ensure_delivery_worker_started():
+    global DELIVERY_WORKER_STARTED
+
+    if not DELIVERY_WORKER_ENABLED:
+        print("⏸ DELIVERY WORKER DISABLED")
+        return
+
+    with DELIVERY_WORKER_LOCK:
+        if DELIVERY_WORKER_STARTED:
+            return
+
+        thread = threading.Thread(
+            target=delivery_worker_loop,
+            daemon=True,
+            name="eterna-delivery-worker",
+        )
+        thread.start()
+        DELIVERY_WORKER_STARTED = True
+        print("✅ DELIVERY WORKER THREAD LANZADO")
+
+
+@app.on_event("startup")
+def startup_event():
+    ensure_delivery_worker_started()
+
+
+# =========================================================
 # RECIPIENT ENTRY
 # =========================================================
 
 @app.get("/pedido/{recipient_token}", response_class=HTMLResponse)
-def pedido(recipient_token: str):
+def pedido(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
@@ -2861,7 +3095,10 @@ def pedido(recipient_token: str):
         disabled = True
 
     elif bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+        response = RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+        if not attach_recipient_session_if_needed(order, request, response):
+            return render_viral_block_page()
+        return response
 
     else:
         title = "Hay algo para ti"
@@ -2879,7 +3116,7 @@ def pedido(recipient_token: str):
         else f'<div class="btn disabled">{safe_text(button_text)}</div>'
     )
 
-    return HTMLResponse(f"""
+    response = HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
@@ -2973,6 +3210,12 @@ def pedido(recipient_token: str):
     </body>
     </html>
     """)
+
+    if not disabled:
+        if not attach_recipient_session_if_needed(order, request, response):
+            return render_viral_block_page()
+
+    return response
 
 
 # =========================================================
@@ -3079,6 +3322,20 @@ async def stripe_webhook(request: Request):
 
         order = get_order_by_id(order_id)
 
+        if original_video_ready(order):
+            return {
+                "status": "ok",
+                "reason": "video_already_ready",
+                "order_id": order_id,
+            }
+
+        if render_request_already_marked(order):
+            return {
+                "status": "ok",
+                "reason": "render_already_requested",
+                "order_id": order_id,
+            }
+
         phrases = [
             (order.get("phrase_1") or "").strip(),
             (order.get("phrase_2") or "").strip(),
@@ -3086,13 +3343,15 @@ async def stripe_webhook(request: Request):
         ]
 
         try:
+            mark_video_render_requested(order_id)
             data = trigger_video_engine(order_id, phrases)
             print("✅ Video engine aceptó el trabajo:", data)
         except Exception as e:
+            clear_video_render_requested(order_id)
             log_error("webhook_video_engine", e)
             raise HTTPException(status_code=500, detail=f"video_engine_error: {e}")
 
-        return {"status": "ok"}
+        return {"status": "ok", "reason": "render_requested"}
 
     except Exception as e:
         log_error("webhook", e)
@@ -3142,8 +3401,22 @@ async def internal_video_ready(request: Request):
 
         existing_video = (order.get("experience_video_url") or "").strip()
 
-        if not existing_video:
-            update_order(order_id, experience_video_url=video_url)
+        if existing_video:
+            print("⚠️ Callback duplicado ignorado")
+            return JSONResponse({
+                "status": "ok",
+                "reason": "video_already_saved",
+                "order_id": order_id,
+                "video_url": existing_video,
+                "recipient_url": recipient_experience_url_from_order(order),
+                "sender_url": sender_pack_url_from_order(order),
+            })
+
+        update_order(
+            order_id,
+            experience_video_url=video_url,
+            video_render_requested=1,
+        )
 
         if not asset_exists(order_id, "rendered_video", video_url):
             insert_asset(
@@ -3345,12 +3618,13 @@ def resumen(order_id: str):
     </html>
     """)
 
-    # =========================================================
+
+# =========================================================
 # EXPERIENCE LOCK
 # =========================================================
 
 @app.post("/start-experience")
-def start_experience(recipient_token: str = Form(...)):
+def start_experience(request: Request, recipient_token: str = Form(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
@@ -3365,6 +3639,12 @@ def start_experience(recipient_token: str = Form(...)):
     if not delivery_is_unlocked(order):
         return JSONResponse({
             "status": "not_unlocked_yet",
+            "redirect_url": f"/pedido/{recipient_token}",
+        })
+
+    if not has_valid_recipient_session(order, request):
+        return JSONResponse({
+            "status": "invalid_access",
             "redirect_url": f"/pedido/{recipient_token}",
         })
 
@@ -3385,6 +3665,12 @@ def start_experience(recipient_token: str = Form(...)):
             "redirect_url": f"/cobrar/{recipient_token}",
         })
 
+    if result == "already_started":
+        return JSONResponse({
+            "status": "already_started",
+            "redirect_url": f"/mi-video/{recipient_token}",
+        })
+
     return JSONResponse({"status": "ok"})
 
 
@@ -3393,7 +3679,7 @@ def start_experience(recipient_token: str = Form(...)):
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
-def experiencia(recipient_token: str):
+def experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
@@ -3405,8 +3691,14 @@ def experiencia(recipient_token: str):
     if not delivery_is_unlocked(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    if bool(order.get("experience_started")):
+        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
 
@@ -3550,7 +3842,7 @@ let finished = false;
 
 function finalUrl() {{
     return "/finalizar-experiencia/" + recipientToken;
-}}
+}
 
 function safeRedirectFinal() {{
     if (finished) return;
@@ -3617,7 +3909,7 @@ async function fetchReactionStatus() {{
         }});
         if (!res.ok) return null;
         return await res.json();
-    }} catch (e) {{
+    } catch (e) {{
         console.error("reaction status error", e);
         return null;
     }}
@@ -3626,7 +3918,7 @@ async function fetchReactionStatus() {{
 async function uploadReactionBlob(blob) {{
     const formData = new FormData();
 
-    const mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : "video/webm";
+    const mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : ((blob && blob.type) ? blob.type : "video/webm");
     const extension = mimeType.includes("mp4") ? "mp4" : "webm";
 
     formData.append("file", blob, "reaction." + extension);
@@ -3769,17 +4061,7 @@ startBtn.addEventListener("click", async () => {{
             throw new Error(data.detail || "start_experience_error");
         }}
 
-        if (data.status === "already_completed" && data.redirect_url) {{
-            window.location.replace(data.redirect_url);
-            return;
-        }}
-
-        if (data.status === "video_not_ready" && data.redirect_url) {{
-            window.location.replace(data.redirect_url);
-            return;
-        }}
-
-        if (data.status === "not_unlocked_yet" && data.redirect_url) {{
+        if (data.redirect_url) {{
             window.location.replace(data.redirect_url);
             return;
         }}
@@ -3820,8 +4102,11 @@ video.addEventListener("ended", finishExperience);
 # =========================================================
 
 @app.get("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(recipient_token: str):
+def finalizar_experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
 
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="Pedido no pagado")
@@ -3833,14 +4118,19 @@ def finalizar_experiencia(recipient_token: str):
         gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
     )
 
-    updated = maybe_mark_eterna_completed(order["id"])
+    maybe_mark_eterna_completed(order["id"])
 
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
 
 @app.get("/reaction-upload-status/{recipient_token}")
-def reaction_upload_status(recipient_token: str):
-    order = maybe_mark_eterna_completed(get_order_by_recipient_token_or_404(recipient_token)["id"])
+def reaction_upload_status(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        raise HTTPException(status_code=403, detail="Acceso no válido")
+
+    order = maybe_mark_eterna_completed(order["id"])
 
     return JSONResponse({
         "status": "ok",
@@ -3858,9 +4148,12 @@ def reaction_upload_status(recipient_token: str):
 # =========================================================
 
 @app.post("/upload-reaction/{recipient_token}")
-async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
+async def upload_reaction(request: Request, recipient_token: str, file: UploadFile = File(...)):
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
+
+        if not has_valid_recipient_session(order, request):
+            raise HTTPException(status_code=403, detail="Acceso no válido")
 
         if not bool(order.get("paid")):
             raise HTTPException(status_code=403, detail="Pedido no pagado")
@@ -3975,8 +4268,9 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
         updated_order = maybe_mark_eterna_completed(order["id"])
 
         try:
-            sender_sms_result = try_send_sender_sms(updated_order)
-            print("📩 Resultado SMS sender:", sender_sms_result)
+            if is_eterna_complete(updated_order):
+                sender_sms_result = try_send_sender_sms(updated_order)
+                print("📩 Resultado SMS sender:", sender_sms_result)
         except Exception as e:
             log_error("upload_reaction_sender_sms", e)
 
@@ -4061,8 +4355,11 @@ def maybe_finalize_cashout(order: dict) -> dict:
 
 
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
-def cobrar(recipient_token: str, force_cashout: int = 0):
+def cobrar(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -4072,15 +4369,6 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
 
     if not bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
-
-    if int(force_cashout or 0) == 1 and not bool(order.get("experience_completed")):
-        update_order(
-            order["id"],
-            experience_completed=1,
-            delivered_to_recipient=1,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-        )
-        order = get_order_by_id(order["id"])
 
     cashout_result = maybe_finalize_cashout(order)
     order = maybe_mark_eterna_completed(order["id"])
@@ -4235,8 +4523,11 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
 
 
 @app.get("/connect/onboarding/{recipient_token}")
-def connect_onboarding(recipient_token: str):
+def connect_onboarding(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
 
     cashout_result = maybe_finalize_cashout(order)
     order = maybe_mark_eterna_completed(order["id"])
@@ -4266,13 +4557,19 @@ def connect_onboarding(recipient_token: str):
 
 
 @app.get("/connect/refresh/{recipient_token}")
-def connect_refresh(recipient_token: str):
+def connect_refresh(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
     return RedirectResponse(url=f"/connect/onboarding/{recipient_token}", status_code=303)
 
 
 @app.get("/connect/return/{recipient_token}")
-def connect_return(recipient_token: str):
+def connect_return(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
 
     try:
         ready = refresh_connect_status(order)
@@ -4292,8 +4589,13 @@ def connect_return(recipient_token: str):
 # =========================================================
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
-def mi_video(recipient_token: str):
-    order = maybe_mark_eterna_completed(get_order_by_recipient_token_or_404(recipient_token)["id"])
+def mi_video(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    order = maybe_mark_eterna_completed(order["id"])
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -4452,7 +4754,11 @@ async function fetchReactionStatus() {{
 
 async function uploadReactionBlob(blob) {{
     const formData = new FormData();
-    formData.append("file", blob, "reaction.webm");
+
+    const mimeType = (blob && blob.type) ? blob.type : "video/webm";
+    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+
+    formData.append("file", blob, "reaction." + extension);
 
     const res = await fetch("/upload-reaction/" + recipientToken, {{
         method: "POST",
@@ -4946,6 +5252,7 @@ def admin_delivery_worker_status(token: str = ""):
         "delivery_worker_started": DELIVERY_WORKER_STARTED,
         "delivery_worker_interval_seconds": DELIVERY_WORKER_INTERVAL_SECONDS,
         "pending_order_ids": list_pending_scheduled_deliveries(),
+        "pending_sender_notification_ids": list_pending_sender_notifications(),
     })
 
 
@@ -4954,12 +5261,15 @@ def admin_process_all_due_deliveries(token: str = ""):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
 
-    results = process_all_due_scheduled_deliveries()
+    delivery_results = process_all_due_scheduled_deliveries()
+    sender_results = process_all_due_sender_notifications()
 
     return JSONResponse({
         "ok": True,
-        "count": len(results),
-        "results": results,
+        "delivery_count": len(delivery_results),
+        "sender_count": len(sender_results),
+        "delivery_results": delivery_results,
+        "sender_results": sender_results,
     })
 
 
