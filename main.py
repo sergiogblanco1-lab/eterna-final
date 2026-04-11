@@ -3936,7 +3936,7 @@ async function fetchReactionStatus() {{
     }}
 }}
 
-async function uploadReactionBlob(blob) {{
+async function uploadReactionBlob(blob) {
     const formData = new FormData();
 
     const mimeType = (mediaRecorder && mediaRecorder.mimeType)
@@ -3945,26 +3945,30 @@ async function uploadReactionBlob(blob) {{
 
     const extension = mimeType.includes("mp4") || mimeType.includes("quicktime") ? "mp4" : "webm";
 
-    formData.append("file", blob, "reaction." + extension);
+    const file = new File([blob], "reaction." + extension, {
+        type: mimeType || "video/webm"
+    });
 
-    const res = await fetch("/upload-reaction/" + recipientToken, {{
+    formData.append("video", file);
+
+    const res = await fetch("/upload-reaction/" + recipientToken, {
         method: "POST",
         body: formData
-    }});
+    });
 
     let data = null;
-    try {{
+    try {
         data = await res.json();
-    }} catch (_) {{
+    } catch (_) {
         data = null;
-    }}
+    }
 
-    if (!res.ok) {{
+    if (!res.ok) {
         throw new Error((data && data.detail) || "upload_reaction_error");
-    }}
+    }
 
     return data;
-}}
+}
 
 async function retryReactionUpload(maxAttempts = 8) {{
     const existingStatus = await fetchReactionStatus();
@@ -4154,12 +4158,17 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     print("✅ EXPERIENCE FINALIZADA")
     print("➡️ order_id:", refreshed["id"])
     print("➡️ reaction_uploaded:", bool(refreshed.get("reaction_uploaded")))
+    print("➡️ reaction_exists:", reaction_exists(refreshed))
     print("➡️ experience_completed:", bool(refreshed.get("experience_completed")))
     print("➡️ eterna_completed:", bool(refreshed.get("eterna_completed")))
 
-    # 🔒 NO dejamos cerrar definitivamente si no hay reacción subida
-    if not bool(refreshed.get("reaction_uploaded")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}?error=no_reaction", status_code=303)
+    if not bool(refreshed.get("reaction_uploaded")) or not reaction_exists(refreshed):
+        update_order(
+            refreshed["id"],
+            experience_started=0,
+            experience_completed=0,
+        )
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
     if bool(refreshed.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
@@ -4283,82 +4292,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         "redirect": f"/finalizar-experiencia/{recipient_token}"
     })
 
-
-# =========================================================
-# FINAL EXPERIENCIA
-# =========================================================
-
-@app.get("/finalizar-experiencia/{recipient_token}", response_class=HTMLResponse)
-def finalizar_experiencia(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
-<style>
-html, body {{
-    margin: 0;
-    padding: 0;
-    background: black;
-    color: white;
-    font-family: Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-}}
-.container {{
-    text-align: center;
-    max-width: 500px;
-    padding: 20px;
-}}
-h1 {{
-    font-size: 34px;
-    margin-bottom: 20px;
-}}
-p {{
-    font-size: 16px;
-    color: rgba(255,255,255,0.7);
-    line-height: 1.8;
-}}
-.btn {{
-    margin-top: 30px;
-    padding: 16px 28px;
-    border-radius: 999px;
-    background: white;
-    color: black;
-    font-weight: bold;
-    text-decoration: none;
-    display: inline-block;
-}}
-</style>
-</head>
-<body>
-<div class="container">
-
-    <h1>Ya está.</h1>
-
-    <p>
-        Lo que acabas de vivir<br>
-        ya no se puede repetir.
-    </p>
-
-    <p>
-        Pero siempre podrás volver a sentirlo.
-    </p>
-
-    <a class="btn" href="/mi-video/{recipient_token}">
-        Volver a verlo
-    </a>
-
-</div>
-</body>
-</html>
-    """)
 
 
 # =========================================================
