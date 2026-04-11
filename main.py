@@ -5,6 +5,8 @@ print("🔥 REACTION RETRY + ETERNA COMPLETE SAFE VERSION 🔥")
 print("🔥 SCHEDULED DELIVERY LOCKED VERSION 🔥")
 print("🔥 DELIVERY WORKER REAL VERSION 🔥")
 print("🔥 GLOBAL PHONE READY VERSION 🔥")
+print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
+print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 
 import html
 import json
@@ -72,6 +74,11 @@ CURRENCY = os.getenv("ETERNA_CURRENCY", "eur").strip().lower()
 
 GIFT_COMMISSION_RATE = float(os.getenv("GIFT_COMMISSION_RATE", "0.05"))
 FIXED_PLATFORM_FEE = float(os.getenv("ETERNA_FIXED_FEE", "2"))
+
+# 🔥 ESTA ES LA REGLA REAL:
+# +2€ SOLO SI EL CLIENTE ELIGE PROGRAMAR LA ENTREGA DEL VIDEO/EXPERIENCIA
+SCHEDULED_DELIVERY_FEE = float(os.getenv("SCHEDULED_DELIVERY_FEE", "2"))
+
 GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
 
 R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "").strip()
@@ -218,6 +225,7 @@ def init_db():
         platform_fixed_fee REAL NOT NULL DEFAULT 0,
         platform_variable_fee REAL NOT NULL DEFAULT 0,
         platform_total_fee REAL NOT NULL DEFAULT 0,
+        scheduled_delivery_fee REAL NOT NULL DEFAULT 0,
         total_amount REAL NOT NULL DEFAULT 0,
 
         paid INTEGER NOT NULL DEFAULT 0,
@@ -248,6 +256,7 @@ def init_db():
         reaction_video_local TEXT,
         reaction_video_public_url TEXT,
         experience_video_url TEXT,
+        share_video_url TEXT,
 
         gift_refund_deadline_at TEXT,
 
@@ -265,6 +274,7 @@ def init_db():
         reaction_upload_error TEXT,
         eterna_completed INTEGER NOT NULL DEFAULT 0,
 
+        delivery_mode TEXT NOT NULL DEFAULT 'instant',
         scheduled_delivery_at TEXT,
         delivery_locked INTEGER NOT NULL DEFAULT 0,
         delivery_sent INTEGER NOT NULL DEFAULT 0,
@@ -298,6 +308,7 @@ def init_db():
     add_column_if_missing("orders", "experience_video_url", "ALTER TABLE orders ADD COLUMN experience_video_url TEXT")
     add_column_if_missing("orders", "reaction_video_public_url", "ALTER TABLE orders ADD COLUMN reaction_video_public_url TEXT")
     add_column_if_missing("orders", "reaction_video_local", "ALTER TABLE orders ADD COLUMN reaction_video_local TEXT")
+    add_column_if_missing("orders", "share_video_url", "ALTER TABLE orders ADD COLUMN share_video_url TEXT")
     add_column_if_missing("orders", "stripe_session_id", "ALTER TABLE orders ADD COLUMN stripe_session_id TEXT")
     add_column_if_missing("orders", "stripe_payment_status", "ALTER TABLE orders ADD COLUMN stripe_payment_status TEXT")
     add_column_if_missing("orders", "stripe_payment_intent_id", "ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT")
@@ -317,6 +328,8 @@ def init_db():
     add_column_if_missing("orders", "reaction_upload_pending", "ALTER TABLE orders ADD COLUMN reaction_upload_pending INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "reaction_upload_error", "ALTER TABLE orders ADD COLUMN reaction_upload_error TEXT")
     add_column_if_missing("orders", "eterna_completed", "ALTER TABLE orders ADD COLUMN eterna_completed INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "delivery_mode", "ALTER TABLE orders ADD COLUMN delivery_mode TEXT NOT NULL DEFAULT 'instant'")
+    add_column_if_missing("orders", "scheduled_delivery_fee", "ALTER TABLE orders ADD COLUMN scheduled_delivery_fee REAL NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "scheduled_delivery_at", "ALTER TABLE orders ADD COLUMN scheduled_delivery_at TEXT")
     add_column_if_missing("orders", "delivery_locked", "ALTER TABLE orders ADD COLUMN delivery_locked INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "delivery_sent", "ALTER TABLE orders ADD COLUMN delivery_sent INTEGER NOT NULL DEFAULT 0")
@@ -404,11 +417,11 @@ def parse_scheduled_delivery_local(delivery_date: str, delivery_time: str) -> Op
 def scheduled_delivery_display(order: dict) -> str:
     raw = (order.get("scheduled_delivery_at") or "").strip()
     if not raw:
-        return "Sin fecha programada"
+        return "En cuanto esté lista"
 
     dt = parse_iso_dt(raw)
     if not dt:
-        return "Sin fecha programada"
+        return "En cuanto esté lista"
 
     try:
         if ZoneInfo is not None:
@@ -643,6 +656,11 @@ def reaction_exists(order: dict) -> bool:
 
 def scheduled_delivery_ready(order: dict) -> bool:
     raw = (order.get("scheduled_delivery_at") or "").strip()
+    delivery_mode = (order.get("delivery_mode") or "instant").strip()
+
+    if delivery_mode == "instant":
+        return True
+
     if not raw:
         return True
 
@@ -895,17 +913,20 @@ def build_sender_ready_message(order: dict) -> str:
     )
 
 
-def calculate_fees(gift_amount: float) -> dict:
+def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
     fixed_fee = round(FIXED_PLATFORM_FEE, 2)
     variable_fee = round(gift_amount * GIFT_COMMISSION_RATE, 2)
+    delivery_mode = (delivery_mode or "instant").strip().lower()
+    scheduled_fee = round(SCHEDULED_DELIVERY_FEE if delivery_mode == "scheduled" else 0.0, 2)
     total_fee = round(fixed_fee + variable_fee, 2)
-    total_amount = round(BASE_PRICE + gift_amount + total_fee, 2)
+    total_amount = round(BASE_PRICE + gift_amount + total_fee + scheduled_fee, 2)
     return {
         "gift_amount": gift_amount,
         "fixed_fee": fixed_fee,
         "variable_fee": variable_fee,
         "total_fee": total_fee,
+        "scheduled_delivery_fee": scheduled_fee,
         "total_amount": total_amount,
     }
 
@@ -1413,28 +1434,24 @@ def render_create_form() -> str:
                 padding: 28px;
                 overflow: hidden;
             }}
-
             h1 {{
                 margin: 0 0 12px 0;
                 font-size: 34px;
                 text-align: center;
                 letter-spacing: 2px;
             }}
-
             .subtitle {{
                 text-align: center;
                 color: rgba(255,255,255,0.68);
                 line-height: 1.7;
                 margin-bottom: 18px;
             }}
-
             .intro {{
                 text-align: center;
                 margin: 8px auto 30px auto;
-                max-width: 560px;
-                min-height: 128px;
+                max-width: 620px;
+                min-height: 156px;
             }}
-
             .intro-line {{
                 margin: 0;
                 font-size: 20px;
@@ -1444,44 +1461,38 @@ def render_create_form() -> str:
                 transform: translateY(10px);
                 animation: fadeUp 0.8s ease forwards;
             }}
-
             .intro-line.l1 {{ animation-delay: 0.2s; }}
-            .intro-line.l2 {{ animation-delay: 1.6s; }}
-            .intro-line.l3 {{ animation-delay: 3.2s; }}
+            .intro-line.l2 {{ animation-delay: 1.4s; }}
+            .intro-line.l3 {{ animation-delay: 2.8s; }}
             .intro-line.l4 {{
-                animation-delay: 4.9s;
+                animation-delay: 4.2s;
                 font-weight: 700;
                 letter-spacing: 1.5px;
             }}
-
             @keyframes fadeUp {{
                 to {{
                     opacity: 1;
                     transform: translateY(0);
                 }}
             }}
-
             .section {{
                 opacity: 0;
                 transform: translateY(14px);
                 animation: sectionFade 0.8s ease forwards;
             }}
-
             .section.s1 {{ animation-delay: 0.8s; }}
-            .section.s2 {{ animation-delay: 1.2s; }}
-            .section.s3 {{ animation-delay: 1.6s; }}
-            .section.s4 {{ animation-delay: 2.0s; }}
-            .section.s5 {{ animation-delay: 2.4s; }}
-            .section.s6 {{ animation-delay: 2.8s; }}
-            .section.s7 {{ animation-delay: 3.2s; }}
-
+            .section.s2 {{ animation-delay: 1.1s; }}
+            .section.s3 {{ animation-delay: 1.4s; }}
+            .section.s4 {{ animation-delay: 1.7s; }}
+            .section.s5 {{ animation-delay: 2.0s; }}
+            .section.s6 {{ animation-delay: 2.3s; }}
+            .section.s7 {{ animation-delay: 2.6s; }}
             @keyframes sectionFade {{
                 to {{
                     opacity: 1;
                     transform: translateY(0);
                 }}
             }}
-
             .section-title {{
                 margin: 22px 0 10px 0;
                 font-size: 13px;
@@ -1489,7 +1500,6 @@ def render_create_form() -> str:
                 text-transform: uppercase;
                 color: rgba(255,255,255,0.55);
             }}
-
             input, select {{
                 width: 100%;
                 padding: 15px 16px;
@@ -1501,22 +1511,18 @@ def render_create_form() -> str:
                 outline: none;
                 font-size: 15px;
             }}
-
             select {{
                 appearance: none;
                 -webkit-appearance: none;
                 -moz-appearance: none;
             }}
-
             input[type="date"],
             input[type="time"] {{
                 color-scheme: dark;
             }}
-
             input::placeholder {{
                 color: rgba(255,255,255,0.4);
             }}
-
             .soft-copy {{
                 color: rgba(255,255,255,0.56);
                 line-height: 1.8;
@@ -1524,37 +1530,31 @@ def render_create_form() -> str:
                 margin-bottom: 14px;
                 text-align: center;
             }}
-
             .phone-row {{
                 display: flex;
                 gap: 10px;
                 align-items: center;
             }}
-
             .phone-code {{
                 min-width: 120px;
                 max-width: 140px;
                 flex: 0 0 120px;
             }}
-
             .phone-input {{
                 flex: 1;
             }}
-
             .photo-grid {{
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
                 gap: 16px;
                 margin-top: 12px;
             }}
-
             .photo-card {{
                 background: rgba(255,255,255,0.04);
                 border: 1px solid rgba(255,255,255,0.08);
                 border-radius: 22px;
                 padding: 16px;
             }}
-
             .photo-label {{
                 font-size: 12px;
                 text-transform: uppercase;
@@ -1562,7 +1562,6 @@ def render_create_form() -> str:
                 color: rgba(255,255,255,0.45);
                 margin-bottom: 8px;
             }}
-
             .photo-guide {{
                 font-size: 15px;
                 color: rgba(255,255,255,0.92);
@@ -1570,7 +1569,6 @@ def render_create_form() -> str:
                 margin-bottom: 12px;
                 min-height: 44px;
             }}
-
             .photo-box {{
                 position: relative;
                 border: 1px dashed rgba(255,255,255,0.18);
@@ -1585,7 +1583,6 @@ def render_create_form() -> str:
                 padding: 16px;
                 cursor: pointer;
             }}
-
             .photo-box input[type="file"] {{
                 position: absolute;
                 inset: 0;
@@ -1597,7 +1594,6 @@ def render_create_form() -> str:
                 height: 100%;
                 z-index: 3;
             }}
-
             .photo-placeholder {{
                 color: rgba(255,255,255,0.58);
                 line-height: 1.7;
@@ -1607,7 +1603,6 @@ def render_create_form() -> str:
                 pointer-events: none;
                 max-width: 180px;
             }}
-
             .photo-preview {{
                 position: absolute;
                 inset: 0;
@@ -1618,7 +1613,6 @@ def render_create_form() -> str:
                 z-index: 2;
                 border-radius: 18px;
             }}
-
             .photo-status {{
                 margin-top: 10px;
                 color: rgba(255,255,255,0.48);
@@ -1626,7 +1620,6 @@ def render_create_form() -> str:
                 line-height: 1.6;
                 min-height: 20px;
             }}
-
             .mini-note {{
                 margin-top: 12px;
                 color: rgba(255,255,255,0.42);
@@ -1634,14 +1627,12 @@ def render_create_form() -> str:
                 line-height: 1.6;
                 text-align: center;
             }}
-
             .emotion-grid {{
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
                 gap: 14px;
                 margin-top: 12px;
             }}
-
             .emotion-card {{
                 padding: 18px 18px;
                 border-radius: 20px;
@@ -1650,24 +1641,20 @@ def render_create_form() -> str:
                 cursor: pointer;
                 transition: all 0.25s ease;
             }}
-
             .emotion-card.selected {{
                 border: 1px solid rgba(255,255,255,0.32);
                 background: rgba(255,255,255,0.08);
             }}
-
             .emotion-title {{
                 font-size: 16px;
                 font-weight: 600;
                 margin-bottom: 6px;
             }}
-
             .emotion-sub {{
                 font-size: 13px;
                 color: rgba(255,255,255,0.55);
                 line-height: 1.45;
             }}
-
             .mode-box {{
                 margin-top: 14px;
                 background: rgba(255,255,255,0.04);
@@ -1675,7 +1662,6 @@ def render_create_form() -> str:
                 border-radius: 18px;
                 padding: 12px 14px;
             }}
-
             .radio-row {{
                 display: flex;
                 align-items: center;
@@ -1684,22 +1670,18 @@ def render_create_form() -> str:
                 color: rgba(255,255,255,0.88);
                 font-size: 14px;
             }}
-
             .radio-row input {{
                 width: auto;
                 margin: 0;
             }}
-
             .recommended {{
                 opacity: 0.5;
                 font-size: 12px;
                 margin-left: 4px;
             }}
-
             .phrases-manual.hidden {{
                 display: none;
             }}
-
             .delivery-box {{
                 margin-top: 12px;
                 background: rgba(255,255,255,0.05);
@@ -1707,7 +1689,6 @@ def render_create_form() -> str:
                 border-radius: 18px;
                 padding: 18px 16px;
             }}
-
             .delivery-copy {{
                 color: rgba(255,255,255,0.86);
                 line-height: 1.8;
@@ -1715,14 +1696,42 @@ def render_create_form() -> str:
                 text-align: center;
                 margin-bottom: 10px;
             }}
-
+            .delivery-modes {{
+                display: grid;
+                gap: 12px;
+                margin-top: 12px;
+            }}
+            .delivery-option {{
+                border-radius: 18px;
+                border: 1px solid rgba(255,255,255,0.08);
+                background: rgba(255,255,255,0.04);
+                padding: 16px;
+            }}
+            .delivery-option label {{
+                display: block;
+                cursor: pointer;
+            }}
+            .delivery-option-title {{
+                font-size: 15px;
+                line-height: 1.6;
+                color: rgba(255,255,255,0.92);
+                font-weight: 600;
+            }}
+            .delivery-option-sub {{
+                margin-top: 6px;
+                font-size: 13px;
+                line-height: 1.7;
+                color: rgba(255,255,255,0.52);
+            }}
             .delivery-grid {{
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 12px;
                 margin-top: 12px;
             }}
-
+            .delivery-grid.hidden {{
+                display: none;
+            }}
             .delivery-hint {{
                 color: rgba(255,255,255,0.48);
                 line-height: 1.8;
@@ -1730,7 +1739,6 @@ def render_create_form() -> str:
                 text-align: center;
                 margin-top: 10px;
             }}
-
             .price-box {{
                 margin-top: 12px;
                 background: rgba(255,255,255,0.05);
@@ -1741,7 +1749,6 @@ def render_create_form() -> str:
                 line-height: 1.8;
                 color: rgba(255,255,255,0.82);
             }}
-
             .hint {{
                 margin-top: 12px;
                 font-size: 14px;
@@ -1749,13 +1756,11 @@ def render_create_form() -> str:
                 color: rgba(255,255,255,0.48);
                 text-align: center;
             }}
-
             .buttons {{
                 display: grid;
                 gap: 12px;
                 margin-top: 24px;
             }}
-
             .btn, button {{
                 width: 100%;
                 padding: 17px 22px;
@@ -1767,24 +1772,20 @@ def render_create_form() -> str:
                 text-align: center;
                 cursor: pointer;
             }}
-
             button {{
                 background: white;
                 color: black;
             }}
-
             button:disabled {{
                 opacity: 0.7;
                 cursor: default;
             }}
-
             .ghost {{
                 display: inline-block;
                 background: rgba(255,255,255,0.10);
                 color: white;
                 border: 1px solid rgba(255,255,255,0.10);
             }}
-
             .error-box {{
                 display: none;
                 margin-top: 14px;
@@ -1796,30 +1797,24 @@ def render_create_form() -> str:
                 font-size: 14px;
                 line-height: 1.7;
             }}
-
             @media (max-width: 760px) {{
                 .photo-grid,
                 .emotion-grid,
                 .delivery-grid {{
                     grid-template-columns: 1fr;
                 }}
-
                 .phone-row {{
                     flex-direction: row;
                 }}
-
                 body {{
                     padding: 16px;
                 }}
-
                 .card {{
                     padding: 22px;
                 }}
-
                 .intro {{
-                    min-height: 150px;
+                    min-height: 170px;
                 }}
-
                 .intro-line {{
                     font-size: 18px;
                 }}
@@ -1830,18 +1825,18 @@ def render_create_form() -> str:
         <div class="wrap">
             <div class="card">
                 <h1>CREAR ETERNA</h1>
-                <div class="subtitle">Hay momentos que merecen quedarse para siempre</div>
+                <div class="subtitle">Hay momentos que merecen llegar exactamente cuando deben llegar</div>
 
                 <div class="intro">
                     <p class="intro-line l1">Esto no es un vídeo…</p>
-                    <p class="intro-line l2">No es solo un momento…</p>
-                    <p class="intro-line l3">Esto es……..</p>
+                    <p class="intro-line l2">No es solo un recuerdo…</p>
+                    <p class="intro-line l3">Es una espera hecha con intención…</p>
                     <p class="intro-line l4">MAGIA.</p>
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
                     <div class="section s1">
-                        <div class="section-title">Tus datos</div>
+                        <div class="section-title">Quién quiere hacer eterno este momento</div>
                         <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
                         <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
 
@@ -1870,7 +1865,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s2">
-                        <div class="section-title">La persona que lo va a recibir</div>
+                        <div class="section-title">Para quién es esto</div>
                         <input name="recipient_name" id="recipient_name" placeholder="Su nombre" required>
 
                         <div class="phone-row">
@@ -1898,7 +1893,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s3">
-                        <div class="section-title">Sus recuerdos</div>
+                        <div class="section-title">Los recuerdos que lo harán volver</div>
                         <div class="soft-copy">
                             Elige 6 fotos que merezcan volver a sentirse.
                         </div>
@@ -2010,7 +2005,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s5">
-                        <div class="section-title">Tus palabras</div>
+                        <div class="section-title">Las palabras que quieres dejar</div>
 
                         <div class="mode-box">
                             <div class="radio-row">
@@ -2039,27 +2034,52 @@ def render_create_form() -> str:
 
                         <div class="delivery-box">
                             <div class="delivery-copy">
-                                Elige el momento exacto en el que ETERNA debe llegar.
+                                Puedes dejar que llegue en cuanto esté lista...<br>
+                                o programar ese momento íntimo en el que sabes que podrá vivirla de verdad.
                             </div>
 
-                            <div class="delivery-grid">
+                            <div class="delivery-modes">
+                                <div class="delivery-option">
+                                    <label for="delivery_mode_instant">
+                                        <div class="radio-row">
+                                            <input type="radio" id="delivery_mode_instant" name="delivery_mode" value="instant" checked>
+                                            <span class="delivery-option-title">Enviarlo en cuanto esté listo</span>
+                                        </div>
+                                        <div class="delivery-option-sub">
+                                            Sin coste extra.
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="delivery-option">
+                                    <label for="delivery_mode_scheduled">
+                                        <div class="radio-row">
+                                            <input type="radio" id="delivery_mode_scheduled" name="delivery_mode" value="scheduled">
+                                            <span class="delivery-option-title">Guardarlo y entregarlo en un momento exacto</span>
+                                        </div>
+                                        <div class="delivery-option-sub">
+                                            +{money(SCHEDULED_DELIVERY_FEE)}€ para guardarlo y hacer que llegue exactamente cuando tú elijas.
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="delivery-grid hidden" id="scheduledDeliveryGrid">
                                 <input
                                     type="date"
                                     name="delivery_date"
                                     id="delivery_date"
-                                    required
                                 >
                                 <input
                                     type="time"
                                     name="delivery_time"
                                     id="delivery_time"
-                                    required
                                 >
                             </div>
 
                             <div class="delivery-hint">
-                                No llegará cuando esté. Llegará cuando deba llegar.<br>
-                                La fecha de entrega será definitiva tras el pago y no podrá modificarse después.
+                                Lo ideal es que pueda vivirlo con calma.<br>
+                                Con unos cascos. En silencio. Sin que nadie le moleste.
                             </div>
                         </div>
                     </div>
@@ -2079,10 +2099,13 @@ def render_create_form() -> str:
 
                         <div class="price-box">
                             Precio base ETERNA: {money(BASE_PRICE)}€<br>
-                            Comisión regalo: {money(FIXED_PLATFORM_FEE)}€ + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado
+                            Comisión regalo: {money(FIXED_PLATFORM_FEE)}€ + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado<br>
+                            Entrega programada: +{money(SCHEDULED_DELIVERY_FEE)}€ solo si eliges guardarlo y entregarlo en un momento exacto
                         </div>
 
-                        <div class="hint">Lo importante no es subir fotos. Es lo que va a sentir cuando lo reciba.</div>
+                        <div class="hint">
+                            No solo eliges lo que va a sentir. También eliges cuándo debe ocurrir.
+                        </div>
 
                         <div class="error-box" id="errorBox"></div>
 
@@ -2098,7 +2121,7 @@ def render_create_form() -> str:
 <script>
 document.addEventListener("DOMContentLoaded", function () {{
 
-    const STORAGE_KEY = "eterna_create_form_v3";
+    const STORAGE_KEY = "eterna_create_form_v4";
 
     const form = document.getElementById("createForm");
     const button = document.getElementById("submitBtn");
@@ -2108,6 +2131,9 @@ document.addEventListener("DOMContentLoaded", function () {{
     const autoRadio = document.getElementById("mode_auto");
     const manualRadio = document.getElementById("mode_manual");
     const manualPhrases = document.getElementById("manualPhrases");
+    const deliveryModeInstant = document.getElementById("delivery_mode_instant");
+    const deliveryModeScheduled = document.getElementById("delivery_mode_scheduled");
+    const scheduledDeliveryGrid = document.getElementById("scheduledDeliveryGrid");
 
     function showError(message) {{
         if (!errorBox) return;
@@ -2135,6 +2161,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             phrase_1: document.getElementById("phrase_1")?.value || "",
             phrase_2: document.getElementById("phrase_2")?.value || "",
             phrase_3: document.getElementById("phrase_3")?.value || "",
+            delivery_mode: deliveryModeScheduled && deliveryModeScheduled.checked ? "scheduled" : "instant",
             delivery_date: document.getElementById("delivery_date")?.value || "",
             delivery_time: document.getElementById("delivery_time")?.value || "",
             gift_amount: document.getElementById("gift_amount")?.value || "0"
@@ -2187,7 +2214,16 @@ document.addEventListener("DOMContentLoaded", function () {{
                 if (manualRadio) manualRadio.checked = false;
             }}
 
+            if (data.delivery_mode === "scheduled") {{
+                if (deliveryModeScheduled) deliveryModeScheduled.checked = true;
+                if (deliveryModeInstant) deliveryModeInstant.checked = false;
+            }} else {{
+                if (deliveryModeInstant) deliveryModeInstant.checked = true;
+                if (deliveryModeScheduled) deliveryModeScheduled.checked = false;
+            }}
+
             updatePhraseMode();
+            updateDeliveryMode();
 
             if (data.message_type && messageTypeInput) {{
                 messageTypeInput.value = data.message_type;
@@ -2220,7 +2256,9 @@ document.addEventListener("DOMContentLoaded", function () {{
             "#delivery_time",
             "#gift_amount",
             "#mode_auto",
-            "#mode_manual"
+            "#mode_manual",
+            "#delivery_mode_instant",
+            "#delivery_mode_scheduled"
         ];
 
         selectors.forEach((selector) => {{
@@ -2244,6 +2282,22 @@ document.addEventListener("DOMContentLoaded", function () {{
         saveFormState();
     }}
 
+    function updateDeliveryMode() {{
+        if (!scheduledDeliveryGrid) return;
+
+        if (deliveryModeScheduled && deliveryModeScheduled.checked) {{
+            scheduledDeliveryGrid.classList.remove("hidden");
+            document.getElementById("delivery_date").required = true;
+            document.getElementById("delivery_time").required = true;
+        }} else {{
+            scheduledDeliveryGrid.classList.add("hidden");
+            document.getElementById("delivery_date").required = false;
+            document.getElementById("delivery_time").required = false;
+        }}
+
+        saveFormState();
+    }}
+
     cards.forEach((card) => {{
         card.addEventListener("click", function () {{
             cards.forEach((c) => c.classList.remove("selected"));
@@ -2258,6 +2312,8 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     if (autoRadio) autoRadio.addEventListener("change", updatePhraseMode);
     if (manualRadio) manualRadio.addEventListener("change", updatePhraseMode);
+    if (deliveryModeInstant) deliveryModeInstant.addEventListener("change", updateDeliveryMode);
+    if (deliveryModeScheduled) deliveryModeScheduled.addEventListener("change", updateDeliveryMode);
 
     function updatePhotoUI(inputId, file) {{
         const preview = document.getElementById("preview_" + inputId);
@@ -2365,25 +2421,27 @@ document.addEventListener("DOMContentLoaded", function () {{
             }}
         }}
 
-        const deliveryDate = document.getElementById("delivery_date")?.value || "";
-        const deliveryTime = document.getElementById("delivery_time")?.value || "";
+        if (deliveryModeScheduled && deliveryModeScheduled.checked) {{
+            const deliveryDate = document.getElementById("delivery_date")?.value || "";
+            const deliveryTime = document.getElementById("delivery_time")?.value || "";
 
-        if (!deliveryDate || !deliveryTime) {{
-            showError("Elige la fecha y la hora de entrega.");
-            return false;
-        }}
+            if (!deliveryDate || !deliveryTime) {{
+                showError("Elige la fecha y la hora de entrega.");
+                return false;
+            }}
 
-        const deliveryLocal = new Date(deliveryDate + "T" + deliveryTime);
-        const now = new Date();
+            const deliveryLocal = new Date(deliveryDate + "T" + deliveryTime);
+            const now = new Date();
 
-        if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {{
-            showError("La fecha de entrega no es válida.");
-            return false;
-        }}
+            if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {{
+                showError("La fecha de entrega no es válida.");
+                return false;
+            }}
 
-        if (deliveryLocal.getTime() <= now.getTime()) {{
-            showError("La fecha de entrega debe estar en el futuro.");
-            return false;
+            if (deliveryLocal.getTime() <= now.getTime()) {{
+                showError("La fecha de entrega debe estar en el futuro.");
+                return false;
+            }}
         }}
 
         const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
@@ -2401,6 +2459,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     restoreFormState();
     bindAutosave();
     updatePhraseMode();
+    updateDeliveryMode();
 
     form.addEventListener("submit", function (e) {{
         if (!validateBeforeSubmit()) {{
@@ -2428,7 +2487,8 @@ document.addEventListener("DOMContentLoaded", function () {{
     </html>
     """
 
-    async def create_order_and_redirect(
+
+async def create_order_and_redirect(
     customer_name: str,
     customer_email: str,
     customer_country_code: str,
@@ -2441,6 +2501,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     phrase_1: str,
     phrase_2: str,
     phrase_3: str,
+    delivery_mode: str,
     delivery_date: str,
     delivery_time: str,
     gift_amount: float,
@@ -2467,8 +2528,12 @@ document.addEventListener("DOMContentLoaded", function () {{
     phrase_2 = (phrase_2 or "").strip()
     phrase_3 = (phrase_3 or "").strip()
 
+    delivery_mode = (delivery_mode or "instant").strip().lower()
     delivery_date = (delivery_date or "").strip()
     delivery_time = (delivery_time or "").strip()
+
+    if delivery_mode not in {"instant", "scheduled"}:
+        raise HTTPException(status_code=400, detail="Modo de entrega no válido")
 
     if not customer_name:
         raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
@@ -2488,13 +2553,15 @@ document.addEventListener("DOMContentLoaded", function () {{
     if len(phrase_1) > 160 or len(phrase_2) > 160 or len(phrase_3) > 160:
         raise HTTPException(status_code=400, detail="Las frases son demasiado largas")
 
-    scheduled_delivery_at = parse_scheduled_delivery_local(delivery_date, delivery_time)
-    if not scheduled_delivery_at:
-        raise HTTPException(status_code=400, detail="La fecha de entrega no es válida")
+    scheduled_delivery_at = None
+    if delivery_mode == "scheduled":
+        scheduled_delivery_at = parse_scheduled_delivery_local(delivery_date, delivery_time)
+        if not scheduled_delivery_at:
+            raise HTTPException(status_code=400, detail="La fecha de entrega no es válida")
 
-    scheduled_dt = parse_iso_dt(scheduled_delivery_at)
-    if not scheduled_dt or scheduled_dt <= now_dt():
-        raise HTTPException(status_code=400, detail="La fecha de entrega debe estar en el futuro")
+        scheduled_dt = parse_iso_dt(scheduled_delivery_at)
+        if not scheduled_dt or scheduled_dt <= now_dt():
+            raise HTTPException(status_code=400, detail="La fecha de entrega debe estar en el futuro")
 
     try:
         gift_amount = round(float(gift_amount or 0), 2)
@@ -2553,7 +2620,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     recipient_token = new_token()
     sender_token = new_token()
 
-    fees = calculate_fees(gift_amount)
+    fees = calculate_fees(gift_amount, delivery_mode)
     created_at = now_iso()
 
     conn = db_conn()
@@ -2571,26 +2638,26 @@ document.addEventListener("DOMContentLoaded", function () {{
     """, (recipient_name, recipient_phone_norm, created_at))
     recipient_id = cur.lastrowid
 
-    placeholders = ", ".join(["?"] * 53)
+    placeholders = ", ".join(["?"] * 57)
 
     cur.execute(f"""
         INSERT INTO orders (
             id, sender_id, recipient_id,
             message_type, phrase_mode,
             phrase_1, phrase_2, phrase_3,
-            gift_amount, platform_fixed_fee, platform_variable_fee, platform_total_fee, total_amount,
+            gift_amount, platform_fixed_fee, platform_variable_fee, platform_total_fee, scheduled_delivery_fee, total_amount,
             paid, delivered_to_recipient, reaction_uploaded,
             cashout_completed, transfer_completed, transfer_in_progress, sender_notified,
             experience_started, experience_completed,
             connect_onboarding_completed, gift_refunded,
             stripe_session_id, stripe_payment_status, stripe_payment_intent_id, stripe_connected_account_id, stripe_transfer_id, stripe_gift_refund_id,
             recipient_token, sender_token,
-            reaction_video_local, reaction_video_public_url, experience_video_url,
+            reaction_video_local, reaction_video_public_url, experience_video_url, share_video_url,
             gift_refund_deadline_at,
             recipient_sms_sent_at, sender_sms_sent_at, recipient_sms_sid, sender_sms_sid,
             recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
             reaction_upload_pending, reaction_upload_error, eterna_completed,
-            scheduled_delivery_at, delivery_locked, delivery_sent, delivery_sent_at,
+            delivery_mode, scheduled_delivery_at, delivery_locked, delivery_sent, delivery_sent_at,
             created_at, updated_at
         )
         VALUES ({placeholders})
@@ -2598,19 +2665,19 @@ document.addEventListener("DOMContentLoaded", function () {{
         order_id, sender_id, recipient_id,
         message_type, phrase_mode,
         phrase_1, phrase_2, phrase_3,
-        fees["gift_amount"], fees["fixed_fee"], fees["variable_fee"], fees["total_fee"], fees["total_amount"],
+        fees["gift_amount"], fees["fixed_fee"], fees["variable_fee"], fees["total_fee"], fees["scheduled_delivery_fee"], fees["total_amount"],
         0, 0, 0,
         0, 0, 0, 0,
         0, 0,
         0, 0,
         None, None, None, None, None, None,
         recipient_token, sender_token,
-        None, None, None,
+        None, None, None, None,
         None,
         None, None, None, None,
         0, 0, None, None,
         0, None, 0,
-        scheduled_delivery_at, 1, 0, None,
+        delivery_mode, scheduled_delivery_at, 1, 0, None,
         created_at, created_at
     ))
 
@@ -2675,7 +2742,8 @@ document.addEventListener("DOMContentLoaded", function () {{
                             "description": (
                                 f"Base {money(BASE_PRICE)}€ + "
                                 f"regalo {money(fees['gift_amount'])}€ + "
-                                f"comisión {money(fees['total_fee'])}€"
+                                f"comisión {money(fees['total_fee'])}€ + "
+                                f"programación {money(fees['scheduled_delivery_fee'])}€"
                             ),
                         },
                         "unit_amount": int(round(fees["total_amount"] * 100)),
@@ -2720,8 +2788,9 @@ async def crear_post(
     phrase_1: str = Form(""),
     phrase_2: str = Form(""),
     phrase_3: str = Form(""),
-    delivery_date: str = Form(...),
-    delivery_time: str = Form(...),
+    delivery_mode: str = Form("instant"),
+    delivery_date: str = Form(""),
+    delivery_time: str = Form(""),
     gift_amount: float = Form(0),
     photo1: UploadFile = File(...),
     photo2: UploadFile = File(...),
@@ -2743,68 +2812,7 @@ async def crear_post(
         phrase_1=phrase_1,
         phrase_2=phrase_2,
         phrase_3=phrase_3,
-        delivery_date=delivery_date,
-        delivery_time=delivery_time,
-        gift_amount=gift_amount,
-        photo1=photo1,
-        photo2=photo2,
-        photo3=photo3,
-        photo4=photo4,
-        photo5=photo5,
-        photo6=photo6,
-    )
-
-# =========================================================
-# HOME / CREATE
-# =========================================================
-
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
-
-
-@app.get("/crear", response_class=HTMLResponse)
-def crear_get():
-    return render_create_form()
-
-
-@app.post("/crear")
-async def crear_post(
-    customer_name: str = Form(...),
-    customer_email: str = Form(""),
-    customer_country_code: str = Form("+34"),
-    customer_phone: str = Form(...),
-    recipient_name: str = Form(...),
-    recipient_country_code: str = Form("+34"),
-    recipient_phone: str = Form(...),
-    message_type: str = Form(...),
-    phrase_mode: str = Form("auto"),
-    phrase_1: str = Form(""),
-    phrase_2: str = Form(""),
-    phrase_3: str = Form(""),
-    delivery_date: str = Form(...),
-    delivery_time: str = Form(...),
-    gift_amount: float = Form(0),
-    photo1: UploadFile = File(...),
-    photo2: UploadFile = File(...),
-    photo3: UploadFile = File(...),
-    photo4: UploadFile = File(...),
-    photo5: UploadFile = File(...),
-    photo6: UploadFile = File(...),
-):
-    return await create_order_and_redirect(
-        customer_name=customer_name,
-        customer_email=customer_email,
-        customer_country_code=customer_country_code,
-        customer_phone=customer_phone,
-        recipient_name=recipient_name,
-        recipient_country_code=recipient_country_code,
-        recipient_phone=recipient_phone,
-        message_type=message_type,
-        phrase_mode=phrase_mode,
-        phrase_1=phrase_1,
-        phrase_2=phrase_2,
-        phrase_3=phrase_3,
+        delivery_mode=delivery_mode,
         delivery_date=delivery_date,
         delivery_time=delivery_time,
         gift_amount=gift_amount,
@@ -3151,6 +3159,7 @@ async def internal_video_ready(request: Request):
         print("🎬 VIDEO GENERADO")
         print("➡️ Recipient experience:", recipient_experience_url_from_order(order))
         print("➡️ Sender pack:", sender_pack_url_from_order(order))
+        print("🕒 delivery_mode:", order.get("delivery_mode"))
         print("🕒 scheduled_delivery_at:", order.get("scheduled_delivery_at"))
         print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
         print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
@@ -3165,6 +3174,7 @@ async def internal_video_ready(request: Request):
             "video_url": video_url,
             "recipient_url": recipient_experience_url_from_order(order),
             "sender_url": sender_pack_url_from_order(order),
+            "delivery_mode": order.get("delivery_mode"),
             "scheduled_delivery_at": order.get("scheduled_delivery_at"),
             "scheduled_delivery_display": scheduled_delivery_display(order),
             "delivery_result": delivery_result,
@@ -3200,6 +3210,7 @@ def resumen(order_id: str):
     video_ready = original_video_ready(order)
     delivery_sent_flag = bool(order.get("delivery_sent"))
     delivery_display = safe_text(scheduled_delivery_display(order))
+    delivery_mode = (order.get("delivery_mode") or "instant").strip()
 
     sender_code, sender_number = split_phone_for_form(order.get("sender_phone") or "")
     recipient_code, recipient_number = split_phone_for_form(order.get("recipient_phone") or "")
@@ -3208,17 +3219,28 @@ def resumen(order_id: str):
         status_line = "Tu ETERNA ya ha salido"
         sub_line = f"{recipient_name} ya tiene su mensaje."
         soft_line = "El momento ya está ocurriendo exactamente cuando debía ocurrir."
-    elif video_ready:
+    elif video_ready and delivery_mode == "scheduled":
         status_line = "Tu ETERNA ya está guardada"
         sub_line = f"Todo quedará listo para llegar el {delivery_display}."
         soft_line = "No se enviará antes. Llegará exactamente cuando debe llegar."
+    elif video_ready and delivery_mode == "instant":
+        status_line = "Tu ETERNA está lista"
+        sub_line = "En cuanto quede procesada del todo, saldrá automáticamente."
+        soft_line = "No hace falta esperar una fecha concreta: se enviará en cuanto esté lista."
     else:
-        status_line = "Pago confirmado"
-        sub_line = "ETERNA ya se está preparando."
-        soft_line = (
-            f"Cuando todo esté listo, quedará guardada para llegar el {delivery_display}. "
-            "No se enviará antes."
-        )
+        if delivery_mode == "scheduled":
+            status_line = "Pago confirmado"
+            sub_line = "ETERNA ya se está preparando."
+            soft_line = (
+                f"Cuando todo esté listo, quedará guardada para llegar el {delivery_display}. "
+                "No se enviará antes."
+            )
+        else:
+            status_line = "Pago confirmado"
+            sub_line = "ETERNA ya se está preparando."
+            soft_line = (
+                "En cuanto el vídeo esté terminado de verdad, se enviará automáticamente."
+            )
 
     refresh = '<meta http-equiv="refresh" content="8">' if not delivery_sent_flag else ""
 
@@ -3235,10 +3257,19 @@ def resumen(order_id: str):
         "phrase_1": order.get("phrase_1") or "",
         "phrase_2": order.get("phrase_2") or "",
         "phrase_3": order.get("phrase_3") or "",
+        "delivery_mode": order.get("delivery_mode") or "instant",
         "gift_amount": str(order.get("gift_amount") or "0"),
     }
 
     preload_json = html.escape(json.dumps(preload_data), quote=True)
+
+    extra_fee_line = ""
+    if float(order.get("scheduled_delivery_fee") or 0) > 0:
+        extra_fee_line = f"""
+            <div style="margin-top:10px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.56);">
+                Programación y guardado del momento: {safe_text(format_amount_display(order.get("scheduled_delivery_fee") or 0))}
+            </div>
+        """
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -3260,12 +3291,14 @@ def resumen(order_id: str):
             </div>
 
             <div style="margin-top:24px;font-size:17px;line-height:1.8;color:rgba(255,255,255,0.62);">
-                Fecha fijada de entrega: {delivery_display}
+                Modo de entrega: {"momento exacto" if delivery_mode == "scheduled" else "en cuanto esté lista"}
             </div>
 
-            <div style="margin-top:14px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.44);">
-                La fecha de entrega ya ha quedado fijada y no podrá modificarse después del pago.
+            <div style="margin-top:8px;font-size:16px;line-height:1.8;color:rgba(255,255,255,0.54);">
+                {delivery_display}
             </div>
+
+            {extra_fee_line}
 
             <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
                 {soft_line}
@@ -3290,7 +3323,7 @@ def resumen(order_id: str):
         </div>
 
         <script>
-            const STORAGE_KEY = "eterna_create_form_v3";
+            const STORAGE_KEY = "eterna_create_form_v4";
             const preloadData = JSON.parse("{preload_json}");
             const btn = document.getElementById("createAgainBtn");
 
@@ -3312,8 +3345,7 @@ def resumen(order_id: str):
     </html>
     """)
 
-
-# =========================================================
+    # =========================================================
 # EXPERIENCE LOCK
 # =========================================================
 
@@ -3350,7 +3382,7 @@ def start_experience(recipient_token: str = Form(...)):
     if result == "already_completed":
         return JSONResponse({
             "status": "already_completed",
-            "redirect_url": f"/mi-video/{recipient_token}",
+            "redirect_url": f"/cobrar/{recipient_token}",
         })
 
     return JSONResponse({"status": "ok"})
@@ -3374,7 +3406,7 @@ def experiencia(recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     if bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
 
@@ -3419,7 +3451,7 @@ video {{
 .overlay {{
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.78) 100%);
+    background: linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.84) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3435,9 +3467,9 @@ video {{
     color: white;
 }}
 .soft {{
-    max-width: 560px;
+    max-width: 620px;
     font-size: 16px;
-    line-height: 1.8;
+    line-height: 1.9;
     color: rgba(255,255,255,0.76);
 }}
 .btn {{
@@ -3490,12 +3522,14 @@ video {{
     </video>
 
     <div class="overlay" id="overlay">
-        <div class="title">Esto no es un vídeo.</div>
+        <div class="title">Shhh…</div>
         <div class="soft">
-            Lo que estás a punto de vivir no se repite.<br>
-            Cuando pulses empezar, todo comenzará.
+            Esto no es algo para ver deprisa.<br><br>
+            Si puedes, ponte unos cascos.<br>
+            Busca un momento tranquilo.<br>
+            Y deja que ocurra.
         </div>
-        <button id="startBtn" class="btn">Empezar</button>
+        <button id="startBtn" class="btn">Estoy listo</button>
     </div>
 
     <div class="blackout" id="blackout"></div>
@@ -3515,7 +3549,7 @@ let stream = null;
 let finished = false;
 
 function finalUrl() {{
-    return "/mi-video/" + recipientToken;
+    return "/finalizar-experiencia/" + recipientToken;
 }}
 
 function safeRedirectFinal() {{
@@ -3524,18 +3558,8 @@ function safeRedirectFinal() {{
     window.location.replace(finalUrl());
 }}
 
-async function markExperienceFinished() {{
-    try {{
-        await fetch("/finalizar-experiencia/" + recipientToken, {{
-            method: "POST"
-        }});
-    }} catch (e) {{
-        console.error("finalizar-experiencia error", e);
-    }}
-}}
-
-function openReactionDB() {{
-    return new Promise((resolve, reject) => {{
+async function openReactionDB() {{
+    return await new Promise((resolve, reject) => {{
         const request = indexedDB.open("eternaReactionDB", 1);
         request.onupgradeneeded = function(event) {{
             const db = event.target.result;
@@ -3601,7 +3625,11 @@ async function fetchReactionStatus() {{
 
 async function uploadReactionBlob(blob) {{
     const formData = new FormData();
-    formData.append("file", blob, "reaction.webm");
+
+    const mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : "video/webm";
+    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+
+    formData.append("file", blob, "reaction." + extension);
 
     const res = await fetch("/upload-reaction/" + recipientToken, {{
         method: "POST",
@@ -3703,7 +3731,8 @@ async function finishExperience() {{
 
     await stopRecorderSafely();
 
-    const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
+    const mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : "video/webm";
+    const blob = new Blob(recordedChunks, {{ type: mimeType }});
 
     if (blob && blob.size > 0) {{
         try {{
@@ -3716,10 +3745,6 @@ async function finishExperience() {{
     setTimeout(() => {{
         safeRedirectFinal();
     }}, 250);
-
-    setTimeout(() => {{
-        markExperienceFinished();
-    }}, 350);
 
     setTimeout(() => {{
         retryReactionUpload().catch((e) => console.error("retryReactionUpload error", e));
@@ -3750,6 +3775,11 @@ startBtn.addEventListener("click", async () => {{
         }}
 
         if (data.status === "video_not_ready" && data.redirect_url) {{
+            window.location.replace(data.redirect_url);
+            return;
+        }}
+
+        if (data.status === "not_unlocked_yet" && data.redirect_url) {{
             window.location.replace(data.redirect_url);
             return;
         }}
@@ -3789,7 +3819,7 @@ video.addEventListener("ended", finishExperience);
 # EXPERIENCE FINALIZE + REACTION STATUS
 # =========================================================
 
-@app.post("/finalizar-experiencia/{recipient_token}")
+@app.get("/finalizar-experiencia/{recipient_token}")
 def finalizar_experiencia(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
@@ -3805,13 +3835,7 @@ def finalizar_experiencia(recipient_token: str):
 
     updated = maybe_mark_eterna_completed(order["id"])
 
-    return JSONResponse({
-        "status": "ok",
-        "experience_completed": bool(updated.get("experience_completed")),
-        "reaction_uploaded": bool(updated.get("reaction_uploaded")),
-        "reaction_exists": reaction_exists(updated),
-        "eterna_completed": bool(updated.get("eterna_completed")),
-    })
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
 
 @app.get("/reaction-upload-status/{recipient_token}")
@@ -3851,7 +3875,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
             updated_order = maybe_mark_eterna_completed(order["id"])
             return JSONResponse({
                 "status": "already_uploaded",
-                "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}?force_cashout=1",
+                "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}",
                 "eterna_completed": bool(updated_order.get("eterna_completed")),
             })
 
@@ -3926,7 +3950,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
             log_error("upload_reaction_r2", e)
 
         if not public_url:
-            public_url = f"{PUBLIC_BASE_URL}/video/sender/{order['sender_token']}"
+            public_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{order['sender_token']}"
 
         update_order(
             order["id"],
@@ -3959,7 +3983,7 @@ async def upload_reaction(recipient_token: str, file: UploadFile = File(...)):
         return JSONResponse({
             "status": "ok",
             "url": public_url,
-            "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}?force_cashout=1",
+            "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
             "reaction_uploaded": bool(updated_order.get("reaction_uploaded")),
             "reaction_exists": reaction_exists(updated_order),
             "eterna_completed": bool(updated_order.get("eterna_completed")),
@@ -4046,6 +4070,9 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
+    if not bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+
     if int(force_cashout or 0) == 1 and not bool(order.get("experience_completed")):
         update_order(
             order["id"],
@@ -4074,44 +4101,47 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
     gift_amount_value = float(order.get("gift_amount") or 0)
 
     if gift_amount_value <= 0:
-        title = "Todo ha quedado guardado"
-        subtitle = "Este momento ya forma parte de ETERNA."
+        title = "Tu momento ya está completo"
+        subtitle = "No había importe económico asociado a este regalo."
         action_html = f'''
-            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a verlo</a>
+            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
+            <a class="btn ghost" href="/">Crear una ETERNA</a>
         '''
-        soft_copy = "No había importe económico asociado a este regalo."
+        soft_copy = "Ya puedes cerrar este momento y volver a él siempre que quieras."
     else:
         if cashout_status == "completed":
             title = "Tu regalo ya está en camino"
             subtitle = f"Importe: {gift_amount_display}"
             action_html = f'''
-                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Ver mi vídeo</a>
+                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
+                <a class="btn ghost" href="/">Crear una ETERNA</a>
             '''
-            soft_copy = "Tu cobro ya está resuelto."
+            soft_copy = "Ya has recibido tu regalo. Este ciclo termina aquí."
         elif cashout_status == "processing":
             title = "Estamos enviando tu regalo"
             subtitle = f"Importe: {gift_amount_display}"
             action_html = f'''
-                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Ver mi vídeo</a>
+                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
+                <a class="btn ghost" href="/">Crear una ETERNA</a>
             '''
-            soft_copy = "Tu cobro está en proceso."
+            soft_copy = "Tu regalo ya está en proceso. Puedes cerrar este momento con calma."
         elif cashout_status == "gift_refunded":
             title = "Este regalo ya no está disponible"
             subtitle = "El importe económico ya no puede cobrarse."
             action_html = f'''
-                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Ver mi vídeo</a>
+                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
+                <a class="btn ghost" href="/">Crear una ETERNA</a>
             '''
             soft_copy = "La experiencia sigue siendo tuya."
         else:
-            title = "Tu regalo te espera"
+            title = "Esto también era para ti"
             subtitle = f"Puedes recibir {gift_amount_display}"
             action_html = f'''
                 <a class="btn" href="/connect/onboarding/{safe_attr(recipient_token)}">Cobrar ahora</a>
+                <a class="btn ghost" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
+                <a class="btn ghost" href="/">Crear una ETERNA</a>
             '''
-            soft_copy = (
-                "Tu cobro es independiente del sender pack. "
-                "Aunque la emoción siga terminando de guardarse, puedes cobrar igualmente."
-            )
+            soft_copy = "Tu regalo ya puede cobrarse. La emoción del sender pack sigue su propio camino aparte."
 
     refresh = '<meta http-equiv="refresh" content="6">' if cashout_status in {"pending", "processing", "ready_to_send"} else ""
 
@@ -4169,6 +4199,11 @@ def cobrar(recipient_token: str, force_cashout: int = 0):
                 background: white;
                 color: black;
                 cursor: pointer;
+            }}
+            .ghost {{
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
             }}
             .soft {{
                 margin-top: 20px;
@@ -4267,8 +4302,6 @@ def mi_video(recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     original_video_url = safe_attr(order.get("experience_video_url") or "")
-    cashout_status = compute_cashout_status(order)
-    cashout_cta = "Cobrar regalo" if cashout_status not in {"completed", "processing"} else "Ver regalo"
 
     return HTMLResponse(f"""
     <!DOCTYPE html>
@@ -4336,6 +4369,11 @@ def mi_video(recipient_token: str):
                 background: white;
                 color: black;
             }}
+            .ghost {{
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
         </style>
     </head>
     <body>
@@ -4350,7 +4388,8 @@ def mi_video(recipient_token: str):
             </div>
 
             <div class="actions">
-                <a class="btn" href="/cobrar/{safe_attr(recipient_token)}">{safe_text(cashout_cta)}</a>
+                <a class="btn" href="/cobrar/{safe_attr(recipient_token)}">Ver mi regalo</a>
+                <a class="btn ghost" href="/">Crear una ETERNA</a>
             </div>
         </div>
 
@@ -4488,6 +4527,7 @@ def sender_pack(sender_token: str):
 
     original_video_url = safe_attr(order.get("experience_video_url") or "")
     reaction_url = safe_attr(order.get("reaction_video_public_url") or "")
+    share_url = safe_attr(order.get("share_video_url") or "")
     recipient_name = safe_text(order.get("recipient_name") or "esa persona")
     gift_amount = format_amount_display(order.get("gift_amount") or 0)
     eterna_completed = bool(order.get("eterna_completed"))
@@ -4529,6 +4569,12 @@ def sender_pack(sender_token: str):
         </div>
         """
 
+    share_button = ""
+    if share_url:
+        share_button = f"""
+            <a class="btn" href="/share/{safe_attr(sender_token)}">Compartir emoción</a>
+        """
+
     refresh = '<meta http-equiv="refresh" content="6">' if not eterna_completed else ""
 
     return HTMLResponse(f"""
@@ -4553,7 +4599,7 @@ def sender_pack(sender_token: str):
             }}
             .wrap {{ width: 100%; max-width: 920px; margin: 0 auto; }}
             .hero {{
-               text-align: center;
+                text-align: center;
                 margin-bottom: 26px;
             }}
             h1 {{
@@ -4599,6 +4645,30 @@ def sender_pack(sender_token: str):
                 border-radius: 18px;
                 background: black;
             }}
+            .actions {{
+                display: grid;
+                gap: 12px;
+                max-width: 420px;
+                margin: 28px auto 0 auto;
+            }}
+            .btn {{
+                display: block;
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                border: 0;
+                text-decoration: none;
+                text-align: center;
+                font-weight: bold;
+                font-size: 15px;
+                background: white;
+                color: black;
+            }}
+            .ghost {{
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
             .meta {{
                 margin-top: 24px;
                 text-align: center;
@@ -4628,9 +4698,114 @@ def sender_pack(sender_token: str):
                 {reaction_block}
             </div>
 
+            <div class="actions">
+                {share_button}
+                <a class="btn ghost" href="/">Crear otra ETERNA</a>
+            </div>
+
             <div class="meta">
-                ETERNA solo está completa cuando existen las dos partes:<br>
-                el vídeo original y la emoción guardada.
+                Puedes ver el vídeo original dentro de ETERNA,<br>
+                pero solo puedes compartir la emoción.
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+
+@app.get("/share/{sender_token}", response_class=HTMLResponse)
+def share_sender_emotion(sender_token: str):
+    order = get_order_by_sender_token_or_404(sender_token)
+
+    share_video_url = (order.get("share_video_url") or "").strip()
+
+    if not share_video_url:
+        return RedirectResponse(url=f"/sender/{sender_token}", status_code=303)
+
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Compartir emoción · ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            body {{
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                padding: 24px;
+            }}
+            .wrap {{ width: 100%; max-width: 760px; margin: 0 auto; }}
+            h1 {{
+                text-align: center;
+                font-size: 40px;
+                margin: 0 0 22px 0;
+            }}
+            .soft {{
+                text-align: center;
+                font-size: 16px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.58);
+                margin-bottom: 22px;
+            }}
+            .card {{
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 24px;
+                padding: 18px;
+            }}
+            video {{
+                width: 100%;
+                border-radius: 18px;
+                background: black;
+            }}
+            .actions {{
+                display: grid;
+                gap: 12px;
+                max-width: 420px;
+                margin: 28px auto 0 auto;
+            }}
+            .btn {{
+                display: block;
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                border: 0;
+                text-decoration: none;
+                text-align: center;
+                font-weight: bold;
+                font-size: 15px;
+                background: white;
+                color: black;
+            }}
+            .ghost {{
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <h1>Comparte esto…</h1>
+            <div class="soft">
+                No compartes lo que vio.<br>
+                Compartes lo que sintió.
+            </div>
+
+            <div class="card">
+                <video controls playsinline preload="metadata" src="{safe_attr(share_video_url)}"></video>
+            </div>
+
+            <div class="actions">
+                <a class="btn ghost" href="/sender/{safe_attr(sender_token)}">Volver al sender pack</a>
+                <a class="btn ghost" href="/">Crear otra ETERNA</a>
             </div>
         </div>
     </body>
@@ -4658,7 +4833,7 @@ def get_video_input(order_id: str, slot_name: str):
     )
 
 
-@app.get("/video/sender/{sender_token}")
+@app.get("/video/sender-reaction/{sender_token}")
 def get_sender_reaction_video(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
     local_path = (order.get("reaction_video_local") or "").strip()
@@ -4799,7 +4974,6 @@ def health():
 
 if __name__ == "__main__":
     import uvicorn
-    import os
 
     port = int(os.environ.get("PORT", 10000))
 
