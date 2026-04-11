@@ -3943,7 +3943,7 @@ async function uploadReactionBlob(blob) {{
         ? mediaRecorder.mimeType
         : ((blob && blob.type) ? blob.type : "video/webm");
 
-    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+    const extension = mimeType.includes("mp4") || mimeType.includes("quicktime") ? "mp4" : "webm";
 
     formData.append("file", blob, "reaction." + extension);
 
@@ -3981,6 +3981,7 @@ async function retryReactionUpload(maxAttempts = 8) {{
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {{
         try {{
             await uploadReactionBlob(blob);
+
             const status = await fetchReactionStatus();
             if (status && status.reaction_uploaded && status.reaction_exists) {{
                 await deletePendingReaction().catch(() => null);
@@ -4047,7 +4048,10 @@ async function finishExperience() {{
 
     await stopRecorderSafely();
 
-    const mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : "video/webm";
+    const mimeType = (mediaRecorder && mediaRecorder.mimeType)
+        ? mediaRecorder.mimeType
+        : "video/webm";
+
     const blob = new Blob(recordedChunks, {{ type: mimeType }});
 
     if (blob && blob.size > 0) {{
@@ -4056,15 +4060,22 @@ async function finishExperience() {{
         }} catch (e) {{
             console.error("savePendingReaction error", e);
         }}
+
+        try {{
+            await uploadReactionBlob(blob);
+
+            const status = await fetchReactionStatus();
+            if (status && status.reaction_uploaded && status.reaction_exists) {{
+                await deletePendingReaction().catch(() => null);
+            }}
+        }} catch (e) {{
+            console.error("immediate upload error", e);
+        }}
     }}
 
     setTimeout(() => {{
         safeRedirectFinal();
-    }}, 250);
-
-    setTimeout(() => {{
-        retryReactionUpload().catch((e) => console.error("retryReactionUpload error", e));
-    }}, 500);
+    }}, 1200);
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -4129,12 +4140,23 @@ video.addEventListener("ended", finishExperience);
 def finalizar_experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
+    # 🔒 acceso válido del regalado
     if not has_valid_recipient_session(order, request):
         return render_viral_block_page()
 
+    # 🔒 pedido pagado
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="Pedido no pagado")
 
+    # 🔒 vídeo original listo
+    if not original_video_ready(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    # 🔒 si ya terminó antes, no repetir lógica ni bucles
+    if bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    # ✅ marcar experiencia completada
     update_order(
         order["id"],
         experience_completed=1,
@@ -4142,29 +4164,18 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
     )
 
-    maybe_mark_eterna_completed(order["id"])
+    # ✅ recalcular estado global sin obligar a que ya exista reacción
+    updated_order = maybe_mark_eterna_completed(order["id"])
 
+    print("✅ EXPERIENCE FINALIZADA")
+    print("➡️ order_id:", updated_order["id"])
+    print("➡️ experience_completed:", bool(updated_order.get("experience_completed")))
+    print("➡️ reaction_uploaded:", bool(updated_order.get("reaction_uploaded")))
+    print("➡️ eterna_completed:", bool(updated_order.get("eterna_completed")))
+
+    # ✅ el regalado pasa a su flujo propio
+    # el sender pack seguirá su camino aparte cuando la reacción suba bien
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-
-@app.get("/reaction-upload-status/{recipient_token}")
-def reaction_upload_status(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not has_valid_recipient_session(order, request):
-        raise HTTPException(status_code=403, detail="Acceso no válido")
-
-    order = maybe_mark_eterna_completed(order["id"])
-
-    return JSONResponse({
-        "status": "ok",
-        "reaction_uploaded": bool(order.get("reaction_uploaded")),
-        "reaction_exists": reaction_exists(order),
-        "reaction_upload_pending": bool(order.get("reaction_upload_pending")),
-        "reaction_upload_error": order.get("reaction_upload_error"),
-        "experience_completed": bool(order.get("experience_completed")),
-        "eterna_completed": bool(order.get("eterna_completed")),
-    })
 
 
 # =========================================================
