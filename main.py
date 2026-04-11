@@ -4140,41 +4140,42 @@ video.addEventListener("ended", finishExperience);
 def finalizar_experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    # 🔒 acceso válido del regalado
     if not has_valid_recipient_session(order, request):
         return render_viral_block_page()
 
-    # 🔒 pedido pagado
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="Pedido no pagado")
 
-    # 🔒 vídeo original listo
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    # 🔒 si ya terminó antes, no repetir lógica ni bucles
-    if bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    # ✅ marcar experiencia completada
-    update_order(
-        order["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    # ✅ recalcular estado global sin obligar a que ya exista reacción
-    updated_order = maybe_mark_eterna_completed(order["id"])
+    refreshed = get_order_by_recipient_token_or_404(recipient_token)
 
     print("✅ EXPERIENCE FINALIZADA")
-    print("➡️ order_id:", updated_order["id"])
-    print("➡️ experience_completed:", bool(updated_order.get("experience_completed")))
-    print("➡️ reaction_uploaded:", bool(updated_order.get("reaction_uploaded")))
-    print("➡️ eterna_completed:", bool(updated_order.get("eterna_completed")))
+    print("➡️ order_id:", refreshed["id"])
+    print("➡️ reaction_uploaded:", bool(refreshed.get("reaction_uploaded")))
+    print("➡️ experience_completed:", bool(refreshed.get("experience_completed")))
+    print("➡️ eterna_completed:", bool(refreshed.get("eterna_completed")))
 
-    # ✅ el regalado pasa a su flujo propio
-    # el sender pack seguirá su camino aparte cuando la reacción suba bien
+    # 🔒 NO dejamos cerrar definitivamente si no hay reacción subida
+    if not bool(refreshed.get("reaction_uploaded")):
+        return RedirectResponse(url=f"/mi-video/{recipient_token}?error=no_reaction", status_code=303)
+
+    if bool(refreshed.get("experience_completed")):
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    update_order(
+        refreshed["id"],
+        experience_completed=1,
+        delivered_to_recipient=1,
+        gift_refund_deadline_at=refreshed.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
+
+    updated_order = maybe_mark_eterna_completed(refreshed["id"])
+
+    print("➡️ experience_completed final:", bool(updated_order.get("experience_completed")))
+    print("➡️ eterna_completed final:", bool(updated_order.get("eterna_completed")))
+
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
 
@@ -4213,17 +4214,12 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
             reaction_upload_error=None,
         )
 
-        original_filename = (file.filename or "reaction.webm").strip()
+        original_filename = (file.filename or "reaction.mp4").strip()
         original_content_type = (file.content_type or "").strip().lower()
 
         print("🎥 upload_reaction filename:", original_filename)
         print("🎥 upload_reaction content_type:", original_content_type)
 
-        ext = Path(original_filename).suffix.lower().strip()
-        if ext not in {".webm", ".mp4", ".mov", ".m4v", ".bin"}:
-            ext = ""
-
-        # Safari/iPhone puede mandar tipos raros o vacíos.
         allowed_content_types = {
             "",
             "video/webm",
@@ -4245,7 +4241,7 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
                 detail=f"Formato de vídeo no permitido: {original_content_type}"
             )
 
-        # Normalizamos extensión final
+        ext = Path(original_filename).suffix.lower().strip()
         if ext in {".mp4", ".mov", ".m4v"}:
             extension = "mp4"
         else:
@@ -4315,7 +4311,6 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
             reaction_uploaded=1,
             reaction_upload_pending=0,
             reaction_upload_error=None,
-            experience_completed=1,
             delivered_to_recipient=1,
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
@@ -4331,9 +4326,8 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
         updated_order = maybe_mark_eterna_completed(order["id"])
 
         try:
-            if is_eterna_complete(updated_order):
-                sender_sms_result = try_send_sender_sms(updated_order)
-                print("📩 Resultado SMS sender:", sender_sms_result)
+            sender_sms_result = try_send_sender_sms(updated_order)
+            print("📩 Resultado SMS sender:", sender_sms_result)
         except Exception as e:
             log_error("upload_reaction_sender_sms", e)
 
@@ -4366,7 +4360,6 @@ async def upload_reaction(request: Request, recipient_token: str, file: UploadFi
             await file.close()
         except Exception:
             pass
-
 
 # =========================================================
 # CASHOUT / CONNECT
