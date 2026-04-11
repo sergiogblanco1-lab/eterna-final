@@ -3718,9 +3718,6 @@ def experiencia(request: Request, recipient_token: str):
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    if bool(order.get("experience_started")):
-        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-
     experience_video_url = (order.get("experience_video_url") or "").strip()
 
     return HTMLResponse(f"""
@@ -3757,14 +3754,13 @@ video {{
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     background: black;
-    pointer-events: none;
 }}
 .overlay {{
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.84) 100%);
+    background: linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.84) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3822,7 +3818,7 @@ video {{
 </style>
 </head>
 <body>
-<div class="container" id="experienceContainer">
+<div class="container">
     <video
         id="video"
         playsinline
@@ -3859,16 +3855,10 @@ const recipientToken = "{safe_attr(recipient_token)}";
 let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
-let finished = false;
+let finishing = false;
 
 function finalUrl() {{
     return "/finalizar-experiencia/" + recipientToken;
-}}
-
-function safeRedirectFinal() {{
-    if (finished) return;
-    finished = true;
-    window.location.replace(finalUrl());
 }}
 
 async function openReactionDB() {{
@@ -3936,7 +3926,7 @@ async function fetchReactionStatus() {{
     }}
 }}
 
-async function uploadReactionBlob(blob) {
+async function uploadReactionBlob(blob) {{
     const formData = new FormData();
 
     const mimeType = (mediaRecorder && mediaRecorder.mimeType)
@@ -3945,60 +3935,29 @@ async function uploadReactionBlob(blob) {
 
     const extension = mimeType.includes("mp4") || mimeType.includes("quicktime") ? "mp4" : "webm";
 
-    const file = new File([blob], "reaction." + extension, {
+    const file = new File([blob], "reaction." + extension, {{
         type: mimeType || "video/webm"
-    });
+    }});
 
     formData.append("video", file);
 
-    const res = await fetch("/upload-reaction/" + recipientToken, {
+    const res = await fetch("/upload-reaction/" + recipientToken, {{
         method: "POST",
         body: formData
-    });
+    }});
 
     let data = null;
-    try {
+    try {{
         data = await res.json();
-    } catch (_) {
+    }} catch (_) {{
         data = null;
-    }
+    }}
 
-    if (!res.ok) {
+    if (!res.ok) {{
         throw new Error((data && data.detail) || "upload_reaction_error");
-    }
+    }}
 
     return data;
-}
-
-async function retryReactionUpload(maxAttempts = 8) {{
-    const existingStatus = await fetchReactionStatus();
-    if (existingStatus && existingStatus.reaction_uploaded && existingStatus.reaction_exists) {{
-        await deletePendingReaction().catch(() => null);
-        return true;
-    }}
-
-    const blob = await loadPendingReaction();
-    if (!blob || !blob.size) {{
-        return false;
-    }}
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {{
-        try {{
-            await uploadReactionBlob(blob);
-
-            const status = await fetchReactionStatus();
-            if (status && status.reaction_uploaded && status.reaction_exists) {{
-                await deletePendingReaction().catch(() => null);
-                return true;
-            }}
-        }} catch (e) {{
-            console.error("retryReactionUpload attempt error", attempt, e);
-        }}
-
-        await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
-    }}
-
-    return false;
 }}
 
 async function stopRecorderSafely() {{
@@ -4007,21 +3966,19 @@ async function stopRecorderSafely() {{
             await new Promise((resolve) => {{
                 const timeout = setTimeout(resolve, 3000);
 
-                const oldOnStop = mediaRecorder.onstop;
-                mediaRecorder.onstop = function(event) {{
+                const handler = function() {{
                     clearTimeout(timeout);
-                    if (typeof oldOnStop === "function") {{
-                        try {{
-                            oldOnStop.call(mediaRecorder, event);
-                        }} catch (_) {{}}
-                    }}
+                    mediaRecorder.removeEventListener("stop", handler);
                     resolve();
                 }};
+
+                mediaRecorder.addEventListener("stop", handler);
 
                 try {{
                     mediaRecorder.stop();
                 }} catch (_) {{
                     clearTimeout(timeout);
+                    mediaRecorder.removeEventListener("stop", handler);
                     resolve();
                 }}
             }});
@@ -4040,15 +3997,14 @@ async function stopRecorderSafely() {{
 }}
 
 async function finishExperience() {{
-    if (finished) return;
+    if (finishing) return;
+    finishing = true;
 
     blackout.classList.add("show");
 
     try {{
         video.pause();
-    }} catch (e) {{
-        console.error(e);
-    }}
+    }} catch (e) {{}}
 
     await stopRecorderSafely();
 
@@ -4067,7 +4023,6 @@ async function finishExperience() {{
 
         try {{
             await uploadReactionBlob(blob);
-
             const status = await fetchReactionStatus();
             if (status && status.reaction_uploaded && status.reaction_exists) {{
                 await deletePendingReaction().catch(() => null);
@@ -4077,9 +4032,46 @@ async function finishExperience() {{
         }}
     }}
 
-    setTimeout(() => {{
-        safeRedirectFinal();
-    }}, 1200);
+    window.location.replace(finalUrl());
+}}
+
+async function resumePendingUploadAndReplayIfNeeded() {{
+    try {{
+        const status = await fetchReactionStatus();
+        if (status && status.reaction_uploaded && status.reaction_exists) {{
+            await deletePendingReaction().catch(() => null);
+            return;
+        }}
+
+        const pendingBlob = await loadPendingReaction();
+        if (pendingBlob && pendingBlob.size > 0) {{
+            try {{
+                await uploadReactionBlob(pendingBlob);
+                const uploaded = await fetchReactionStatus();
+                if (uploaded && uploaded.reaction_uploaded && uploaded.reaction_exists) {{
+                    await deletePendingReaction().catch(() => null);
+                    return;
+                }}
+            }} catch (e) {{
+                console.error("pending upload retry error", e);
+            }}
+
+            const formData = new FormData();
+            formData.append("recipient_token", recipientToken);
+
+            try {{
+                await fetch("/reset-experience/" + recipientToken, {{
+                    method: "POST",
+                    body: formData
+                }});
+                window.location.replace("/experiencia/" + recipientToken);
+            }} catch (e) {{
+                console.error("reset experience error", e);
+            }}
+        }}
+    }} catch (e) {{
+        console.error("resumePendingUploadAndReplayIfNeeded error", e);
+    }}
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -4130,10 +4122,65 @@ startBtn.addEventListener("click", async () => {{
 }});
 
 video.addEventListener("ended", finishExperience);
+
+document.addEventListener("visibilitychange", async () => {{
+    if (!document.hidden) {{
+        await resumePendingUploadAndReplayIfNeeded();
+    }}
+}});
+
+window.addEventListener("pageshow", async () => {{
+    await resumePendingUploadAndReplayIfNeeded();
+}});
 </script>
 </body>
 </html>
 """)
+
+
+@app.post("/reset-experience/{recipient_token}")
+def reset_experience(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if bool(order.get("reaction_uploaded")) and reaction_exists(order):
+        return JSONResponse({
+            "ok": False,
+            "reason": "reaction_already_saved",
+        })
+
+    update_order(
+        order["id"],
+        experience_started=0,
+        experience_completed=0,
+        reaction_uploaded=0,
+        reaction_upload_pending=0,
+        reaction_upload_error=None,
+        reaction_video_local=None,
+        reaction_video_public_url=None,
+        eterna_completed=0,
+    )
+
+    return JSONResponse({
+        "ok": True,
+        "reason": "experience_reset",
+        "redirect_url": f"/experiencia/{recipient_token}",
+    })
+
+
+@app.get("/reaction-upload-status/{recipient_token}")
+def reaction_upload_status(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    return JSONResponse({
+        "ok": True,
+        "reaction_uploaded": bool(order.get("reaction_uploaded")),
+        "reaction_exists": reaction_exists(order),
+        "reaction_video_public_url": order.get("reaction_video_public_url"),
+        "reaction_video_local": order.get("reaction_video_local"),
+        "experience_started": bool(order.get("experience_started")),
+        "experience_completed": bool(order.get("experience_completed")),
+        "eterna_completed": bool(order.get("eterna_completed")),
+    })
 
 
 # =========================================================
