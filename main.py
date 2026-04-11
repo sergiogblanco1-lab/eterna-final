@@ -4180,998 +4180,244 @@ def finalizar_experiencia(request: Request, recipient_token: str):
 
 
 # =========================================================
-# UPLOAD REACTION VIDEO
+# UPLOAD REACTION (DEFINITIVO)
 # =========================================================
 
 @app.post("/upload-reaction/{recipient_token}")
-async def upload_reaction(request: Request, recipient_token: str, file: UploadFile = File(...)):
-    try:
-        order = get_order_by_recipient_token_or_404(recipient_token)
-
-        if not has_valid_recipient_session(order, request):
-            raise HTTPException(status_code=403, detail="Acceso no válido")
-
-        if not bool(order.get("paid")):
-            raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-        if not bool(order.get("experience_started")):
-            raise HTTPException(status_code=403, detail="La experiencia no ha empezado")
-
-        if not original_video_ready(order):
-            raise HTTPException(status_code=403, detail="Vídeo original no disponible")
-
-        if bool(order.get("reaction_uploaded")) and reaction_exists(order):
-            updated_order = maybe_mark_eterna_completed(order["id"])
-            return JSONResponse({
-                "status": "already_uploaded",
-                "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{order['recipient_token']}",
-                "eterna_completed": bool(updated_order.get("eterna_completed")),
-            })
-
-        update_order(
-            order["id"],
-            reaction_upload_pending=1,
-            reaction_upload_error=None,
-        )
-
-        original_filename = (file.filename or "reaction.mp4").strip()
-        original_content_type = (file.content_type or "").strip().lower()
-
-        print("🎥 upload_reaction filename:", original_filename)
-        print("🎥 upload_reaction content_type:", original_content_type)
-
-        allowed_content_types = {
-            "",
-            "video/webm",
-            "video/mp4",
-            "video/quicktime",
-            "application/octet-stream",
-            "binary/octet-stream",
-        }
-
-        if original_content_type not in allowed_content_types:
-            update_order(
-                order["id"],
-                reaction_upload_pending=0,
-                reaction_upload_error=f"Formato de vídeo no permitido: {original_content_type}",
-                eterna_completed=0,
-            )
-            raise HTTPException(
-                status_code=400,
-                detail=f"Formato de vídeo no permitido: {original_content_type}"
-            )
-
-        ext = Path(original_filename).suffix.lower().strip()
-        if ext in {".mp4", ".mov", ".m4v"}:
-            extension = "mp4"
-        else:
-            extension = "webm"
-
-        save_path = reaction_video_path(order["id"], extension)
-
-        total_size = 0
-        with open(save_path, "wb") as f:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-
-                total_size += len(chunk)
-
-                if total_size > MAX_VIDEO_SIZE:
-                    try:
-                        f.close()
-                    except Exception:
-                        pass
-
-                    if os.path.exists(save_path):
-                        os.remove(save_path)
-
-                    update_order(
-                        order["id"],
-                        reaction_upload_pending=0,
-                        reaction_upload_error="Vídeo demasiado grande",
-                        eterna_completed=0,
-                    )
-                    raise HTTPException(status_code=400, detail="Vídeo demasiado grande")
-
-                f.write(chunk)
-
-        print("🎥 upload_reaction total_size:", total_size)
-        print("🎥 upload_reaction save_path:", save_path)
-
-        if total_size <= 0 or not os.path.exists(save_path) or os.path.getsize(save_path) <= 0:
-            update_order(
-                order["id"],
-                reaction_upload_pending=0,
-                reaction_upload_error="Archivo vacío",
-                eterna_completed=0,
-            )
-            raise HTTPException(status_code=400, detail="Archivo vacío")
-
-        public_url = None
-        final_content_type = "video/mp4" if extension == "mp4" else "video/webm"
-
-        try:
-            public_url = upload_video_to_r2(
-                save_path,
-                os.path.basename(save_path),
-                final_content_type,
-            )
-        except Exception as e:
-            log_error("upload_reaction_r2", e)
-
-        if not public_url:
-            public_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{order['sender_token']}"
-
-        update_order(
-            order["id"],
-            reaction_video_local=save_path,
-            reaction_video_public_url=public_url,
-            reaction_uploaded=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-            delivered_to_recipient=1,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-        )
-
-        if not asset_exists(order["id"], "reaction_video", public_url):
-            insert_asset(
-                order["id"],
-                "reaction_video",
-                public_url,
-                "r2" if R2_PUBLIC_URL and public_url.startswith(R2_PUBLIC_URL) else "local",
-            )
-
-        updated_order = maybe_mark_eterna_completed(order["id"])
-
-        try:
-            sender_sms_result = try_send_sender_sms(updated_order)
-            print("📩 Resultado SMS sender:", sender_sms_result)
-        except Exception as e:
-            log_error("upload_reaction_sender_sms", e)
-
-        return JSONResponse({
-            "status": "ok",
-            "url": public_url,
-            "cashout_url": f"{PUBLIC_BASE_URL}/cobrar/{recipient_token}",
-            "reaction_uploaded": bool(updated_order.get("reaction_uploaded")),
-            "reaction_exists": reaction_exists(updated_order),
-            "eterna_completed": bool(updated_order.get("eterna_completed")),
-        })
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        log_error("upload_reaction", e)
-        try:
-            order = get_order_by_recipient_token_or_404(recipient_token)
-            update_order(
-                order["id"],
-                reaction_upload_pending=0,
-                reaction_upload_error=str(e),
-                eterna_completed=0,
-            )
-        except Exception:
-            pass
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        try:
-            await file.close()
-        except Exception:
-            pass
-
-# =========================================================
-# CASHOUT / CONNECT
-# =========================================================
-
-def maybe_finalize_cashout(order: dict) -> dict:
-    order = get_order_by_id(order["id"])
-
-    gift_amount = float(order.get("gift_amount") or 0)
-
-    if gift_amount <= 0:
-        update_order(
-            order["id"],
-            connect_onboarding_completed=1,
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-        )
-        return {"status": "completed"}
-
-    if bool(order.get("gift_refunded")):
-        return {"status": "gift_refunded"}
-
-    if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
-        return {"status": "completed"}
-
-    if bool(order.get("transfer_in_progress")):
-        return {"status": "processing"}
-
-    if bool(order.get("connect_onboarding_completed")):
-        result = process_gift_transfer_for_order(order)
-        normalized_status = result.get("status")
-
-        if normalized_status in {"ok", "already_transferred", "no_gift", "stripe_disabled_test_mode"}:
-            return {"status": "completed", "transfer_result": result}
-
-        if normalized_status == "transfer_in_progress":
-            return {"status": "processing", "transfer_result": result}
-
-        if normalized_status == "onboarding_not_ready":
-            return {"status": "pending_onboarding", "transfer_result": result}
-
-        if normalized_status == "gift_already_refunded":
-            return {"status": "gift_refunded", "transfer_result": result}
-
-        return {"status": normalized_status or "pending_onboarding", "transfer_result": result}
-
-    return {"status": "pending_onboarding"}
-
-
-@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
-def cobrar(request: Request, recipient_token: str):
+async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
+    print("🎥 UPLOAD REACTION START")
+    print("➡️ order_id:", order["id"])
 
     if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+        raise HTTPException(status_code=403, detail="not_paid")
 
     if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+        raise HTTPException(status_code=403, detail="video_not_ready")
 
-    if not bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+    # =========================
+    # VALIDAR VIDEO
+    # =========================
 
-    cashout_result = maybe_finalize_cashout(order)
+    content_type = (video.content_type or "").lower().strip()
+    if content_type not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(status_code=400, detail="invalid_video_type")
+
+    data = await video.read()
+
+    if len(data) > MAX_VIDEO_SIZE:
+        raise HTTPException(status_code=400, detail="video_too_large")
+
+    extension = detect_video_extension(video)
+
+    # =========================
+    # GUARDAR LOCAL
+    # =========================
+
+    local_path = reaction_video_path(order["id"], extension)
+
+    with open(local_path, "wb") as f:
+        f.write(data)
+
+    print("💾 Guardado local:", local_path)
+
+    # =========================
+    # SUBIR A R2
+    # =========================
+
+    public_url = None
+
+    try:
+        if r2_enabled():
+            remote_name = f"reactions/{order['id']}.{extension}"
+            public_url = upload_video_to_r2(
+                local_path,
+                remote_name,
+                content_type=content_type
+            )
+            print("☁️ Subido a R2:", public_url)
+    except Exception as e:
+        print("⚠️ Error subiendo a R2:", e)
+
+    # =========================
+    # GUARDAR EN DB
+    # =========================
+
+    update_order(
+        order["id"],
+        reaction_video_local=local_path,
+        reaction_video_public_url=public_url,
+        reaction_uploaded=1,
+        reaction_upload_pending=0,
+        reaction_upload_error=None,
+        experience_completed=1,
+    )
+
+    print("✅ Reacción guardada en DB")
+
+    # =========================
+    # MARCAR ETERNA COMPLETA
+    # =========================
+
     order = maybe_mark_eterna_completed(order["id"])
 
-    cashout_status = compute_cashout_status(order)
-    maybe_status = (cashout_result or {}).get("status")
+    print("🎯 eterna_completed:", order.get("eterna_completed"))
 
-    if maybe_status == "processing":
-        cashout_status = "processing"
-    elif maybe_status == "completed":
-        cashout_status = "completed"
-    elif maybe_status == "pending_onboarding" and cashout_status not in {"completed", "processing"}:
-        cashout_status = "pending"
-    elif maybe_status == "gift_refunded":
-        cashout_status = "gift_refunded"
+    # =========================
+    # ENVIAR SMS AL REGALANTE
+    # =========================
 
-    gift_amount_display = format_amount_display(order.get("gift_amount") or 0)
-    gift_amount_value = float(order.get("gift_amount") or 0)
+    try:
+        sms_result = try_send_sender_sms(order)
+        print("📩 SMS RESULT:", sms_result)
+    except Exception as e:
+        print("❌ Error enviando SMS:", e)
 
-    if gift_amount_value <= 0:
-        title = "Tu momento ya está completo"
-        subtitle = "No había importe económico asociado a este regalo."
-        action_html = f'''
-            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
-            <a class="btn ghost" href="/">Crear una ETERNA</a>
-        '''
-        soft_copy = "Ya puedes cerrar este momento y volver a él siempre que quieras."
-    else:
-        if cashout_status == "completed":
-            title = "Tu regalo ya está en camino"
-            subtitle = f"Importe: {gift_amount_display}"
-            action_html = f'''
-                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
-                <a class="btn ghost" href="/">Crear una ETERNA</a>
-            '''
-            soft_copy = "Ya has recibido tu regalo. Este ciclo termina aquí."
-        elif cashout_status == "processing":
-            title = "Estamos enviando tu regalo"
-            subtitle = f"Importe: {gift_amount_display}"
-            action_html = f'''
-                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
-                <a class="btn ghost" href="/">Crear una ETERNA</a>
-            '''
-            soft_copy = "Tu regalo ya está en proceso. Puedes cerrar este momento con calma."
-        elif cashout_status == "gift_refunded":
-            title = "Este regalo ya no está disponible"
-            subtitle = "El importe económico ya no puede cobrarse."
-            action_html = f'''
-                <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
-                <a class="btn ghost" href="/">Crear una ETERNA</a>
-            '''
-            soft_copy = "La experiencia sigue siendo tuya."
-        else:
-            title = "Esto también era para ti"
-            subtitle = f"Puedes recibir {gift_amount_display}"
-            action_html = f'''
-                <a class="btn" href="/connect/onboarding/{safe_attr(recipient_token)}">Cobrar ahora</a>
-                <a class="btn ghost" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi vídeo</a>
-                <a class="btn ghost" href="/">Crear una ETERNA</a>
-            '''
-            soft_copy = "Tu regalo ya puede cobrarse. La emoción del sender pack sigue su propio camino aparte."
+    # =========================
+    # REDIRECT FINAL
+    # =========================
 
-    refresh = '<meta http-equiv="refresh" content="6">' if cashout_status in {"pending", "processing", "ready_to_send"} else ""
+    return JSONResponse({
+        "ok": True,
+        "redirect": f"/finalizar-experiencia/{recipient_token}"
+    })
+
+
+# =========================================================
+# FINAL EXPERIENCIA
+# =========================================================
+
+@app.get("/finalizar-experiencia/{recipient_token}", response_class=HTMLResponse)
+def finalizar_experiencia(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
 
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        {refresh}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                padding: 24px;
-            }}
-            .wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
-            .hero {{
-                text-align: center;
-                margin-bottom: 28px;
-            }}
-            h1 {{
-                font-size: 42px;
-                line-height: 1.2;
-                margin: 0 0 16px 0;
-            }}
-            .sub {{
-                font-size: 20px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.82);
-            }}
-            .actions {{
-                display: grid;
-                gap: 12px;
-                margin: 30px auto 26px auto;
-                max-width: 420px;
-            }}
-            .btn {{
-                display: block;
-                width: 100%;
-                padding: 17px 22px;
-                border-radius: 999px;
-                border: 0;
-                text-decoration: none;
-                text-align: center;
-                font-weight: bold;
-                font-size: 15px;
-                background: white;
-                color: black;
-                cursor: pointer;
-            }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-            .soft {{
-                margin-top: 20px;
-                text-align: center;
-                font-size: 14px;
-                line-height: 1.8;
-                color: rgba(255,255,255,0.44);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <div class="hero">
-                <h1>{safe_text(title)}</h1>
-                <div class="sub">{safe_text(subtitle)}</div>
-            </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}}
+.container {{
+    text-align: center;
+    max-width: 500px;
+    padding: 20px;
+}}
+h1 {{
+    font-size: 34px;
+    margin-bottom: 20px;
+}}
+p {{
+    font-size: 16px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.8;
+}}
+.btn {{
+    margin-top: 30px;
+    padding: 16px 28px;
+    border-radius: 999px;
+    background: white;
+    color: black;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+}}
+</style>
+</head>
+<body>
+<div class="container">
 
-            <div class="actions">
-                {action_html}
-            </div>
+    <h1>Ya está.</h1>
 
-            <div class="soft">
-                {safe_text(soft_copy)}
-            </div>
-        </div>
-    </body>
-    </html>
+    <p>
+        Lo que acabas de vivir<br>
+        ya no se puede repetir.
+    </p>
+
+    <p>
+        Pero siempre podrás volver a sentirlo.
+    </p>
+
+    <a class="btn" href="/mi-video/{recipient_token}">
+        Volver a verlo
+    </a>
+
+</div>
+</body>
+</html>
     """)
 
 
-@app.get("/connect/onboarding/{recipient_token}")
-def connect_onboarding(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
-    cashout_result = maybe_finalize_cashout(order)
-    order = maybe_mark_eterna_completed(order["id"])
-
-    if not bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    if float(order.get("gift_amount") or 0) <= 0:
-        update_order(
-            order["id"],
-            connect_onboarding_completed=1,
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-        )
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    if (cashout_result or {}).get("status") == "completed":
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    try:
-        url = create_connect_onboarding_link(order)
-        return RedirectResponse(url=url, status_code=303)
-    except Exception as e:
-        log_error("connect_onboarding", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/connect/refresh/{recipient_token}")
-def connect_refresh(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-    return RedirectResponse(url=f"/connect/onboarding/{recipient_token}", status_code=303)
-
-
-@app.get("/connect/return/{recipient_token}")
-def connect_return(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
-    try:
-        ready = refresh_connect_status(order)
-        order = get_order_by_id(order["id"])
-
-        if ready:
-            process_gift_transfer_for_order(order)
-
-    except Exception as e:
-        log_error("connect_return", e)
-
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-
 # =========================================================
-# FINAL PAGES
+# MI VIDEO (POST EXPERIENCIA)
 # =========================================================
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
-def mi_video(request: Request, recipient_token: str):
+def mi_video(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
-    order = maybe_mark_eterna_completed(order["id"])
-
-    if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    original_video_url = safe_attr(order.get("experience_video_url") or "")
+    video_url = order.get("experience_video_url") or ""
 
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                padding: 24px;
-            }}
-            .wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
-            h1 {{
-                text-align: center;
-                font-size: 42px;
-                margin: 0 0 26px 0;
-            }}
-            .grid {{
-                display: grid;
-                gap: 22px;
-            }}
-            .card {{
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 24px;
-                padding: 18px;
-            }}
-            .card-title {{
-                font-size: 14px;
-                text-transform: uppercase;
-                letter-spacing: 1.3px;
-                color: rgba(255,255,255,0.46);
-                margin-bottom: 12px;
-            }}
-            video {{
-                width: 100%;
-                border-radius: 18px;
-                background: black;
-            }}
-            .actions {{
-                display: grid;
-                gap: 12px;
-                max-width: 420px;
-                margin: 28px auto 0 auto;
-            }}
-            .btn {{
-                display: block;
-                width: 100%;
-                padding: 17px 22px;
-                border-radius: 999px;
-                border: 0;
-                text-decoration: none;
-                text-align: center;
-                font-weight: bold;
-                font-size: 15px;
-                background: white;
-                color: black;
-            }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <h1>Tu vídeo</h1>
-
-            <div class="grid">
-                <div class="card">
-                    <div class="card-title">Tu ETERNA</div>
-                    <video controls playsinline preload="metadata" src="{original_video_url}"></video>
-                </div>
-            </div>
-
-            <div class="actions">
-                <a class="btn" href="/cobrar/{safe_attr(recipient_token)}">Ver mi regalo</a>
-                <a class="btn ghost" href="/">Crear una ETERNA</a>
-            </div>
-        </div>
-
-<script>
-const recipientToken = "{safe_attr(recipient_token)}";
-
-function openReactionDB() {{
-    return new Promise((resolve, reject) => {{
-        const request = indexedDB.open("eternaReactionDB", 1);
-        request.onupgradeneeded = function(event) {{
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains("reactions")) {{
-                db.createObjectStore("reactions");
-            }}
-        }};
-        request.onsuccess = function() {{
-            resolve(request.result);
-        }};
-        request.onerror = function() {{
-            reject(request.error || new Error("indexeddb_open_error"));
-        }};
-    }});
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
 }}
-
-async function loadPendingReaction() {{
-    const db = await openReactionDB();
-    const blob = await new Promise((resolve, reject) => {{
-        const tx = db.transaction("reactions", "readonly");
-        const req = tx.objectStore("reactions").get(recipientToken);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
-    }});
-    db.close();
-    return blob;
+video {{
+    width: 100%;
+    height: auto;
 }}
-
-async function deletePendingReaction() {{
-    const db = await openReactionDB();
-    await new Promise((resolve, reject) => {{
-        const tx = db.transaction("reactions", "readwrite");
-        tx.objectStore("reactions").delete(recipientToken);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error || new Error("indexeddb_delete_error"));
-    }});
-    db.close();
+.container {{
+    text-align: center;
+    padding: 20px;
 }}
-
-async function fetchReactionStatus() {{
-    try {{
-        const res = await fetch("/reaction-upload-status/" + recipientToken, {{
-            cache: "no-store"
-        }});
-        if (!res.ok) return null;
-        return await res.json();
-    }} catch (e) {{
-        console.error("reaction status error", e);
-        return null;
-    }}
+.btn {{
+    margin-top: 20px;
+    padding: 14px 24px;
+    border-radius: 999px;
+    background: white;
+    color: black;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
 }}
+</style>
+</head>
+<body>
 
-async function uploadReactionBlob(blob) {{
-    const formData = new FormData();
+<video controls playsinline>
+    <source src="{video_url}" type="video/mp4">
+</video>
 
-    const mimeType = (blob && blob.type) ? blob.type : "video/webm";
-    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+<div class="container">
+    <a class="btn" href="/crear">Crear una ETERNA</a>
+</div>
 
-    formData.append("file", blob, "reaction." + extension);
-
-    const res = await fetch("/upload-reaction/" + recipientToken, {{
-        method: "POST",
-        body: formData
-    }});
-
-    let data = null;
-    try {{
-        data = await res.json();
-    }} catch (_) {{
-        data = null;
-    }}
-
-    if (!res.ok) {{
-        throw new Error((data && data.detail) || "upload_reaction_error");
-    }}
-
-    return data;
-}}
-
-async function retryReactionUpload(maxAttempts = 8) {{
-    const existingStatus = await fetchReactionStatus();
-    if (existingStatus && existingStatus.reaction_uploaded && existingStatus.reaction_exists) {{
-        await deletePendingReaction().catch(() => null);
-        return true;
-    }}
-
-    const blob = await loadPendingReaction();
-    if (!blob || !blob.size) {{
-        return false;
-    }}
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {{
-        try {{
-            await uploadReactionBlob(blob);
-            const status = await fetchReactionStatus();
-            if (status && status.reaction_uploaded && status.reaction_exists) {{
-                await deletePendingReaction().catch(() => null);
-                return true;
-            }}
-        }} catch (e) {{
-            console.error("retryReactionUpload attempt error", attempt, e);
-        }}
-
-        await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
-    }}
-
-    return false;
-}}
-
-window.addEventListener("load", () => {{
-    retryReactionUpload().catch((e) => console.error("retryReactionUpload load error", e));
-}});
-
-document.addEventListener("visibilitychange", () => {{
-    if (document.visibilityState === "visible") {{
-        retryReactionUpload().catch((e) => console.error("retryReactionUpload visible error", e));
-    }}
-}});
-</script>
-    </body>
-    </html>
-    """)
-
-
-@app.get("/sender/{sender_token}", response_class=HTMLResponse)
-def sender_pack(sender_token: str):
-    order = maybe_mark_eterna_completed(get_order_by_sender_token_or_404(sender_token)["id"])
-
-    if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    original_video_url = safe_attr(order.get("experience_video_url") or "")
-    reaction_url = safe_attr(order.get("reaction_video_public_url") or "")
-    share_url = safe_attr(order.get("share_video_url") or "")
-    recipient_name = safe_text(order.get("recipient_name") or "esa persona")
-    gift_amount = format_amount_display(order.get("gift_amount") or 0)
-    eterna_completed = bool(order.get("eterna_completed"))
-    reaction_pending = bool(order.get("reaction_upload_pending"))
-    reaction_error = safe_text(order.get("reaction_upload_error") or "")
-
-    state_html = ""
-    if eterna_completed:
-        state_html = """
-        <div class="state-box">
-            ETERNA completa: el vídeo y la emoción ya están guardados.
-        </div>
-        """
-    elif reaction_pending:
-        state_html = """
-        <div class="state-box">
-            La emoción sigue guardándose. El sender pack todavía no está completo del todo.
-        </div>
-        """
-    elif reaction_error:
-        state_html = f"""
-        <div class="state-box">
-            La emoción sigue pendiente. Último estado: {reaction_error}
-        </div>
-        """
-    else:
-        state_html = """
-        <div class="state-box">
-            La emoción aún no está lista. Este sender pack todavía no está completo.
-        </div>
-        """
-
-    reaction_block = ""
-    if reaction_url:
-        reaction_block = f"""
-        <div class="card">
-            <div class="card-title">Su emoción</div>
-            <video controls playsinline preload="metadata" src="{reaction_url}"></video>
-        </div>
-        """
-
-    share_button = ""
-    if share_url:
-        share_button = f"""
-            <a class="btn" href="/share/{safe_attr(sender_token)}">Compartir emoción</a>
-        """
-
-    refresh = '<meta http-equiv="refresh" content="6">' if not eterna_completed else ""
-
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        {refresh}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                padding: 24px;
-            }}
-            .wrap {{ width: 100%; max-width: 920px; margin: 0 auto; }}
-            .hero {{
-                text-align: center;
-                margin-bottom: 26px;
-            }}
-            h1 {{
-                font-size: 42px;
-                margin: 0 0 14px 0;
-            }}
-            .sub {{
-                font-size: 20px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.82);
-            }}
-            .state-box {{
-                max-width: 760px;
-                margin: 0 auto 24px auto;
-                padding: 16px 18px;
-                border-radius: 20px;
-                background: rgba(255,255,255,0.05);
-                border: 1px solid rgba(255,255,255,0.08);
-                color: rgba(255,255,255,0.72);
-                line-height: 1.7;
-                text-align: center;
-                font-size: 15px;
-            }}
-            .grid {{
-                display: grid;
-                gap: 22px;
-            }}
-            .card {{
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 24px;
-                padding: 18px;
-            }}
-            .card-title {{
-                font-size: 14px;
-                text-transform: uppercase;
-                letter-spacing: 1.3px;
-                color: rgba(255,255,255,0.46);
-                margin-bottom: 12px;
-            }}
-            video {{
-                width: 100%;
-                border-radius: 18px;
-                background: black;
-            }}
-            .actions {{
-                display: grid;
-                gap: 12px;
-                max-width: 420px;
-                margin: 28px auto 0 auto;
-            }}
-            .btn {{
-                display: block;
-                width: 100%;
-                padding: 17px 22px;
-                border-radius: 999px;
-                border: 0;
-                text-decoration: none;
-                text-align: center;
-                font-weight: bold;
-                font-size: 15px;
-                background: white;
-                color: black;
-            }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-            .meta {{
-                margin-top: 24px;
-                text-align: center;
-                color: rgba(255,255,255,0.46);
-                line-height: 1.8;
-                font-size: 15px;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <div class="hero">
-                <h1>Tu ETERNA ha vuelto</h1>
-                <div class="sub">
-                    {recipient_name} ya ha vivido su momento.<br>
-                    Regalo: {gift_amount}
-                </div>
-            </div>
-
-            {state_html}
-
-            <div class="grid">
-                <div class="card">
-                    <div class="card-title">El vídeo que enviaste</div>
-                    <video controls playsinline preload="metadata" src="{original_video_url}"></video>
-                </div>
-                {reaction_block}
-            </div>
-
-            <div class="actions">
-                {share_button}
-                <a class="btn ghost" href="/">Crear otra ETERNA</a>
-            </div>
-
-            <div class="meta">
-                Puedes ver el vídeo original dentro de ETERNA,<br>
-                pero solo puedes compartir la emoción.
-            </div>
-        </div>
-    </body>
-    </html>
-    """)
-
-
-@app.get("/share/{sender_token}", response_class=HTMLResponse)
-def share_sender_emotion(sender_token: str):
-    order = get_order_by_sender_token_or_404(sender_token)
-
-    share_video_url = (order.get("share_video_url") or "").strip()
-
-    if not share_video_url:
-        return RedirectResponse(url=f"/sender/{sender_token}", status_code=303)
-
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Compartir emoción · ETERNA</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                padding: 24px;
-            }}
-            .wrap {{ width: 100%; max-width: 760px; margin: 0 auto; }}
-            h1 {{
-                text-align: center;
-                font-size: 40px;
-                margin: 0 0 22px 0;
-            }}
-            .soft {{
-                text-align: center;
-                font-size: 16px;
-                line-height: 1.8;
-                color: rgba(255,255,255,0.58);
-                margin-bottom: 22px;
-            }}
-            .card {{
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 24px;
-                padding: 18px;
-            }}
-            video {{
-                width: 100%;
-                border-radius: 18px;
-                background: black;
-            }}
-            .actions {{
-                display: grid;
-                gap: 12px;
-                max-width: 420px;
-                margin: 28px auto 0 auto;
-            }}
-            .btn {{
-                display: block;
-                width: 100%;
-                padding: 17px 22px;
-                border-radius: 999px;
-                border: 0;
-                text-decoration: none;
-                text-align: center;
-                font-weight: bold;
-                font-size: 15px;
-                background: white;
-                color: black;
-            }}
-            .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <h1>Comparte esto…</h1>
-            <div class="soft">
-                No compartes lo que vio.<br>
-                Compartes lo que sintió.
-            </div>
-
-            <div class="card">
-                <video controls playsinline preload="metadata" src="{safe_attr(share_video_url)}"></video>
-            </div>
-
-            <div class="actions">
-                <a class="btn ghost" href="/sender/{safe_attr(sender_token)}">Volver al sender pack</a>
-                <a class="btn ghost" href="/">Crear otra ETERNA</a>
-            </div>
-        </div>
-    </body>
-    </html>
+</body>
+</html>
     """)
 
 
