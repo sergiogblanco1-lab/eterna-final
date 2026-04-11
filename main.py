@@ -3842,7 +3842,7 @@ let finished = false;
 
 function finalUrl() {{
     return "/finalizar-experiencia/" + recipientToken;
-}
+}}
 
 function safeRedirectFinal() {{
     if (finished) return;
@@ -3909,7 +3909,7 @@ async function fetchReactionStatus() {{
         }});
         if (!res.ok) return null;
         return await res.json();
-    } catch (e) {{
+    }} catch (e) {{
         console.error("reaction status error", e);
         return null;
     }}
@@ -3918,7 +3918,10 @@ async function fetchReactionStatus() {{
 async function uploadReactionBlob(blob) {{
     const formData = new FormData();
 
-    const mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : ((blob && blob.type) ? blob.type : "video/webm");
+    const mimeType = (mediaRecorder && mediaRecorder.mimeType)
+        ? mediaRecorder.mimeType
+        : ((blob && blob.type) ? blob.type : "video/webm");
+
     const extension = mimeType.includes("mp4") ? "mp4" : "webm";
 
     formData.append("file", blob, "reaction." + extension);
