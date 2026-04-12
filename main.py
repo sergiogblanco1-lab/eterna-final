@@ -3772,10 +3772,6 @@ def start_experience(request: Request, recipient_token: str = Form(...)):
 # EXPERIENCE
 # =========================================================
 
-# =========================================================
-# EXPERIENCE
-# =========================================================
-
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
@@ -3796,14 +3792,6 @@ def experiencia(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
-    gift_amount = float(order.get("gift_amount") or 0)
-
-    if gift_amount > 0:
-        payoff_title = "Tu regalo está aquí"
-        payoff_text = f"Has recibido {format_amount_display(gift_amount)}"
-    else:
-        payoff_title = "Tu momento ya está completo"
-        payoff_text = "Hay cosas que no se miden en dinero."
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -3892,53 +3880,46 @@ video {{
 .blackout.show {{
     opacity: 1;
 }}
-.payoff {{
+.finish-overlay {{
     position: absolute;
     inset: 0;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.07), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.92) 100%);
-    display: flex;
+    background: linear-gradient(180deg, rgba(0,0,0,0.48) 0%, rgba(0,0,0,0.96) 100%);
+    display: none;
     align-items: center;
     justify-content: center;
     flex-direction: column;
     text-align: center;
     padding: 24px;
     z-index: 5;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.45s ease;
 }}
-.payoff.show {{
-    opacity: 1;
-    pointer-events: auto;
+.finish-overlay.show {{
+    display: flex;
 }}
-.payoff-kicker {{
-    font-size: 13px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.42);
-    margin-bottom: 18px;
-}}
-.payoff-title {{
-    font-size: 42px;
-    line-height: 1.15;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 18px;
-}}
-.payoff-amount {{
+.finish-title {{
     font-size: 34px;
     line-height: 1.2;
     color: white;
-    font-weight: 700;
+    margin-bottom: 16px;
 }}
-.payoff-soft {{
-    margin-top: 22px;
+.finish-soft {{
     max-width: 620px;
-    font-size: 16px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.62);
+    font-size: 17px;
+    line-height: 1.9;
+    color: rgba(255,255,255,0.78);
+}}
+.finish-loader {{
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    border: 3px solid rgba(255,255,255,0.18);
+    border-top-color: white;
+    margin-top: 26px;
+    animation: spin 0.9s linear infinite;
+}}
+@keyframes spin {{
+    to {{
+        transform: rotate(360deg);
+    }}
 }}
 @media (max-width: 640px) {{
     .title {{
@@ -3947,11 +3928,11 @@ video {{
     .soft {{
         font-size: 15px;
     }}
-    .payoff-title {{
-        font-size: 34px;
+    .finish-title {{
+        font-size: 30px;
     }}
-    .payoff-amount {{
-        font-size: 28px;
+    .finish-soft {{
+        font-size: 15px;
     }}
 }}
 </style>
@@ -3980,14 +3961,13 @@ video {{
         <button id="startBtn" class="btn">Estoy listo</button>
     </div>
 
-    <div class="payoff hidden" id="payoff">
-        <div class="payoff-kicker">ETERNA</div>
-        <div class="payoff-title">{safe_text(payoff_title)}</div>
-        <div class="payoff-amount">{safe_text(payoff_text)}</div>
-        <div class="payoff-soft">
-            Quédate un instante más.<br>
-            Este momento todavía no ha terminado.
+    <div class="finish-overlay" id="finishOverlay">
+        <div class="finish-title">Espera un instante…</div>
+        <div class="finish-soft">
+            Tu momento ya está terminando de cerrarse.<br>
+            Enseguida verás lo que te han dejado.
         </div>
+        <div class="finish-loader"></div>
     </div>
 
     <div class="blackout" id="blackout"></div>
@@ -3998,19 +3978,30 @@ const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
 const blackout = document.getElementById("blackout");
-const payoff = document.getElementById("payoff");
+const finishOverlay = document.getElementById("finishOverlay");
 
 const recipientToken = "{safe_attr(recipient_token)}";
-const POST_PAYOFF_RECORDING_MS = 5000;
 
 let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
 let finishing = false;
-let payoffStarted = false;
+let postRollStarted = false;
+let postRollTimeout = null;
+let endTriggered = false;
+
+const EXTRA_RECORDING_MS = 5000;
 
 function cobrarUrl() {{
     return "/cobrar/" + recipientToken;
+}}
+
+function finalUrl() {{
+    return "/finalizar-experiencia/" + recipientToken;
+}}
+
+function sleep(ms) {{
+    return new Promise(resolve => setTimeout(resolve, ms));
 }}
 
 async function openReactionDB() {{
@@ -4081,8 +4072,12 @@ async function fetchReactionStatus() {{
 async function uploadReactionBlob(blob) {{
     const formData = new FormData();
 
-    const mimeType = (blob && blob.type) ? blob.type : "video/webm";
+    const mimeType = (mediaRecorder && mediaRecorder.mimeType)
+        ? mediaRecorder.mimeType
+        : ((blob && blob.type) ? blob.type : "video/webm");
+
     const extension = mimeType.includes("mp4") || mimeType.includes("quicktime") ? "mp4" : "webm";
+
     const file = new File([blob], "reaction." + extension, {{
         type: mimeType || "video/webm"
     }});
@@ -4144,10 +4139,25 @@ async function stopRecorderSafely() {{
     }}
 }}
 
-async function finishExperienceNow() {{
+async function goFinalize() {{
+    try {{
+        window.location.replace(finalUrl());
+    }} catch (e) {{
+        console.error("goFinalize error", e);
+        window.location.replace(cobrarUrl());
+    }}
+}}
+
+async function finishExperience() {{
     if (finishing) return;
     finishing = true;
 
+    if (postRollTimeout) {{
+        clearTimeout(postRollTimeout);
+        postRollTimeout = null;
+    }}
+
+    finishOverlay.classList.add("show");
     blackout.classList.add("show");
 
     try {{
@@ -4180,24 +4190,27 @@ async function finishExperienceNow() {{
         }}
     }}
 
-    window.location.replace(cobrarUrl());
+    await sleep(700);
+    await goFinalize();
 }}
 
-async function startPayoffAndFinish() {{
-    if (payoffStarted) return;
-    payoffStarted = true;
+function startPostRollIfNeeded() {{
+    if (postRollStarted || finishing) return;
+    postRollStarted = true;
+    endTriggered = true;
 
     try {{
-        payoff.classList.remove("hidden");
-        requestAnimationFrame(() => {{
-            payoff.classList.add("show");
-        }});
-    }} catch (e) {{
-        console.error("payoff show error", e);
-    }}
+        video.pause();
+    }} catch (e) {{}}
 
-    await new Promise(resolve => setTimeout(resolve, POST_PAYOFF_RECORDING_MS));
-    await finishExperienceNow();
+    finishOverlay.classList.add("show");
+
+    postRollTimeout = setTimeout(() => {{
+        finishExperience().catch(err => {{
+            console.error("finishExperience error", err);
+            window.location.replace(cobrarUrl());
+        }});
+    }}, EXTRA_RECORDING_MS);
 }}
 
 async function resumePendingUploadAndReplayIfNeeded() {{
@@ -4205,6 +4218,10 @@ async function resumePendingUploadAndReplayIfNeeded() {{
         const status = await fetchReactionStatus();
         if (status && status.reaction_uploaded && status.reaction_exists) {{
             await deletePendingReaction().catch(() => null);
+
+            if (!finishing && endTriggered) {{
+                window.location.replace(cobrarUrl());
+            }}
             return;
         }}
 
@@ -4215,23 +4232,14 @@ async function resumePendingUploadAndReplayIfNeeded() {{
                 const uploaded = await fetchReactionStatus();
                 if (uploaded && uploaded.reaction_uploaded && uploaded.reaction_exists) {{
                     await deletePendingReaction().catch(() => null);
+
+                    if (!finishing && endTriggered) {{
+                        window.location.replace(cobrarUrl());
+                    }}
                     return;
                 }}
             }} catch (e) {{
                 console.error("pending upload retry error", e);
-            }}
-
-            const formData = new FormData();
-            formData.append("recipient_token", recipientToken);
-
-            try {{
-                await fetch("/reset-experience/" + recipientToken, {{
-                    method: "POST",
-                    body: formData
-                }});
-                window.location.replace("/experiencia/" + recipientToken);
-            }} catch (e) {{
-                console.error("reset experience error", e);
             }}
         }}
     }} catch (e) {{
@@ -4267,29 +4275,22 @@ startBtn.addEventListener("click", async () => {{
             audio: true
         }});
 
-        let recorderMime = "";
+        let mimeType = "";
         if (window.MediaRecorder) {{
-            const candidates = [
-                "video/webm;codecs=vp9,opus",
-                "video/webm;codecs=vp8,opus",
-                "video/webm",
-                "video/mp4"
-            ];
-            for (const candidate of candidates) {{
-                try {{
-                    if (MediaRecorder.isTypeSupported(candidate)) {{
-                        recorderMime = candidate;
-                        break;
-                    }}
-                }} catch (_) {{}}
+            if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {{
+                mimeType = "video/webm;codecs=vp9,opus";
+            }} else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {{
+                mimeType = "video/webm;codecs=vp8,opus";
+            }} else if (MediaRecorder.isTypeSupported("video/webm")) {{
+                mimeType = "video/webm";
             }}
         }}
 
-        mediaRecorder = recorderMime
-            ? new MediaRecorder(stream, {{ mimeType: recorderMime }})
-            : new MediaRecorder(stream);
-
+        mediaRecorder = mimeType ? new MediaRecorder(stream, {{ mimeType }}) : new MediaRecorder(stream);
         recordedChunks = [];
+        finishing = false;
+        postRollStarted = false;
+        endTriggered = false;
 
         mediaRecorder.ondataavailable = (e) => {{
             if (e.data && e.data.size > 0) {{
@@ -4307,7 +4308,7 @@ startBtn.addEventListener("click", async () => {{
     }}
 }});
 
-video.addEventListener("ended", startPayoffAndFinish);
+video.addEventListener("ended", startPostRollIfNeeded);
 
 document.addEventListener("visibilitychange", async () => {{
     if (!document.hidden) {{
@@ -4366,6 +4367,7 @@ def reaction_upload_status(recipient_token: str):
         "experience_started": bool(order.get("experience_started")),
         "experience_completed": bool(order.get("experience_completed")),
         "eterna_completed": bool(order.get("eterna_completed")),
+        "gift_amount": float(order.get("gift_amount") or 0),
     })
 
 
@@ -4388,6 +4390,13 @@ def finalizar_experiencia(request: Request, recipient_token: str):
 
     refreshed = get_order_by_recipient_token_or_404(recipient_token)
 
+    print("✅ EXPERIENCE FINALIZADA")
+    print("➡️ order_id:", refreshed["id"])
+    print("➡️ reaction_uploaded:", bool(refreshed.get("reaction_uploaded")))
+    print("➡️ reaction_exists:", reaction_exists(refreshed))
+    print("➡️ experience_completed:", bool(refreshed.get("experience_completed")))
+    print("➡️ eterna_completed:", bool(refreshed.get("eterna_completed")))
+
     if not bool(refreshed.get("reaction_uploaded")) or not reaction_exists(refreshed):
         update_order(
             refreshed["id"],
@@ -4404,7 +4413,17 @@ def finalizar_experiencia(request: Request, recipient_token: str):
             gift_refund_deadline_at=refreshed.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
-    maybe_mark_eterna_completed(refreshed["id"])
+    updated_order = maybe_mark_eterna_completed(refreshed["id"])
+
+    print("➡️ experience_completed final:", bool(updated_order.get("experience_completed")))
+    print("➡️ eterna_completed final:", bool(updated_order.get("eterna_completed")))
+
+    try:
+        sms_result = try_send_sender_sms(updated_order)
+        print("📩 FINALIZE SENDER SMS RESULT:", sms_result)
+    except Exception as e:
+        print("❌ FINALIZE sender sms error:", e)
+
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
 
@@ -4426,39 +4445,15 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
     content_type = (video.content_type or "").lower().strip()
-    filename = (video.filename or "").lower().strip()
-
-    allowed_by_content_type = content_type in {
-        "video/webm",
-        "video/mp4",
-        "video/quicktime",
-        "video/x-matroska",
-        "application/octet-stream",
-    }
-
-    allowed_by_name = (
-        filename.endswith(".webm")
-        or filename.endswith(".mp4")
-        or filename.endswith(".mov")
-        or filename.endswith(".mkv")
-    )
-
-    if not allowed_by_content_type and not allowed_by_name:
-        raise HTTPException(status_code=400, detail=f"invalid_video_type:{content_type or 'unknown'}")
+    if content_type not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(status_code=400, detail="invalid_video_type")
 
     data = await video.read()
-
-    if not data or len(data) == 0:
-        raise HTTPException(status_code=400, detail="empty_video")
 
     if len(data) > MAX_VIDEO_SIZE:
         raise HTTPException(status_code=400, detail="video_too_large")
 
-    extension = "webm"
-    if filename.endswith(".mp4") or content_type == "video/mp4":
-        extension = "mp4"
-    elif filename.endswith(".mov") or content_type == "video/quicktime":
-        extension = "mp4"
+    extension = detect_video_extension(video)
 
     local_path = reaction_video_path(order["id"], extension)
 
@@ -4472,11 +4467,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     try:
         if r2_enabled():
             remote_name = f"reactions/{order['id']}.{extension}"
-            upload_content_type = "video/mp4" if extension == "mp4" else "video/webm"
             public_url = upload_video_to_r2(
                 local_path,
                 remote_name,
-                content_type=upload_content_type
+                content_type=content_type
             )
             print("☁️ Subido a R2:", public_url)
     except Exception as e:
@@ -4489,12 +4483,13 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         reaction_uploaded=1,
         reaction_upload_pending=0,
         reaction_upload_error=None,
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
     )
 
+    print("✅ Reacción guardada en DB")
+
     order = maybe_mark_eterna_completed(order["id"])
+
+    print("🎯 eterna_completed:", order.get("eterna_completed"))
 
     try:
         sms_result = try_send_sender_sms(order)
@@ -4504,7 +4499,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     return JSONResponse({
         "ok": True,
-        "redirect": f"/cobrar/{recipient_token}"
+        "redirect": f"/finalizar-experiencia/{recipient_token}"
     })
 
 
@@ -4525,14 +4520,19 @@ def mi_video(request: Request, recipient_token: str):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
+    if not delivery_is_unlocked(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
     video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
 
-    gift_line = (
-        f"Tu regalo fue de {format_amount_display(gift_amount)}."
-        if gift_amount > 0 else
-        "Este momento no llevaba dinero. Solo emoción."
-    )
+    money_block = ""
+    if gift_amount > 0:
+        money_block = f"""
+        <div class="money">
+            Has recibido <strong>{safe_text(format_amount_display(gift_amount))}</strong>
+        </div>
+        """
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -4549,53 +4549,58 @@ html, body {{
     color: white;
     font-family: Arial, sans-serif;
 }}
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-}}
 .wrap {{
+    width: 100%;
     max-width: 860px;
     margin: 0 auto;
     padding: 24px;
     text-align: center;
 }}
-h1 {{
-    margin: 0 0 14px 0;
-    font-size: 40px;
-    line-height: 1.2;
-}}
-.soft {{
-    color: rgba(255,255,255,0.62);
-    line-height: 1.8;
-    font-size: 16px;
-    margin-bottom: 22px;
+.video-box {{
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
 }}
 video {{
     width: 100%;
-    max-width: 480px;
     height: auto;
     background: black;
     border-radius: 18px;
+}}
+h1 {{
+    font-size: 38px;
+    line-height: 1.2;
+    margin: 0 0 14px 0;
+}}
+.soft {{
+    font-size: 18px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.76);
+    margin-bottom: 24px;
+}}
+.money {{
+    margin: 18px auto 28px auto;
+    font-size: 20px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.92);
 }}
 .actions {{
     display: grid;
     gap: 12px;
     max-width: 420px;
-    margin: 26px auto 0 auto;
+    margin: 28px auto 0 auto;
 }}
 .btn {{
     display: block;
     width: 100%;
-    padding: 16px 22px;
+    padding: 16px 24px;
     border-radius: 999px;
     background: white;
     color: black;
-    text-decoration: none;
     font-weight: bold;
+    text-decoration: none;
 }}
-.ghost {{
+.btn.ghost {{
     background: rgba(255,255,255,0.10);
     color: white;
     border: 1px solid rgba(255,255,255,0.10);
@@ -4603,21 +4608,26 @@ video {{
 </style>
 </head>
 <body>
-    <div class="wrap">
-        <h1>Tu ETERNA sigue aquí</h1>
-        <div class="soft">
-            {safe_text(gift_line)}
-        </div>
+<div class="wrap">
+    <h1>Tu ETERNA sigue aquí</h1>
+    <div class="soft">
+        Lo que acaba de pasar ya forma parte de ti.<br>
+        Puedes volver a verlo cuando quieras.
+    </div>
 
+    {money_block}
+
+    <div class="video-box">
         <video controls playsinline>
             <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
         </video>
-
-        <div class="actions">
-            <a class="btn" href="/cobrar/{safe_attr(recipient_token)}">Ver mi regalo</a>
-            <a class="btn ghost" href="/">Volver al inicio</a>
-        </div>
     </div>
+
+    <div class="actions">
+        <a class="btn" href="/cobrar/{safe_attr(recipient_token)}">Continuar</a>
+        <a class="btn ghost" href="/crear">Crear una ETERNA</a>
+    </div>
+</div>
 </body>
 </html>
     """)
@@ -4637,8 +4647,31 @@ def cobrar(request: Request, recipient_token: str):
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_completed")):
+    if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not bool(order.get("reaction_uploaded")) or not reaction_exists(order):
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+
+    if not bool(order.get("experience_completed")):
+        update_order(
+            order["id"],
+            experience_completed=1,
+            delivered_to_recipient=1,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+        order = get_order_by_recipient_token_or_404(recipient_token)
+
+    try:
+        order = maybe_mark_eterna_completed(order["id"])
+    except Exception as e:
+        log_error("maybe_mark_eterna_completed cobrar", e)
+
+    try:
+        sms_result = try_send_sender_sms(order)
+        print("📩 COBRAR SENDER SMS RESULT:", sms_result)
+    except Exception as e:
+        print("❌ COBRAR sender sms error:", e)
 
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
@@ -4660,16 +4693,330 @@ def cobrar(request: Request, recipient_token: str):
         button_html = ""
     else:
         amount_block = f"""
-        <div style="margin-top:18px;font-size:42px;line-height:1.2;font-weight:700;color:white;">
-            {safe_text(format_amount_display(gift_amount))}
+        <div class="amount-box">
+            <div class="amount-label">Tu regalo</div>
+            <div class="amount-value">{safe_text(format_amount_display(gift_amount))}</div>
         </div>
         """
 
         if cashout_status == "completed":
-            cashout_line = "Tu regalo económico ya ha sido enviado."
+            cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
             button_html = ""
         elif cashout_status == "processing":
-            cashout
+            cashout_line = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
+            button_html = ""
+        elif cashout_status == "ready_to_send":
+            cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} está listo para enviarse."
+            button_html = f'''
+                <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:18px;">
+                    <button style="padding:16px 28px;border:none;border-radius:999px;background:white;color:black;font-weight:bold;cursor:pointer;">
+                        Enviar mi regalo
+                    </button>
+                </form>
+            '''
+        else:
+            cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
+            button_html = (
+                f'<a href="{safe_attr(connect_url)}" style="display:inline-block;margin-top:18px;padding:16px 28px;'
+                'border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;">'
+                'Recibir mi regalo</a>'
+            ) if connect_url else ""
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}}
+h1 {{
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.2;
+}}
+.main {{
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.88);
+}}
+.soft {{
+    margin-top: 24px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.50);
+}}
+.amount-box {{
+    margin: 26px auto 10px auto;
+    max-width: 360px;
+    border-radius: 24px;
+    padding: 22px 18px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+}}
+.amount-label {{
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.48);
+    margin-bottom: 10px;
+}}
+.amount-value {{
+    font-size: 42px;
+    line-height: 1.1;
+    font-weight: 700;
+    color: white;
+}}
+.actions {{
+    display: grid;
+    gap: 12px;
+    max-width: 420px;
+    margin: 34px auto 0 auto;
+}}
+.btn {{
+    display: block;
+    width: 100%;
+    padding: 17px 22px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.10);
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.10);
+}}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>{safe_text(status_title)}</h1>
+        <div class="main">{safe_text(status_text)}</div>
+        {amount_block}
+        <div class="soft">{safe_text(cashout_line)}</div>
+        {button_html}
+        <div class="actions">
+            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
+        </div>
+    </div>
+</body>
+</html>
+    """)
+
+
+@app.get("/connect/refresh/{recipient_token}")
+def connect_refresh(recipient_token: str):
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+
+@app.get("/connect/return/{recipient_token}")
+def connect_return(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    try:
+        refresh_connect_status(order)
+    except Exception as e:
+        log_error("refresh_connect_status", e)
+
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+
+@app.post("/connect/payout/{recipient_token}")
+def connect_payout(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    try:
+        refresh_connect_status(order)
+    except Exception as e:
+        log_error("refresh_connect_status", e)
+
+    refreshed = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(refreshed.get("connect_onboarding_completed")):
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    try:
+        process_gift_transfer_for_order(refreshed)
+    except Exception as e:
+        log_error("process_gift_transfer_for_order", e)
+
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+
+@app.get("/sender/{sender_token}", response_class=HTMLResponse)
+def sender_pack(sender_token: str):
+    order = get_order_by_sender_token_or_404(sender_token)
+
+    original_video_url = (order.get("experience_video_url") or "").strip()
+    reaction_url = (order.get("reaction_video_public_url") or "").strip()
+
+    if not reaction_url:
+        local_path = (order.get("reaction_video_local") or "").strip()
+        if local_path and os.path.exists(local_path):
+            reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
+
+    cashout_status = compute_cashout_status(order)
+
+    sender_status = "Tu ETERNA aún se está cerrando."
+    if bool(order.get("eterna_completed")):
+        sender_status = "Tu ETERNA ha vuelto."
+
+    cashout_line = ""
+    if float(order.get("gift_amount") or 0) > 0:
+        if cashout_status == "completed":
+            cashout_line = "El regalo económico ya ha sido enviado."
+        elif cashout_status == "processing":
+            cashout_line = "El regalo económico se está procesando."
+        elif cashout_status == "ready_to_send":
+            cashout_line = "El regalo económico está listo para enviarse."
+        else:
+            cashout_line = "El regalo económico sigue pendiente de cobro."
+
+    reaction_block = ""
+    if reaction_url:
+        reaction_block = f"""
+        <div style="margin-top:28px;">
+            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">Su reacción</div>
+            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
+                <source src="{safe_attr(reaction_url)}" type="{safe_attr(guess_media_type_from_url(reaction_url))}">
+            </video>
+        </div>
+        """
+    else:
+        reaction_block = """
+        <div style="margin-top:28px;color:rgba(255,255,255,0.52);line-height:1.8;">
+            La reacción todavía no está lista.
+        </div>
+        """
+
+    original_block = ""
+    if original_video_url:
+        original_block = f"""
+        <div style="margin-top:28px;">
+            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">El vídeo original</div>
+            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
+                <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
+            </video>
+        </div>
+        """
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    padding: 24px;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    text-align: center;
+}}
+h1 {{
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.2;
+}}
+.main {{
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.88);
+}}
+.soft {{
+    margin-top: 20px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.52);
+}}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>{safe_text(sender_status)}</h1>
+        <div class="main">Aquí tienes el pack final.</div>
+        <div class="soft">{safe_text(cashout_line)}</div>
+        {original_block}
+        {reaction_block}
+    </div>
+</body>
+</html>
+    """)
+
+
+# =========================================================
+# VIDEO / FILE ROUTES
+# =========================================================
+
+@app.get("/video/input/{order_id}/{slot_name}")
+def get_video_input(order_id: str, slot_name: str):
+    path = get_photo_asset_path(order_id, slot_name)
+    if not path:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+    return FileResponse(
+        path,
+        media_type=guess_media_type_from_path(path),
+        filename=os.path.basename(path),
+    )
+
+
+@app.get("/video/sender-reaction/{sender_token}")
+def get_sender_reaction_video(sender_token: str):
+    order = get_order_by_sender_token_or_404(sender_token)
+    local_path = (order.get("reaction_video_local") or "").strip()
+
+    if not local_path or not os.path.exists(local_path):
+        raise HTTPException(status_code=404, detail="Vídeo no encontrado")
+
+    return FileResponse(
+        local_path,
+        media_type=guess_media_type_from_path(local_path),
+        filename=os.path.basename(local_path),
+    )
 
 
 # =========================================================
