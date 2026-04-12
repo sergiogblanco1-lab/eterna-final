@@ -660,7 +660,8 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
 
 
 def original_video_ready(order: dict) -> bool:
-    return bool((order.get("experience_video_url") or "").strip())
+    url = (order.get("experience_video_url") or "").strip()
+    return bool(url)
 
 
 def reaction_exists(order: dict) -> bool:
@@ -1014,7 +1015,7 @@ def send_sms(phone: str, message: str) -> dict:
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
-    if order.get("delivery_sent"):
+    if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
         return {
             "ok": True,
             "reason": "already_sent",
@@ -1022,21 +1023,48 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "delivery_sent_at": order.get("delivery_sent_at"),
             "scheduled_delivery_display": scheduled_delivery_display(order),
             "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    allowed, reason = can_send_recipient_delivery(order)
-
-    if not allowed:
+    if not bool(order.get("paid")):
         return {
             "ok": False,
-            "reason": reason,
-            "delivery_sent": bool(order.get("delivery_sent")),
+            "reason": "order_not_paid",
+            "delivery_sent": False,
             "delivery_sent_at": order.get("delivery_sent_at"),
             "scheduled_delivery_display": scheduled_delivery_display(order),
             "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    attempts = int(order.get("recipient_sms_attempts") or 0) + 1
+    if not original_video_ready(order):
+        return {
+            "ok": False,
+            "reason": "original_video_not_ready",
+            "delivery_sent": False,
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": order.get("recipient_sms_error"),
+        }
+
+    if not delivery_is_unlocked(order):
+        return {
+            "ok": False,
+            "reason": "scheduled_delivery_not_ready",
+            "delivery_sent": False,
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": order.get("recipient_sms_error"),
+        }
+
+    current_attempts = int(order.get("recipient_sms_attempts") or 0)
+    attempts = current_attempts + 1
 
     if not twilio_enabled():
         update_order(
@@ -1044,6 +1072,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             recipient_sms_attempts=attempts,
             recipient_sms_error="twilio_not_configured_test_mode",
         )
+
         refreshed = get_order_by_id(order_id)
         return {
             "ok": False,
@@ -1052,13 +1081,17 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "delivery_sent_at": refreshed.get("delivery_sent_at"),
             "scheduled_delivery_display": scheduled_delivery_display(refreshed),
             "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(refreshed.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": refreshed.get("recipient_sms_error"),
             "recipient_url": recipient_experience_url_from_order(refreshed),
         }
 
-    result = send_sms(order.get("recipient_phone", ""), build_recipient_message(order))
+    message = build_recipient_message(order)
+    result = send_sms(order.get("recipient_phone", ""), message)
 
     if result.get("ok"):
         sent_at = now_iso()
+
         update_order(
             order_id,
             recipient_sms_attempts=attempts,
@@ -1069,6 +1102,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             delivery_sent_at=sent_at,
             delivered_to_recipient=1,
         )
+
         refreshed = get_order_by_id(order_id)
         return {
             "ok": True,
@@ -1078,12 +1112,14 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "delivery_sent_at": refreshed.get("delivery_sent_at"),
             "scheduled_delivery_display": scheduled_delivery_display(refreshed),
             "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(refreshed.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": refreshed.get("recipient_sms_error"),
         }
 
     update_order(
         order_id,
         recipient_sms_attempts=attempts,
-        recipient_sms_error=result.get("error"),
+        recipient_sms_error=result.get("error") or "sms_error",
     )
 
     refreshed = get_order_by_id(order_id)
@@ -1094,18 +1130,36 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         "delivery_sent_at": refreshed.get("delivery_sent_at"),
         "scheduled_delivery_display": scheduled_delivery_display(refreshed),
         "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
+        "recipient_sms_attempts": int(refreshed.get("recipient_sms_attempts") or 0),
+        "recipient_sms_error": refreshed.get("recipient_sms_error"),
     }
 
 
 def try_send_sender_sms(order: dict) -> dict:
     order = get_order_by_id(order["id"])
 
-    if not is_eterna_complete(order):
+    if not original_video_ready(order):
         return {
             "ok": False,
             "sid": None,
             "already_sent": False,
-            "error": "eterna_not_complete",
+            "error": "original_video_not_ready",
+        }
+
+    if not bool(order.get("reaction_uploaded")):
+        return {
+            "ok": False,
+            "sid": None,
+            "already_sent": False,
+            "error": "reaction_not_uploaded",
+        }
+
+    if not reaction_exists(order):
+        return {
+            "ok": False,
+            "sid": None,
+            "already_sent": False,
+            "error": "reaction_not_available",
         }
 
     if order.get("sender_sms_sent_at"):
@@ -1118,8 +1172,21 @@ def try_send_sender_sms(order: dict) -> dict:
 
     attempts = int(order.get("sender_sms_attempts") or 0) + 1
 
-    message = build_sender_ready_message(order)
+    if not twilio_enabled():
+        update_order(
+            order["id"],
+            sender_sms_attempts=attempts,
+            sender_sms_error="twilio_not_configured_test_mode",
+            sender_notified=0,
+        )
+        return {
+            "ok": False,
+            "sid": None,
+            "already_sent": False,
+            "error": "twilio_not_configured_test_mode",
+        }
 
+    message = build_sender_ready_message(order)
     result = send_sms(order.get("sender_phone", ""), message)
 
     if result.get("ok"):
@@ -1151,7 +1218,6 @@ def try_send_sender_sms(order: dict) -> dict:
         "already_sent": False,
         "error": result.get("error") or "sms_error",
     }
-
 
 # =========================================================
 # HELPERS EXTRA
@@ -2811,7 +2877,7 @@ async def create_order_and_redirect(
         None, None, None, None,
         0, 0, None, None,
         0, None, 0,
-        delivery_mode, scheduled_delivery_at, 1, 0, None,
+        delivery_mode, scheduled_delivery_at, 1 if delivery_mode == "scheduled" else 0, 0, None,
         0, None,
         None, None,
         created_at, created_at
@@ -2853,7 +2919,7 @@ async def create_order_and_redirect(
             paid=1,
             stripe_payment_status="test_no_stripe",
             gift_refund_deadline_at=gift_refund_deadline_iso(),
-            delivery_locked=1,
+            delivery_locked=1 if delivery_mode == "scheduled" else 0,
         )
 
         try:
@@ -3338,7 +3404,7 @@ async def stripe_webhook(request: Request):
             stripe_payment_status=stripe_payment_status,
             stripe_payment_intent_id=stripe_payment_intent_id,
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-            delivery_locked=1,
+            delivery_locked=1 if (order.get("delivery_mode") or "instant") == "scheduled" else 0,
         )
 
         order = get_order_by_id(order_id)
@@ -4346,10 +4412,196 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 # =========================================================
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
-def mi_video(recipient_token: str):
+def mi_video(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    video_url = order.get("experience_video_url") or ""
+    # =========================
+    # SEGURIDAD
+    # =========================
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not original_video_ready(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    # =========================
+    # VIDEO
+    # =========================
+
+    video_url = (order.get("experience_video_url") or "").strip()
+
+    if not video_url:
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    # =========================
+    # HTML UX
+    # =========================
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+
+<style>
+html, body {{
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+}}
+
+.container {{
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 20px;
+}}
+
+video {{
+    width: 100%;
+    height: auto;
+    background: black;
+}}
+
+h1 {{
+    margin-top: 20px;
+    font-size: 32px;
+}}
+
+.text {{
+    margin-top: 16px;
+    font-size: 18px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.8);
+}}
+
+.actions {{
+    margin-top: 30px;
+    display: grid;
+    gap: 12px;
+}}
+
+.btn {{
+    display: block;
+    width: 100%;
+    padding: 16px 22px;
+    border-radius: 999px;
+    font-weight: bold;
+    text-decoration: none;
+}}
+
+.btn.primary {{
+    background: white;
+    color: black;
+}}
+
+.btn.secondary {{
+    background: rgba(255,255,255,0.12);
+    color: white;
+}}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <video controls playsinline>
+        <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
+    </video>
+
+    <h1>Esto ya es tuyo</h1>
+
+    <div class="text">
+        Puedes volver a este momento siempre que quieras.<br><br>
+        Y si sientes que alguien debería vivir algo así,<br>
+        ahora puedes hacerlo.
+    </div>
+
+    <div class="actions">
+
+        <a class="btn primary" href="/crear">
+            Crear una ETERNA
+        </a>
+
+        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">
+            Volver al inicio
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+</html>
+    """)
+
+    # =========================================================
+# COBRAR / CONNECT / SENDER PACK
+# =========================================================
+
+@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
+def cobrar(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    gift_amount = float(order.get("gift_amount") or 0)
+    cashout_status = compute_cashout_status(order)
+
+    connect_url = None
+    if gift_amount > 0 and not bool(order.get("connect_onboarding_completed")):
+        try:
+            connect_url = create_connect_onboarding_link(order)
+        except Exception as e:
+            log_error("create_connect_onboarding_link", e)
+            connect_url = None
+
+    status_title = "Tu momento ya está completo"
+    status_text = "Ya puedes volver a ver el vídeo cuando quieras."
+
+    if gift_amount <= 0:
+        cashout_line = "Este regalo no incluía dinero."
+        button_html = ""
+    elif cashout_status == "completed":
+        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
+        button_html = ""
+    elif cashout_status == "processing":
+        cashout_line = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
+        button_html = ""
+    elif cashout_status == "ready_to_send":
+        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} está listo para enviarse."
+        button_html = f'''
+            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:18px;">
+                <button style="padding:16px 28px;border:none;border-radius:999px;background:white;color:black;font-weight:bold;cursor:pointer;">
+                    Enviar mi regalo
+                </button>
+            </form>
+        '''
+    else:
+        cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
+        button_html = (
+            f'<a href="{safe_attr(connect_url)}" style="display:inline-block;margin-top:18px;padding:16px 28px;'
+            'border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;">'
+            'Recibir mi regalo</a>'
+        ) if connect_url else ""
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -4361,41 +4613,231 @@ def mi_video(recipient_token: str):
 <style>
 html, body {{
     margin: 0;
-    padding: 0;
-    background: black;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
     color: white;
     font-family: Arial, sans-serif;
-}}
-video {{
-    width: 100%;
-    height: auto;
-}}
-.container {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    padding: 20px;
+    padding: 24px;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}}
+h1 {{
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.2;
+}}
+.main {{
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.88);
+}}
+.soft {{
+    margin-top: 24px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.50);
+}}
+.actions {{
+    display: grid;
+    gap: 12px;
+    max-width: 420px;
+    margin: 34px auto 0 auto;
 }}
 .btn {{
-    margin-top: 20px;
-    padding: 14px 24px;
+    display: block;
+    width: 100%;
+    padding: 17px 22px;
     border-radius: 999px;
-    background: white;
-    color: black;
-    font-weight: bold;
+    background: rgba(255,255,255,0.10);
+    color: white;
     text-decoration: none;
-    display: inline-block;
+    font-weight: bold;
+    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.10);
 }}
 </style>
 </head>
 <body>
+    <div class="wrap">
+        <h1>{safe_text(status_title)}</h1>
+        <div class="main">{safe_text(status_text)}</div>
+        <div class="soft">{safe_text(cashout_line)}</div>
+        {button_html}
+        <div class="actions">
+            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
+        </div>
+    </div>
+</body>
+</html>
+    """)
 
-<video controls playsinline>
-    <source src="{video_url}" type="video/mp4">
-</video>
 
-<div class="container">
-    <a class="btn" href="/crear">Crear una ETERNA</a>
-</div>
+@app.get("/connect/refresh/{recipient_token}")
+def connect_refresh(recipient_token: str):
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
+
+@app.get("/connect/return/{recipient_token}")
+def connect_return(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    try:
+        refresh_connect_status(order)
+    except Exception as e:
+        log_error("refresh_connect_status", e)
+
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+
+@app.post("/connect/payout/{recipient_token}")
+def connect_payout(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    try:
+        refresh_connect_status(order)
+    except Exception as e:
+        log_error("refresh_connect_status", e)
+
+    refreshed = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(refreshed.get("connect_onboarding_completed")):
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    try:
+        process_gift_transfer_for_order(refreshed)
+    except Exception as e:
+        log_error("process_gift_transfer_for_order", e)
+
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+
+@app.get("/sender/{sender_token}", response_class=HTMLResponse)
+def sender_pack(sender_token: str):
+    order = get_order_by_sender_token_or_404(sender_token)
+
+    original_video_url = (order.get("experience_video_url") or "").strip()
+    reaction_url = (order.get("reaction_video_public_url") or "").strip()
+
+    if not reaction_url:
+        local_path = (order.get("reaction_video_local") or "").strip()
+        if local_path and os.path.exists(local_path):
+            reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
+
+    cashout_status = compute_cashout_status(order)
+
+    sender_status = "Tu ETERNA aún se está cerrando."
+    if bool(order.get("eterna_completed")):
+        sender_status = "Tu ETERNA ha vuelto."
+
+    cashout_line = ""
+    if float(order.get("gift_amount") or 0) > 0:
+        if cashout_status == "completed":
+            cashout_line = "El regalo económico ya ha sido enviado."
+        elif cashout_status == "processing":
+            cashout_line = "El regalo económico se está procesando."
+        elif cashout_status == "ready_to_send":
+            cashout_line = "El regalo económico está listo para enviarse."
+        else:
+            cashout_line = "El regalo económico sigue pendiente de cobro."
+
+    reaction_block = ""
+    if reaction_url:
+        reaction_block = f"""
+        <div style="margin-top:28px;">
+            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">Su reacción</div>
+            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
+                <source src="{safe_attr(reaction_url)}" type="{safe_attr(guess_media_type_from_url(reaction_url))}">
+            </video>
+        </div>
+        """
+    else:
+        reaction_block = """
+        <div style="margin-top:28px;color:rgba(255,255,255,0.52);line-height:1.8;">
+            La reacción todavía no está lista.
+        </div>
+        """
+
+    original_block = ""
+    if original_video_url:
+        original_block = f"""
+        <div style="margin-top:28px;">
+            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">El vídeo original</div>
+            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
+                <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
+            </video>
+        </div>
+        """
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    padding: 24px;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    text-align: center;
+}}
+h1 {{
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.2;
+}}
+.main {{
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.88);
+}}
+.soft {{
+    margin-top: 20px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.52);
+}}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>{safe_text(sender_status)}</h1>
+        <div class="main">Aquí tienes el pack final.</div>
+        <div class="soft">{safe_text(cashout_line)}</div>
+        {original_block}
+        {reaction_block}
+    </div>
 </body>
 </html>
     """)
