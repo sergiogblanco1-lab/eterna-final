@@ -4374,76 +4374,6 @@ def close_experience_fast(request: Request, recipient_token: str):
         "redirect": f"/cobrar/{recipient_token}"
     })
 
-    if bool(refreshed.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    update_order(
-        refreshed["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=refreshed.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    updated_order = maybe_mark_eterna_completed(refreshed["id"])
-
-    print("➡️ experience_completed final:", bool(updated_order.get("experience_completed")))
-    print("➡️ eterna_completed final:", bool(updated_order.get("eterna_completed")))
-
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-
-
-# =========================================================
-# FAST CLOSE EXPERIENCE (CRÍTICO)
-# =========================================================
-
-try:
-    # 🔥 1. MARCAR EXPERIENCIA COMO COMPLETADA INMEDIATO
-    update_order(
-        order["id"],
-        reaction_uploaded=1,
-        experience_completed=1,
-    )
-
-    # 🔥 2. RESPUESTA INMEDIATA (SIN ESPERAR NADA)
-    response = JSONResponse({
-        "ok": True,
-        "redirect": f"/cobrar/{recipient_token}"
-    })
-
-    # 🔥 3. TODO LO DEMÁS EN BACKGROUND
-    def background_tasks():
-        try:
-            print("⚙️ BACKGROUND START:", order["id"])
-
-            # guardar flags finales
-            update_order(
-                order["id"],
-                reaction_upload_pending=0,
-                eterna_completed=1,
-            )
-
-            # intentar enviar dinero
-            refreshed = get_order_by_id(order["id"])
-            process_gift_transfer_for_order(refreshed)
-
-            # intentar SMS sender
-            refreshed = get_order_by_id(order["id"])
-            try_send_sender_sms(refreshed)
-
-            print("✅ BACKGROUND DONE:", order["id"])
-
-        except Exception as e:
-            log_error("BACKGROUND TASK ERROR", e)
-
-    threading.Thread(target=background_tasks, daemon=True).start()
-
-    return response
-
-except Exception as e:
-    log_error("UPLOAD REACTION ERROR", e)
-    raise HTTPException(status_code=500, detail="Error guardando reacción")
-
 
 # =========================================================
 # MI VIDEO (POST EXPERIENCIA)
@@ -4453,102 +4383,21 @@ except Exception as e:
 def mi_video(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    video_url = (order.get("experience_video_url") or "").strip()
-
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
-
-<style>
-html, body {{
-    margin: 0;
-    padding: 0;
-    background: black;
-    color: white;
-}}
-
-.container {{
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-}}
-</style>
-
-</head>
-<body>
-
-<div class="container">
-    <video controls playsinline style="width:100%">
-        <source src="{video_url}">
-    </video>
-</div>
-
-</body>
-</html>
-""")
-
-# =========================================================
-# COBRAR / CONNECT / SENDER PACK
-# =========================================================
-
-@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
-def cobrar(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
     if not has_valid_recipient_session(order, request):
         return render_viral_block_page()
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_completed")):
+    if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    gift_amount = float(order.get("gift_amount") or 0)
-    cashout_status = compute_cashout_status(order)
+    video_url = (order.get("experience_video_url") or "").strip()
 
-    connect_url = None
-    if gift_amount > 0 and not bool(order.get("connect_onboarding_completed")):
-        try:
-            connect_url = create_connect_onboarding_link(order)
-        except Exception as e:
-            log_error("create_connect_onboarding_link", e)
-            connect_url = None
+    if not video_url:
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    status_title = "Tu momento ya está completo"
-    status_text = "Ya puedes volver a ver el vídeo cuando quieras."
-
-    if gift_amount <= 0:
-        cashout_line = "Este regalo no incluía dinero."
-        button_html = ""
-    elif cashout_status == "completed":
-        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
-        button_html = ""
-    elif cashout_status == "processing":
-        cashout_line = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
-        button_html = ""
-    elif cashout_status == "ready_to_send":
-        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} está listo para enviarse."
-        button_html = f'''
-            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:18px;">
-                <button style="padding:16px 28px;border:none;border-radius:999px;background:white;color:black;font-weight:bold;cursor:pointer;">
-                    Enviar mi regalo
-                </button>
-            </form>
-        '''
-    else:
-        cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
-        button_html = (
-            f'<a href="{safe_attr(connect_url)}" style="display:inline-block;margin-top:18px;padding:16px 28px;'
-            'border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;">'
-            'Recibir mi regalo</a>'
-        ) if connect_url else ""
-
-   return HTMLResponse(f"""
+    return HTMLResponse(f"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4635,19 +4484,150 @@ h1 {{
     </div>
 
     <div class="actions">
-
-        <a class="btn primary" href="/crear">
-            Crear una ETERNA
-        </a>
-
-        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">
-            Volver al inicio
-        </a>
-
+        <a class="btn primary" href="/crear">Crear una ETERNA</a>
+        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">Volver al inicio</a>
     </div>
 
 </div>
 
+</body>
+</html>
+    """)
+
+# =========================================================
+# COBRAR / CONNECT / SENDER PACK
+# =========================================================
+
+@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
+def cobrar(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    gift_amount = float(order.get("gift_amount") or 0)
+    cashout_status = compute_cashout_status(order)
+
+    connect_url = None
+    if gift_amount > 0 and not bool(order.get("connect_onboarding_completed")):
+        try:
+            connect_url = create_connect_onboarding_link(order)
+        except Exception as e:
+            log_error("create_connect_onboarding_link", e)
+            connect_url = None
+
+    status_title = "Tu momento ya está completo"
+    status_text = "Ya puedes volver a ver el vídeo cuando quieras."
+
+    if gift_amount <= 0:
+        cashout_line = "Este regalo no incluía dinero."
+        button_html = ""
+    elif cashout_status == "completed":
+        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
+        button_html = ""
+    elif cashout_status == "processing":
+        cashout_line = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
+        button_html = ""
+    elif cashout_status == "ready_to_send":
+        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} está listo para enviarse."
+        button_html = f'''
+            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:18px;">
+                <button style="padding:16px 28px;border:none;border-radius:999px;background:white;color:black;font-weight:bold;cursor:pointer;">
+                    Enviar mi regalo
+                </button>
+            </form>
+        '''
+    else:
+        cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
+        button_html = (
+            f'<a href="{safe_attr(connect_url)}" style="display:inline-block;margin-top:18px;padding:16px 28px;'
+            'border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;">'
+            'Recibir mi regalo</a>'
+        ) if connect_url else ""
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}}
+h1 {{
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.2;
+}}
+.main {{
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.88);
+}}
+.soft {{
+    margin-top: 24px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.50);
+}}
+.actions {{
+    display: grid;
+    gap: 12px;
+    max-width: 420px;
+    margin: 34px auto 0 auto;
+}}
+.btn {{
+    display: block;
+    width: 100%;
+    padding: 17px 22px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.10);
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.10);
+}}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>{safe_text(status_title)}</h1>
+        <div class="main">{safe_text(status_text)}</div>
+        <div class="soft">{safe_text(cashout_line)}</div>
+        {button_html}
+        <div class="actions">
+            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
+        </div>
+    </div>
 </body>
 </html>
     """)
