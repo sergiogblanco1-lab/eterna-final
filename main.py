@@ -4305,6 +4305,7 @@ def finalizar_experiencia(request: Request, recipient_token: str):
 
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
+
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO)
 # =========================================================
@@ -4322,39 +4323,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
-        @app.post("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    # 🔒 IDPOTENCIA → evitar duplicados
-    if bool(order.get("experience_completed")):
-        return {"ok": True, "status": "already_completed"}
-
-    # 🔒 seguridad → tiene que existir reacción
-    if not reaction_exists(order):
-        return {"ok": False, "error": "reaction_missing"}
-
-    # 🔥 MARCADO FINAL CORRECTO
-    update_order(
-        order["id"],
-        reaction_uploaded=1,
-        experience_completed=1,        # 🔥 ESTO ES LO QUE DESBLOQUEA COBRAR
-        delivered_to_recipient=1,
-        updated_at=now_iso(),
-    )
-
-    # 🔥 cerrar estado completa
-    order = maybe_mark_eterna_completed(order["id"])
-
-    return {
-        "ok": True,
-        "redirect": f"/cobrar/{recipient_token}"
-    }
-
-    # =========================
-    # VALIDAR VIDEO
-    # =========================
-
     content_type = (video.content_type or "").lower().strip()
     if content_type not in ALLOWED_VIDEO_TYPES:
         raise HTTPException(status_code=400, detail="invalid_video_type")
@@ -4365,21 +4333,12 @@ def finalizar_experiencia(recipient_token: str):
         raise HTTPException(status_code=400, detail="video_too_large")
 
     extension = detect_video_extension(video)
-
-    # =========================
-    # GUARDAR LOCAL
-    # =========================
-
     local_path = reaction_video_path(order["id"], extension)
 
     with open(local_path, "wb") as f:
         f.write(data)
 
     print("💾 Guardado local:", local_path)
-
-    # =========================
-    # SUBIR A R2
-    # =========================
 
     public_url = None
 
@@ -4395,10 +4354,6 @@ def finalizar_experiencia(recipient_token: str):
     except Exception as e:
         print("⚠️ Error subiendo a R2:", e)
 
-    # =========================
-    # GUARDAR EN DB
-    # =========================
-
     update_order(
         order["id"],
         reaction_video_local=local_path,
@@ -4411,17 +4366,9 @@ def finalizar_experiencia(recipient_token: str):
 
     print("✅ Reacción guardada en DB")
 
-    # =========================
-    # MARCAR ETERNA COMPLETA
-    # =========================
-
     order = maybe_mark_eterna_completed(order["id"])
 
     print("🎯 eterna_completed:", order.get("eterna_completed"))
-
-    # =========================
-    # ENVIAR SMS AL REGALANTE
-    # =========================
 
     try:
         sms_result = try_send_sender_sms(order)
@@ -4429,15 +4376,10 @@ def finalizar_experiencia(recipient_token: str):
     except Exception as e:
         print("❌ Error enviando SMS:", e)
 
-    # =========================
-    # REDIRECT FINAL
-    # =========================
-
     return JSONResponse({
         "ok": True,
         "redirect": f"/finalizar-experiencia/{recipient_token}"
     })
-
 
 
 # =========================================================
