@@ -1093,15 +1093,15 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         sent_at = now_iso()
 
         update_order(
-            order_id,
-            recipient_sms_attempts=attempts,
-            recipient_sms_error=None,
-            recipient_sms_sid=result.get("sid"),
-            recipient_sms_sent_at=sent_at,
-            delivery_sent=1,
-            delivery_sent_at=sent_at,
+            order["id"],
+            reaction_video_local=local_path,
+            reaction_video_public_url=public_url,
+            reaction_uploaded=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+            experience_completed=1,
             delivered_to_recipient=1,
-        )
+)
 
         refreshed = get_order_by_id(order_id)
         return {
