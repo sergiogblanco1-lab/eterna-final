@@ -4280,7 +4280,7 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     print("➡️ experience_completed:", bool(refreshed.get("experience_completed")))
     print("➡️ eterna_completed:", bool(refreshed.get("eterna_completed")))
 
-    if not bool(refreshed.get("reaction_uploaded")) or not reaction_exists(refreshed):
+        if not bool(refreshed.get("reaction_uploaded")) or not reaction_exists(refreshed):
         update_order(
             refreshed["id"],
             experience_started=0,
@@ -4293,6 +4293,7 @@ def finalizar_experiencia(request: Request, recipient_token: str):
 
     update_order(
         refreshed["id"],
+        experience_completed=1,
         delivered_to_recipient=1,
         gift_refund_deadline_at=refreshed.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
     )
