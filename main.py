@@ -1034,6 +1034,18 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
+    if int(order.get("recipient_sms_attempts") or 0) > 0:
+        return {
+            "ok": False,
+            "reason": "already_attempted_once",
+            "delivery_sent": bool(order.get("delivery_sent")),
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": order.get("recipient_sms_error"),
+        }
+
     if not bool(order.get("paid")):
         return {
             "ok": False,
@@ -1070,9 +1082,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    current_attempts = int(order.get("recipient_sms_attempts") or 0)
-    attempts = current_attempts + 1
-
+    attempts = 1
     message = build_recipient_message(order)
     result = send_sms(order.get("recipient_phone", ""), message)
 
@@ -1119,91 +1129,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
         "recipient_sms_attempts": int(refreshed.get("recipient_sms_attempts") or 0),
         "recipient_sms_error": refreshed.get("recipient_sms_error"),
-    }
-
-
-def try_send_sender_sms(order: dict) -> dict:
-    order = get_order_by_id(order["id"])
-
-    if not original_video_ready(order):
-        return {
-            "ok": False,
-            "sid": None,
-            "already_sent": False,
-            "error": "original_video_not_ready",
-        }
-
-    if not bool(order.get("reaction_uploaded")):
-        return {
-            "ok": False,
-            "sid": None,
-            "already_sent": False,
-            "error": "reaction_not_uploaded",
-        }
-
-    if not reaction_exists(order):
-        return {
-            "ok": False,
-            "sid": None,
-            "already_sent": False,
-            "error": "reaction_not_available",
-        }
-
-    if order.get("sender_sms_sent_at"):
-        return {
-            "ok": True,
-            "sid": order.get("sender_sms_sid"),
-            "already_sent": True,
-            "error": None,
-        }
-
-    attempts = int(order.get("sender_sms_attempts") or 0) + 1
-
-    if not twilio_enabled():
-        update_order(
-            order["id"],
-            sender_sms_attempts=attempts,
-            sender_sms_error="twilio_not_configured_test_mode",
-            sender_notified=0,
-        )
-        return {
-            "ok": False,
-            "sid": None,
-            "already_sent": False,
-            "error": "twilio_not_configured_test_mode",
-        }
-
-    message = build_sender_ready_message(order)
-    result = send_sms(order.get("sender_phone", ""), message)
-
-    if result.get("ok"):
-        update_order(
-            order["id"],
-            sender_sms_sent_at=now_iso(),
-            sender_sms_sid=result.get("sid"),
-            sender_sms_attempts=attempts,
-            sender_sms_error=None,
-            sender_notified=1,
-        )
-        return {
-            "ok": True,
-            "sid": result.get("sid"),
-            "already_sent": False,
-            "error": None,
-        }
-
-    update_order(
-        order["id"],
-        sender_sms_attempts=attempts,
-        sender_sms_error=result.get("error") or "sms_error",
-        sender_notified=0,
-    )
-
-    return {
-        "ok": False,
-        "sid": None,
-        "already_sent": False,
-        "error": result.get("error") or "sms_error",
     }
 
 # =========================================================
@@ -3032,6 +2957,7 @@ def list_pending_scheduled_deliveries():
         WHERE
             paid = 1
             AND COALESCE(delivery_sent, 0) = 0
+            AND COALESCE(recipient_sms_attempts, 0) = 0
             AND COALESCE(experience_video_url, '') <> ''
         ORDER BY created_at ASC
     """)
