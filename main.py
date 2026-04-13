@@ -4280,7 +4280,7 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     print("➡️ experience_completed:", bool(refreshed.get("experience_completed")))
     print("➡️ eterna_completed:", bool(refreshed.get("eterna_completed")))
 
-        if not bool(refreshed.get("reaction_uploaded")) or not reaction_exists(refreshed):
+    if not bool(refreshed.get("reaction_uploaded")) or not reaction_exists(refreshed):
         update_order(
             refreshed["id"],
             experience_started=0,
@@ -4304,7 +4304,6 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     print("➡️ eterna_completed final:", bool(updated_order.get("eterna_completed")))
 
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
 
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO)
