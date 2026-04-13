@@ -4187,21 +4187,63 @@ startBtn.addEventListener("click", async () => {{
     }}
 }});
 
-video.addEventListener("ended", finishExperience);
+video.addEventListener("ended", async () => {
+    if (finishing) return;
+    finishing = true;
 
-document.addEventListener("visibilitychange", async () => {{
-    if (!document.hidden) {{
-        await resumePendingUploadAndReplayIfNeeded();
-    }}
-}});
+    // =========================
+    // 🔥 PAYOFF FINAL
+    // =========================
+    const payoff = document.createElement("div");
+    payoff.style.position = "absolute";
+    payoff.style.inset = "0";
+    payoff.style.display = "flex";
+    payoff.style.alignItems = "center";
+    payoff.style.justifyContent = "center";
+    payoff.style.flexDirection = "column";
+    payoff.style.background = "rgba(0,0,0,0.85)";
+    payoff.style.color = "white";
+    payoff.style.zIndex = "10";
+    payoff.style.padding = "24px";
 
-window.addEventListener("pageshow", async () => {{
-    await resumePendingUploadAndReplayIfNeeded();
-}});
-</script>
-</body>
-</html>
-""")
+    const giftAmount = {{gift_amount}};  // ⚠️ usa el valor del backend
+
+    if (giftAmount > 0) {
+        payoff.innerHTML = `<h1>Has recibido ${giftAmount} €</h1>`;
+    } else {
+        payoff.innerHTML = `<h1>Esto era para ti</h1>`;
+    }
+
+    document.body.appendChild(payoff);
+
+    // =========================
+    // 🔥 GRABAR 5 SEGUNDOS MÁS
+    // =========================
+    await new Promise(r => setTimeout(r, 5000));
+
+    // =========================
+    // 🔥 STOP RECORDING
+    // =========================
+    await stopRecorderSafely();
+
+    // =========================
+    // 🔥 SUBIR REACCIÓN
+    // =========================
+    try {
+        const blob = new Blob(recordedChunks, { type: "video/webm" });
+
+        if (blob && blob.size > 0) {
+            await uploadReactionBlob(blob);
+        }
+    } catch (e) {
+        console.error("upload error", e);
+    }
+
+    // =========================
+    // 🔥 REDIRECT LIMPIO
+    // =========================
+    window.location.replace("/cobrar/" + recipientToken);
+});
 
 
 @app.post("/reset-experience/{recipient_token}")
@@ -4288,7 +4330,6 @@ def finalizar_experiencia(request: Request, recipient_token: str):
 
     update_order(
         refreshed["id"],
-        experience_completed=1,
         delivered_to_recipient=1,
         gift_refund_deadline_at=refreshed.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
     )
@@ -4367,14 +4408,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     # =========================
 
     update_order(
-        order["id"],
-        reaction_video_local=local_path,
-        reaction_video_public_url=public_url,
-        reaction_uploaded=1,
-        reaction_upload_pending=0,
-        reaction_upload_error=None,
-        experience_completed=1,
-    )
+    refreshed["id"],
+    experience_completed=1,
+    delivered_to_recipient=1,
+)
 
     print("✅ Reacción guardada en DB")
 
