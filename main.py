@@ -998,6 +998,12 @@ def send_sms(phone: str, message: str) -> dict:
     if not to_phone:
         return {"ok": False, "sid": None, "error": "invalid_phone"}
 
+    if not SMS_ENABLED:
+        print("🚫 SMS DESACTIVADO POR CONFIG")
+        print("🚫 Destino:", to_phone)
+        print("🚫 Mensaje:", message)
+        return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
+
     if not twilio_enabled():
         return {"ok": False, "sid": None, "error": "twilio_not_configured"}
 
@@ -1067,41 +1073,23 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     current_attempts = int(order.get("recipient_sms_attempts") or 0)
     attempts = current_attempts + 1
 
-    if not twilio_enabled():
-        update_order(
-            order_id,
-            recipient_sms_attempts=attempts,
-            recipient_sms_error="twilio_not_configured_test_mode",
-        )
-
-        refreshed = get_order_by_id(order_id)
-        return {
-            "ok": False,
-            "reason": "twilio_not_configured_test_mode",
-            "delivery_sent": bool(refreshed.get("delivery_sent")),
-            "delivery_sent_at": refreshed.get("delivery_sent_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(refreshed),
-            "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": int(refreshed.get("recipient_sms_attempts") or 0),
-            "recipient_sms_error": refreshed.get("recipient_sms_error"),
-            "recipient_url": recipient_experience_url_from_order(refreshed),
-        }
-
     message = build_recipient_message(order)
     result = send_sms(order.get("recipient_phone", ""), message)
 
     if result.get("ok"):
         sent_at = now_iso()
 
-update_order(
-    order["id"],
-    reaction_video_local=local_path,
-    reaction_video_public_url=public_url,
-    reaction_uploaded=1,
-    reaction_upload_pending=0,
-    reaction_upload_error=None,
-    delivered_to_recipient=1,
-)
+        update_order(
+            order_id,
+            recipient_sms_attempts=attempts,
+            recipient_sms_error=None,
+            recipient_sms_sid=result.get("sid"),
+            recipient_sms_sent_at=sent_at,
+            delivery_sent=1,
+            delivery_sent_at=sent_at,
+            delivered_to_recipient=1,
+        )
+
         refreshed = get_order_by_id(order_id)
         return {
             "ok": True,
@@ -4457,10 +4445,14 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     # =========================
 
     update_order(
-    refreshed["id"],
-    experience_completed=1,
-    delivered_to_recipient=1,
-)
+        order["id"],
+        reaction_video_local=local_path,
+        reaction_video_public_url=public_url,
+        reaction_uploaded=1,
+        reaction_upload_pending=0,
+        reaction_upload_error=None,
+        delivered_to_recipient=1,
+    )
 
     print("✅ Reacción guardada en DB")
 
