@@ -4192,21 +4192,42 @@ startBtn.addEventListener("click", async () => {{
     }}
 }});
 
-video.addEventListener("ended", finishExperience);
+video.addEventListener("ended", async () => {
+    if (finishing) return;
+    finishing = true;
 
-document.addEventListener("visibilitychange", async () => {{
-    if (!document.hidden) {{
-        await resumePendingUploadAndFinalizeIfNeeded();
-    }}
-}});
+    try {
+        blackout.classList.add("show");
 
-window.addEventListener("pageshow", async () => {{
-    await resumePendingUploadAndFinalizeIfNeeded();
-}});
-</script>
-</body>
-</html>
-    """)
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            try {
+                mediaRecorder.stop();
+            } catch (e) {
+                console.error("stop recorder error", e);
+            }
+        }
+
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+        }
+
+        // ⚡ LLAMADA RÁPIDA AL BACKEND (NO BLOQUEA)
+        try {
+            await fetch("/close-experience-fast/" + recipientToken, {
+                method: "POST"
+            });
+        } catch (e) {
+            console.error("fast close error", e);
+        }
+
+        // ⚡ REDIRECCIÓN INMEDIATA
+        window.location.href = cobrarUrl();
+
+    } catch (e) {
+        console.error("ended error", e);
+        window.location.href = cobrarUrl();
+    }
+});
 
 
 @app.post("/reset-experience/{recipient_token}")
@@ -4255,38 +4276,32 @@ def reaction_upload_status(recipient_token: str):
 
 
 # =========================================================
-# EXPERIENCE FINALIZE + REACTION STATUS
+# FAST CLOSE EXPERIENCE (SIN BLOQUEOS)
 # =========================================================
 
-@app.get("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(request: Request, recipient_token: str):
+@app.post("/close-experience-fast/{recipient_token}")
+def close_experience_fast(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
+        return JSONResponse({"ok": False, "error": "invalid_session"})
 
     if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
+        return JSONResponse({"ok": False, "error": "not_paid"})
 
-    if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+    update_order(
+        order["id"],
+        experience_completed=1,
+        delivered_to_recipient=1,
+        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
 
-    refreshed = get_order_by_recipient_token_or_404(recipient_token)
+    print("⚡ FAST CLOSE EXPERIENCE:", order["id"])
 
-    print("✅ EXPERIENCE FINALIZADA")
-    print("➡️ order_id:", refreshed["id"])
-    print("➡️ reaction_uploaded:", bool(refreshed.get("reaction_uploaded")))
-    print("➡️ reaction_exists:", reaction_exists(refreshed))
-    print("➡️ experience_completed:", bool(refreshed.get("experience_completed")))
-    print("➡️ eterna_completed:", bool(refreshed.get("eterna_completed")))
-
-    if not bool(refreshed.get("reaction_uploaded")) or not reaction_exists(refreshed):
-        update_order(
-            refreshed["id"],
-            experience_started=0,
-            experience_completed=0,
-        )
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+    return JSONResponse({
+        "ok": True,
+        "redirect": f"/cobrar/{recipient_token}"
+    })
 
     if bool(refreshed.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
