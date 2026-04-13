@@ -4374,6 +4374,23 @@ def close_experience_fast(request: Request, recipient_token: str):
         "redirect": f"/cobrar/{recipient_token}"
     })
 
+    if bool(refreshed.get("experience_completed")):
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    update_order(
+        refreshed["id"],
+        experience_completed=1,
+        delivered_to_recipient=1,
+        gift_refund_deadline_at=refreshed.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
+
+    updated_order = maybe_mark_eterna_completed(refreshed["id"])
+
+    print("➡️ experience_completed final:", bool(updated_order.get("experience_completed")))
+    print("➡️ eterna_completed final:", bool(updated_order.get("eterna_completed")))
+
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
 
 
 # =========================================================
@@ -4429,7 +4446,7 @@ except Exception as e:
 
 
 # =========================================================
-# MI VIDEO (POST EXPERIENCIA) — FIX FINAL
+# MI VIDEO (POST EXPERIENCIA)
 # =========================================================
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
@@ -4449,12 +4466,6 @@ def mi_video(request: Request, recipient_token: str):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    # 🔒 SI YA COMPLETÓ → NUNCA VOLVER ATRÁS
-    if bool(order.get("experience_completed")):
-        pass
-    else:
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
-
     # =========================
     # VIDEO
     # =========================
@@ -4465,7 +4476,7 @@ def mi_video(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     # =========================
-    # HTML FINAL BLOQUEADO
+    # HTML UX
     # =========================
 
     return HTMLResponse(f"""
@@ -4535,7 +4546,6 @@ h1 {{
     background: rgba(255,255,255,0.12);
     color: white;
 }}
-
 </style>
 </head>
 
@@ -4551,13 +4561,18 @@ h1 {{
 
     <div class="text">
         Puedes volver a este momento siempre que quieras.<br><br>
-        Y lo que has vivido… ya no se puede deshacer.
+        Y si sientes que alguien debería vivir algo así,<br>
+        ahora puedes hacerlo.
     </div>
 
     <div class="actions">
 
         <a class="btn primary" href="/crear">
             Crear una ETERNA
+        </a>
+
+        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">
+            Volver al inicio
         </a>
 
     </div>
