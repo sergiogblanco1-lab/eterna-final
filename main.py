@@ -4374,23 +4374,6 @@ def close_experience_fast(request: Request, recipient_token: str):
         "redirect": f"/cobrar/{recipient_token}"
     })
 
-    if bool(refreshed.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    update_order(
-        refreshed["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=refreshed.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    updated_order = maybe_mark_eterna_completed(refreshed["id"])
-
-    print("➡️ experience_completed final:", bool(updated_order.get("experience_completed")))
-    print("➡️ eterna_completed final:", bool(updated_order.get("eterna_completed")))
-
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
 
 
 # =========================================================
