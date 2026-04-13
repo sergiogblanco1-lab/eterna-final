@@ -4456,7 +4456,6 @@ def mi_video(request: Request, recipient_token: str):
     # =========================
     # SEGURIDAD
     # =========================
-
     if not has_valid_recipient_session(order, request):
         return render_viral_block_page()
 
@@ -4469,7 +4468,6 @@ def mi_video(request: Request, recipient_token: str):
     # =========================
     # VIDEO
     # =========================
-
     video_url = (order.get("experience_video_url") or "").strip()
 
     if not video_url:
@@ -4478,7 +4476,6 @@ def mi_video(request: Request, recipient_token: str):
     # =========================
     # HTML UX
     # =========================
-
     return HTMLResponse(f"""
 <!DOCTYPE html>
 <html lang="es">
@@ -4488,13 +4485,13 @@ def mi_video(request: Request, recipient_token: str):
 <title>ETERNA</title>
 
 <style>
-html, body {
+html, body {{
     margin: 0;
     padding: 0;
     background: black;
     color: white;
     font-family: Arial, sans-serif;
-}
+}}
 
 .container {{
     width: 100%;
@@ -4502,6 +4499,7 @@ html, body {
     margin: 0 auto;
     text-align: center;
     padding: 20px;
+    box-sizing: border-box;
 }}
 
 video {{
@@ -4535,6 +4533,7 @@ h1 {{
     border-radius: 999px;
     font-weight: bold;
     text-decoration: none;
+    box-sizing: border-box;
 }}
 
 .btn.primary {{
@@ -4546,7 +4545,6 @@ h1 {{
     background: rgba(255,255,255,0.12);
     color: white;
 }}
-
 </style>
 </head>
 
@@ -4554,7 +4552,7 @@ h1 {{
 
 <div class="container">
 
-    <video controls playsinline>
+    <video id="video" playsinline preload="auto" webkit-playsinline>
         <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
     </video>
 
@@ -4567,7 +4565,6 @@ h1 {{
     </div>
 
     <div class="actions">
-
         <a class="btn primary" href="/crear">
             Crear una ETERNA
         </a>
@@ -4575,307 +4572,151 @@ h1 {{
         <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">
             Volver al inicio
         </a>
-
     </div>
 
 </div>
 
-</body>
-</html>
-    """)
+<script>
+const video = document.getElementById("video");
+const recipientToken = "{safe_attr(recipient_token)}";
+let finishing = false;
+let mediaRecorder = null;
+let recordedChunks = [];
+let stream = null;
 
-    # =========================================================
-# COBRAR / CONNECT / SENDER PACK
-# =========================================================
+async function bootRecorder() {{
+    try {{
+        stream = await navigator.mediaDevices.getUserMedia({{
+            video: true,
+            audio: true
+        }});
 
-@app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
-def cobrar(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
+        mediaRecorder = new MediaRecorder(stream);
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
+        mediaRecorder.ondataavailable = (e) => {{
+            if (e.data && e.data.size > 0) {{
+                recordedChunks.push(e.data);
+            }}
+        }};
 
-    if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    gift_amount = float(order.get("gift_amount") or 0)
-    cashout_status = compute_cashout_status(order)
-
-    connect_url = None
-    if gift_amount > 0 and not bool(order.get("connect_onboarding_completed")):
-        try:
-            connect_url = create_connect_onboarding_link(order)
-        except Exception as e:
-            log_error("create_connect_onboarding_link", e)
-            connect_url = None
-
-    status_title = "Tu momento ya está completo"
-    status_text = "Ya puedes volver a ver el vídeo cuando quieras."
-
-    if gift_amount <= 0:
-        cashout_line = "Este regalo no incluía dinero."
-        button_html = ""
-    elif cashout_status == "completed":
-        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
-        button_html = ""
-    elif cashout_status == "processing":
-        cashout_line = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
-        button_html = ""
-    elif cashout_status == "ready_to_send":
-        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} está listo para enviarse."
-        button_html = f'''
-            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:18px;">
-                <button style="padding:16px 28px;border:none;border-radius:999px;background:white;color:black;font-weight:bold;cursor:pointer;">
-                    Enviar mi regalo
-                </button>
-            </form>
-        '''
-    else:
-        cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
-        button_html = (
-            f'<a href="{safe_attr(connect_url)}" style="display:inline-block;margin-top:18px;padding:16px 28px;'
-            'border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;">'
-            'Recibir mi regalo</a>'
-        ) if connect_url else ""
-
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
-<style>
-html, body {{
-    margin: 0;
-    min-height: 100%;
-    background: #000;
+        mediaRecorder.start(250);
+    }} catch (e) {{
+        console.error("recorder init error", e);
+    }}
 }}
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 24px;
+
+async function uploadReaction(blob) {{
+    const formData = new FormData();
+    formData.append(
+        "video",
+        new File([blob], "reaction.webm", {{ type: "video/webm" }})
+    );
+
+    return await fetch("/upload-reaction/" + recipientToken, {{
+        method: "POST",
+        body: formData
+    }});
 }}
-.wrap {{
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-}}
-h1 {{
-    margin: 0 0 18px 0;
-    font-size: 42px;
-    line-height: 1.2;
-}}
-.main {{
-    font-size: 22px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.88);
-}}
-.soft {{
-    margin-top: 24px;
-    font-size: 16px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.50);
-}}
-.actions {{
-    display: grid;
-    gap: 12px;
-    max-width: 420px;
-    margin: 34px auto 0 auto;
-}}
-.btn {{
-    display: block;
-    width: 100%;
-    padding: 17px 22px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.10);
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 15px;
-    border: 1px solid rgba(255,255,255,0.10);
-}}
-</style>
-</head>
-<body>
-    <div class="wrap">
-        <h1>{safe_text(status_title)}</h1>
-        <div class="main">{safe_text(status_text)}</div>
-        <div class="soft">{safe_text(cashout_line)}</div>
-        {button_html}
-        <div class="actions">
-            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
-        </div>
-    </div>
-</body>
-</html>
-    """)
 
+video.addEventListener("play", async () => {{
+    if (!mediaRecorder) {{
+        await bootRecorder();
+    }}
+}}, {{ once: true }});
 
-@app.get("/connect/refresh/{recipient_token}")
-def connect_refresh(recipient_token: str):
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+video.addEventListener("ended", async () => {{
+    if (finishing) return;
+    finishing = true;
 
+    try {{
+        const payoff = document.createElement("div");
+        payoff.style.position = "fixed";
+        payoff.style.inset = "0";
+        payoff.style.display = "flex";
+        payoff.style.alignItems = "center";
+        payoff.style.justifyContent = "center";
+        payoff.style.flexDirection = "column";
+        payoff.style.background = "rgba(0,0,0,0.92)";
+        payoff.style.color = "white";
+        payoff.style.zIndex = "9999";
+        payoff.style.textAlign = "center";
+        payoff.style.padding = "24px";
 
-@app.get("/connect/return/{recipient_token}")
-def connect_return(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
+        const giftAmount = {float(order.get("gift_amount") or 0)};
 
-    try:
-        refresh_connect_status(order)
-    except Exception as e:
-        log_error("refresh_connect_status", e)
+        if (giftAmount > 0) {{
+            payoff.innerHTML = `
+                <h1 style="font-size:32px;margin:0;">Has recibido ${{giftAmount}} €</h1>
+                <p style="opacity:0.7;margin-top:12px;font-size:18px;">Esto es para ti</p>
+            `;
+        }} else {{
+            payoff.innerHTML = `
+                <h1 style="font-size:28px;margin:0;">Esto era para ti</h1>
+                <p style="opacity:0.7;margin-top:12px;font-size:18px;">
+                    Espero que este vídeo te llegue en el momento que más necesitas.
+                </p>
+            `;
+        }}
 
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+        document.body.appendChild(payoff);
 
+        await new Promise((resolve) => setTimeout(resolve, 5000));
 
-@app.post("/connect/payout/{recipient_token}")
-def connect_payout(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
+        try {{
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {{
+                await new Promise((resolve) => {{
+                    const done = () => {{
+                        try {{
+                            mediaRecorder.removeEventListener("stop", done);
+                        }} catch (_) {{}}
+                        resolve();
+                    }};
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
+                    try {{
+                        mediaRecorder.addEventListener("stop", done);
+                        mediaRecorder.stop();
+                    }} catch (e) {{
+                        console.error("stop recorder error", e);
+                        resolve();
+                    }}
+                }});
+            }}
+        }} catch (e) {{
+            console.error("stop recorder outer error", e);
+        }}
 
-    try:
-        refresh_connect_status(order)
-    except Exception as e:
-        log_error("refresh_connect_status", e)
+        try {{
+            if (stream) {{
+                stream.getTracks().forEach((t) => t.stop());
+            }}
+        }} catch (e) {{
+            console.error("stream stop error", e);
+        }}
 
-    refreshed = get_order_by_recipient_token_or_404(recipient_token)
+        let blob = null;
 
-    if not bool(refreshed.get("connect_onboarding_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+        try {{
+            blob = new Blob(recordedChunks, {{ type: "video/webm" }});
+        }} catch (e) {{
+            console.error("blob error", e);
+        }}
 
-    try:
-        process_gift_transfer_for_order(refreshed)
-    except Exception as e:
-        log_error("process_gift_transfer_for_order", e)
+        if (blob && blob.size > 0) {{
+            try {{
+                await uploadReaction(blob);
+            }} catch (e) {{
+                console.error("upload error", e);
+            }}
+        }}
 
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+    }} catch (e) {{
+        console.error("FATAL EXPERIENCE ERROR", e);
+    }}
 
+    window.location.replace("/finalizar-experiencia/" + recipientToken);
+}});
+</script>
 
-@app.get("/sender/{sender_token}", response_class=HTMLResponse)
-def sender_pack(sender_token: str):
-    order = get_order_by_sender_token_or_404(sender_token)
-
-    original_video_url = (order.get("experience_video_url") or "").strip()
-    reaction_url = (order.get("reaction_video_public_url") or "").strip()
-
-    if not reaction_url:
-        local_path = (order.get("reaction_video_local") or "").strip()
-        if local_path and os.path.exists(local_path):
-            reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
-
-    cashout_status = compute_cashout_status(order)
-
-    sender_status = "Tu ETERNA aún se está cerrando."
-    if bool(order.get("eterna_completed")):
-        sender_status = "Tu ETERNA ha vuelto."
-
-    cashout_line = ""
-    if float(order.get("gift_amount") or 0) > 0:
-        if cashout_status == "completed":
-            cashout_line = "El regalo económico ya ha sido enviado."
-        elif cashout_status == "processing":
-            cashout_line = "El regalo económico se está procesando."
-        elif cashout_status == "ready_to_send":
-            cashout_line = "El regalo económico está listo para enviarse."
-        else:
-            cashout_line = "El regalo económico sigue pendiente de cobro."
-
-    reaction_block = ""
-    if reaction_url:
-        reaction_block = f"""
-        <div style="margin-top:28px;">
-            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">Su reacción</div>
-            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
-                <source src="{safe_attr(reaction_url)}" type="{safe_attr(guess_media_type_from_url(reaction_url))}">
-            </video>
-        </div>
-        """
-    else:
-        reaction_block = """
-        <div style="margin-top:28px;color:rgba(255,255,255,0.52);line-height:1.8;">
-            La reacción todavía no está lista.
-        </div>
-        """
-
-    original_block = ""
-    if original_video_url:
-        original_block = f"""
-        <div style="margin-top:28px;">
-            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">El vídeo original</div>
-            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
-                <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
-            </video>
-        </div>
-        """
-
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
-<style>
-html, body {{
-    margin: 0;
-    min-height: 100%;
-    background: #000;
-}}
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
-    padding: 24px;
-}}
-.wrap {{
-    width: 100%;
-    max-width: 880px;
-    margin: 0 auto;
-    text-align: center;
-}}
-h1 {{
-    margin: 0 0 18px 0;
-    font-size: 42px;
-    line-height: 1.2;
-}}
-.main {{
-    font-size: 22px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.88);
-}}
-.soft {{
-    margin-top: 20px;
-    font-size: 16px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.52);
-}}
-</style>
-</head>
-<body>
-    <div class="wrap">
-        <h1>{safe_text(sender_status)}</h1>
-        <div class="main">Aquí tienes el pack final.</div>
-        <div class="soft">{safe_text(cashout_line)}</div>
-        {original_block}
-        {reaction_block}
-    </div>
 </body>
 </html>
     """)
