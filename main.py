@@ -4321,80 +4321,57 @@ def close_experience_fast(request: Request, recipient_token: str):
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
 
+
 # =========================================================
-# UPLOAD REACTION (DEFINITIVO)
+# FAST CLOSE EXPERIENCE (CRÍTICO)
 # =========================================================
 
-@app.post("/upload-reaction/{recipient_token}")
-async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    print("🎥 UPLOAD REACTION START")
-    print("➡️ order_id:", order["id"])
-
-    if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="not_paid")
-
-    if not original_video_ready(order):
-        raise HTTPException(status_code=403, detail="video_not_ready")
-
-    content_type = (video.content_type or "").lower().strip()
-    if content_type not in ALLOWED_VIDEO_TYPES:
-        raise HTTPException(status_code=400, detail="invalid_video_type")
-
-    data = await video.read()
-
-    if len(data) > MAX_VIDEO_SIZE:
-        raise HTTPException(status_code=400, detail="video_too_large")
-
-    extension = detect_video_extension(video)
-    local_path = reaction_video_path(order["id"], extension)
-
-    with open(local_path, "wb") as f:
-        f.write(data)
-
-    print("💾 Guardado local:", local_path)
-
-    public_url = None
-
-    try:
-        if r2_enabled():
-            remote_name = f"reactions/{order['id']}.{extension}"
-            public_url = upload_video_to_r2(
-                local_path,
-                remote_name,
-                content_type=content_type
-            )
-            print("☁️ Subido a R2:", public_url)
-    except Exception as e:
-        print("⚠️ Error subiendo a R2:", e)
-
+try:
+    # 🔥 1. MARCAR EXPERIENCIA COMO COMPLETADA INMEDIATO
     update_order(
         order["id"],
-        reaction_video_local=local_path,
-        reaction_video_public_url=public_url,
         reaction_uploaded=1,
-        reaction_upload_pending=0,
-        reaction_upload_error=None,
-        delivered_to_recipient=1,
+        experience_completed=1,
     )
 
-    print("✅ Reacción guardada en DB")
-
-    order = maybe_mark_eterna_completed(order["id"])
-
-    print("🎯 eterna_completed:", order.get("eterna_completed"))
-
-    try:
-        sms_result = try_send_sender_sms(order)
-        print("📩 SMS RESULT:", sms_result)
-    except Exception as e:
-        print("❌ Error enviando SMS:", e)
-
-    return JSONResponse({
+    # 🔥 2. RESPUESTA INMEDIATA (SIN ESPERAR NADA)
+    response = JSONResponse({
         "ok": True,
-        "redirect": f"/finalizar-experiencia/{recipient_token}"
+        "redirect": f"/cobrar/{recipient_token}"
     })
+
+    # 🔥 3. TODO LO DEMÁS EN BACKGROUND
+    def background_tasks():
+        try:
+            print("⚙️ BACKGROUND START:", order["id"])
+
+            # guardar flags finales
+            update_order(
+                order["id"],
+                reaction_upload_pending=0,
+                eterna_completed=1,
+            )
+
+            # intentar enviar dinero
+            refreshed = get_order_by_id(order["id"])
+            process_gift_transfer_for_order(refreshed)
+
+            # intentar SMS sender
+            refreshed = get_order_by_id(order["id"])
+            try_send_sender_sms(refreshed)
+
+            print("✅ BACKGROUND DONE:", order["id"])
+
+        except Exception as e:
+            log_error("BACKGROUND TASK ERROR", e)
+
+    threading.Thread(target=background_tasks, daemon=True).start()
+
+    return response
+
+except Exception as e:
+    log_error("UPLOAD REACTION ERROR", e)
+    raise HTTPException(status_code=500, detail="Error guardando reacción")
 
 
 # =========================================================
