@@ -4322,6 +4322,35 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
+        @app.post("/finalizar-experiencia/{recipient_token}")
+def finalizar_experiencia(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    # 🔒 IDPOTENCIA → evitar duplicados
+    if bool(order.get("experience_completed")):
+        return {"ok": True, "status": "already_completed"}
+
+    # 🔒 seguridad → tiene que existir reacción
+    if not reaction_exists(order):
+        return {"ok": False, "error": "reaction_missing"}
+
+    # 🔥 MARCADO FINAL CORRECTO
+    update_order(
+        order["id"],
+        reaction_uploaded=1,
+        experience_completed=1,        # 🔥 ESTO ES LO QUE DESBLOQUEA COBRAR
+        delivered_to_recipient=1,
+        updated_at=now_iso(),
+    )
+
+    # 🔥 cerrar estado completa
+    order = maybe_mark_eterna_completed(order["id"])
+
+    return {
+        "ok": True,
+        "redirect": f"/cobrar/{recipient_token}"
+    }
+
     # =========================
     # VALIDAR VIDEO
     # =========================
