@@ -4446,7 +4446,7 @@ except Exception as e:
 
 
 # =========================================================
-# MI VIDEO (POST EXPERIENCIA)
+# MI VIDEO (POST EXPERIENCIA) — FIX FINAL
 # =========================================================
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
@@ -4466,6 +4466,12 @@ def mi_video(request: Request, recipient_token: str):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
+    # 🔒 SI YA COMPLETÓ → NUNCA VOLVER ATRÁS
+    if bool(order.get("experience_completed")):
+        pass
+    else:
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+
     # =========================
     # VIDEO
     # =========================
@@ -4476,7 +4482,7 @@ def mi_video(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     # =========================
-    # HTML UX
+    # HTML FINAL BLOQUEADO
     # =========================
 
     return HTMLResponse(f"""
@@ -4546,6 +4552,7 @@ h1 {{
     background: rgba(255,255,255,0.12);
     color: white;
 }}
+
 </style>
 </head>
 
@@ -4561,18 +4568,13 @@ h1 {{
 
     <div class="text">
         Puedes volver a este momento siempre que quieras.<br><br>
-        Y si sientes que alguien debería vivir algo así,<br>
-        ahora puedes hacerlo.
+        Y lo que has vivido… ya no se puede deshacer.
     </div>
 
     <div class="actions">
 
         <a class="btn primary" href="/crear">
             Crear una ETERNA
-        </a>
-
-        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">
-            Volver al inicio
         </a>
 
     </div>
@@ -4583,7 +4585,7 @@ h1 {{
 </html>
     """)
 
-    # =========================================================
+# =========================================================
 # COBRAR / CONNECT / SENDER PACK
 # =========================================================
 
