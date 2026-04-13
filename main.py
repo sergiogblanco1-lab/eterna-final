@@ -4192,42 +4192,116 @@ startBtn.addEventListener("click", async () => {{
     }}
 }});
 
+<script>
+let finishing = false;
+
 video.addEventListener("ended", async () => {
     if (finishing) return;
     finishing = true;
 
     try {
-        blackout.classList.add("show");
 
-        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        // =========================
+        // 🔥 PAYOFF FINAL
+        // =========================
+        const payoff = document.createElement("div");
+        payoff.style.position = "fixed";
+        payoff.style.inset = "0";
+        payoff.style.display = "flex";
+        payoff.style.alignItems = "center";
+        payoff.style.justifyContent = "center";
+        payoff.style.flexDirection = "column";
+        payoff.style.background = "rgba(0,0,0,0.92)";
+        payoff.style.color = "white";
+        payoff.style.zIndex = "9999";
+        payoff.style.textAlign = "center";
+        payoff.style.padding = "24px";
+
+        const giftAmount = {{ gift_amount }};
+
+        if (giftAmount > 0) {
+            payoff.innerHTML = `
+                <h1 style="font-size:32px;">Has recibido ${giftAmount} €</h1>
+                <p style="opacity:0.7;margin-top:12px;">Esto es para ti</p>
+            `;
+        } else {
+            payoff.innerHTML = `
+                <h1 style="font-size:28px;">Esto era para ti</h1>
+                <p style="opacity:0.7;margin-top:12px;">
+                    Espero que este vídeo te llegue en el momento que más necesitas.
+                </p>
+            `;
+        }
+
+        document.body.appendChild(payoff);
+
+        // =========================
+        // 🔥 ESPERAR 5 SEGUNDOS REALES
+        // =========================
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        // =========================
+        // 🔥 PARAR GRABACIÓN (BIEN)
+        // =========================
+        try {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                await new Promise(res => {
+                    mediaRecorder.onstop = res;
+                    mediaRecorder.stop();
+                });
+            }
+        } catch (e) {
+            console.error("stop recorder error", e);
+        }
+
+        // =========================
+        // 🔥 CREAR BLOB
+        // =========================
+        let blob = null;
+        try {
+            blob = new Blob(recordedChunks, { type: "video/webm" });
+        } catch (e) {
+            console.error("blob error", e);
+        }
+
+        // =========================
+        // 🔥 SUBIR REACCIÓN
+        // =========================
+        if (blob && blob.size > 0) {
             try {
-                mediaRecorder.stop();
+                const formData = new FormData();
+                formData.append("file", blob, "reaction.webm");
+
+                await fetch("/upload-reaction/" + recipientToken, {
+                    method: "POST",
+                    body: formData
+                });
             } catch (e) {
-                console.error("stop recorder error", e);
+                console.error("upload error", e);
             }
         }
 
-        if (stream) {
-            stream.getTracks().forEach(t => t.stop());
-        }
-
-        // ⚡ LLAMADA RÁPIDA AL BACKEND (NO BLOQUEA)
+        // =========================
+        // 🔥 FINALIZAR EXPERIENCIA
+        // =========================
         try {
-            await fetch("/close-experience-fast/" + recipientToken, {
+            await fetch("/finalizar-experiencia/" + recipientToken, {
                 method: "POST"
             });
         } catch (e) {
-            console.error("fast close error", e);
+            console.error("finalizar error", e);
         }
 
-        // ⚡ REDIRECCIÓN INMEDIATA
-        window.location.href = cobrarUrl();
-
     } catch (e) {
-        console.error("ended error", e);
-        window.location.href = cobrarUrl();
+        console.error("FATAL EXPERIENCE ERROR", e);
     }
+
+    // =========================
+    // 🔥 REDIRECT LIMPIO (SIN VOLVER ATRÁS)
+    // =========================
+    window.location.replace("/cobrar/" + recipientToken);
 });
+</script>
 
 
 @app.post("/reset-experience/{recipient_token}")
