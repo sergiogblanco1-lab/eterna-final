@@ -4453,31 +4453,7 @@ except Exception as e:
 def mi_video(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    # =========================
-    # SEGURIDAD
-    # =========================
-
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
-    if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    # =========================
-    # VIDEO
-    # =========================
-
     video_url = (order.get("experience_video_url") or "").strip()
-
-    if not video_url:
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    # =========================
-    # HTML UX
-    # =========================
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -4493,95 +4469,27 @@ html, body {{
     padding: 0;
     background: black;
     color: white;
-    font-family: Arial, sans-serif;
 }}
 
 .container {{
     width: 100%;
     max-width: 760px;
     margin: 0 auto;
-    text-align: center;
-    padding: 20px;
-}}
-
-video {{
-    width: 100%;
-    height: auto;
-    background: black;
-}}
-
-h1 {{
-    margin-top: 20px;
-    font-size: 32px;
-}}
-
-.text {{
-    margin-top: 16px;
-    font-size: 18px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.8);
-}}
-
-.actions {{
-    margin-top: 30px;
-    display: grid;
-    gap: 12px;
-}}
-
-.btn {{
-    display: block;
-    width: 100%;
-    padding: 16px 22px;
-    border-radius: 999px;
-    font-weight: bold;
-    text-decoration: none;
-}}
-
-.btn.primary {{
-    background: white;
-    color: black;
-}}
-
-.btn.secondary {{
-    background: rgba(255,255,255,0.12);
-    color: white;
 }}
 </style>
-</head>
 
+</head>
 <body>
 
 <div class="container">
-
-    <video controls playsinline>
-        <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
+    <video controls playsinline style="width:100%">
+        <source src="{video_url}">
     </video>
-
-    <h1>Esto ya es tuyo</h1>
-
-    <div class="text">
-        Puedes volver a este momento siempre que quieras.<br><br>
-        Y si sientes que alguien debería vivir algo así,<br>
-        ahora puedes hacerlo.
-    </div>
-
-    <div class="actions">
-
-        <a class="btn primary" href="/crear">
-            Crear una ETERNA
-        </a>
-
-        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">
-            Volver al inicio
-        </a>
-
-    </div>
-
 </div>
 
 </body>
 </html>
-    """)
+""")
 
 # =========================================================
 # COBRAR / CONNECT / SENDER PACK
