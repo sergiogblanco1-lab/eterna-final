@@ -4548,83 +4548,106 @@ def cobrar(request: Request, recipient_token: str):
             'Recibir mi regalo</a>'
         ) if connect_url else ""
 
-    return HTMLResponse(f"""
+   return HTMLResponse(f"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ETERNA</title>
+
 <style>
 html, body {{
     margin: 0;
-    min-height: 100%;
-    background: #000;
-}}
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
+    padding: 0;
+    background: black;
     color: white;
     font-family: Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 24px;
 }}
-.wrap {{
+
+.container {{
     width: 100%;
     max-width: 760px;
     margin: 0 auto;
+    text-align: center;
+    padding: 20px;
 }}
+
+video {{
+    width: 100%;
+    height: auto;
+    background: black;
+}}
+
 h1 {{
-    margin: 0 0 18px 0;
-    font-size: 42px;
-    line-height: 1.2;
+    margin-top: 20px;
+    font-size: 32px;
 }}
-.main {{
-    font-size: 22px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.88);
+
+.text {{
+    margin-top: 16px;
+    font-size: 18px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.8);
 }}
-.soft {{
-    margin-top: 24px;
-    font-size: 16px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.50);
-}}
+
 .actions {{
+    margin-top: 30px;
     display: grid;
     gap: 12px;
-    max-width: 420px;
-    margin: 34px auto 0 auto;
 }}
+
 .btn {{
     display: block;
     width: 100%;
-    padding: 17px 22px;
+    padding: 16px 22px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.10);
-    color: white;
-    text-decoration: none;
     font-weight: bold;
-    font-size: 15px;
-    border: 1px solid rgba(255,255,255,0.10);
+    text-decoration: none;
+}}
+
+.btn.primary {{
+    background: white;
+    color: black;
+}}
+
+.btn.secondary {{
+    background: rgba(255,255,255,0.12);
+    color: white;
 }}
 </style>
 </head>
+
 <body>
-    <div class="wrap">
-        <h1>{safe_text(status_title)}</h1>
-        <div class="main">{safe_text(status_text)}</div>
-        <div class="soft">{safe_text(cashout_line)}</div>
-        {button_html}
-        <div class="actions">
-            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
-        </div>
+
+<div class="container">
+
+    <video controls playsinline>
+        <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
+    </video>
+
+    <h1>Esto ya es tuyo</h1>
+
+    <div class="text">
+        Puedes volver a este momento siempre que quieras.<br><br>
+        Y si sientes que alguien debería vivir algo así,<br>
+        ahora puedes hacerlo.
     </div>
+
+    <div class="actions">
+
+        <a class="btn primary" href="/crear">
+            Crear una ETERNA
+        </a>
+
+        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">
+            Volver al inicio
+        </a>
+
+    </div>
+
+</div>
+
 </body>
 </html>
     """)
