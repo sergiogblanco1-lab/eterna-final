@@ -1093,14 +1093,13 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         sent_at = now_iso()
 
         update_order(
-            order["id"],
-            reaction_video_local=local_path,
-            reaction_video_public_url=public_url,
-            reaction_uploaded=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-            experience_completed=1,
-            delivered_to_recipient=1,
+    order["id"],
+    reaction_video_local=local_path,
+    reaction_video_public_url=public_url,
+    reaction_uploaded=1,
+    reaction_upload_pending=0,
+    reaction_upload_error=None,
+    delivered_to_recipient=1,
 )
 
         refreshed = get_order_by_id(order_id)
@@ -3785,6 +3784,14 @@ def experiencia(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
+    gift_amount = float(order.get("gift_amount") or 0)
+
+    if gift_amount > 0:
+        payoff_title = f"Has recibido {format_amount_display(gift_amount)}"
+        payoff_text = "Este momento también llevaba algo más para ti."
+    else:
+        payoff_title = "Esto era para ti"
+        payoff_text = "Quédate un segundo más dentro de este momento."
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -3859,7 +3866,7 @@ video {{
     cursor: pointer;
 }}
 .hidden {{
-    display: none;
+    display: none !important;
 }}
 .blackout {{
     position: absolute;
@@ -3873,11 +3880,55 @@ video {{
 .blackout.show {{
     opacity: 1;
 }}
+.payoff {{
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.92) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}}
+.payoff.show {{
+    opacity: 1;
+    pointer-events: auto;
+}}
+.payoff-title {{
+    font-size: 36px;
+    line-height: 1.2;
+    color: white;
+    margin-bottom: 16px;
+    max-width: 720px;
+}}
+.payoff-text {{
+    max-width: 620px;
+    font-size: 17px;
+    line-height: 1.9;
+    color: rgba(255,255,255,0.76);
+}}
+.loader {{
+    margin-top: 24px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.50);
+}}
 @media (max-width: 640px) {{
     .title {{
         font-size: 30px;
     }}
     .soft {{
+        font-size: 15px;
+    }}
+    .payoff-title {{
+        font-size: 30px;
+    }}
+    .payoff-text {{
         font-size: 15px;
     }}
 }}
@@ -3907,6 +3958,12 @@ video {{
         <button id="startBtn" class="btn">Estoy listo</button>
     </div>
 
+    <div class="payoff" id="payoff">
+        <div class="payoff-title" id="payoffTitle">{safe_text(payoff_title)}</div>
+        <div class="payoff-text" id="payoffText">{safe_text(payoff_text)}</div>
+        <div class="loader" id="payoffLoader">Guardando este momento…</div>
+    </div>
+
     <div class="blackout" id="blackout"></div>
 </div>
 
@@ -3915,6 +3972,8 @@ const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
 const blackout = document.getElementById("blackout");
+const payoff = document.getElementById("payoff");
+const payoffLoader = document.getElementById("payoffLoader");
 
 const recipientToken = "{safe_attr(recipient_token)}";
 
@@ -3922,9 +3981,10 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
 let finishing = false;
+let uploadCompleted = false;
 
-function finalUrl() {{
-    return "/finalizar-experiencia/" + recipientToken;
+function cobrarUrl() {{
+    return "/cobrar/" + recipientToken;
 }}
 
 async function openReactionDB() {{
@@ -4030,7 +4090,7 @@ async function stopRecorderSafely() {{
     try {{
         if (mediaRecorder && mediaRecorder.state !== "inactive") {{
             await new Promise((resolve) => {{
-                const timeout = setTimeout(resolve, 3000);
+                const timeout = setTimeout(resolve, 4000);
 
                 const handler = function() {{
                     clearTimeout(timeout);
@@ -4062,15 +4122,43 @@ async function stopRecorderSafely() {{
     }}
 }}
 
+function showPayoff() {{
+    payoff.classList.add("show");
+}}
+
+async function finalizeExperienceAfterUpload() {{
+    try {{
+        const res = await fetch("/finalizar-experiencia/" + recipientToken, {{
+            method: "GET",
+            redirect: "follow"
+        }});
+
+        if (res.redirected && res.url) {{
+            window.location.replace(res.url);
+            return;
+        }}
+
+        window.location.replace(cobrarUrl());
+    }} catch (e) {{
+        console.error("finalizeExperienceAfterUpload error", e);
+        window.location.replace(cobrarUrl());
+    }}
+}}
+
 async function finishExperience() {{
     if (finishing) return;
     finishing = true;
 
-    blackout.classList.add("show");
-
     try {{
         video.pause();
-    }} catch (e) {{}}
+    }} catch (_) {{}}
+
+    showPayoff();
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    blackout.classList.add("show");
+    payoffLoader.innerText = "Guardando este momento…";
 
     await stopRecorderSafely();
 
@@ -4089,6 +4177,8 @@ async function finishExperience() {{
 
         try {{
             await uploadReactionBlob(blob);
+            uploadCompleted = true;
+
             const status = await fetchReactionStatus();
             if (status && status.reaction_uploaded && status.reaction_exists) {{
                 await deletePendingReaction().catch(() => null);
@@ -4098,45 +4188,47 @@ async function finishExperience() {{
         }}
     }}
 
-    window.location.replace(finalUrl());
+    await finalizeExperienceAfterUpload();
 }}
 
-async function resumePendingUploadAndReplayIfNeeded() {{
+async function resumePendingUploadAndFinalizeIfNeeded() {{
     try {{
         const status = await fetchReactionStatus();
+
+        if (status && status.experience_completed) {{
+            await deletePendingReaction().catch(() => null);
+            window.location.replace(cobrarUrl());
+            return;
+        }}
+
         if (status && status.reaction_uploaded && status.reaction_exists) {{
             await deletePendingReaction().catch(() => null);
+            await finalizeExperienceAfterUpload();
             return;
         }}
 
         const pendingBlob = await loadPendingReaction();
+
         if (pendingBlob && pendingBlob.size > 0) {{
             try {{
+                payoff.classList.add("show");
+                blackout.classList.add("show");
+                payoffLoader.innerText = "Recuperando tu momento…";
+
                 await uploadReactionBlob(pendingBlob);
+
                 const uploaded = await fetchReactionStatus();
                 if (uploaded && uploaded.reaction_uploaded && uploaded.reaction_exists) {{
                     await deletePendingReaction().catch(() => null);
+                    await finalizeExperienceAfterUpload();
                     return;
                 }}
             }} catch (e) {{
                 console.error("pending upload retry error", e);
             }}
-
-            const formData = new FormData();
-            formData.append("recipient_token", recipientToken);
-
-            try {{
-                await fetch("/reset-experience/" + recipientToken, {{
-                    method: "POST",
-                    body: formData
-                }});
-                window.location.replace("/experiencia/" + recipientToken);
-            }} catch (e) {{
-                console.error("reset experience error", e);
-            }}
         }}
     }} catch (e) {{
-        console.error("resumePendingUploadAndReplayIfNeeded error", e);
+        console.error("resumePendingUploadAndFinalizeIfNeeded error", e);
     }}
 }}
 
@@ -4180,70 +4272,27 @@ startBtn.addEventListener("click", async () => {{
         overlay.classList.add("hidden");
         mediaRecorder.start(250);
         await video.play();
-
     }} catch (e) {{
         console.error(e);
         startBtn.disabled = false;
     }}
 }});
 
-video.addEventListener("ended", async () => {
-    if (finishing) return;
-    finishing = true;
+video.addEventListener("ended", finishExperience);
 
-    // =========================
-    // 🔥 PAYOFF FINAL
-    // =========================
-    const payoff = document.createElement("div");
-    payoff.style.position = "absolute";
-    payoff.style.inset = "0";
-    payoff.style.display = "flex";
-    payoff.style.alignItems = "center";
-    payoff.style.justifyContent = "center";
-    payoff.style.flexDirection = "column";
-    payoff.style.background = "rgba(0,0,0,0.85)";
-    payoff.style.color = "white";
-    payoff.style.zIndex = "10";
-    payoff.style.padding = "24px";
+document.addEventListener("visibilitychange", async () => {{
+    if (!document.hidden) {{
+        await resumePendingUploadAndFinalizeIfNeeded();
+    }}
+}});
 
-    const giftAmount = {{gift_amount}};  // ⚠️ usa el valor del backend
-
-    if (giftAmount > 0) {
-        payoff.innerHTML = `<h1>Has recibido ${giftAmount} €</h1>`;
-    } else {
-        payoff.innerHTML = `<h1>Esto era para ti</h1>`;
-    }
-
-    document.body.appendChild(payoff);
-
-    // =========================
-    // 🔥 GRABAR 5 SEGUNDOS MÁS
-    // =========================
-    await new Promise(r => setTimeout(r, 5000));
-
-    // =========================
-    // 🔥 STOP RECORDING
-    // =========================
-    await stopRecorderSafely();
-
-    // =========================
-    // 🔥 SUBIR REACCIÓN
-    // =========================
-    try {
-        const blob = new Blob(recordedChunks, { type: "video/webm" });
-
-        if (blob && blob.size > 0) {
-            await uploadReactionBlob(blob);
-        }
-    } catch (e) {
-        console.error("upload error", e);
-    }
-
-    // =========================
-    // 🔥 REDIRECT LIMPIO
-    // =========================
-    window.location.replace("/cobrar/" + recipientToken);
-});
+window.addEventListener("pageshow", async () => {{
+    await resumePendingUploadAndFinalizeIfNeeded();
+}});
+</script>
+</body>
+</html>
+    """)
 
 
 @app.post("/reset-experience/{recipient_token}")
