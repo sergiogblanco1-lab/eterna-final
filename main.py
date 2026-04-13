@@ -1093,7 +1093,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     if result.get("ok"):
         sent_at = now_iso()
 
-        update_order(
+update_order(
     order["id"],
     reaction_video_local=local_path,
     reaction_video_public_url=public_url,
@@ -1102,7 +1102,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     reaction_upload_error=None,
     delivered_to_recipient=1,
 )
-
         refreshed = get_order_by_id(order_id)
         return {
             "ok": True,
