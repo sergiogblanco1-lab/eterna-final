@@ -91,6 +91,7 @@ TWILIO_FROM_NUMBER = (
     os.getenv("TWILIO_FROM_NUMBER", "").strip()
     or os.getenv("TWILIO_PHONE_NUMBER", "").strip()
 )
+SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
