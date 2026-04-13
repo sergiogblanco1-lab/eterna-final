@@ -4195,15 +4195,12 @@ startBtn.addEventListener("click", async () => {{
 <script>
 let finishing = false;
 
-video.addEventListener("ended", async () => {
+video.addEventListener("ended", async () => {{
     if (finishing) return;
     finishing = true;
 
-    try {
+    try {{
 
-        // =========================
-        // 🔥 PAYOFF FINAL
-        // =========================
         const payoff = document.createElement("div");
         payoff.style.position = "fixed";
         payoff.style.inset = "0";
@@ -4217,91 +4214,91 @@ video.addEventListener("ended", async () => {
         payoff.style.textAlign = "center";
         payoff.style.padding = "24px";
 
-        const giftAmount = {{ gift_amount }};
+        const giftAmount = {float(order.get("gift_amount") or 0)};
 
-        if (giftAmount > 0) {
+        if (giftAmount > 0) {{
             payoff.innerHTML = `
-                <h1 style="font-size:32px;">Has recibido ${giftAmount} €</h1>
+                <h1 style="font-size:32px;">Has recibido ${{giftAmount}} €</h1>
                 <p style="opacity:0.7;margin-top:12px;">Esto es para ti</p>
             `;
-        } else {
+        }} else {{
             payoff.innerHTML = `
                 <h1 style="font-size:28px;">Esto era para ti</h1>
                 <p style="opacity:0.7;margin-top:12px;">
                     Espero que este vídeo te llegue en el momento que más necesitas.
                 </p>
             `;
-        }
+        }}
 
         document.body.appendChild(payoff);
 
-        // =========================
-        // 🔥 ESPERAR 5 SEGUNDOS REALES
-        // =========================
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
 
-        // =========================
-        // 🔥 PARAR GRABACIÓN (BIEN)
-        // =========================
-        try {
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                await new Promise(res => {
-                    mediaRecorder.onstop = res;
-                    mediaRecorder.stop();
-                });
-            }
-        } catch (e) {
-            console.error("stop recorder error", e);
-        }
+        try {{
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {{
+                await new Promise((resolve) => {{
+                    const done = () => {{
+                        try {{
+                            mediaRecorder.removeEventListener("stop", done);
+                        }} catch (_) {{}}
+                        resolve();
+                    }};
 
-        // =========================
-        // 🔥 CREAR BLOB
-        // =========================
+                    try {{
+                        mediaRecorder.addEventListener("stop", done);
+                        mediaRecorder.stop();
+                    }} catch (e) {{
+                        console.error("stop recorder error", e);
+                        resolve();
+                    }}
+                }});
+            }}
+        }} catch (e) {{
+            console.error("stop recorder outer error", e);
+        }}
+
+        try {{
+            if (stream) {{
+                stream.getTracks().forEach((t) => t.stop());
+            }}
+        }} catch (e) {{
+            console.error("stream stop error", e);
+        }}
+
         let blob = null;
-        try {
-            blob = new Blob(recordedChunks, { type: "video/webm" });
-        } catch (e) {
+        try {{
+            blob = new Blob(recordedChunks, {{ type: "video/webm" }});
+        }} catch (e) {{
             console.error("blob error", e);
-        }
+        }}
 
-        // =========================
-        // 🔥 SUBIR REACCIÓN
-        // =========================
-        if (blob && blob.size > 0) {
-            try {
+        if (blob && blob.size > 0) {{
+            try {{
                 const formData = new FormData();
-                formData.append("file", blob, "reaction.webm");
+                formData.append("video", new File([blob], "reaction.webm", {{ type: "video/webm" }}));
 
-                await fetch("/upload-reaction/" + recipientToken, {
+                await fetch("/upload-reaction/" + recipientToken, {{
                     method: "POST",
                     body: formData
-                });
-            } catch (e) {
+                }});
+            }} catch (e) {{
                 console.error("upload error", e);
-            }
-        }
+            }}
+        }}
 
-        // =========================
-        // 🔥 FINALIZAR EXPERIENCIA
-        // =========================
-        try {
-            await fetch("/finalizar-experiencia/" + recipientToken, {
-                method: "POST"
-            });
-        } catch (e) {
-            console.error("finalizar error", e);
-        }
+        try {{
+            window.location.replace("/finalizar-experiencia/" + recipientToken);
+            return;
+        }} catch (e) {{
+            console.error("redirect finalizar error", e);
+        }}
 
-    } catch (e) {
+    }} catch (e) {{
         console.error("FATAL EXPERIENCE ERROR", e);
-    }
+    }}
 
-    // =========================
-    // 🔥 REDIRECT LIMPIO (SIN VOLVER ATRÁS)
-    // =========================
-    window.location.replace("/cobrar/" + recipientToken);
-});
-</script>
+    window.location.replace("/finalizar-experiencia/" + recipientToken);
+}});
 
 
 @app.post("/reset-experience/{recipient_token}")
@@ -4491,13 +4488,13 @@ def mi_video(request: Request, recipient_token: str):
 <title>ETERNA</title>
 
 <style>
-html, body {{
+html, body {
     margin: 0;
     padding: 0;
     background: black;
     color: white;
     font-family: Arial, sans-serif;
-}}
+}
 
 .container {{
     width: 100%;
