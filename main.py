@@ -4107,6 +4107,8 @@ let recordedChunks = [];
 let finishing = false;
 let recordingMimeType = "";
 let recordingExtension = "webm";
+let experienceStarted = false;
+let finishTimeout = null;
 
 function detectRecordingFormat() {
     const candidates = [
@@ -4129,6 +4131,15 @@ function detectRecordingFormat() {
     }
 
     return { mimeType: "", extension: "webm" };
+}
+
+function showSaveError(message) {
+    payoff.classList.add("show");
+    payoffLoader.innerText = message || "No hemos podido guardar este momento. Vuelve a intentarlo.";
+    finishing = false;
+    if (startBtn) {
+        startBtn.disabled = false;
+    }
 }
 
 async function stopRecorderSafely() {
@@ -4187,6 +4198,59 @@ async function uploadReactionBlob(blob) {
     return data;
 }
 
+async function finalizeExperienceFlow() {
+    if (finishing) return;
+    finishing = true;
+
+    payoff.classList.add("show");
+    payoffLoader.innerText = "Guardando este momento…";
+
+    try {
+        await stopRecorderSafely();
+    } catch (e) {
+        console.error("recorder stop error", e);
+    }
+
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (e) {
+        console.error("stream stop error", e);
+    }
+
+    try {
+        const finalType = recordingMimeType || "application/octet-stream";
+        const blob = new Blob(recordedChunks, { type: finalType });
+
+        console.log("reaction chunks:", recordedChunks.length);
+        console.log("reaction blob size:", blob.size);
+        console.log("reaction blob type:", blob.type);
+
+        if (!blob || blob.size <= 0) {
+            throw new Error("empty_recording_blob");
+        }
+
+        await uploadReactionBlob(blob);
+        window.location.replace("/finalizar-experiencia/" + recipientToken);
+        return;
+    } catch (e) {
+        console.error("upload reaction error", e);
+        showSaveError("No hemos podido guardar este momento. Vuelve a intentarlo.");
+        return;
+    }
+}
+
+function armFinishFallbacks() {
+    video.addEventListener("ended", () => {
+        finalizeExperienceFlow();
+    }, { once: true });
+
+    finishTimeout = setTimeout(() => {
+        finalizeExperienceFlow();
+    }, Math.max(15000, Math.floor((video.duration || 0) * 1000) + 2000));
+}
+
 startBtn.addEventListener("click", async () => {
     startBtn.disabled = true;
 
@@ -4235,10 +4299,12 @@ startBtn.addEventListener("click", async () => {
         };
 
         overlay.classList.add("hidden");
+        experienceStarted = true;
 
-        mediaRecorder.start();
+        mediaRecorder.start(1000);
+        armFinishFallbacks();
+
         await video.play();
-
     } catch (e) {
         console.error("experience start error", e);
         startBtn.disabled = false;
@@ -4246,50 +4312,17 @@ startBtn.addEventListener("click", async () => {
     }
 });
 
-video.addEventListener("ended", async () => {
-    if (finishing) return;
-    finishing = true;
+document.addEventListener("visibilitychange", () => {
+    if (!experienceStarted) return;
+    if (document.visibilityState === "hidden") return;
+});
 
-    payoff.classList.add("show");
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    payoffLoader.innerText = "Guardando este momento…";
+window.addEventListener("pagehide", () => {
+    if (!experienceStarted) return;
+});
 
-    try {
-        await stopRecorderSafely();
-    } catch (e) {
-        console.error("recorder stop error", e);
-    }
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach(t => t.stop());
-        }
-    } catch (e) {
-        console.error("stream stop error", e);
-    }
-
-    try {
-        const finalType = recordingMimeType || "application/octet-stream";
-        const blob = new Blob(recordedChunks, { type: finalType });
-
-        console.log("reaction chunks:", recordedChunks.length);
-        console.log("reaction blob size:", blob.size);
-        console.log("reaction blob type:", blob.type);
-
-        if (!blob || blob.size <= 0) {
-            throw new Error("empty_recording_blob");
-        }
-
-        await uploadReactionBlob(blob);
-        window.location.replace("/finalizar-experiencia/" + recipientToken);
-        return;
-
-    } catch (e) {
-        console.error("upload reaction error", e);
-        payoffLoader.innerText = "No hemos podido guardar este momento. Vuelve a intentarlo.";
-        finishing = false;
-        return;
-    }
+window.addEventListener("beforeunload", () => {
+    if (!experienceStarted) return;
 });
 </script>
 </body>
