@@ -3795,60 +3795,33 @@ def resumen(order_id: str):
 # EXPERIENCE LOCK
 # =========================================================
 
-@app.post("/start-experience")
-def start_experience(request: Request, recipient_token: str = Form(...)):
+@app.post("/complete-experience")
+async def complete_experience(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "reason": "invalid_json"},
+        )
+
+    recipient_token = (data.get("recipient_token") or "").strip()
+    if not recipient_token:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "reason": "missing_recipient_token"},
+        )
+
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if not original_video_ready(order):
-        return JSONResponse({
-            "status": "video_not_ready",
-            "redirect_url": f"/pedido/{recipient_token}",
-        })
-
-    if not delivery_is_unlocked(order):
-        return JSONResponse({
-            "status": "not_unlocked_yet",
-            "redirect_url": f"/pedido/{recipient_token}",
-        })
-
-    if not has_valid_recipient_session(order, request):
-        return JSONResponse({
-            "status": "invalid_access",
-            "redirect_url": f"/pedido/{recipient_token}",
-        })
-
-    result = try_start_experience(order["id"])
-
-    if result == "not_paid":
-        raise HTTPException(status_code=403, detail="Pedido no pagado")
-
-    if result == "video_not_ready":
-        return JSONResponse({
-            "status": "video_not_ready",
-            "redirect_url": f"/pedido/{recipient_token}",
-        })
-
-    if result == "already_completed":
-        return JSONResponse({
-            "status": "already_completed",
-            "redirect_url": f"/cobrar/{recipient_token}",
-        })
-
-    if result == "already_started":
-        return JSONResponse({
-            "status": "already_started",
-            "redirect_url": f"/mi-video/{recipient_token}",
-        })
+    update_order(
+        order["id"],
+        experience_completed=1,
+        experience_started=1,
+        delivered_to_recipient=1,
+    )
 
     return JSONResponse({"status": "ok"})
-
-
-# =========================================================
-# EXPERIENCE (VERSIÓN ESTABLE)
-# =========================================================
 
 # =========================================================
 # EXPERIENCE (VERSIÓN ESTABLE)
@@ -4225,67 +4198,83 @@ async function finalizeExperienceFlow() {
     payoff.classList.add("show");
     payoffLoader.innerText = "Preparando tu cobro…";
 
-    setTimeout(() => {
-        window.location.replace("/cobrar/" + recipientToken);
-    }, 2500);
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            try {
+                mediaRecorder.requestData();
+            } catch (_) {}
 
-    (async () => {
-        try {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
+            await new Promise((resolve) => {
+                let done = false;
+
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timeout);
+                    resolve();
+                };
+
+                const timeout = setTimeout(finish, 2000);
+
+                mediaRecorder.addEventListener("dataavailable", finish, { once: true });
+
                 try {
-                    mediaRecorder.requestData();
-                } catch (_) {}
-
-                await new Promise((resolve) => {
-                    let done = false;
-
-                    const finish = () => {
-                        if (done) return;
-                        done = true;
-                        clearTimeout(timeout);
-                        resolve();
-                    };
-
-                    const timeout = setTimeout(finish, 2000);
-
-                    mediaRecorder.addEventListener("dataavailable", finish, { once: true });
-
-                    try {
-                        mediaRecorder.stop();
-                    } catch (_) {
-                        finish();
-                    }
-                });
-            }
-        } catch (e) {
-            console.error("recorder stop error", e);
-        }
-
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
-
-        try {
-            const blob = new Blob(recordedChunks, {
-                type: recordingMimeType || "video/webm"
+                    mediaRecorder.stop();
+                } catch (_) {
+                    finish();
+                }
             });
-
-            console.log("chunks:", recordedChunks.length);
-            console.log("blob size:", blob.size);
-
-            if (!blob || blob.size <= 0) {
-                console.warn("⚠️ blob vacío, no se sube");
-                return;
-            }
-
-            await uploadReactionBlob(blob);
-            console.log("✅ reacción subida correctamente");
-        } catch (e) {
-            console.error("upload error (no bloquea UX)", e);
         }
-    })();
+    } catch (e) {
+        console.error("recorder stop error", e);
+    }
+
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (e) {}
+
+    try {
+        const blob = new Blob(recordedChunks, {
+            type: recordingMimeType || "video/webm"
+        });
+
+        if (!blob || blob.size <= 0) {
+            throw new Error("empty_recording_blob");
+        }
+
+        const formData = new FormData();
+        formData.append("video", blob, "reaction.webm");
+
+        await fetch("/upload-reaction/" + recipientToken, {
+            method: "POST",
+            body: formData
+        });
+
+    } catch (e) {
+        console.error("upload error", e);
+    }
+
+    // 🔥 ESTE ES EL FINAL REAL
+    setTimeout(async () => {
+        try {
+            await fetch("/complete-experience", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    recipient_token: recipientToken
+                })
+            });
+        } catch (e) {
+            console.error("complete experience error", e);
+        }
+
+        window.location.replace("/cobrar/" + recipientToken);
+
+    }, 2500);
 }
 
 function armFinishFallbacks() {
