@@ -4220,42 +4220,28 @@ def cobrar(request: Request, recipient_token: str):
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
 
-    connect_url = None
-    if gift_amount > 0 and not bool(order.get("connect_onboarding_completed")):
-        try:
-            connect_url = create_connect_onboarding_link(order)
-        except Exception as e:
-            log_error("create_connect_onboarding_link", e)
-            connect_url = None
-
     status_title = "Tu momento ya está completo"
     status_text = "Ya puedes volver a ver el vídeo cuando quieras."
 
     if gift_amount <= 0:
         cashout_line = "Este regalo no incluía dinero."
-        button_html = ""
+        primary_button_html = ""
     elif cashout_status == "completed":
         cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
-        button_html = ""
+        primary_button_html = ""
     elif cashout_status == "processing":
         cashout_line = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
-        button_html = ""
-    elif cashout_status == "ready_to_send":
-        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} está listo para enviarse."
-        button_html = f'''
-            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:18px;">
-                <button style="padding:16px 28px;border:none;border-radius:999px;background:white;color:black;font-weight:bold;cursor:pointer;">
-                    Enviar mi regalo
-                </button>
-            </form>
-        '''
+        primary_button_html = ""
     else:
         cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
-        button_html = (
-            f'<a href="{safe_attr(connect_url)}" style="display:inline-block;margin-top:18px;padding:16px 28px;'
-            'border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;">'
-            'Recibir mi regalo</a>'
-        ) if connect_url else ""
+        primary_button_html = f'''
+            <a
+                href="/recibir-regalo/{recipient_token}"
+                style="display:inline-block;margin-top:18px;padding:16px 28px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;"
+            >
+                Recibir mi regalo
+            </a>
+        '''
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -4329,7 +4315,7 @@ h1 {{
         <h1>{safe_text(status_title)}</h1>
         <div class="main">{safe_text(status_text)}</div>
         <div class="soft">{safe_text(cashout_line)}</div>
-        {button_html}
+        {primary_button_html}
         <div class="actions">
             <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
         </div>
@@ -4339,9 +4325,157 @@ h1 {{
     """)
 
 
+@app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
+def recibir_regalo(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    gift_amount = float(order.get("gift_amount") or 0)
+    if gift_amount <= 0:
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    cashout_status = compute_cashout_status(order)
+
+    if cashout_status == "completed":
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    if cashout_status == "processing":
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    connect_url = None
+    if not bool(order.get("connect_onboarding_completed")):
+        try:
+            connect_url = create_connect_onboarding_link(order)
+        except Exception as e:
+            log_error("create_connect_onboarding_link", e)
+            connect_url = None
+
+    if cashout_status == "ready_to_send":
+        cta_html = f'''
+            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:30px;">
+                <button style="width:100%;max-width:420px;padding:18px 22px;border:none;border-radius:999px;background:white;color:black;font-weight:bold;font-size:16px;cursor:pointer;">
+                    Recibir ahora
+                </button>
+            </form>
+        '''
+        helper_text = "Tu regalo ya está listo. Solo falta confirmarlo."
+    else:
+        if connect_url:
+            cta_html = f'''
+                <a
+                    href="{safe_attr(connect_url)}"
+                    style="display:inline-block;width:100%;max-width:420px;margin-top:30px;padding:18px 22px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;font-size:16px;"
+                >
+                    Continuar
+                </a>
+            '''
+        else:
+            cta_html = ""
+        helper_text = "Primero necesitamos unos datos básicos para poder enviártelo de forma segura."
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}}
+h1 {{
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.15;
+}}
+.main {{
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.90);
+}}
+.soft {{
+    margin-top: 20px;
+    font-size: 16px;
+    line-height: 1.9;
+    color: rgba(255,255,255,0.56);
+}}
+.amount {{
+    margin-top: 28px;
+    font-size: 18px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.76);
+}}
+.actions {{
+    display: grid;
+    gap: 12px;
+    max-width: 420px;
+    margin: 18px auto 0 auto;
+}}
+.btn {{
+    display: block;
+    width: 100%;
+    padding: 17px 22px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.10);
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.10);
+}}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Esto también es para ti</h1>
+        <div class="main">Has recibido {safe_text(format_amount_display(gift_amount))}.</div>
+        <div class="soft">
+            No tienes que hacerlo ahora.<br>
+            Puedes recogerlo cuando quieras.
+        </div>
+        <div class="amount">{safe_text(helper_text)}</div>
+        {cta_html}
+        <div class="actions">
+            <a class="btn" href="/cobrar/{safe_attr(recipient_token)}">Ahora no</a>
+        </div>
+    </div>
+</body>
+</html>
+    """)
+
+
 @app.get("/connect/refresh/{recipient_token}")
 def connect_refresh(recipient_token: str):
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+    return RedirectResponse(url=f"/recibir-regalo/{recipient_token}", status_code=303)
 
 
 @app.get("/connect/return/{recipient_token}")
@@ -4352,6 +4486,12 @@ def connect_return(recipient_token: str):
         refresh_connect_status(order)
     except Exception as e:
         log_error("refresh_connect_status", e)
+
+    refreshed = get_order_by_recipient_token_or_404(recipient_token)
+    cashout_status = compute_cashout_status(refreshed)
+
+    if cashout_status == "ready_to_send":
+        return RedirectResponse(url=f"/recibir-regalo/{recipient_token}", status_code=303)
 
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
@@ -4371,7 +4511,7 @@ def connect_payout(request: Request, recipient_token: str):
     refreshed = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(refreshed.get("connect_onboarding_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+        return RedirectResponse(url=f"/recibir-regalo/{recipient_token}", status_code=303)
 
     try:
         process_gift_transfer_for_order(refreshed)
