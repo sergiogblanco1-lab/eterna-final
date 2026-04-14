@@ -3675,7 +3675,7 @@ def start_experience(request: Request, recipient_token: str = Form(...)):
 
 
 # =========================================================
-# EXPERIENCE
+# EXPERIENCE (VERSIÓN ESTABLE)
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
@@ -3782,18 +3782,6 @@ video {{
 .hidden {{
     display: none !important;
 }}
-.blackout {{
-    position: absolute;
-    inset: 0;
-    background: black;
-    opacity: 0;
-    pointer-events: none;
-    z-index: 4;
-    transition: opacity 0.25s ease;
-}}
-.blackout.show {{
-    opacity: 1;
-}}
 .payoff {{
     position: absolute;
     inset: 0;
@@ -3877,15 +3865,12 @@ video {{
         <div class="payoff-text" id="payoffText">{safe_text(payoff_text)}</div>
         <div class="loader" id="payoffLoader">Guardando este momento…</div>
     </div>
-
-    <div class="blackout" id="blackout"></div>
 </div>
 
 <script>
 const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
-const blackout = document.getElementById("blackout");
 const payoff = document.getElementById("payoff");
 const payoffLoader = document.getElementById("payoffLoader");
 
@@ -3895,255 +3880,9 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let stream = null;
 let finishing = false;
-let uploadCompleted = false;
 
 function cobrarUrl() {{
     return "/cobrar/" + recipientToken;
-}}
-
-async function openReactionDB() {{
-    return await new Promise((resolve, reject) => {{
-        const request = indexedDB.open("eternaReactionDB", 1);
-        request.onupgradeneeded = function(event) {{
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains("reactions")) {{
-                db.createObjectStore("reactions");
-            }}
-        }};
-        request.onsuccess = function() {{
-            resolve(request.result);
-        }};
-        request.onerror = function() {{
-            reject(request.error || new Error("indexeddb_open_error"));
-        }};
-    }});
-}}
-
-async function savePendingReaction(blob) {{
-    const db = await openReactionDB();
-    await new Promise((resolve, reject) => {{
-        const tx = db.transaction("reactions", "readwrite");
-        tx.objectStore("reactions").put(blob, recipientToken);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error || new Error("indexeddb_put_error"));
-    }});
-    db.close();
-}}
-
-async function loadPendingReaction() {{
-    const db = await openReactionDB();
-    const blob = await new Promise((resolve, reject) => {{
-        const tx = db.transaction("reactions", "readonly");
-        const req = tx.objectStore("reactions").get(recipientToken);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error || new Error("indexeddb_get_error"));
-    }});
-    db.close();
-    return blob;
-}}
-
-async function deletePendingReaction() {{
-    const db = await openReactionDB();
-    await new Promise((resolve, reject) => {{
-        const tx = db.transaction("reactions", "readwrite");
-        tx.objectStore("reactions").delete(recipientToken);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error || new Error("indexeddb_delete_error"));
-    }});
-    db.close();
-}}
-
-async function fetchReactionStatus() {{
-    try {{
-        const res = await fetch("/reaction-upload-status/" + recipientToken, {{
-            cache: "no-store"
-        }});
-        if (!res.ok) return null;
-        return await res.json();
-    }} catch (e) {{
-        console.error("reaction status error", e);
-        return null;
-    }}
-}}
-
-async function uploadReactionBlob(blob) {{
-    const formData = new FormData();
-
-    const mimeType = (mediaRecorder && mediaRecorder.mimeType)
-        ? mediaRecorder.mimeType
-        : ((blob && blob.type) ? blob.type : "video/webm");
-
-    const extension = mimeType.includes("mp4") || mimeType.includes("quicktime") ? "mp4" : "webm";
-
-    const file = new File([blob], "reaction." + extension, {{
-        type: mimeType || "video/webm"
-    }});
-
-    formData.append("video", file);
-
-    const res = await fetch("/upload-reaction/" + recipientToken, {{
-        method: "POST",
-        body: formData
-    }});
-
-    let data = null;
-    try {{
-        data = await res.json();
-    }} catch (_) {{
-        data = null;
-    }}
-
-    if (!res.ok) {{
-        throw new Error((data && data.detail) || "upload_reaction_error");
-    }}
-
-    return data;
-}}
-
-async function stopRecorderSafely() {{
-    try {{
-        if (mediaRecorder && mediaRecorder.state !== "inactive") {{
-            await new Promise((resolve) => {{
-                const timeout = setTimeout(resolve, 4000);
-
-                const handler = function() {{
-                    clearTimeout(timeout);
-                    mediaRecorder.removeEventListener("stop", handler);
-                    resolve();
-                }};
-
-                mediaRecorder.addEventListener("stop", handler);
-
-                try {{
-                    mediaRecorder.stop();
-                }} catch (_) {{
-                    clearTimeout(timeout);
-                    mediaRecorder.removeEventListener("stop", handler);
-                    resolve();
-                }}
-            }});
-        }}
-    }} catch (e) {{
-        console.error("stopRecorderSafely error", e);
-    }}
-
-    try {{
-        if (stream) {{
-            stream.getTracks().forEach(t => t.stop());
-        }}
-    }} catch (e) {{
-        console.error("stream stop error", e);
-    }}
-}}
-
-function showPayoff() {{
-    payoff.classList.add("show");
-}}
-
-async function finalizeExperienceAfterUpload() {{
-    try {{
-        const res = await fetch("/finalizar-experiencia/" + recipientToken, {{
-            method: "GET",
-            redirect: "follow"
-        }});
-
-        if (res.redirected && res.url) {{
-            window.location.replace(res.url);
-            return;
-        }}
-
-        window.location.replace(cobrarUrl());
-    }} catch (e) {{
-        console.error("finalizeExperienceAfterUpload error", e);
-        window.location.replace(cobrarUrl());
-    }}
-}}
-
-async function finishExperience() {{
-    if (finishing) return;
-    finishing = true;
-
-    try {{
-        video.pause();
-    }} catch (_) {{}}
-
-    showPayoff();
-
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    blackout.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
-
-    await stopRecorderSafely();
-
-    const mimeType = (mediaRecorder && mediaRecorder.mimeType)
-        ? mediaRecorder.mimeType
-        : "video/webm";
-
-    const blob = new Blob(recordedChunks, {{ type: mimeType }});
-
-    if (blob && blob.size > 0) {{
-        try {{
-            await savePendingReaction(blob);
-        }} catch (e) {{
-            console.error("savePendingReaction error", e);
-        }}
-
-        try {{
-            await uploadReactionBlob(blob);
-            uploadCompleted = true;
-
-            const status = await fetchReactionStatus();
-            if (status && status.reaction_uploaded && status.reaction_exists) {{
-                await deletePendingReaction().catch(() => null);
-            }}
-        }} catch (e) {{
-            console.error("immediate upload error", e);
-        }}
-    }}
-
-    await finalizeExperienceAfterUpload();
-}}
-
-async function resumePendingUploadAndFinalizeIfNeeded() {{
-    try {{
-        const status = await fetchReactionStatus();
-
-        if (status && status.experience_completed) {{
-            await deletePendingReaction().catch(() => null);
-            window.location.replace(cobrarUrl());
-            return;
-        }}
-
-        if (status && status.reaction_uploaded && status.reaction_exists) {{
-            await deletePendingReaction().catch(() => null);
-            await finalizeExperienceAfterUpload();
-            return;
-        }}
-
-        const pendingBlob = await loadPendingReaction();
-
-        if (pendingBlob && pendingBlob.size > 0) {{
-            try {{
-                payoff.classList.add("show");
-                blackout.classList.add("show");
-                payoffLoader.innerText = "Recuperando tu momento…";
-
-                await uploadReactionBlob(pendingBlob);
-
-                const uploaded = await fetchReactionStatus();
-                if (uploaded && uploaded.reaction_uploaded && uploaded.reaction_exists) {{
-                    await deletePendingReaction().catch(() => null);
-                    await finalizeExperienceAfterUpload();
-                    return;
-                }}
-            }} catch (e) {{
-                console.error("pending upload retry error", e);
-            }}
-        }}
-    }} catch (e) {{
-        console.error("resumePendingUploadAndFinalizeIfNeeded error", e);
-    }}
 }}
 
 startBtn.addEventListener("click", async () => {{
@@ -4186,193 +3925,160 @@ startBtn.addEventListener("click", async () => {{
         overlay.classList.add("hidden");
         mediaRecorder.start(250);
         await video.play();
+
     }} catch (e) {{
-        console.error(e);
+        console.error("experience start error", e);
         startBtn.disabled = false;
     }}
 }});
-
-<script>
-let finishing = false;
 
 video.addEventListener("ended", async () => {{
     if (finishing) return;
     finishing = true;
 
+    payoff.classList.add("show");
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    payoffLoader.innerText = "Guardando este momento…";
+
     try {{
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {{
+            await new Promise((resolve) => {{
+                const timeout = setTimeout(resolve, 4000);
 
-        const payoff = document.createElement("div");
-        payoff.style.position = "fixed";
-        payoff.style.inset = "0";
-        payoff.style.display = "flex";
-        payoff.style.alignItems = "center";
-        payoff.style.justifyContent = "center";
-        payoff.style.flexDirection = "column";
-        payoff.style.background = "rgba(0,0,0,0.92)";
-        payoff.style.color = "white";
-        payoff.style.zIndex = "9999";
-        payoff.style.textAlign = "center";
-        payoff.style.padding = "24px";
+                const handler = () => {{
+                    clearTimeout(timeout);
+                    mediaRecorder.removeEventListener("stop", handler);
+                    resolve();
+                }};
 
-        const giftAmount = {float(order.get("gift_amount") or 0)};
+                mediaRecorder.addEventListener("stop", handler);
 
-        if (giftAmount > 0) {{
-            payoff.innerHTML = `
-                <h1 style="font-size:32px;">Has recibido ${{giftAmount}} €</h1>
-                <p style="opacity:0.7;margin-top:12px;">Esto es para ti</p>
-            `;
-        }} else {{
-            payoff.innerHTML = `
-                <h1 style="font-size:28px;">Esto era para ti</h1>
-                <p style="opacity:0.7;margin-top:12px;">
-                    Espero que este vídeo te llegue en el momento que más necesitas.
-                </p>
-            `;
+                try {{
+                    mediaRecorder.stop();
+                }} catch (_) {{
+                    clearTimeout(timeout);
+                    mediaRecorder.removeEventListener("stop", handler);
+                    resolve();
+                }}
+            }});
         }}
+    }} catch (e) {{
+        console.error("recorder stop error", e);
+    }}
 
-        document.body.appendChild(payoff);
-
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-
-        try {{
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {{
-                await new Promise((resolve) => {{
-                    const done = () => {{
-                        try {{
-                            mediaRecorder.removeEventListener("stop", done);
-                        }} catch (_) {{}}
-                        resolve();
-                    }};
-
-                    try {{
-                        mediaRecorder.addEventListener("stop", done);
-                        mediaRecorder.stop();
-                    }} catch (e) {{
-                        console.error("stop recorder error", e);
-                        resolve();
-                    }}
-                }});
-            }}
-        }} catch (e) {{
-            console.error("stop recorder outer error", e);
+    try {{
+        if (stream) {{
+            stream.getTracks().forEach(t => t.stop());
         }}
+    }} catch (e) {{
+        console.error("stream stop error", e);
+    }}
 
-        try {{
-            if (stream) {{
-                stream.getTracks().forEach((t) => t.stop());
-            }}
-        }} catch (e) {{
-            console.error("stream stop error", e);
-        }}
-
-        let blob = null;
-        try {{
-            blob = new Blob(recordedChunks, {{ type: "video/webm" }});
-        }} catch (e) {{
-            console.error("blob error", e);
-        }}
+    try {{
+        const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
 
         if (blob && blob.size > 0) {{
-            try {{
-                const formData = new FormData();
-                formData.append("video", new File([blob], "reaction.webm", {{ type: "video/webm" }}));
+            const formData = new FormData();
+            formData.append("video", new File([blob], "reaction.webm", {{ type: "video/webm" }}));
 
-                await fetch("/upload-reaction/" + recipientToken, {{
-                    method: "POST",
-                    body: formData
-                }});
-            }} catch (e) {{
-                console.error("upload error", e);
-            }}
+            await fetch("/upload-reaction/" + recipientToken, {{
+                method: "POST",
+                body: formData
+            }});
         }}
-
-        try {{
-            window.location.replace("/finalizar-experiencia/" + recipientToken);
-            return;
-        }} catch (e) {{
-            console.error("redirect finalizar error", e);
-        }}
-
     }} catch (e) {{
-        console.error("FATAL EXPERIENCE ERROR", e);
+        console.error("upload reaction error", e);
     }}
 
     window.location.replace("/finalizar-experiencia/" + recipientToken);
 }});
+</script>
+</body>
+</html>
+    """)
 
 
-@app.post("/reset-experience/{recipient_token}")
-def reset_experience(recipient_token: str):
+# =========================================================
+# UPLOAD REACTION (ESTABLE Y SIMPLE)
+# =========================================================
+
+@app.post("/upload-reaction/{recipient_token}")
+async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if bool(order.get("reaction_uploaded")) and reaction_exists(order):
+    print("🎥 UPLOAD START:", order["id"])
+
+    # 🔒 Validaciones básicas
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="not_paid")
+
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="video_not_ready")
+
+    try:
+        # 📥 Leer vídeo
+        data = await video.read()
+
+        if not data or len(data) == 0:
+            raise HTTPException(status_code=400, detail="empty_video")
+
+        print("📦 Tamaño:", len(data))
+
+        # 📁 Guardado local SIEMPRE
+        extension = "webm"
+        local_path = reaction_video_path(order["id"], extension)
+
+        with open(local_path, "wb") as f:
+            f.write(data)
+
+        print("💾 Guardado en:", local_path)
+
+        # ☁️ Subida opcional a R2 (no rompe si falla)
+        public_url = None
+
+        try:
+            if r2_enabled():
+                remote_name = f"reactions/{order['id']}.{extension}"
+
+                public_url = upload_video_to_r2(
+                    local_path,
+                    remote_name,
+                    content_type="video/webm"
+                )
+
+                print("☁️ Subido a R2:", public_url)
+
+        except Exception as e:
+            print("⚠️ R2 ERROR (no crítico):", e)
+
+        # 🧠 Guardar estado
+        update_order(
+            order["id"],
+            reaction_video_local=local_path,
+            reaction_video_public_url=public_url,
+            reaction_uploaded=1,
+            experience_completed=1,
+            delivered_to_recipient=1
+        )
+
+        maybe_mark_eterna_completed(order["id"])
+
+        print("✅ UPLOAD OK:", order["id"])
+
         return JSONResponse({
-            "ok": False,
-            "reason": "reaction_already_saved",
+            "ok": True,
+            "redirect": f"/cobrar/{recipient_token}"
         })
 
-    update_order(
-        order["id"],
-        experience_started=0,
-        experience_completed=0,
-        reaction_uploaded=0,
-        reaction_upload_pending=0,
-        reaction_upload_error=None,
-        reaction_video_local=None,
-        reaction_video_public_url=None,
-        eterna_completed=0,
-    )
+    except Exception as e:
+        log_error("UPLOAD REACTION ERROR", e)
 
-    return JSONResponse({
-        "ok": True,
-        "reason": "experience_reset",
-        "redirect_url": f"/experiencia/{recipient_token}",
-    })
-
-
-@app.get("/reaction-upload-status/{recipient_token}")
-def reaction_upload_status(recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    return JSONResponse({
-        "ok": True,
-        "reaction_uploaded": bool(order.get("reaction_uploaded")),
-        "reaction_exists": reaction_exists(order),
-        "reaction_video_public_url": order.get("reaction_video_public_url"),
-        "reaction_video_local": order.get("reaction_video_local"),
-        "experience_started": bool(order.get("experience_started")),
-        "experience_completed": bool(order.get("experience_completed")),
-        "eterna_completed": bool(order.get("eterna_completed")),
-    })
-
-
-# =========================================================
-# FAST CLOSE EXPERIENCE (SIN BLOQUEOS)
-# =========================================================
-
-@app.post("/close-experience-fast/{recipient_token}")
-def close_experience_fast(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not has_valid_recipient_session(order, request):
-        return JSONResponse({"ok": False, "error": "invalid_session"})
-
-    if not bool(order.get("paid")):
-        return JSONResponse({"ok": False, "error": "not_paid"})
-
-    update_order(
-        order["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    print("⚡ FAST CLOSE EXPERIENCE:", order["id"])
-
-    return JSONResponse({
-        "ok": True,
-        "redirect": f"/cobrar/{recipient_token}"
-    })
+        raise HTTPException(
+            status_code=500,
+            detail="upload_failed"
+        )
 
 
 # =========================================================
@@ -4944,6 +4650,35 @@ def admin_process_all_due_deliveries(token: str = ""):
         "sender_results": sender_results,
     })
 
+# =========================================================
+# FINALIZAR EXPERIENCIA (DEFINITIVO)
+# =========================================================
+
+@app.get("/finalizar-experiencia/{recipient_token}")
+def finalizar_experiencia(recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
+
+    try:
+        # 🔒 Marcar experiencia como completada
+        update_order(
+            order["id"],
+            experience_completed=1,
+            delivered_to_recipient=1
+        )
+
+        # 🔥 Intentar cerrar ETERNA completa
+        maybe_mark_eterna_completed(order["id"])
+
+    except Exception as e:
+        log_error("FINALIZAR EXPERIENCE ERROR", e)
+
+    # 🚀 Redirección SIEMPRE a cobrar
+    return RedirectResponse(
+        url=f"/cobrar/{recipient_token}",
+        status_code=303
+    )
 
 # =========================================================
 # MAIN
