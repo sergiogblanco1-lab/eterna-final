@@ -4312,44 +4312,63 @@ startBtn.addEventListener("click", async () => {
             return;
         }
 
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-        });
-
-        const format = detectRecordingFormat();
-        recordingMimeType = format.mimeType;
-        recordingExtension = format.extension;
-        recordedChunks = [];
-
-        mediaRecorder = recordingMimeType
-            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
-            : new MediaRecorder(stream);
-
-        mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-                recordedChunks.push(e.data);
-            }
-        };
-
-        mediaRecorder.onerror = (e) => {
-            console.error("mediaRecorder error", e);
-        };
-
         video.load();
         await waitForVideoReady();
 
+        overlay.classList.remove("show");
         overlay.classList.add("hidden");
         experienceStarted = true;
 
-        mediaRecorder.start(1000);
-        armFinishFallbacks();
+        let recordingEnabled = false;
 
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
+
+            const format = detectRecordingFormat();
+            recordingMimeType = format.mimeType;
+            recordingExtension = format.extension;
+            recordedChunks = [];
+
+            mediaRecorder = recordingMimeType
+                ? new MediaRecorder(stream, { mimeType: recordingMimeType })
+                : new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                    recordedChunks.push(e.data);
+                }
+            };
+
+            mediaRecorder.onerror = (e) => {
+                console.error("mediaRecorder error", e);
+            };
+
+            mediaRecorder.start(1000);
+            recordingEnabled = true;
+            console.log("🎥 grabación iniciada");
+        } catch (recordingError) {
+            console.error("recording init error", recordingError);
+            stream = null;
+            mediaRecorder = null;
+            recordedChunks = [];
+            recordingMimeType = "";
+            recordingExtension = "webm";
+        }
+
+        armFinishFallbacks();
         await video.play();
+
+        if (!recordingEnabled) {
+            console.log("⚠️ experiencia iniciada sin grabación");
+        }
+
     } catch (e) {
         console.error("experience start error", e);
         startBtn.disabled = false;
-        alert("No hemos podido iniciar bien la grabación de este momento.");
+        alert("No hemos podido iniciar bien este momento.");
     }
 });
 
