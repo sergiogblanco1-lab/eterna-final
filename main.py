@@ -4222,16 +4222,13 @@ async function finalizeExperienceFlow() {
     if (finishing) return;
     finishing = true;
 
-    // 🔥 Mostrar payoff
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
+    payoffLoader.innerText = "Preparando tu cobro…";
 
-    // 🔥 1. COBRAR SIEMPRE (NO DEPENDE DE LA GRABACIÓN)
     setTimeout(() => {
         window.location.replace("/cobrar/" + recipientToken);
-    }, 1000);
+    }, 2500);
 
-    // 🔥 2. GRABACIÓN EN PARALELO (NO BLOQUEA)
     (async () => {
         try {
             if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -4283,16 +4280,8 @@ async function finalizeExperienceFlow() {
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("video", blob, "reaction.webm");
-
-            await fetch("/upload-reaction/" + recipientToken, {
-                method: "POST",
-                body: formData
-            });
-
+            await uploadReactionBlob(blob);
             console.log("✅ reacción subida correctamente");
-
         } catch (e) {
             console.error("upload error (no bloquea UX)", e);
         }
