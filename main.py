@@ -3873,9 +3873,13 @@ def experiencia(request: Request, recipient_token: str):
     if gift_amount > 0:
         payoff_title = f"Has recibido {format_amount_display(gift_amount)}"
         payoff_text = "Este momento también llevaba algo más para ti."
+        cobrar_title = f"Has recibido {format_amount_display(gift_amount)}"
+        cobrar_text = "Estamos guardando este momento mientras te llevamos a continuar."
     else:
         payoff_title = "Esto era para ti"
         payoff_text = "Quédate un segundo más dentro de este momento."
+        cobrar_title = "Esto era para ti"
+        cobrar_text = "Estamos guardando este momento mientras te llevamos a continuar."
 
     html_page = """
 <!DOCTYPE html>
