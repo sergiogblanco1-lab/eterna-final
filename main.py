@@ -4001,71 +4001,91 @@ video.addEventListener("ended", async () => {{
 
 
 # =========================================================
-# UPLOAD REACTION (ESTABLE Y SIMPLE)
+# UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
 # =========================================================
 
 @app.post("/upload-reaction/{recipient_token}")
 async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    print("🎥 UPLOAD START:", order["id"])
+    print("🎥 UPLOAD REACTION START")
+    print("➡️ order_id:", order["id"])
 
-    # 🔒 Validaciones básicas
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="not_paid")
 
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
+    content_type = (video.content_type or "").lower().strip()
+    if content_type not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(status_code=400, detail="invalid_video_type")
+
+    data = await video.read()
+
+    if len(data) > MAX_VIDEO_SIZE:
+        raise HTTPException(status_code=400, detail="video_too_large")
+
+    extension = detect_video_extension(video)
+    local_path = reaction_video_path(order["id"], extension)
+
     try:
-        # 📥 Leer vídeo
-        data = await video.read()
-
-        if not data or len(data) == 0:
-            raise HTTPException(status_code=400, detail="empty_video")
-
-        print("📦 Tamaño:", len(data))
-
-        # 📁 Guardado local SIEMPRE
-        extension = "webm"
-        local_path = reaction_video_path(order["id"], extension)
-
         with open(local_path, "wb") as f:
             f.write(data)
 
-        print("💾 Guardado en:", local_path)
+        print("💾 Guardado local:", local_path)
 
-        # ☁️ Subida opcional a R2 (no rompe si falla)
         public_url = None
-
         try:
             if r2_enabled():
                 remote_name = f"reactions/{order['id']}.{extension}"
-
                 public_url = upload_video_to_r2(
                     local_path,
                     remote_name,
-                    content_type="video/webm"
+                    content_type=content_type
                 )
-
                 print("☁️ Subido a R2:", public_url)
-
         except Exception as e:
-            print("⚠️ R2 ERROR (no crítico):", e)
+            print("⚠️ Error subiendo a R2:", e)
 
-        # 🧠 Guardar estado
         update_order(
             order["id"],
             reaction_video_local=local_path,
             reaction_video_public_url=public_url,
             reaction_uploaded=1,
             experience_completed=1,
-            delivered_to_recipient=1
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
         )
 
         maybe_mark_eterna_completed(order["id"])
 
-        print("✅ UPLOAD OK:", order["id"])
+        def background_tasks():
+            try:
+                print("⚙️ BACKGROUND START:", order["id"])
+
+                refreshed = get_order_by_id(order["id"])
+
+                try:
+                    process_gift_transfer_for_order(refreshed)
+                except Exception as e:
+                    log_error("process_gift_transfer_for_order", e)
+
+                refreshed = get_order_by_id(order["id"])
+
+                try:
+                    try_send_sender_sms(refreshed)
+                except Exception as e:
+                    log_error("try_send_sender_sms", e)
+
+                maybe_mark_eterna_completed(order["id"])
+
+                print("✅ BACKGROUND DONE:", order["id"])
+            except Exception as e:
+                log_error("BACKGROUND TASK ERROR", e)
+
+        threading.Thread(target=background_tasks, daemon=True).start()
 
         return JSONResponse({
             "ok": True,
@@ -4074,11 +4094,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     except Exception as e:
         log_error("UPLOAD REACTION ERROR", e)
-
-        raise HTTPException(
-            status_code=500,
-            detail="upload_failed"
-        )
+        raise HTTPException(status_code=500, detail="Error guardando reacción")
 
 
 # =========================================================
