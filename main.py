@@ -3790,6 +3790,39 @@ def resumen(order_id: str):
     </html>
     """)
 
+# =========================================================
+# START EXPERIENCE (FIX CRÍTICO)
+# =========================================================
+
+@app.post("/start-experience")
+async def start_experience(recipient_token: str = Form(...)):
+    try:
+        order = get_order_by_recipient_token_or_404(recipient_token)
+
+        print("🎬 START EXPERIENCE:", order["id"])
+
+        if not bool(order.get("paid")):
+            raise HTTPException(status_code=403, detail="not_paid")
+
+        if not original_video_ready(order):
+            raise HTTPException(status_code=403, detail="video_not_ready")
+
+        if not delivery_is_unlocked(order):
+            raise HTTPException(status_code=403, detail="delivery_locked")
+
+        update_order(
+            order["id"],
+            experience_started=1
+        )
+
+        return JSONResponse({
+            "ok": True
+        })
+
+    except Exception as e:
+        log_error("START EXPERIENCE ERROR", e)
+        raise HTTPException(status_code=500, detail="start_experience_failed")
+
 
 # =========================================================
 # EXPERIENCE LOCK
