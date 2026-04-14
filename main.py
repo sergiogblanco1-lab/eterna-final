@@ -3529,108 +3529,59 @@ async def stripe_webhook(request: Request):
 
 
 @app.post("/internal/video-ready")
-async def internal_video_ready(request: Request):
-    incoming_secret = (request.headers.get("X-Video-Engine-Secret") or "").strip()
+async def video_ready(request: Request):
+    data = await request.json()
 
-    if VIDEO_READY_CALLBACK_SECRET:
-        if incoming_secret != VIDEO_READY_CALLBACK_SECRET:
-            return JSONResponse(
-                status_code=403,
-                content={"status": "error", "reason": "invalid_secret"},
-            )
-
-    try:
-        data = await request.json()
-    except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "reason": "invalid_json"},
-        )
-
-    order_id = (data.get("order_id") or "").strip()
+    order_id = data.get("order_id")
     video_url = (data.get("video_url") or "").strip()
 
-    print("🎬 CALLBACK VIDEO READY")
-    print("🎬 order_id:", order_id)
-    print("🎬 video_url:", video_url)
+    print("🔥 CALLBACK VIDEO READY")
+    print("order_id:", order_id)
+    print("video_url:", video_url)
 
     if not order_id or not video_url:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "reason": "missing_data"},
-        )
+        return JSONResponse({"ok": False, "error": "missing_data"}, status_code=400)
 
+    order = get_order_by_id(order_id)
+    if not order:
+        return JSONResponse({"ok": False, "error": "order_not_found"}, status_code=404)
+
+    # 🔥 1. GUARDAR SIEMPRE PRIMERO
+    update_order(
+        order_id,
+        experience_video_url=video_url
+    )
+
+    print("✅ VIDEO URL GUARDADA")
+
+    # 🔥 2. GENERAR LINK FINAL
+    recipient_token = order.get("recipient_token")
+    experience_url = f"{PUBLIC_BASE_URL}/pedido/{recipient_token}"
+
+    print("Recipient experience:", experience_url)
+
+    # 🔥 3. ENVIAR SMS DIRECTO AQUÍ
     try:
-        order = get_order_by_id(order_id)
+        to_number = order.get("recipient_phone")
 
-        if not bool(order.get("paid")):
-            return JSONResponse(
-                status_code=400,
-                content={"status": "error", "reason": "order_not_paid"},
+        if to_number:
+            send_sms(
+                to=to_number,
+                body=f"ETERNA\n\nTienes algo que ver…\n\n{experience_url}"
             )
 
-        existing_video = (order.get("experience_video_url") or "").strip()
-
-        if existing_video:
-            print("⚠️ Callback duplicado ignorado")
-            return JSONResponse({
-                "status": "ok",
-                "reason": "video_already_saved",
-                "order_id": order_id,
-                "video_url": existing_video,
-                "recipient_url": recipient_experience_url_from_order(order),
-                "sender_url": sender_pack_url_from_order(order),
-            })
-
-        update_order(
-            order_id,
-            experience_video_url=video_url,
-            video_render_requested=1,
-        )
-
-        if not asset_exists(order_id, "rendered_video", video_url):
-            insert_asset(
-                order_id=order_id,
-                asset_type="rendered_video",
-                file_url=video_url,
-                storage_provider="video_engine",
+            update_order(
+                order_id,
+                delivery_sent=1,
+                recipient_sms_sent_at=datetime.utcnow().isoformat()
             )
 
-        order = get_order_by_id(order_id)
-
-        print("🔥 CALLBACK VIDEO READY 🔥")
-        print("🎬 VIDEO GENERADO")
-        print("➡️ Recipient experience:", recipient_experience_url_from_order(order))
-        print("➡️ Sender pack:", sender_pack_url_from_order(order))
-        print("🕒 delivery_mode:", order.get("delivery_mode"))
-        print("🕒 scheduled_delivery_at:", order.get("scheduled_delivery_at"))
-        print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
-        print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
-        print("📦 delivery_sent:", bool(order.get("delivery_sent")))
-
-        # SOLO AQUÍ intentamos enviar al regalado,
-        # porque aquí ya sabemos que el vídeo real existe.
-        delivery_result = process_scheduled_recipient_delivery(order_id)
-        print("📩 Resultado entrega programada callback:", delivery_result)
-
-        return JSONResponse({
-            "status": "ok",
-            "order_id": order_id,
-            "video_url": video_url,
-            "recipient_url": recipient_experience_url_from_order(order),
-            "sender_url": sender_pack_url_from_order(order),
-            "delivery_mode": order.get("delivery_mode"),
-            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-            "delivery_result": delivery_result,
-        })
+            print("📩 SMS ENVIADO DIRECTO DESDE CALLBACK")
 
     except Exception as e:
-        log_error("internal_video_ready", e)
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "reason": str(e)},
-        )
+        print("❌ ERROR SMS:", e)
+
+    return {"ok": True}
 
 
 # =========================================================
@@ -4225,6 +4176,12 @@ async function finalizeExperienceFlow() {
     payoff.classList.add("show");
     payoffLoader.innerText = "Guardando este momento…";
 
+    // 🔥 1. IR A COBRAR SIEMPRE (NO BLOQUEAR)
+    setTimeout(() => {
+        window.location.replace("/cobrar/" + recipientToken);
+    }, 1200);
+
+    // 🔥 2. INTENTAR GUARDAR EN PARALELO (SIN BLOQUEAR UX)
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             try {
@@ -4271,17 +4228,22 @@ async function finalizeExperienceFlow() {
         console.log("blob size:", blob.size);
 
         if (!blob || blob.size <= 0) {
-            throw new Error("empty_recording_blob");
+            console.warn("⚠️ blob vacío, no se sube");
+            return;
         }
 
-        await uploadReactionBlob(blob);
-        window.location.replace("/cobrar/" + recipientToken);
+        const formData = new FormData();
+        formData.append("video", blob, "reaction.webm");
+
+        await fetch("/upload-reaction/" + recipientToken, {
+            method: "POST",
+            body: formData
+        });
+
+        console.log("✅ reacción subida correctamente");
 
     } catch (e) {
-        console.error("upload error", e);
-        payoffLoader.innerText = "No hemos podido guardar este momento. Vuelve a intentarlo.";
-        finishing = false;
-        startBtn.disabled = false;
+        console.error("upload error (no bloquea UX)", e);
     }
 }
 
