@@ -934,6 +934,82 @@ def build_sender_ready_message(order: dict) -> str:
     )
 
 
+def try_send_sender_sms(order: dict) -> dict:
+    order = get_order_by_id(order["id"])
+
+    if not bool(order.get("paid")):
+        return {"ok": False, "reason": "order_not_paid"}
+
+    if not bool(order.get("reaction_uploaded")):
+        return {"ok": False, "reason": "reaction_not_uploaded"}
+
+    if not reaction_exists(order):
+        return {"ok": False, "reason": "reaction_not_found"}
+
+    attempts = int(order.get("sender_sms_attempts") or 0)
+
+    if bool(order.get("sender_sms_sent_at")):
+        return {
+            "ok": True,
+            "reason": "already_sent",
+            "sid": order.get("sender_sms_sid"),
+            "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+            "sender_sms_attempts": attempts,
+            "sender_sms_error": order.get("sender_sms_error"),
+        }
+
+    if attempts >= 3:
+        return {
+            "ok": False,
+            "reason": "max_attempts_reached",
+            "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+            "sender_sms_attempts": attempts,
+            "sender_sms_error": order.get("sender_sms_error"),
+        }
+
+    message = build_sender_ready_message(order)
+    result = send_sms(order.get("sender_phone", ""), message)
+
+    attempts = attempts + 1
+
+    if result.get("ok"):
+        sent_at = now_iso()
+
+        update_order(
+            order["id"],
+            sender_sms_attempts=attempts,
+            sender_sms_error=None,
+            sender_sms_sid=result.get("sid"),
+            sender_sms_sent_at=sent_at,
+            sender_notified=1,
+        )
+
+        refreshed = get_order_by_id(order["id"])
+        return {
+            "ok": True,
+            "reason": "sent",
+            "sid": refreshed.get("sender_sms_sid"),
+            "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
+            "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
+            "sender_sms_error": refreshed.get("sender_sms_error"),
+        }
+
+    update_order(
+        order["id"],
+        sender_sms_attempts=attempts,
+        sender_sms_error=result.get("error") or "sms_error",
+    )
+
+    refreshed = get_order_by_id(order["id"])
+    return {
+        "ok": False,
+        "reason": result.get("error") or "sms_error",
+        "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
+        "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
+        "sender_sms_error": refreshed.get("sender_sms_error"),
+    }
+
+
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
     fixed_fee = round(FIXED_PLATFORM_FEE, 2)
@@ -1034,15 +1110,14 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    if int(order.get("recipient_sms_attempts") or 0) > 0:
+    attempts = int(order.get("recipient_sms_attempts") or 0)
+
+    if attempts >= 3:
         return {
             "ok": False,
-            "reason": "already_attempted_once",
-            "delivery_sent": bool(order.get("delivery_sent")),
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "reason": "max_attempts_reached",
             "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_attempts": attempts,
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
@@ -1054,7 +1129,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "delivery_sent_at": order.get("delivery_sent_at"),
             "scheduled_delivery_display": scheduled_delivery_display(order),
             "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_attempts": attempts,
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
@@ -1066,7 +1141,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "delivery_sent_at": order.get("delivery_sent_at"),
             "scheduled_delivery_display": scheduled_delivery_display(order),
             "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_attempts": attempts,
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
@@ -1078,13 +1153,14 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "delivery_sent_at": order.get("delivery_sent_at"),
             "scheduled_delivery_display": scheduled_delivery_display(order),
             "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_attempts": attempts,
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    attempts = 1
     message = build_recipient_message(order)
     result = send_sms(order.get("recipient_phone", ""), message)
+
+    attempts = attempts + 1
 
     if result.get("ok"):
         sent_at = now_iso()
@@ -2957,8 +3033,8 @@ def list_pending_scheduled_deliveries():
         WHERE
             paid = 1
             AND COALESCE(delivery_sent, 0) = 0
-            AND COALESCE(recipient_sms_attempts, 0) = 0
             AND COALESCE(experience_video_url, '') <> ''
+            AND COALESCE(recipient_sms_attempts, 0) < 3
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -3438,6 +3514,8 @@ async def internal_video_ready(request: Request):
         print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
         print("📦 delivery_sent:", bool(order.get("delivery_sent")))
 
+        # SOLO AQUÍ intentamos enviar al regalado,
+        # porque aquí ya sabemos que el vídeo real existe.
         delivery_result = process_scheduled_recipient_delivery(order_id)
         print("📩 Resultado entrega programada callback:", delivery_result)
 
@@ -4734,26 +4812,42 @@ def admin_process_scheduled_delivery(order_id: str, token: str = ""):
     })
 
 
-@app.get("/admin/retry-recipient-message/{order_id}")
-def admin_retry_recipient_message(order_id: str, token: str = ""):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+@app.post("/admin/retry-recipient-message/{order_id}")
+def admin_retry_recipient_message(order_id: str, request: Request):
+    admin_token = (request.query_params.get("token") or request.headers.get("x-admin-token") or "").strip()
+    if not ADMIN_TOKEN or admin_token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
 
-    result = process_scheduled_recipient_delivery(order_id)
-    updated = get_order_by_id(order_id)
+    order = get_order_by_id(order_id)
+    attempts = int(order.get("recipient_sms_attempts") or 0)
 
-    return JSONResponse({
-        "ok": result.get("ok", False),
-        "result": result,
-        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
-        "recipient_sms_sid": updated.get("recipient_sms_sid"),
-        "recipient_sms_attempts": updated.get("recipient_sms_attempts"),
-        "recipient_sms_error": updated.get("recipient_sms_error"),
-        "scheduled_delivery_at": updated.get("scheduled_delivery_at"),
-        "scheduled_delivery_display": scheduled_delivery_display(updated),
-        "delivery_sent": bool(updated.get("delivery_sent")),
-        "delivery_sent_at": updated.get("delivery_sent_at"),
-    })
+    if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
+        return {
+            "ok": True,
+            "reason": "already_sent",
+            "order_id": order_id,
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": attempts,
+            "recipient_sms_error": order.get("recipient_sms_error"),
+            "delivery_sent": bool(order.get("delivery_sent")),
+            "delivery_sent_at": order.get("delivery_sent_at"),
+        }
+
+    if attempts >= 3:
+        return {
+            "ok": False,
+            "reason": "max_attempts_reached",
+            "order_id": order_id,
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": attempts,
+            "recipient_sms_error": order.get("recipient_sms_error"),
+            "delivery_sent": bool(order.get("delivery_sent")),
+            "delivery_sent_at": order.get("delivery_sent_at"),
+        }
+
+    result = process_scheduled_recipient_delivery(order_id)
+    result["order_id"] = order_id
+    return result
 
 
 @app.get("/admin/retry-sender-message/{order_id}")
@@ -4811,26 +4905,30 @@ def admin_process_all_due_deliveries(token: str = ""):
 # =========================================================
 
 @app.get("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(recipient_token: str):
+def finalizar_experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
 
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
     try:
-        # 🔒 Marcar experiencia como completada
         update_order(
             order["id"],
             experience_completed=1,
-            delivered_to_recipient=1
+            delivered_to_recipient=1,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
-        # 🔥 Intentar cerrar ETERNA completa
         maybe_mark_eterna_completed(order["id"])
 
     except Exception as e:
         log_error("FINALIZAR EXPERIENCE ERROR", e)
 
-    # 🚀 Redirección SIEMPRE a cobrar
     return RedirectResponse(
         url=f"/cobrar/{recipient_token}",
         status_code=303
