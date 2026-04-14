@@ -1486,6 +1486,8 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     order = get_order_by_id(order["id"])
     gift_amount = float(order.get("gift_amount") or 0)
 
+    
+
     if bool(order.get("gift_refunded")):
         return {"status": "gift_already_refunded"}
 
@@ -3870,16 +3872,23 @@ def experiencia(request: Request, recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
 
-    if gift_amount > 0:
-        payoff_title = f"Has recibido {format_amount_display(gift_amount)}"
-        payoff_text = "Este momento también llevaba algo más para ti."
-        cobrar_title = f"Has recibido {format_amount_display(gift_amount)}"
-        cobrar_text = "Estamos guardando este momento mientras te llevamos a continuar."
-    else:
-        payoff_title = "Esto era para ti"
-        payoff_text = "Quédate un segundo más dentro de este momento."
-        cobrar_title = "Esto era para ti"
-        cobrar_text = "Estamos guardando este momento mientras te llevamos a continuar."
+    # =========================================================
+# PAYOFF + COBRAR (SIEMPRE DEFINIDOS PARA EVITAR CRASH)
+# =========================================================
+
+if gift_amount > 0:
+    payoff_title = "Esto no termina aquí."
+    payoff_text = "Este momento ha sido guardado."
+
+    cobrar_title = "Tienes algo pendiente."
+    cobrar_text = "Puedes continuar cuando estés listo."
+
+else:
+    payoff_title = "Esto ya es tuyo."
+    payoff_text = "Y lo será para siempre."
+
+    cobrar_title = ""
+    cobrar_text = ""
 
     html_page = """
 <!DOCTYPE html>
