@@ -3877,7 +3877,7 @@ def experiencia(request: Request, recipient_token: str):
         payoff_title = "Esto era para ti"
         payoff_text = "Quédate un segundo más dentro de este momento."
 
-    return HTMLResponse(f"""
+    html_page = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3885,7 +3885,7 @@ def experiencia(request: Request, recipient_token: str):
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ETERNA</title>
 <style>
-html, body {{
+html, body {
     margin: 0;
     padding: 0;
     width: 100%;
@@ -3893,147 +3893,203 @@ html, body {{
     background: black;
     overflow: hidden;
     font-family: Arial, sans-serif;
-}}
-body {{
+}
+
+body {
     position: fixed;
     inset: 0;
-}}
-.container {{
-    position: fixed;
-    inset: 0;
+    background: black;
+}
+
+.wrap {
+    position: relative;
     width: 100vw;
     height: 100vh;
-    background: black;
     overflow: hidden;
-}}
-video {{
+    background: black;
+}
+
+video {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: contain;
     background: black;
-}}
-.overlay {{
+}
+
+.overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.84) 100%);
+    z-index: 30;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
+        linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
+    padding: 28px;
     text-align: center;
-    padding: 24px;
-    z-index: 3;
-}}
-.title {{
-    font-size: 34px;
-    line-height: 1.2;
-    margin-bottom: 18px;
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.overlay-card {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.36);
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 54px;
+    line-height: 1.06;
+    font-weight: 700;
+    margin: 0 0 22px 0;
     color: white;
-}}
-.soft {{
-    max-width: 620px;
+}
+
+.text {
+    font-size: 24px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.86);
+    margin: 0 auto 22px auto;
+    max-width: 520px;
+}
+
+.soft {
     font-size: 16px;
-    line-height: 1.9;
-    color: rgba(255,255,255,0.76);
-}}
-.btn {{
-    margin-top: 28px;
-    padding: 16px 28px;
-    border: none;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.46);
+    margin: 0 auto 34px auto;
+    max-width: 460px;
+}
+
+.btn {
+    display: inline-block;
+    min-width: 220px;
+    padding: 18px 26px;
     border-radius: 999px;
-    font-size: 16px;
-    font-weight: bold;
+    border: 0;
     background: white;
     color: black;
+    font-weight: 700;
+    font-size: 17px;
     cursor: pointer;
-}}
-.hidden {{
-    display: none !important;
-}}
-.payoff {{
+}
+
+.btn:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.payoff {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.92) 100%);
-    display: flex;
+    z-index: 35;
+    display: none;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
     text-align: center;
-    padding: 24px;
-    z-index: 5;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s ease;
-}}
-.payoff.show {{
-    opacity: 1;
-    pointer-events: auto;
-}}
-.payoff-title {{
-    font-size: 36px;
-    line-height: 1.2;
+    padding: 28px;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
+        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
+}
+
+.payoff.show {
+    display: flex;
+}
+
+.payoff-card {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.payoff-title {
+    font-size: 46px;
+    line-height: 1.12;
+    font-weight: 700;
+    margin: 0 0 18px 0;
     color: white;
-    margin-bottom: 16px;
-    max-width: 720px;
-}}
-.payoff-text {{
-    max-width: 620px;
-    font-size: 17px;
-    line-height: 1.9;
-    color: rgba(255,255,255,0.76);
-}}
-.loader {{
-    margin-top: 24px;
-    font-size: 14px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.50);
-}}
-@media (max-width: 640px) {{
-    .title {{
-        font-size: 30px;
-    }}
-    .soft {{
-        font-size: 15px;
-    }}
-    .payoff-title {{
-        font-size: 30px;
-    }}
-    .payoff-text {{
-        font-size: 15px;
-    }}
-}}
+}
+
+.payoff-text {
+    font-size: 22px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.82);
+    margin: 0 auto;
+    max-width: 520px;
+}
+
+.loader {
+    margin-top: 28px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.48);
+}
+
+@media (max-width: 720px) {
+    .title {
+        font-size: 42px;
+    }
+
+    .text {
+        font-size: 21px;
+    }
+
+    .payoff-title {
+        font-size: 36px;
+    }
+
+    .payoff-text {
+        font-size: 19px;
+    }
+}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="wrap">
     <video
         id="video"
         playsinline
-        preload="auto"
         webkit-playsinline
-        disablepictureinpicture
-        controlslist="nodownload noplaybackrate noremoteplayback nofullscreen"
+        preload="auto"
     >
-        <source src="{safe_attr(experience_video_url)}" type="{safe_attr(guess_media_type_from_url(experience_video_url))}">
+        <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
     <div class="overlay" id="overlay">
-        <div class="title">Shhh…</div>
-        <div class="soft">
-            Esto no es algo para ver deprisa.<br><br>
-            Si puedes, ponte unos cascos.<br>
-            Busca un momento tranquilo.<br>
-            Y deja que ocurra.
+        <div class="overlay-card">
+            <div class="eyebrow">ETERNA</div>
+            <h1 class="title">Shhh…</h1>
+            <div class="text">
+                Esto no es un vídeo.<br>
+                Es un momento que está a punto de ocurrir.
+            </div>
+            <div class="soft">
+                Cuando estés listo, pulsa y vívelo de verdad.
+            </div>
+            <button class="btn" id="startBtn">Estoy listo</button>
         </div>
-        <button id="startBtn" class="btn">Estoy listo</button>
     </div>
 
     <div class="payoff" id="payoff">
-        <div class="payoff-title" id="payoffTitle">{safe_text(payoff_title)}</div>
-        <div class="payoff-text" id="payoffText">{safe_text(payoff_text)}</div>
-        <div class="loader" id="payoffLoader">Guardando este momento…</div>
+        <div class="payoff-card">
+            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
+            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
+            <div class="loader" id="payoffLoader">Guardando este momento…</div>
+        </div>
     </div>
 </div>
 
@@ -4043,7 +4099,7 @@ const overlay = document.getElementById("overlay");
 const video = document.getElementById("video");
 const payoff = document.getElementById("payoff");
 const payoffLoader = document.getElementById("payoffLoader");
-const recipientToken = "{safe_attr(recipient_token)}";
+const recipientToken = "__RECIPIENT_TOKEN__";
 
 let stream = null;
 let mediaRecorder = null;
@@ -4051,10 +4107,6 @@ let recordedChunks = [];
 let finishing = false;
 let recordingMimeType = "";
 let recordingExtension = "webm";
-
-function cobrarUrl() {{
-    return "/cobrar/" + recipientToken;
-}}
 
 function detectRecordingFormat() {
     const candidates = [
@@ -4242,7 +4294,15 @@ video.addEventListener("ended", async () => {
 </script>
 </body>
 </html>
-    """)
+    """
+
+    html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
+    html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
+    html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
+    html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
+    html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
+
+    return HTMLResponse(html_page)
 
 
 # =========================================================
