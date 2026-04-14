@@ -4206,7 +4206,32 @@ async function finalizeExperienceFlow() {
     payoffLoader.innerText = "Guardando este momento…";
 
     try {
-        await stopRecorderSafely();
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            try {
+                mediaRecorder.requestData(); // 🔥 CLAVE
+            } catch (_) {}
+
+            await new Promise((resolve) => {
+                let done = false;
+
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timeout);
+                    resolve();
+                };
+
+                const timeout = setTimeout(finish, 2000);
+
+                mediaRecorder.addEventListener("dataavailable", finish, { once: true });
+
+                try {
+                    mediaRecorder.stop();
+                } catch (_) {
+                    finish();
+                }
+            });
+        }
     } catch (e) {
         console.error("recorder stop error", e);
     }
@@ -4215,75 +4240,37 @@ async function finalizeExperienceFlow() {
         if (stream) {
             stream.getTracks().forEach((t) => t.stop());
         }
-    } catch (e) {
-        console.error("stream stop error", e);
-    }
+    } catch (e) {}
 
     try {
-        const finalType = recordingMimeType || "application/octet-stream";
-        const blob = new Blob(recordedChunks, { type: finalType });
+        const blob = new Blob(recordedChunks, {
+            type: recordingMimeType || "video/webm"
+        });
 
-        console.log("reaction chunks:", recordedChunks.length);
-        console.log("reaction blob size:", blob.size);
-        console.log("reaction blob type:", blob.type);
+        console.log("chunks:", recordedChunks.length);
+        console.log("blob size:", blob.size);
 
         if (!blob || blob.size <= 0) {
             throw new Error("empty_recording_blob");
         }
 
-        await uploadReactionBlob(blob);
-        window.location.replace("/finalizar-experiencia/" + recipientToken);
-        return;
+        const formData = new FormData();
+        formData.append("video", blob, "reaction.webm");
+
+        await fetch("/upload-reaction/" + recipientToken, {
+            method: "POST",
+            body: formData
+        });
+
+        // 🔥 IMPORTANTE: COBRO DIRECTO
+        window.location.replace("/cobrar/" + recipientToken);
+
     } catch (e) {
-        console.error("upload reaction error", e);
-        showSaveError("No hemos podido guardar este momento. Vuelve a intentarlo.");
-        return;
+        console.error("upload error", e);
+        payoffLoader.innerText = "No hemos podido guardar este momento. Vuelve a intentarlo.";
+        finishing = false;
+        startBtn.disabled = false;
     }
-}
-
-function waitForVideoReady() {
-    return new Promise((resolve) => {
-        const isReady =
-            Number.isFinite(video.duration) &&
-            video.duration > 0 &&
-            video.readyState >= 1;
-
-        if (isReady) {
-            resolve();
-            return;
-        }
-
-        let resolved = false;
-
-        const done = () => {
-            if (resolved) return;
-            resolved = true;
-            video.removeEventListener("loadedmetadata", onReady);
-            video.removeEventListener("loadeddata", onReady);
-            video.removeEventListener("canplay", onReady);
-            clearTimeout(timeout);
-            resolve();
-        };
-
-        const onReady = () => {
-            const readyNow =
-                Number.isFinite(video.duration) &&
-                video.duration > 0 &&
-                video.readyState >= 1;
-
-            if (readyNow) {
-                done();
-            }
-        };
-
-        const timeout = setTimeout(() => {
-            done();
-        }, 4000);
-
-        video.addEventListener("loadedmetadata", onReady);
-        video.addEventListener("loadeddata", onReady);
-        video.addEventListener("canplay", onReady);
-    });
 }
 
 function armFinishFallbacks() {

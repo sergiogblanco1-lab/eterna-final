@@ -1,0 +1,13 @@
+mediaRecorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+
+    const formData = new FormData();
+    formData.append("file", blob, "reaction.webm");
+
+    await fetch(`/upload-reaction/${recipient_token}`, {
+        method: "POST",
+        body: formData
+    });
+
+    window.location.href = `/finalizar-experiencia/${recipient_token}`;
+};
