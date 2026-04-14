@@ -4389,13 +4389,13 @@ window.addEventListener("beforeunload", () => {
 </html>
     """
 
-html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
-html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
-html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
-html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
-html_page = html_page.replace("__COBRAR_TITLE__", safe_text(cobrar_title))
-html_page = html_page.replace("__COBRAR_TEXT__", safe_text(cobrar_text))
+    html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
+    html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
+    html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
+    html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
+    html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
+    html_page = html_page.replace("__COBRAR_TITLE__", safe_text(cobrar_title))
+    html_page = html_page.replace("__COBRAR_TEXT__", safe_text(cobrar_text))
 
     return HTMLResponse(html_page)
 
