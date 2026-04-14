@@ -4038,132 +4038,207 @@ video {{
 </div>
 
 <script>
-const video = document.getElementById("video");
-const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
+const overlay = document.getElementById("overlay");
+const video = document.getElementById("video");
 const payoff = document.getElementById("payoff");
 const payoffLoader = document.getElementById("payoffLoader");
-
 const recipientToken = "{safe_attr(recipient_token)}";
 
+let stream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
-let stream = null;
 let finishing = false;
+let recordingMimeType = "";
+let recordingExtension = "webm";
 
-function cobrarUrl() {{
+function cobrarUrl() {
     return "/cobrar/" + recipientToken;
-}}
+}
 
-startBtn.addEventListener("click", async () => {{
+function detectRecordingFormat() {
+    const candidates = [
+        { mimeType: "video/mp4", extension: "mp4" },
+        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
+        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
+        { mimeType: "video/webm", extension: "webm" }
+    ];
+
+    if (typeof MediaRecorder === "undefined") {
+        throw new Error("media_recorder_not_supported");
+    }
+
+    for (const candidate of candidates) {
+        try {
+            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
+                return candidate;
+            }
+        } catch (_) {}
+    }
+
+    return { mimeType: "", extension: "webm" };
+}
+
+async function stopRecorderSafely() {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+        return;
+    }
+
+    await new Promise((resolve) => {
+        let resolved = false;
+
+        const done = () => {
+            if (resolved) return;
+            resolved = true;
+            mediaRecorder.removeEventListener("stop", onStop);
+            clearTimeout(timeout);
+            resolve();
+        };
+
+        const onStop = () => {
+            done();
+        };
+
+        const timeout = setTimeout(done, 5000);
+
+        mediaRecorder.addEventListener("stop", onStop);
+
+        try {
+            mediaRecorder.stop();
+        } catch (_) {
+            done();
+        }
+    });
+}
+
+async function uploadReactionBlob(blob) {
+    const fileName = "reaction." + recordingExtension;
+    const fileType = recordingMimeType || blob.type || "application/octet-stream";
+
+    const formData = new FormData();
+    formData.append("video", new File([blob], fileName, { type: fileType }));
+
+    const response = await fetch("/upload-reaction/" + recipientToken, {
+        method: "POST",
+        body: formData
+    });
+
+    let data = {};
+    try {
+        data = await response.json();
+    } catch (_) {}
+
+    if (!response.ok) {
+        throw new Error(data.detail || "upload_reaction_failed");
+    }
+
+    return data;
+}
+
+startBtn.addEventListener("click", async () => {
     startBtn.disabled = true;
 
-    try {{
+    try {
         const formData = new FormData();
         formData.append("recipient_token", recipientToken);
 
-        const response = await fetch("/start-experience", {{
+        const response = await fetch("/start-experience", {
             method: "POST",
             body: formData
-        }});
+        });
 
         const data = await response.json();
 
-        if (!response.ok) {{
+        if (!response.ok) {
             throw new Error(data.detail || "start_experience_error");
-        }}
+        }
 
-        if (data.redirect_url) {{
+        if (data.redirect_url) {
             window.location.replace(data.redirect_url);
             return;
-        }}
+        }
 
-        stream = await navigator.mediaDevices.getUserMedia({{
+        stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
-        }});
+        });
 
-        mediaRecorder = new MediaRecorder(stream);
+        const format = detectRecordingFormat();
+        recordingMimeType = format.mimeType;
+        recordingExtension = format.extension;
         recordedChunks = [];
 
-        mediaRecorder.ondataavailable = (e) => {{
-            if (e.data && e.data.size > 0) {{
+        mediaRecorder = recordingMimeType
+            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
+            : new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
                 recordedChunks.push(e.data);
-            }}
-        }};
+            }
+        };
+
+        mediaRecorder.onerror = (e) => {
+            console.error("mediaRecorder error", e);
+        };
 
         overlay.classList.add("hidden");
-        mediaRecorder.start(250);
+
+        mediaRecorder.start();
         await video.play();
 
-    }} catch (e) {{
+    } catch (e) {
         console.error("experience start error", e);
         startBtn.disabled = false;
-    }}
-}});
+        alert("No hemos podido iniciar bien la grabación de este momento.");
+    }
+});
 
-video.addEventListener("ended", async () => {{
+video.addEventListener("ended", async () => {
     if (finishing) return;
     finishing = true;
 
     payoff.classList.add("show");
-
     await new Promise(resolve => setTimeout(resolve, 5000));
-
     payoffLoader.innerText = "Guardando este momento…";
 
-    try {{
-        if (mediaRecorder && mediaRecorder.state !== "inactive") {{
-            await new Promise((resolve) => {{
-                const timeout = setTimeout(resolve, 4000);
-
-                const handler = () => {{
-                    clearTimeout(timeout);
-                    mediaRecorder.removeEventListener("stop", handler);
-                    resolve();
-                }};
-
-                mediaRecorder.addEventListener("stop", handler);
-
-                try {{
-                    mediaRecorder.stop();
-                }} catch (_) {{
-                    clearTimeout(timeout);
-                    mediaRecorder.removeEventListener("stop", handler);
-                    resolve();
-                }}
-            }});
-        }}
-    }} catch (e) {{
+    try {
+        await stopRecorderSafely();
+    } catch (e) {
         console.error("recorder stop error", e);
-    }}
+    }
 
-    try {{
-        if (stream) {{
+    try {
+        if (stream) {
             stream.getTracks().forEach(t => t.stop());
-        }}
-    }} catch (e) {{
+        }
+    } catch (e) {
         console.error("stream stop error", e);
-    }}
+    }
 
-    try {{
-        const blob = new Blob(recordedChunks, {{ type: "video/webm" }});
+    try {
+        const finalType = recordingMimeType || "application/octet-stream";
+        const blob = new Blob(recordedChunks, { type: finalType });
 
-        if (blob && blob.size > 0) {{
-            const formData = new FormData();
-            formData.append("video", new File([blob], "reaction.webm", {{ type: "video/webm" }}));
+        console.log("reaction chunks:", recordedChunks.length);
+        console.log("reaction blob size:", blob.size);
+        console.log("reaction blob type:", blob.type);
 
-            await fetch("/upload-reaction/" + recipientToken, {{
-                method: "POST",
-                body: formData
-            }});
-        }}
-    }} catch (e) {{
+        if (!blob || blob.size <= 0) {
+            throw new Error("empty_recording_blob");
+        }
+
+        await uploadReactionBlob(blob);
+        window.location.replace("/finalizar-experiencia/" + recipientToken);
+        return;
+
+    } catch (e) {
         console.error("upload reaction error", e);
-    }}
-
-    window.location.replace("/finalizar-experiencia/" + recipientToken);
-}});
+        payoffLoader.innerText = "No hemos podido guardar este momento. Vuelve a intentarlo.";
+        finishing = false;
+        return;
+    }
+});
 </script>
 </body>
 </html>
