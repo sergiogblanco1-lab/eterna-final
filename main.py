@@ -4052,9 +4052,9 @@ let finishing = false;
 let recordingMimeType = "";
 let recordingExtension = "webm";
 
-function cobrarUrl() {
+function cobrarUrl() {{
     return "/cobrar/" + recipientToken;
-}
+}}
 
 function detectRecordingFormat() {
     const candidates = [
