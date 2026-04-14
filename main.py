@@ -4397,7 +4397,7 @@ html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 html_page = html_page.replace("__COBRAR_TITLE__", safe_text(cobrar_title))
 html_page = html_page.replace("__COBRAR_TEXT__", safe_text(cobrar_text))
 
-return HTMLResponse(html_page)
+    return HTMLResponse(html_page)
 
 
 # =========================================================
