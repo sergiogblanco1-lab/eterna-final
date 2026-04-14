@@ -4241,14 +4241,65 @@ async function finalizeExperienceFlow() {
     }
 }
 
+function waitForVideoReady() {
+    return new Promise((resolve) => {
+        const isReady =
+            Number.isFinite(video.duration) &&
+            video.duration > 0 &&
+            video.readyState >= 1;
+
+        if (isReady) {
+            resolve();
+            return;
+        }
+
+        let resolved = false;
+
+        const done = () => {
+            if (resolved) return;
+            resolved = true;
+            video.removeEventListener("loadedmetadata", onReady);
+            video.removeEventListener("loadeddata", onReady);
+            video.removeEventListener("canplay", onReady);
+            clearTimeout(timeout);
+            resolve();
+        };
+
+        const onReady = () => {
+            const readyNow =
+                Number.isFinite(video.duration) &&
+                video.duration > 0 &&
+                video.readyState >= 1;
+
+            if (readyNow) {
+                done();
+            }
+        };
+
+        const timeout = setTimeout(() => {
+            done();
+        }, 4000);
+
+        video.addEventListener("loadedmetadata", onReady);
+        video.addEventListener("loadeddata", onReady);
+        video.addEventListener("canplay", onReady);
+    });
+}
+
 function armFinishFallbacks() {
     video.addEventListener("ended", () => {
         finalizeExperienceFlow();
     }, { once: true });
 
+    let fallbackMs = 120000;
+
+    if (Number.isFinite(video.duration) && video.duration > 0) {
+        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 2000);
+    }
+
     finishTimeout = setTimeout(() => {
         finalizeExperienceFlow();
-    }, Math.max(15000, Math.floor((video.duration || 0) * 1000) + 2000));
+    }, fallbackMs);
 }
 
 startBtn.addEventListener("click", async () => {
@@ -4297,6 +4348,9 @@ startBtn.addEventListener("click", async () => {
         mediaRecorder.onerror = (e) => {
             console.error("mediaRecorder error", e);
         };
+
+        video.load();
+        await waitForVideoReady();
 
         overlay.classList.add("hidden");
         experienceStarted = true;
