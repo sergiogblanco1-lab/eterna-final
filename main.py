@@ -930,6 +930,8 @@ def build_recipient_message(order: dict) -> str:
 def build_sender_ready_message(order: dict) -> str:
     return (
         "Tu ETERNA ha vuelto.\n\n"
+        "Al otro lado,\n"
+        "algo ha pasado.\n\n"
         f"{sender_pack_url_from_order(order)}"
     )
 
@@ -3052,6 +3054,7 @@ def list_pending_sender_notifications():
             paid = 1
             AND COALESCE(sender_sms_sent_at, '') = ''
             AND COALESCE(reaction_uploaded, 0) = 1
+            AND COALESCE(sender_sms_attempts, 0) < 3
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -4242,7 +4245,8 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
                 refreshed = get_order_by_id(order["id"])
 
                 try:
-                    try_send_sender_sms(refreshed)
+                    sms_result = try_send_sender_sms(refreshed)
+                    print("📩 SENDER SMS RESULT:", sms_result)
                 except Exception as e:
                     log_error("try_send_sender_sms", e)
 
@@ -4262,7 +4266,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     except Exception as e:
         log_error("UPLOAD REACTION ERROR", e)
         raise HTTPException(status_code=500, detail="Error guardando reacción")
-
 
 # =========================================================
 # MI VIDEO (POST EXPERIENCIA)
