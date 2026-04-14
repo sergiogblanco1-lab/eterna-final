@@ -3300,34 +3300,107 @@ def pedido(request: Request, recipient_token: str):
 
 @app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
 def checkout_exito(order_id: str):
-    order = get_order_by_id(order_id)
-    is_paid = bool(order["paid"])
-
-    refresh = '<meta http-equiv="refresh" content="6">' if not is_paid else ""
-    redirect_script = f"""
-        setTimeout(function() {{
-            window.location.href = "/post-pago/{safe_attr(order_id)}";
-        }}, 5000);
-    """ if is_paid else ""
-
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        {refresh}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            body {{
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 24px;
+            }}
+            .wrap {{
+                width: 100%;
+                max-width: 720px;
+                margin: 0 auto;
+            }}
+            .main {{
+                font-size: 22px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.92);
+            }}
+
+            /* ✨ TEXTO ETERNA */
+            .eterna-text {{
+                max-width: 600px;
+                margin: 0 auto;
+            }}
+
+            .eterna-heart {{
+                display: inline-block;
+                animation: eternaHeartbeat 3.6s ease-in-out infinite;
+            }}
+
+            @keyframes eternaHeartbeat {{
+                0%   {{ transform: scale(1); opacity: 0.9; }}
+                10%  {{ transform: scale(1.12); opacity: 1; }}
+                20%  {{ transform: scale(1); opacity: 0.95; }}
+
+                35%  {{ transform: scale(1.08); opacity: 1; }}
+                50%  {{ transform: scale(1); opacity: 0.9; }}
+
+                100% {{ transform: scale(1); opacity: 0.9; }}
+            }}
+
+            .buttons {{
+                margin-top: 34px;
+                display: grid;
+                gap: 12px;
+                max-width: 420px;
+                margin-left: auto;
+                margin-right: auto;
+            }}
+
+            .btn {{
+                display: block;
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                background: white;
+                color: black;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 15px;
+            }}
+
+            .ghost {{
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
+        </style>
     </head>
-    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
-        <div style="max-width:680px;">
-            <h1 style="font-size:42px;margin-bottom:18px;">Todo ya está en camino</h1>
-            <div style="font-size:20px;line-height:1.8;color:rgba(255,255,255,0.85);">
-                En unos instantes,<br>
-                alguien va a vivir algo que no espera
+    <body>
+        <div class="wrap">
+
+            <div class="main eterna-text">
+                Lo que das<br>
+                se queda en alguien.<br><br>
+
+                Y un día,<br>
+                <span class="eterna-heart">vuelve</span>
             </div>
+
+            <div class="buttons">
+                <a class="btn" href="/crear">Crear otra experiencia</a>
+                <a class="btn ghost" href="/">Volver</a>
+            </div>
+
         </div>
-        <script>{redirect_script}</script>
     </body>
     </html>
     """)
