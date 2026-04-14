@@ -3850,6 +3850,10 @@ def start_experience(request: Request, recipient_token: str = Form(...)):
 # EXPERIENCE (VERSIÓN ESTABLE)
 # =========================================================
 
+# =========================================================
+# EXPERIENCE (VERSIÓN ESTABLE)
+# =========================================================
+
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
@@ -3873,22 +3877,14 @@ def experiencia(request: Request, recipient_token: str):
     gift_amount = float(order.get("gift_amount") or 0)
 
     # =========================================================
-# PAYOFF + COBRAR (SIEMPRE DEFINIDOS PARA EVITAR CRASH)
-# =========================================================
-
-if gift_amount > 0:
-    payoff_title = "Esto no termina aquí."
-    payoff_text = "Este momento ha sido guardado."
-
-    cobrar_title = "Tienes algo pendiente."
-    cobrar_text = "Puedes continuar cuando estés listo."
-
-else:
-    payoff_title = "Esto ya es tuyo."
-    payoff_text = "Y lo será para siempre."
-
-    cobrar_title = ""
-    cobrar_text = ""
+    # PAYOFF (SIEMPRE DEFINIDO)
+    # =========================================================
+    if gift_amount > 0:
+        payoff_title = "Esto no termina aquí."
+        payoff_text = "Este momento ha sido guardado."
+    else:
+        payoff_title = "Esto ya es tuyo."
+        payoff_text = "Y lo será para siempre."
 
     html_page = """
 <!DOCTYPE html>
@@ -4123,6 +4119,49 @@ let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
 
+function waitForVideoReady() {
+    return new Promise((resolve) => {
+        const isReady =
+            Number.isFinite(video.duration) &&
+            video.duration > 0 &&
+            video.readyState >= 1;
+
+        if (isReady) {
+            resolve();
+            return;
+        }
+
+        let resolved = false;
+
+        const done = () => {
+            if (resolved) return;
+            resolved = true;
+            video.removeEventListener("loadedmetadata", onReady);
+            video.removeEventListener("loadeddata", onReady);
+            video.removeEventListener("canplay", onReady);
+            clearTimeout(timeout);
+            resolve();
+        };
+
+        const onReady = () => {
+            const readyNow =
+                Number.isFinite(video.duration) &&
+                video.duration > 0 &&
+                video.readyState >= 1;
+
+            if (readyNow) {
+                done();
+            }
+        };
+
+        const timeout = setTimeout(done, 4000);
+
+        video.addEventListener("loadedmetadata", onReady);
+        video.addEventListener("loadeddata", onReady);
+        video.addEventListener("canplay", onReady);
+    });
+}
+
 function detectRecordingFormat() {
     const candidates = [
         { mimeType: "video/mp4", extension: "mp4" },
@@ -4153,38 +4192,6 @@ function showSaveError(message) {
     if (startBtn) {
         startBtn.disabled = false;
     }
-}
-
-async function stopRecorderSafely() {
-    if (!mediaRecorder || mediaRecorder.state === "inactive") {
-        return;
-    }
-
-    await new Promise((resolve) => {
-        let resolved = false;
-
-        const done = () => {
-            if (resolved) return;
-            resolved = true;
-            mediaRecorder.removeEventListener("stop", onStop);
-            clearTimeout(timeout);
-            resolve();
-        };
-
-        const onStop = () => {
-            done();
-        };
-
-        const timeout = setTimeout(done, 5000);
-
-        mediaRecorder.addEventListener("stop", onStop);
-
-        try {
-            mediaRecorder.stop();
-        } catch (_) {
-            done();
-        }
-    });
 }
 
 async function uploadReactionBlob(blob) {
@@ -4221,7 +4228,7 @@ async function finalizeExperienceFlow() {
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             try {
-                mediaRecorder.requestData(); // 🔥 CLAVE
+                mediaRecorder.requestData();
             } catch (_) {}
 
             await new Promise((resolve) => {
@@ -4253,7 +4260,7 @@ async function finalizeExperienceFlow() {
         if (stream) {
             stream.getTracks().forEach((t) => t.stop());
         }
-    } catch (e) {}
+    } catch (_) {}
 
     try {
         const blob = new Blob(recordedChunks, {
@@ -4267,15 +4274,7 @@ async function finalizeExperienceFlow() {
             throw new Error("empty_recording_blob");
         }
 
-        const formData = new FormData();
-        formData.append("video", blob, "reaction.webm");
-
-        await fetch("/upload-reaction/" + recipientToken, {
-            method: "POST",
-            body: formData
-        });
-
-        // 🔥 IMPORTANTE: COBRO DIRECTO
+        await uploadReactionBlob(blob);
         window.location.replace("/cobrar/" + recipientToken);
 
     } catch (e) {
@@ -4328,7 +4327,6 @@ startBtn.addEventListener("click", async () => {
         video.load();
         await waitForVideoReady();
 
-        overlay.classList.remove("show");
         overlay.classList.add("hidden");
         experienceStarted = true;
 
@@ -4407,8 +4405,6 @@ window.addEventListener("beforeunload", () => {
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
-    html_page = html_page.replace("__COBRAR_TITLE__", safe_text(cobrar_title))
-    html_page = html_page.replace("__COBRAR_TEXT__", safe_text(cobrar_text))
 
     return HTMLResponse(html_page)
 
