@@ -5000,9 +5000,7 @@ def sender_pack(sender_token: str):
 
     cashout_status = compute_cashout_status(order)
 
-    sender_status = "Tu ETERNA aún se está cerrando."
-    if bool(order.get("eterna_completed")):
-        sender_status = "Tu ETERNA ha vuelto."
+    sender_status = "Tu ETERNA ha vuelto." if bool(order.get("eterna_completed")) else "Tu ETERNA aún se está cerrando."
 
     cashout_line = ""
     if float(order.get("gift_amount") or 0) > 0:
@@ -5018,16 +5016,16 @@ def sender_pack(sender_token: str):
     reaction_block = ""
     if reaction_url:
         reaction_block = f"""
-        <div style="margin-top:28px;">
-            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">Su reacción</div>
-            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
+        <div class="video-block">
+            <div class="video-label">Su reacción</div>
+            <video id="reactionVideo" controls playsinline class="video-player">
                 <source src="{safe_attr(reaction_url)}" type="{safe_attr(guess_media_type_from_url(reaction_url))}">
             </video>
         </div>
         """
     else:
         reaction_block = """
-        <div style="margin-top:28px;color:rgba(255,255,255,0.52);line-height:1.8;">
+        <div class="empty-block">
             La reacción todavía no está lista.
         </div>
         """
@@ -5035,9 +5033,9 @@ def sender_pack(sender_token: str):
     original_block = ""
     if original_video_url:
         original_block = f"""
-        <div style="margin-top:28px;">
-            <div style="margin-bottom:12px;color:rgba(255,255,255,0.62);font-size:15px;">El vídeo original</div>
-            <video controls playsinline style="width:100%;max-width:420px;background:black;border-radius:18px;">
+        <div class="video-block">
+            <div class="video-label">El vídeo original</div>
+            <video id="originalVideo" controls playsinline class="video-player">
                 <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
             </video>
         </div>
@@ -5059,33 +5057,91 @@ html, body {{
 body {{
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 28%),
         linear-gradient(180deg, #050505 0%, #000000 100%);
     color: white;
     font-family: Arial, sans-serif;
-    padding: 24px;
+    padding: 14px;
+    box-sizing: border-box;
 }}
 .wrap {{
     width: 100%;
-    max-width: 880px;
+    max-width: 430px;
     margin: 0 auto;
     text-align: center;
 }}
 h1 {{
-    margin: 0 0 18px 0;
-    font-size: 42px;
-    line-height: 1.2;
+    margin: 0 0 8px 0;
+    font-size: 28px;
+    line-height: 1.15;
 }}
 .main {{
-    font-size: 22px;
-    line-height: 1.8;
+    font-size: 15px;
+    line-height: 1.5;
     color: rgba(255,255,255,0.88);
 }}
 .soft {{
-    margin-top: 20px;
-    font-size: 16px;
-    line-height: 1.8;
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.5;
     color: rgba(255,255,255,0.52);
+}}
+.video-block {{
+    margin-top: 14px;
+}}
+.video-label {{
+    margin-bottom: 6px;
+    text-align: left;
+    color: rgba(255,255,255,0.60);
+    font-size: 12px;
+}}
+.video-player {{
+    width: 100%;
+    display: block;
+    background: black;
+    border-radius: 14px;
+    max-height: 220px;
+}}
+.empty-block {{
+    margin-top: 14px;
+    color: rgba(255,255,255,0.52);
+    line-height: 1.6;
+    font-size: 13px;
+}}
+.actions {{
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+    margin-bottom: 4px;
+}}
+.btn {{
+    display: block;
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    box-sizing: border-box;
+}}
+.btn-primary {{
+    background: white;
+    color: black;
+}}
+.btn-secondary {{
+    background: rgba(255,255,255,0.10);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.10);
+}}
+@media (max-width: 430px) {{
+    h1 {{
+        font-size: 25px;
+    }}
+    .video-player {{
+        max-height: 200px;
+    }}
 }}
 </style>
 </head>
@@ -5094,9 +5150,48 @@ h1 {{
         <h1>{safe_text(sender_status)}</h1>
         <div class="main">Aquí tienes el pack final.</div>
         <div class="soft">{safe_text(cashout_line)}</div>
-        {original_block}
+
         {reaction_block}
+        {original_block}
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="replayPack()">
+                Reproducir de nuevo
+            </button>
+            <a class="btn btn-secondary" href="/crear">
+                Crear otra ETERNA
+            </a>
+        </div>
     </div>
+
+    <script>
+        function replayPack() {{
+            const reaction = document.getElementById("reactionVideo");
+            const original = document.getElementById("originalVideo");
+
+            if (reaction) {{
+                reaction.pause();
+                reaction.currentTime = 0;
+            }}
+
+            if (original) {{
+                original.pause();
+                original.currentTime = 0;
+            }}
+
+            if (reaction) {{
+                reaction.play().catch(() => null);
+
+                if (original) {{
+                    reaction.onended = () => {{
+                        original.play().catch(() => null);
+                    }};
+                }}
+            }} else if (original) {{
+                original.play().catch(() => null);
+            }}
+        }}
+    </script>
 </body>
 </html>
     """)
