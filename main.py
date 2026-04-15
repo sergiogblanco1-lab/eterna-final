@@ -3425,7 +3425,6 @@ def checkout_exito(order_id: str):
         <style>
             * {{ box-sizing: border-box; }}
             html, body {{ margin: 0; min-height: 100%; background: #000; }}
-
             body {{
                 min-height: 100vh;
                 background:
@@ -3439,19 +3438,18 @@ def checkout_exito(order_id: str):
                 text-align: center;
                 padding: 24px;
             }}
-
             .wrap {{
                 width: 100%;
                 max-width: 720px;
                 margin: 0 auto;
             }}
-
             .main {{
                 font-size: 22px;
                 line-height: 1.8;
                 color: rgba(255,255,255,0.92);
             }}
 
+            /* ✨ TEXTO ETERNA */
             .eterna-text {{
                 max-width: 600px;
                 margin: 0 auto;
@@ -3471,13 +3469,6 @@ def checkout_exito(order_id: str):
                 50%  {{ transform: scale(1); opacity: 0.9; }}
 
                 100% {{ transform: scale(1); opacity: 0.9; }}
-            }}
-
-            .eterna-subtext {{
-                margin-top: 28px;
-                font-size: 16px;
-                line-height: 1.8;
-                color: rgba(255,255,255,0.72);
             }}
 
             .buttons {{
@@ -3508,7 +3499,6 @@ def checkout_exito(order_id: str):
             }}
         </style>
     </head>
-
     <body>
         <div class="wrap">
 
@@ -3518,12 +3508,6 @@ def checkout_exito(order_id: str):
 
                 Y un día,<br>
                 <span class="eterna-heart">vuelve</span>
-
-                <div class="eterna-subtext">
-                    Ahora solo queda esperar<br>
-                    a que te alcance la emoción<br>
-                    que acaba de nacer al otro lado.
-                </div>
             </div>
 
             <div class="buttons">
