@@ -3868,8 +3868,8 @@ def resumen(order_id: str):
                 Modo de entrega: {"momento exacto" if delivery_mode == "scheduled" else "en cuanto esté lista"}
             </div>
 
-            <div style="margin-top:8px;font-size:16px;line-height:1.8;color:rgba(255,255,255,0.54);">
-                {delivery_display}
+            <div style="margin-top:24px;font-size:17px;line-height:1.8;color:rgba(255,255,255,0.62);">
+            Modo de entrega: {"momento exacto" if delivery_mode == "scheduled" else "en cuanto esté lista"}
             </div>
 
             {extra_fee_line}
