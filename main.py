@@ -5079,20 +5079,34 @@ def sender_pack(sender_token: str):
     const music = document.getElementById("eterna-music");
     const shareBox = document.getElementById("share-box");
 
+    let started = false;
+
     // 🎧 AUDIO CONFIG
     reaction.volume = 1.0;
     original.volume = 0.15;
-    music.volume = 0.0;
+    music.volume = 0;
 
-    // ▶️ PLAY
-    reaction.addEventListener("play", () => {{
-        original.currentTime = reaction.currentTime;
-        music.currentTime = 0;
+    // 🔥 PLAY DESBLOQUEADO (CLAVE PARA iPhone)
+    reaction.addEventListener("play", async () => {{
 
-        original.play().catch(()=>{{}});
-        music.play().catch(()=>{{}});
+        if (!started) {{
+            started = true;
 
-        fadeInMusic();
+            try {{
+                original.currentTime = reaction.currentTime;
+                music.currentTime = 0;
+
+                await original.play();
+                await music.play();
+
+                fadeInMusic();
+            }} catch(e) {{
+                console.log("Autoplay bloqueado", e);
+            }}
+        }} else {{
+            original.play().catch(()=>{{}});
+            music.play().catch(()=>{{}});
+        }}
     }});
 
     // ⏸️ PAUSE
@@ -5104,12 +5118,12 @@ def sender_pack(sender_token: str):
     // 🔄 SYNC
     reaction.addEventListener("timeupdate", () => {{
         const diff = Math.abs(reaction.currentTime - original.currentTime);
-        if (diff > 0.3) {{
+        if (diff > 0.25) {{
             original.currentTime = reaction.currentTime;
         }}
     }});
 
-    // 🔚 END
+    // 🔚 FIN
     reaction.addEventListener("ended", () => {{
         original.pause();
         fadeOutMusic();
@@ -5117,17 +5131,18 @@ def sender_pack(sender_token: str):
     }});
 
     // 🔁 REPLAY
-    document.getElementById("replay").onclick = () => {{
+    document.getElementById("replay").onclick = async () => {{
         reaction.currentTime = 0;
         original.currentTime = 0;
         music.currentTime = 0;
         shareBox.style.display = "none";
 
-        reaction.play();
-        original.play().catch(()=>{{}});
-        music.play().catch(()=>{{}});
-
-        fadeInMusic();
+        try {{
+            await reaction.play();
+            await original.play();
+            await music.play();
+            fadeInMusic();
+        }} catch(e) {{}}
     }};
 
     // 📤 SHARE SOLO REACCIÓN
@@ -5175,7 +5190,7 @@ def sender_pack(sender_token: str):
         }}, 150);
     }}
 
-    // 🛑 SEGURIDAD BÁSICA
+    // 🛑 VISIBILITY
     document.addEventListener("visibilitychange", () => {{
         if (document.hidden) {{
             reaction.pause();
