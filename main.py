@@ -3868,10 +3868,6 @@ def resumen(order_id: str):
                 Modo de entrega: {"momento exacto" if delivery_mode == "scheduled" else "en cuanto esté lista"}
             </div>
 
-            <div style="margin-top:24px;font-size:17px;line-height:1.8;color:rgba(255,255,255,0.62);">
-            Modo de entrega: {"momento exacto" if delivery_mode == "scheduled" else "en cuanto esté lista"}
-            </div>
-
             {extra_fee_line}
 
             <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
@@ -5021,302 +5017,163 @@ def sender_pack(sender_token: str):
     if not has_reaction and not has_original:
         body_content = """
         <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px 20px;text-align:center;color:white;">
-            <h1 style="font-size:46px;font-weight:800;line-height:1.05;margin:0 0 18px 0;">Tu ETERNA ha vuelto.</h1>
-            <p style="font-size:22px;opacity:.92;margin:0 0 12px 0;">Lo que diste… ha encontrado el camino de vuelta.</p>
-            <p style="font-size:18px;opacity:.7;margin:24px 0 0 0;">Aún no hay vídeos disponibles.</p>
+            <h1 style="font-size:46px;font-weight:800;">Tu ETERNA ha vuelto.</h1>
+            <p style="font-size:22px;opacity:.9;">Lo que diste… ha encontrado el camino de vuelta.</p>
         </div>
         """
     else:
         player_initial_src = reaction_url if has_reaction else original_video_url
-        player_initial_type = guess_media_type_from_url(player_initial_src)
-        first_label = "Su reacción" if has_reaction else "El momento que provocaste"
 
         body_content = f"""
         <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px 20px;text-align:center;color:white;">
-            <h1 style="font-size:46px;font-weight:800;line-height:1.05;margin:0 0 18px 0;">{safe_text(sender_status)}</h1>
 
-            <p style="font-size:22px;opacity:.92;margin:0 0 12px 0;">
-                Lo que diste… ha encontrado el camino de <span id="eterna-vuelta-word" style="display:inline-block;">vuelta</span>.
+            <h1 style="font-size:46px;font-weight:800;margin-bottom:12px;">
+                {safe_text(sender_status)}
+            </h1>
+
+            <p style="font-size:22px;opacity:.9;margin-bottom:10px;">
+                Lo que diste… ha encontrado el camino de vuelta.
             </p>
 
-            {f'<p style="font-size:18px;opacity:.70;margin:0 0 34px 0;">{safe_text(cashout_line)}</p>' if cashout_line else ''}
+            {f'<p style="font-size:16px;opacity:.6;margin-bottom:24px;">{safe_text(cashout_line)}</p>' if cashout_line else ''}
 
-            <div style="text-align:left;margin:0 0 12px 0;font-size:18px;opacity:.88;" id="eterna-player-label">{safe_text(first_label)}</div>
-
-            <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;box-shadow:0 0 40px rgba(255,255,255,0.06);">
+            <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
                 <video
-                    id="eterna-unified-player"
+                    id="mainVideo"
                     playsinline
                     webkit-playsinline
                     controls
                     preload="metadata"
-                    controlslist="nodownload noplaybackrate noremoteplayback"
-                    style="width:100%;height:auto;display:block;background:black;"
+                    style="width:100%;"
                 >
-                    <source src="{safe_attr(player_initial_src)}" type="{safe_attr(player_initial_type)}">
-                    Tu navegador no soporta vídeo.
+                    <source src="{safe_attr(player_initial_src)}" type="video/mp4">
                 </video>
 
                 {f'''
                 <video
-                    id="eterna-mini-original"
-                    playsinline
-                    webkit-playsinline
+                    id="miniVideo"
                     muted
+                    playsinline
                     preload="metadata"
-                    style="position:absolute;right:14px;bottom:14px;width:29%;max-width:150px;border-radius:16px;background:black;box-shadow:0 0 24px rgba(0,0,0,0.45);display:block;"
+                    style="position:absolute;bottom:14px;right:14px;width:28%;border-radius:14px;"
                 >
-                    <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
+                    <source src="{safe_attr(original_video_url)}" type="video/mp4">
                 </video>
                 ''' if has_reaction and has_original else ''}
             </div>
 
-            <div style="margin-top:14px;font-size:15px;opacity:.55;">
+            <div style="margin-top:14px;font-size:15px;opacity:.5;">
                 Aquí vuelve lo que provocaste.
             </div>
 
-            <div style="margin-top:34px;">
-                <button
-                    id="eterna-replay-all"
-                    type="button"
-                    style="width:100%;border:none;border-radius:999px;padding:22px 28px;font-size:22px;font-weight:700;background:#f3f3f3;color:#000;cursor:pointer;"
-                >
+            <div style="margin-top:30px;">
+                <button id="replayBtn" style="width:100%;padding:20px;border-radius:999px;font-size:22px;font-weight:700;background:#fff;color:#000;">
                     Volver a sentirlo
                 </button>
             </div>
 
-            <div id="eterna-share-wrap" style="display:none;margin-top:18px;">
-                <button
-                    id="eterna-share-reaction"
-                    type="button"
-                    style="width:100%;border:none;border-radius:999px;padding:20px 28px;font-size:20px;font-weight:700;background:#fff;color:#000;cursor:pointer;"
-                >
+            <div id="shareWrap" style="display:none;margin-top:18px;">
+                <button id="shareBtn" style="width:100%;padding:18px;border-radius:999px;font-size:20px;font-weight:700;background:#fff;color:#000;">
                     Compartir su reacción
                 </button>
 
-                <div style="margin-top:12px;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.52);">
-                    Puedes compartir la emoción que ha vuelto.<br>
-                    El vídeo original no se comparte, porque rompería la magia de ETERNA.
+                <div style="margin-top:10px;font-size:14px;opacity:.5;">
+                    Puedes compartir lo que provocaste.<br>
+                    El vídeo original se queda aquí, para no romper la magia de ETERNA.
                 </div>
             </div>
 
             <div style="margin-top:18px;">
-                <a
-                    href="/crear"
-                    style="display:block;width:100%;box-sizing:border-box;text-decoration:none;border-radius:999px;padding:22px 28px;font-size:22px;font-weight:700;background:#111;color:#fff;border:1px solid rgba(255,255,255,0.14);"
-                >
+                <a href="/crear" style="display:block;padding:20px;border-radius:999px;font-size:22px;background:#111;color:#fff;">
                     Crear otra ETERNA
                 </a>
             </div>
+
         </div>
 
         <script>
-        (function () {{
-            const video = document.getElementById("eterna-unified-player");
-            const mini = document.getElementById("eterna-mini-original");
-            const label = document.getElementById("eterna-player-label");
-            const replayBtn = document.getElementById("eterna-replay-all");
-            const shareWrap = document.getElementById("eterna-share-wrap");
-            const shareBtn = document.getElementById("eterna-share-reaction");
+        (function() {{
 
-            if (!video) return;
+            const main = document.getElementById("mainVideo");
+            const mini = document.getElementById("miniVideo");
+            const replay = document.getElementById("replayBtn");
+            const shareWrap = document.getElementById("shareWrap");
+            const shareBtn = document.getElementById("shareBtn");
 
-            const reactionUrl = {json.dumps(reaction_url)};
-            const originalUrl = {json.dumps(original_video_url)};
-            const reactionType = {json.dumps(guess_media_type_from_url(reaction_url) if reaction_url else "")};
-            const originalType = {json.dumps(guess_media_type_from_url(original_video_url) if original_video_url else "")};
+            const reaction = {json.dumps(reaction_url)};
+            const original = {json.dumps(original_video_url)};
 
-            const hasReaction = !!reactionUrl;
-            const hasOriginal = !!originalUrl;
+            let phase = 0;
 
-            let sequence = [];
-            if (hasReaction) sequence.push({{ key: "reaction", label: "Su reacción", src: reactionUrl, type: reactionType }});
-            if (hasOriginal) sequence.push({{ key: "original", label: "El momento que provocaste", src: originalUrl, type: originalType }});
-
-            let currentIndex = 0;
-            let shouldAutoplayNext = false;
-            let isSwitchingSource = false;
-
-            function setMainSource(src, type) {{
-                video.pause();
-                video.innerHTML = "";
-                const source = document.createElement("source");
-                source.src = src;
-                if (type) source.type = type;
-                video.appendChild(source);
-                video.load();
-            }}
-
-            function setPhase(index, autoplay) {{
-                if (!sequence[index]) return;
-
-                currentIndex = index;
-                isSwitchingSource = true;
-                shouldAutoplayNext = !!autoplay;
-
-                const item = sequence[index];
-                if (label) label.textContent = item.label;
-
-                setMainSource(item.src, item.type);
+            function playReaction() {{
+                main.src = reaction;
+                main.load();
+                main.play();
 
                 if (mini) {{
-                    if (item.key === "reaction" && hasOriginal) {{
-                        mini.style.display = "block";
-                        mini.muted = true;
-                        try {{
-                            mini.currentTime = 0;
-                            mini.play().catch(() => {{}});
-                        }} catch (_) {{}}
-                    }} else {{
-                        mini.pause();
-                        mini.style.display = "none";
-                    }}
+                    mini.currentTime = 0;
+                    mini.play().catch(()=>{{}});
                 }}
             }}
 
-            video.addEventListener("play", function () {{
-                if (mini && sequence[currentIndex] && sequence[currentIndex].key === "reaction" && hasOriginal) {{
-                    try {{
-                        mini.currentTime = video.currentTime;
-                    }} catch (_) {{}}
-                    mini.play().catch(() => {{}});
-                }}
-            }});
+            function playOriginal() {{
+                main.src = original;
+                main.load();
+                main.play();
 
-            video.addEventListener("pause", function () {{
                 if (mini) mini.pause();
-            }});
+            }}
 
-            video.addEventListener("timeupdate", function () {{
-                if (mini && sequence[currentIndex] && sequence[currentIndex].key === "reaction" && hasOriginal) {{
-                    const diff = Math.abs((mini.currentTime || 0) - (video.currentTime || 0));
-                    if (diff > 0.35) {{
-                        try {{
-                            mini.currentTime = video.currentTime;
-                        }} catch (_) {{}}
-                    }}
-                }}
-            }});
-
-            video.addEventListener("loadedmetadata", function () {{
-                if (isSwitchingSource && shouldAutoplayNext) {{
-                    const p = video.play();
-                    if (p && typeof p.catch === "function") {{
-                        p.catch(() => {{}});
-                    }}
-                }}
-                isSwitchingSource = false;
-            }});
-
-            video.addEventListener("ended", function () {{
-                if (currentIndex < sequence.length - 1) {{
-                    setPhase(currentIndex + 1, true);
-                    return;
-                }}
-
-                if (mini) {{
-                    mini.pause();
-                    mini.style.display = "none";
-                }}
-
-                if (shareWrap && hasReaction) {{
+            main.addEventListener("ended", function() {{
+                if (phase === 0 && original) {{
+                    phase = 1;
+                    playOriginal();
+                }} else {{
+                    if (mini) mini.pause();
                     shareWrap.style.display = "block";
                 }}
             }});
 
-            if (replayBtn) {{
-                replayBtn.addEventListener("click", function () {{
-                    if (shareWrap) {{
-                        shareWrap.style.display = "none";
-                    }}
-                    setPhase(0, true);
-                }});
-            }}
+            replay.addEventListener("click", function() {{
+                phase = 0;
+                shareWrap.style.display = "none";
+                playReaction();
+            }});
 
             if (shareBtn) {{
-                shareBtn.addEventListener("click", async function () {{
-                    if (!reactionUrl) return;
+                shareBtn.addEventListener("click", async function() {{
 
                     if (navigator.share) {{
                         try {{
                             await navigator.share({{
                                 title: "ETERNA",
                                 text: "Esto es lo que provoca ETERNA.",
-                                url: reactionUrl
+                                url: reaction
                             }});
                             return;
-                        }} catch (_) {{}}
+                        }} catch(e) {{}}
                     }}
 
-                    try {{
-                        await navigator.clipboard.writeText(reactionUrl);
-                        alert("Link de la reacción copiado");
-                    }} catch (_) {{
-                        alert(reactionUrl);
-                    }}
+                    navigator.clipboard.writeText(reaction);
+                    alert("Link copiado");
+
                 }});
             }}
 
-            if (label && sequence[0]) {{
-                label.textContent = sequence[0].label;
-            }}
-
-            if (sequence[0]) {{
-                setPhase(0, false);
-            }}
         }})();
         </script>
-
-        <style>
-        @keyframes eternaPulseSoft {{
-            0% {{ transform: scale(1); opacity: 1; }}
-            25% {{ transform: scale(1.04); opacity: 1; }}
-            50% {{ transform: scale(1.00); opacity: .92; }}
-            75% {{ transform: scale(1.06); opacity: 1; }}
-            100% {{ transform: scale(1); opacity: 1; }}
-        }}
-
-        #eterna-vuelta-word {{
-            animation: eternaPulseSoft 2.4s ease-in-out infinite;
-            transform-origin: center;
-        }}
-        </style>
         """
 
     return HTMLResponse(f"""
-    <!doctype html>
-    <html lang="es">
+    <html>
     <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <title>ETERNA</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            html, body {{
-                margin: 0;
-                padding: 0;
-                background: #000;
-                color: #fff;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                min-height: 100%;
-            }}
-
             body {{
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000 45%, #000 100%);
-            }}
-
-            * {{
-                box-sizing: border-box;
-                -webkit-tap-highlight-color: transparent;
-            }}
-
-            a {{
-                color: inherit;
-            }}
-
-            video::-webkit-media-controls-panel {{
-                background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.15));
+                margin:0;
+                background:#000;
+                color:#fff;
+                font-family:Arial;
             }}
         </style>
     </head>
