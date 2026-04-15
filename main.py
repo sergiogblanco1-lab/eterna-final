@@ -4549,68 +4549,118 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
         maybe_mark_eterna_completed(order["id"])
 
-def background_tasks():
+@app.post("/upload-reaction/{recipient_token}")
+async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    print("🎥 UPLOAD REACTION START")
+    print("➡️ order_id:", order["id"])
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="not_paid")
+
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="video_not_ready")
+
+    content_type = (video.content_type or "").lower().strip()
+    if content_type not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(status_code=400, detail="invalid_video_type")
+
+    data = await video.read()
+
+    if len(data) > MAX_VIDEO_SIZE:
+        raise HTTPException(status_code=400, detail="video_too_large")
+
+    extension = detect_video_extension(video)
+    local_path = reaction_video_path(order["id"], extension)
+
     try:
-        print("⚙️ BACKGROUND START:", order["id"])
+        with open(local_path, "wb") as f:
+            f.write(data)
 
-        refreshed = get_order_by_id(order["id"])
+        print("💾 Guardado local:", local_path)
 
-        # =========================================================
-        # 💸 PROCESO DE TRANSFERENCIA (NO TOCAR)
-        # =========================================================
+        public_url = None
         try:
-            process_gift_transfer_for_order(refreshed)
-        except Exception as e:
-            log_error("process_gift_transfer_for_order", e)
-
-        refreshed = get_order_by_id(order["id"])
-
-        # =========================================================
-        # 📩 SMS REGALANTE (FORZADO Y LIMPIO)
-        # =========================================================
-        try:
-            sender_phone = (refreshed.get("sender_phone") or "").strip()
-
-            if not sender_phone:
-                print("⚠️ No sender_phone")
-            else:
-                sender_phone_e164 = to_e164(sender_phone)
-
-                sender_url = f"{PUBLIC_BASE_URL}/sender/{refreshed['sender_token']}"
-
-                print("📩 Enviando SMS a regalante:", sender_phone_e164)
-                print("📩 Sender URL:", sender_url)
-
-                message = f"Tu ETERNA ha vuelto.\n\n{sender_url}"
-
-                sms = twilio_client.messages.create(
-                    body=message,
-                    from_=TWILIO_FROM_NUMBER,
-                    to=sender_phone_e164
+            if r2_enabled():
+                remote_name = f"reactions/{order['id']}.{extension}"
+                public_url = upload_video_to_r2(
+                    local_path,
+                    remote_name,
+                    content_type=content_type
                 )
-
-                print("✅ SMS enviado:", sms.sid)
-
-                update_order(
-                    refreshed["id"],
-                    sender_sms_sent_at=datetime.now(timezone.utc).isoformat(),
-                    sender_sms_sid=sms.sid,
-                    sender_sms_attempts=(refreshed.get("sender_sms_attempts") or 0) + 1,
-                    sender_sms_error=None
-                )
-
+                print("☁️ Subido a R2:", public_url)
         except Exception as e:
-            log_error("SENDER SMS DIRECT ERROR", e)
+            print("⚠️ Error subiendo a R2:", e)
 
-        # =========================================================
-        # FINAL
-        # =========================================================
-        maybe_mark_eterna_completed(order["id"])
+        update_order(
+            order["id"],
+            reaction_video_local=local_path,
+            reaction_video_public_url=public_url,
+            reaction_uploaded=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+        )
 
-        print("✅ BACKGROUND DONE:", order["id"])
+        # ================= BACKGROUND =================
+        def background_tasks():
+            try:
+                print("⚙️ BACKGROUND START:", order["id"])
+
+                refreshed = get_order_by_id(order["id"])
+
+                try:
+                    process_gift_transfer_for_order(refreshed)
+                except Exception as e:
+                    log_error("transfer", e)
+
+                refreshed = get_order_by_id(order["id"])
+
+                try:
+                    sender_phone = (refreshed.get("sender_phone") or "").strip()
+
+                    if sender_phone:
+                        sender_phone_e164 = to_e164(sender_phone)
+                        sender_url = f"{PUBLIC_BASE_URL}/sender/{refreshed['sender_token']}"
+
+                        print("📩 Enviando SMS:", sender_phone_e164)
+
+                        message = f"Tu ETERNA ha vuelto.\n\n{sender_url}"
+
+                        sms = twilio_client.messages.create(
+                            body=message,
+                            from_=TWILIO_FROM_NUMBER,
+                            to=sender_phone_e164
+                        )
+
+                        print("✅ SMS enviado:", sms.sid)
+
+                        update_order(
+                            refreshed["id"],
+                            sender_sms_sent_at=datetime.now(timezone.utc).isoformat(),
+                            sender_sms_sid=sms.sid,
+                        )
+                    else:
+                        print("⚠️ No sender_phone")
+
+                except Exception as e:
+                    log_error("sms", e)
+
+                print("✅ BACKGROUND DONE:", order["id"])
+
+            except Exception as e:
+                log_error("background", e)
+
+        threading.Thread(target=background_tasks, daemon=True).start()
+
+        return JSONResponse({
+            "ok": True,
+            "redirect": f"/cobrar/{recipient_token}"
+        })
 
     except Exception as e:
-        log_error("BACKGROUND TASK ERROR", e)
+        log_error("UPLOAD ERROR", e)
+        raise HTTPException(status_code=500, detail="error")
 
 # =========================================================
 # MI VIDEO (POST EXPERIENCIA)
