@@ -4305,6 +4305,7 @@ async function finalizeExperienceFlow() {
     payoff.classList.add("show");
     payoffLoader.innerText = "Preparando tu cobro…";
 
+    // 1) Cerrar grabación
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             try {
@@ -4321,7 +4322,7 @@ async function finalizeExperienceFlow() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 1500);
+                const timeoutId = setTimeout(finish, 2000);
 
                 mediaRecorder.addEventListener("dataavailable", finish, { once: true });
 
@@ -4336,6 +4337,7 @@ async function finalizeExperienceFlow() {
         console.error("recorder stop error", e);
     }
 
+    // 2) Parar cámara
     try {
         if (stream) {
             stream.getTracks().forEach((t) => t.stop());
@@ -4344,15 +4346,64 @@ async function finalizeExperienceFlow() {
         console.error("stream stop error", e);
     }
 
-    await markExperienceCompleted();
+    // 3) Crear blob real
+    let blob = null;
+    try {
+        blob = new Blob(recordedChunks, {
+            type: recordingMimeType || "video/webm"
+        });
 
-    setTimeout(() => {
-        uploadReactionInBackground();
-    }, 50);
+        console.log("chunks:", recordedChunks.length);
+        console.log("blob size:", blob.size);
+    } catch (e) {
+        console.error("blob error", e);
+    }
 
-    setTimeout(() => {
-        window.location.replace("/cobrar/" + recipientToken);
-    }, 2200);
+    // 4) Subir reacción ANTES de redirigir
+    try {
+        if (blob && blob.size > 0) {
+            const formData = new FormData();
+            formData.append("video", blob, "reaction.webm");
+
+            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
+                method: "POST",
+                body: formData
+            });
+
+            const uploadData = await uploadResponse.json().catch(() => ({}));
+
+            if (!uploadResponse.ok) {
+                throw new Error(uploadData.detail || "upload_reaction_failed");
+            }
+
+            console.log("✅ reacción subida");
+        } else {
+            console.warn("⚠️ blob vacío, no se sube");
+        }
+    } catch (e) {
+        console.error("upload error", e);
+        payoffLoader.innerText = "No hemos podido guardar este momento. Toca de nuevo para intentarlo.";
+        finishing = false;
+        return;
+    }
+
+    // 5) Marcar experiencia completada
+    try {
+        await fetch("/complete-experience", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                recipient_token: recipientToken
+            })
+        });
+    } catch (e) {
+        console.error("complete experience error", e);
+    }
+
+    // 6) Ya sí: redirección a cobrar
+    window.location.replace("/cobrar/" + recipientToken);
 }
 
 function armFinishFallbacks() {
