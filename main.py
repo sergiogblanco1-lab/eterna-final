@@ -4728,7 +4728,13 @@ def cobrar(request: Request, recipient_token: str):
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_completed")):
+    if not original_video_ready(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    # 🔥 CAMBIO CLAVE:
+    # Ya NO bloqueamos por experience_completed.
+    # Solo exigimos que la experiencia se haya iniciado al menos una vez.
+    if not bool(order.get("experience_started")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     gift_amount = float(order.get("gift_amount") or 0)
