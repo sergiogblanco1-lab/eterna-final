@@ -3860,27 +3860,17 @@ async def start_experience(recipient_token: str = Form(...)):
 
 @app.post("/complete-experience")
 async def complete_experience(request: Request):
-    try:
-        data = await request.json()
-    except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "reason": "invalid_json"},
-        )
-
+    data = await request.json()
     recipient_token = (data.get("recipient_token") or "").strip()
+
     if not recipient_token:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "reason": "missing_recipient_token"},
-        )
+        return JSONResponse({"status": "error"}, status_code=400)
 
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     update_order(
         order["id"],
         experience_completed=1,
-        experience_started=1,
         delivered_to_recipient=1,
     )
 
@@ -4715,7 +4705,7 @@ h1 {{
     """)
 
 # =========================================================
-# COBRAR / CONNECT / PAYOUT (SIMPLIFICADO)
+# COBRAR / CONNECT / PAYOUT (UNA SOLA PANTALLA)
 # =========================================================
 
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
@@ -4734,9 +4724,6 @@ def cobrar(request: Request, recipient_token: str):
     if not bool(order.get("experience_started")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    gift_amount = float(order.get("gift_amount") or 0)
-
-    # Refrescamos estado de Connect si ya había cuenta conectada
     try:
         if order.get("stripe_connected_account_id"):
             refresh_connect_status(order)
@@ -4744,61 +4731,56 @@ def cobrar(request: Request, recipient_token: str):
     except Exception as e:
         log_error("refresh_connect_status_en_cobrar", e)
 
+    gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
 
-    status_title = "Tu momento ya está completo"
-    status_text = "Ya puedes volver a ver el vídeo cuando quieras."
-
-    primary_cta_html = ""
-    cashout_line = ""
+    title = "Tu momento ya está completo"
+    main_text = "Ya puedes recoger tu regalo."
+    amount_text = ""
+    cta_html = ""
+    secondary_html = f'''
+        <a class="btn secondary" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
+    '''
 
     if gift_amount <= 0:
-        cashout_line = "Este regalo no incluía dinero."
+        amount_text = "Este regalo no incluía dinero."
+        cta_html = ""
 
     elif cashout_status == "completed":
-        cashout_line = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
+        amount_text = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
+        cta_html = ""
 
     elif cashout_status == "processing":
-        cashout_line = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
+        amount_text = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
+        cta_html = ""
 
     elif cashout_status == "ready_to_send":
-        cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
-        primary_cta_html = f"""
-            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:18px;">
-                <button
-                    type="submit"
-                    style="display:inline-block;padding:16px 28px;border:none;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;font-size:16px;cursor:pointer;"
-                >
-                    Recibir mi regalo
-                </button>
+        amount_text = f"Has recibido {format_amount_display(gift_amount)}."
+        cta_html = f'''
+            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:22px;">
+                <button type="submit" class="btn primary">Recibir mi regalo</button>
             </form>
-        """
+        '''
 
     else:
-        cashout_line = f"Has recibido {format_amount_display(gift_amount)}."
+        amount_text = f"Has recibido {format_amount_display(gift_amount)}."
 
         connect_url = None
         try:
             connect_url = create_connect_onboarding_link(order)
         except Exception as e:
             log_error("create_connect_onboarding_link_en_cobrar", e)
-            connect_url = None
 
         if connect_url:
-            primary_cta_html = f"""
-                <a
-                    href="{safe_attr(connect_url)}"
-                    style="display:inline-block;margin-top:18px;padding:16px 28px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;"
-                >
-                    Recibir mi regalo
-                </a>
-            """
+            cta_html = f'''
+                <a href="{safe_attr(connect_url)}" class="btn primary" style="margin-top:22px;">Recibir mi regalo</a>
+            '''
         else:
-            primary_cta_html = """
-                <div style="margin-top:18px;color:rgba(255,255,255,0.55);font-size:15px;line-height:1.8;">
+            cta_html = '''
+                <div style="margin-top:22px;color:rgba(255,255,255,0.55);font-size:15px;line-height:1.8;">
                     No hemos podido preparar el cobro todavía. Recarga esta pantalla en unos segundos.
                 </div>
-            """
+            '''
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -4839,42 +4821,52 @@ h1 {{
 .main {{
     font-size: 22px;
     line-height: 1.8;
-    color: rgba(255,255,255,0.88);
+    color: rgba(255,255,255,0.90);
 }}
-.soft {{
+.amount {{
     margin-top: 24px;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.8;
-    color: rgba(255,255,255,0.50);
+    color: rgba(255,255,255,0.62);
 }}
 .actions {{
     display: grid;
     gap: 12px;
     max-width: 420px;
-    margin: 34px auto 0 auto;
+    margin: 18px auto 0 auto;
 }}
 .btn {{
     display: block;
     width: 100%;
     padding: 17px 22px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.10);
-    color: white;
     text-decoration: none;
     font-weight: bold;
     font-size: 15px;
     border: 1px solid rgba(255,255,255,0.10);
+    cursor: pointer;
+}}
+.btn.primary {{
+    background: white;
+    color: black;
+    border: none;
+}}
+.btn.secondary {{
+    background: rgba(255,255,255,0.10);
+    color: white;
 }}
 </style>
 </head>
 <body>
     <div class="wrap">
-        <h1>{safe_text(status_title)}</h1>
-        <div class="main">{safe_text(status_text)}</div>
-        <div class="soft">{safe_text(cashout_line)}</div>
-        {primary_cta_html}
+        <h1>{safe_text(title)}</h1>
+        <div class="main">{safe_text(main_text)}</div>
+        <div class="amount">{safe_text(amount_text)}</div>
+
+        {cta_html}
+
         <div class="actions">
-            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
+            {secondary_html}
         </div>
     </div>
 </body>
@@ -4883,7 +4875,7 @@ h1 {{
 
 
 # =========================================================
-# RECIBIR REGALO (COMPATIBILIDAD -> COBRAR)
+# RECIBIR REGALO (ELIMINADO -> REDIRECCIÓN DIRECTA)
 # =========================================================
 
 @app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
