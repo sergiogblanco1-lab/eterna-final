@@ -1301,18 +1301,28 @@ def get_recipient_cookie_value(request: Request, recipient_token: str) -> str:
 
 
 def has_valid_recipient_session(order: dict, request: Request) -> bool:
+    cookie_key = recipient_cookie_name(order["recipient_token"])
+
     expected = (order.get("recipient_session_token") or "").strip()
+    got = (request.cookies.get(cookie_key) or "").strip()
+
+    # 🔥 CASO 1: aún no ha empezado → dejamos pasar SIEMPRE
+    if not bool(order.get("experience_started")):
+        return True
+
+    # 🔥 CASO 2: si no hay token esperado → dejamos pasar
     if not expected:
-        return False
+        return True
 
-    got = get_recipient_cookie_value(request, order["recipient_token"])
-    if not got:
-        return False
-
+    # 🔥 CASO 3: comparación segura
     try:
-        return secrets.compare_digest(expected, got)
+        if got and secrets.compare_digest(expected, got):
+            return True
     except Exception:
-        return False
+        pass
+
+    # 🔥 CASO FINAL: bloqueo solo si ya empezó Y no coincide
+    return False
 
 
 def attach_recipient_session_if_needed(order: dict, request: Request, response) -> bool:
@@ -1320,9 +1330,7 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
     expected = (order.get("recipient_session_token") or "").strip()
     got = (request.cookies.get(cookie_key) or "").strip()
 
-    # =========================================================
-    # SI YA TIENE COOKIE CORRECTA -> OK
-    # =========================================================
+    # Si la cookie ya coincide, todo bien
     if expected and got:
         try:
             if secrets.compare_digest(expected, got):
@@ -1330,11 +1338,30 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
         except Exception:
             pass
 
-    # =========================================================
-    # SI YA EXISTE TOKEN PERO TODAVÍA NO HA EMPEZADO
-    # O NO HA TERMINADO, RECUPERAMOS COOKIE EN ESTE NAVEGADOR
-    # =========================================================
-    if expected and not bool(order.get("experience_started")) and not bool(order.get("experience_completed")):
+    # Si todavía no existe sesión en DB, la creamos
+    if not expected:
+        new_session = new_token()
+
+        update_order(
+            order["id"],
+            recipient_session_token=new_session,
+            recipient_session_claimed_at=now_iso(),
+        )
+
+        response.set_cookie(
+            key=cookie_key,
+            value=new_session,
+            max_age=60 * 60 * 24 * 365 * 5,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite="lax",
+            path="/",
+        )
+        return True
+
+    # Si la experiencia todavía no ha empezado ni terminado,
+    # permitimos recuperar la cookie en el navegador real del destinatario
+    if not bool(order.get("experience_started")) and not bool(order.get("experience_completed")):
         response.set_cookie(
             key=cookie_key,
             value=expected,
@@ -1344,43 +1371,10 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
             samesite="lax",
             path="/",
         )
-
-        if not (order.get("recipient_session_claimed_at") or "").strip():
-            update_order(
-                order["id"],
-                recipient_session_claimed_at=now_iso(),
-            )
-
         return True
 
-    # =========================================================
-    # SI YA EXISTE TOKEN Y YA HABÍA EMPEZADO/TERMINADO
-    # Y LA COOKIE NO COINCIDE -> BLOQUEO
-    # =========================================================
-    if expected:
-        return False
-
-    # =========================================================
-    # SI NO EXISTE TOKEN TODAVÍA, LO CREAMOS
-    # =========================================================
-    new_session = new_token()
-
-    update_order(
-        order["id"],
-        recipient_session_token=new_session,
-        recipient_session_claimed_at=now_iso(),
-    )
-
-    response.set_cookie(
-        key=cookie_key,
-        value=new_session,
-        max_age=60 * 60 * 24 * 365 * 5,
-        httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="lax",
-        path="/",
-    )
-    return True
+    # Si ya empezó o terminó y no coincide la cookie, sí bloqueamos
+    return False
 
 
 def render_viral_block_page() -> HTMLResponse:
