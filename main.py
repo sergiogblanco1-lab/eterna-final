@@ -3308,7 +3308,6 @@ h1 {
         """)
 
     if original_video_ready(order) and delivery_is_unlocked(order):
-        set_recipient_session(request, order)
         return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
     refresh = '<meta http-equiv="refresh" content="8">' if not original_video_ready(order) else ""
