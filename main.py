@@ -1316,13 +1316,53 @@ def has_valid_recipient_session(order: dict, request: Request) -> bool:
 
 
 def attach_recipient_session_if_needed(order: dict, request: Request, response) -> bool:
+    cookie_key = recipient_cookie_name(order["recipient_token"])
     expected = (order.get("recipient_session_token") or "").strip()
+    got = (request.cookies.get(cookie_key) or "").strip()
 
+    # =========================================================
+    # SI YA TIENE COOKIE CORRECTA -> OK
+    # =========================================================
+    if expected and got:
+        try:
+            if secrets.compare_digest(expected, got):
+                return True
+        except Exception:
+            pass
+
+    # =========================================================
+    # SI YA EXISTE TOKEN PERO TODAVÍA NO HA EMPEZADO
+    # O NO HA TERMINADO, RECUPERAMOS COOKIE EN ESTE NAVEGADOR
+    # =========================================================
+    if expected and not bool(order.get("experience_started")) and not bool(order.get("experience_completed")):
+        response.set_cookie(
+            key=cookie_key,
+            value=expected,
+            max_age=60 * 60 * 24 * 365 * 5,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite="lax",
+            path="/",
+        )
+
+        if not (order.get("recipient_session_claimed_at") or "").strip():
+            update_order(
+                order["id"],
+                recipient_session_claimed_at=now_iso(),
+            )
+
+        return True
+
+    # =========================================================
+    # SI YA EXISTE TOKEN Y YA HABÍA EMPEZADO/TERMINADO
+    # Y LA COOKIE NO COINCIDE -> BLOQUEO
+    # =========================================================
     if expected:
-        if has_valid_recipient_session(order, request):
-            return True
         return False
 
+    # =========================================================
+    # SI NO EXISTE TOKEN TODAVÍA, LO CREAMOS
+    # =========================================================
     new_session = new_token()
 
     update_order(
@@ -1332,7 +1372,7 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
     )
 
     response.set_cookie(
-        key=recipient_cookie_name(order["recipient_token"]),
+        key=cookie_key,
         value=new_session,
         max_age=60 * 60 * 24 * 365 * 5,
         httponly=True,
