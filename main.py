@@ -3141,162 +3141,273 @@ def startup_event():
 
 
 # =========================================================
-# RECIPIENT ENTRY
+# PEDIDO / ENTRADA REGALADO (BLINDADO)
 # =========================================================
 
 @app.get("/pedido/{recipient_token}", response_class=HTMLResponse)
 def pedido(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
+    order = None
 
-    if not bool(order.get("paid")):
-        title = "Tu ETERNA aún no está lista"
-        text = "Todavía estamos esperando a que todo quede preparado."
-        soft = "Cuando este momento esté listo de verdad, aquí cambiará solo."
-        button_href = "#"
-        button_text = "Esperando..."
-        disabled = True
+    try:
+        order = get_order_by_recipient_token_or_404(recipient_token)
+    except Exception:
+        order = None
 
-    elif not original_video_ready(order):
-        title = "Tu ETERNA ya está en camino"
-        text = "Estamos terminando de preparar lo que alguien quiso hacerte llegar."
-        soft = "El acceso se abrirá solo cuando el vídeo esté listo de verdad."
-        button_href = "#"
-        button_text = "Preparando..."
-        disabled = True
-
-    elif not delivery_is_unlocked(order):
-        title = "Aún no es el momento"
-        text = "ETERNA ya está guardada."
-        soft = (
-            f"Todo está preparado para llegar el {scheduled_delivery_display(order)}. "
-            "No se abrirá antes."
-        )
-        button_href = "#"
-        button_text = "Esperando su momento..."
-        disabled = True
-
-    elif bool(order.get("experience_completed")):
-        response = RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
-        if not attach_recipient_session_if_needed(order, request, response):
-            return render_viral_block_page()
-        return response
-
-    else:
-        title = "Hay algo para ti"
-        text = "Alguien quiso dejarte un momento que no se olvida."
-        soft = "Cuando estés listo, entra y vívelo de verdad."
-        button_href = f"/experiencia/{recipient_token}"
-        button_text = "Entrar"
-        disabled = False
-
-    refresh = '<meta http-equiv="refresh" content="6">' if disabled else ""
-
-    button_html = (
-        f'<a href="{safe_attr(button_href)}" class="btn">{safe_text(button_text)}</a>'
-        if not disabled
-        else f'<div class="btn disabled">{safe_text(button_text)}</div>'
-    )
-
-    response = HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        {refresh}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{
-                margin: 0;
-                min-height: 100%;
-                background: #000;
-            }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                padding: 24px;
-            }}
-            .wrap {{
-                width: 100%;
-                max-width: 720px;
-                margin: 0 auto;
-            }}
-            .eyebrow {{
-                font-size: 13px;
-                letter-spacing: 0.16em;
-                text-transform: uppercase;
-                color: rgba(255,255,255,0.34);
-                margin-bottom: 18px;
-            }}
-            h1 {{
-                margin: 0;
-                font-size: 48px;
-                line-height: 1.12;
-                font-weight: 700;
-            }}
-            .main {{
-                margin-top: 24px;
-                font-size: 24px;
-                line-height: 1.7;
-                color: rgba(255,255,255,0.88);
-            }}
-            .soft {{
-                margin: 28px auto 0 auto;
-                max-width: 620px;
-                font-size: 16px;
-                line-height: 1.8;
-                color: rgba(255,255,255,0.46);
-            }}
-            .btn {{
-                display: inline-block;
-                width: 100%;
-                max-width: 420px;
-                margin-top: 34px;
-                padding: 18px 22px;
-                border-radius: 999px;
-                background: white;
-                color: black;
-                text-decoration: none;
-                font-weight: bold;
-                font-size: 16px;
-            }}
-            .btn.disabled {{
-                background: rgba(255,255,255,0.12);
-                color: rgba(255,255,255,0.58);
-                cursor: default;
-            }}
-            @media (max-width: 640px) {{
-                h1 {{ font-size: 40px; }}
-                .main {{ font-size: 21px; }}
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <div class="eyebrow">ETERNA</div>
-            <h1>{safe_text(title)}</h1>
-            <div class="main">{safe_text(text)}</div>
-            <div class="soft">{safe_text(soft)}</div>
-            {button_html}
+    # =========================================================
+    # TOKEN INVÁLIDO O PEDIDO NO ENCONTRADO
+    # =========================================================
+    if not order:
+        return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+}
+.wrap {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}
+h1 {
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.15;
+}
+.main {
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.90);
+}
+.soft {
+    margin-top: 22px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.55);
+}
+.actions {
+    display: grid;
+    gap: 12px;
+    max-width: 420px;
+    margin: 34px auto 0 auto;
+}
+.btn {
+    display: block;
+    width: 100%;
+    padding: 17px 22px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.10);
+}
+.btn.primary {
+    background: white;
+    color: black;
+    border: none;
+}
+.btn.secondary {
+    background: rgba(255,255,255,0.10);
+    color: white;
+}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Este enlace ya no está disponible</h1>
+        <div class="main">Puede que este acceso haya caducado o no sea válido.</div>
+        <div class="soft">Si has llegado desde un mensaje antiguo, abre el más reciente.</div>
+        <div class="actions">
+            <a class="btn primary" href="/">Ir al inicio</a>
         </div>
-    </body>
-    </html>
-    """)
+    </div>
+</body>
+</html>
+        """)
 
-    if not disabled:
-        if not attach_recipient_session_if_needed(order, request, response):
-            return render_viral_block_page()
+    # =========================================================
+    # PEDIDO VÁLIDO
+    # =========================================================
+    if not bool(order.get("paid")):
+        return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+}
+.wrap {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}
+h1 {
+    margin: 0 0 18px 0;
+    font-size: 42px;
+    line-height: 1.15;
+}
+.main {
+    font-size: 22px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.90);
+}
+.soft {
+    margin-top: 22px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.55);
+}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Aún no está listo</h1>
+        <div class="main">Este momento todavía no puede abrirse.</div>
+        <div class="soft">Vuelve a intentarlo dentro de un momento.</div>
+    </div>
+</body>
+</html>
+        """)
 
-    return response
+    if original_video_ready(order) and delivery_is_unlocked(order):
+        set_recipient_session(request, order)
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+
+    refresh = '<meta http-equiv="refresh" content="8">' if not original_video_ready(order) else ""
+
+    html_page = f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+{refresh}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+html, body {{
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}}
+.brand {{
+    font-size: 13px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.32);
+    margin-bottom: 26px;
+}}
+h1 {{
+    margin: 0 0 22px 0;
+    font-size: 64px;
+    line-height: 1.05;
+    font-weight: 700;
+}}
+.main {{
+    font-size: 24px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.90);
+}}
+.soft {{
+    margin-top: 24px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.50);
+}}
+.actions {{
+    display: grid;
+    gap: 12px;
+    max-width: 420px;
+    margin: 34px auto 0 auto;
+}}
+.btn {{
+    display: block;
+    width: 100%;
+    padding: 18px 24px;
+    border-radius: 999px;
+    background: white;
+    color: black;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 17px;
+    border: none;
+}}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="brand">ETERNA</div>
+        <h1>Hay algo para ti</h1>
+        <div class="main">
+            Alguien quiso dejarte un momento<br>
+            que no se olvida.
+        </div>
+        <div class="soft">
+            Cuando esté listo, entrarás aquí para vivirlo de verdad.
+        </div>
+        <div class="actions">
+            <a class="btn" href="/pedido/{safe_attr(recipient_token)}">Entrar</a>
+        </div>
+    </div>
+</body>
+</html>
+    """
+    return HTMLResponse(html_page)
 
 
 # =========================================================
