@@ -4998,222 +4998,325 @@ def sender_pack(sender_token: str):
         if local_path and os.path.exists(local_path):
             reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
 
-    body_content = f"""
-    <div style="max-width:760px;margin:0 auto;padding:30px 20px 60px 20px;text-align:center;color:white;">
+    cashout_status = compute_cashout_status(order)
 
-        <h1 style="font-size:44px;font-weight:800;margin-bottom:10px;">
-            Tu ETERNA ha vuelto.
-        </h1>
+    sender_status = "Tu ETERNA ha vuelto."
+    if not bool(order.get("eterna_completed")):
+        sender_status = "Tu ETERNA aún se está cerrando."
 
-        <p style="font-size:22px;opacity:.9;margin-bottom:10px;">
-            Lo que diste… ha encontrado el camino de vuelta.
-        </p>
+    cashout_line = ""
+    if float(order.get("gift_amount") or 0) > 0:
+        if cashout_status == "completed":
+            cashout_line = "El regalo económico ya ha sido enviado."
+        elif cashout_status == "processing":
+            cashout_line = "El regalo económico se está procesando."
+        elif cashout_status == "ready_to_send":
+            cashout_line = "El regalo económico está listo para enviarse."
+        else:
+            cashout_line = "El regalo económico sigue pendiente de cobro."
 
-        <p style="font-size:16px;opacity:.6;margin-bottom:30px;">
-            Primero su reacción. Después, el momento que creaste.
-        </p>
+    has_reaction = bool(reaction_url)
+    has_original = bool(original_video_url)
 
-        <!-- 🎬 DOBLE VIDEO -->
-        <div style="position:relative;border-radius:28px;overflow:hidden;background:black;">
-
-            <!-- 🎥 VIDEO ORIGINAL -->
-            <video id="original"
-                playsinline
-                webkit-playsinline
-                preload="metadata"
-                style="width:100%;height:auto;opacity:.35;">
-                <source src="{safe_attr(original_video_url)}" type="video/mp4">
-            </video>
-
-            <!-- 🎤 REACCIÓN -->
-            <video id="reaction"
-                playsinline
-                webkit-playsinline
-                controls
-                preload="metadata"
-                style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;">
-                <source src="{safe_attr(reaction_url)}" type="video/mp4">
-            </video>
-
+    if not has_reaction and not has_original:
+        body_content = """
+        <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px 20px;text-align:center;color:white;">
+            <h1 style="font-size:46px;font-weight:800;line-height:1.05;margin:0 0 18px 0;">Tu ETERNA ha vuelto.</h1>
+            <p style="font-size:22px;opacity:.92;margin:0 0 12px 0;">Lo que diste… ha encontrado el camino de vuelta.</p>
+            <p style="font-size:18px;opacity:.7;margin:24px 0 0 0;">Aún no hay vídeos disponibles.</p>
         </div>
+        """
+    else:
+        player_initial_src = reaction_url if has_reaction else original_video_url
+        player_initial_type = guess_media_type_from_url(player_initial_src)
+        first_label = "Su reacción" if has_reaction else "El momento que provocaste"
 
-        <!-- 🎵 MÚSICA -->
-        <audio id="eterna-music" preload="auto" loop>
-            <source src="/static/music.mp3" type="audio/mpeg">
-        </audio>
+        body_content = f"""
+        <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px 20px;text-align:center;color:white;">
+            <h1 style="font-size:46px;font-weight:800;line-height:1.05;margin:0 0 18px 0;">{safe_text(sender_status)}</h1>
 
-        <!-- 🔁 BOTÓN -->
-        <div style="margin-top:30px;">
-            <button id="replay"
-                style="width:100%;border:none;border-radius:999px;padding:20px;font-size:22px;font-weight:700;background:#f3f3f3;color:#000;">
-                Volver a sentirlo
-            </button>
-        </div>
-
-        <!-- 📤 SHARE -->
-        <div id="share-box" style="display:none;margin-top:25px;">
-            <button id="share"
-                style="width:100%;border:none;border-radius:999px;padding:18px;font-size:18px;font-weight:700;background:#fff;color:#000;">
-                Compartir lo que provocaste
-            </button>
-
-            <p style="margin-top:12px;font-size:13px;opacity:.55;line-height:1.5;">
-                Solo puedes compartir la reacción.<br>
-                Compartir el vídeo original rompería la magia de ETERNA para otras personas.
+            <p style="font-size:22px;opacity:.92;margin:0 0 12px 0;">
+                Lo que diste… ha encontrado el camino de <span id="eterna-vuelta-word" style="display:inline-block;">vuelta</span>.
             </p>
+
+            {f'<p style="font-size:18px;opacity:.70;margin:0 0 34px 0;">{safe_text(cashout_line)}</p>' if cashout_line else ''}
+
+            <div style="text-align:left;margin:0 0 12px 0;font-size:18px;opacity:.88;" id="eterna-player-label">{safe_text(first_label)}</div>
+
+            <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;box-shadow:0 0 40px rgba(255,255,255,0.06);">
+                <video
+                    id="eterna-unified-player"
+                    playsinline
+                    webkit-playsinline
+                    controls
+                    preload="metadata"
+                    controlslist="nodownload noplaybackrate noremoteplayback"
+                    style="width:100%;height:auto;display:block;background:black;"
+                >
+                    <source src="{safe_attr(player_initial_src)}" type="{safe_attr(player_initial_type)}">
+                    Tu navegador no soporta vídeo.
+                </video>
+
+                {f'''
+                <video
+                    id="eterna-mini-original"
+                    playsinline
+                    webkit-playsinline
+                    muted
+                    preload="metadata"
+                    style="position:absolute;right:14px;bottom:14px;width:29%;max-width:150px;border-radius:16px;background:black;box-shadow:0 0 24px rgba(0,0,0,0.45);display:block;"
+                >
+                    <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
+                </video>
+                ''' if has_reaction and has_original else ''}
+            </div>
+
+            <div style="margin-top:14px;font-size:15px;opacity:.55;">
+                Aquí vuelve lo que provocaste.
+            </div>
+
+            <div style="margin-top:34px;">
+                <button
+                    id="eterna-replay-all"
+                    type="button"
+                    style="width:100%;border:none;border-radius:999px;padding:22px 28px;font-size:22px;font-weight:700;background:#f3f3f3;color:#000;cursor:pointer;"
+                >
+                    Volver a sentirlo
+                </button>
+            </div>
+
+            <div id="eterna-share-wrap" style="display:none;margin-top:18px;">
+                <button
+                    id="eterna-share-reaction"
+                    type="button"
+                    style="width:100%;border:none;border-radius:999px;padding:20px 28px;font-size:20px;font-weight:700;background:#fff;color:#000;cursor:pointer;"
+                >
+                    Compartir su reacción
+                </button>
+
+                <div style="margin-top:12px;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.52);">
+                    Puedes compartir la emoción que ha vuelto.<br>
+                    El vídeo original no se comparte, porque rompería la magia de ETERNA.
+                </div>
+            </div>
+
+            <div style="margin-top:18px;">
+                <a
+                    href="/crear"
+                    style="display:block;width:100%;box-sizing:border-box;text-decoration:none;border-radius:999px;padding:22px 28px;font-size:22px;font-weight:700;background:#111;color:#fff;border:1px solid rgba(255,255,255,0.14);"
+                >
+                    Crear otra ETERNA
+                </a>
+            </div>
         </div>
 
-        <!-- ➕ CREAR -->
-        <div style="margin-top:18px;">
-            <a href="/"
-                style="display:block;width:100%;text-decoration:none;border-radius:999px;padding:18px;font-size:20px;font-weight:700;background:#111;color:#fff;border:1px solid rgba(255,255,255,0.2);">
-                Crear otra ETERNA
-            </a>
-        </div>
+        <script>
+        (function () {{
+            const video = document.getElementById("eterna-unified-player");
+            const mini = document.getElementById("eterna-mini-original");
+            const label = document.getElementById("eterna-player-label");
+            const replayBtn = document.getElementById("eterna-replay-all");
+            const shareWrap = document.getElementById("eterna-share-wrap");
+            const shareBtn = document.getElementById("eterna-share-reaction");
 
-    </div>
+            if (!video) return;
 
-    <script>
-    const reaction = document.getElementById("reaction");
-    const original = document.getElementById("original");
-    const music = document.getElementById("eterna-music");
-    const shareBox = document.getElementById("share-box");
+            const reactionUrl = {json.dumps(reaction_url)};
+            const originalUrl = {json.dumps(original_video_url)};
+            const reactionType = {json.dumps(guess_media_type_from_url(reaction_url) if reaction_url else "")};
+            const originalType = {json.dumps(guess_media_type_from_url(original_video_url) if original_video_url else "")};
 
-    let started = false;
+            const hasReaction = !!reactionUrl;
+            const hasOriginal = !!originalUrl;
 
-    // 🎧 AUDIO CONFIG
-    reaction.volume = 1.0;
-    original.volume = 0.15;
-    music.volume = 0;
+            let sequence = [];
+            if (hasReaction) sequence.push({{ key: "reaction", label: "Su reacción", src: reactionUrl, type: reactionType }});
+            if (hasOriginal) sequence.push({{ key: "original", label: "El momento que provocaste", src: originalUrl, type: originalType }});
 
-    // 🔥 PLAY DESBLOQUEADO (CLAVE PARA iPhone)
-    reaction.addEventListener("play", async () => {{
+            let currentIndex = 0;
+            let shouldAutoplayNext = false;
+            let isSwitchingSource = false;
 
-        if (!started) {{
-            started = true;
-
-            try {{
-                original.currentTime = reaction.currentTime;
-                music.currentTime = 0;
-
-                await original.play();
-                await music.play();
-
-                fadeInMusic();
-            }} catch(e) {{
-                console.log("Autoplay bloqueado", e);
+            function setMainSource(src, type) {{
+                video.pause();
+                video.innerHTML = "";
+                const source = document.createElement("source");
+                source.src = src;
+                if (type) source.type = type;
+                video.appendChild(source);
+                video.load();
             }}
-        }} else {{
-            original.play().catch(()=>{{}});
-            music.play().catch(()=>{{}});
-        }}
-    }});
 
-    // ⏸️ PAUSE
-    reaction.addEventListener("pause", () => {{
-        original.pause();
-        music.pause();
-    }});
+            function setPhase(index, autoplay) {{
+                if (!sequence[index]) return;
 
-    // 🔄 SYNC
-    reaction.addEventListener("timeupdate", () => {{
-        const diff = Math.abs(reaction.currentTime - original.currentTime);
-        if (diff > 0.25) {{
-            original.currentTime = reaction.currentTime;
-        }}
-    }});
+                currentIndex = index;
+                isSwitchingSource = true;
+                shouldAutoplayNext = !!autoplay;
 
-    // 🔚 FIN
-    reaction.addEventListener("ended", () => {{
-        original.pause();
-        fadeOutMusic();
-        shareBox.style.display = "block";
-    }});
+                const item = sequence[index];
+                if (label) label.textContent = item.label;
 
-    // 🔁 REPLAY
-    document.getElementById("replay").onclick = async () => {{
-        reaction.currentTime = 0;
-        original.currentTime = 0;
-        music.currentTime = 0;
-        shareBox.style.display = "none";
+                setMainSource(item.src, item.type);
 
-        try {{
-            await reaction.play();
-            await original.play();
-            await music.play();
-            fadeInMusic();
-        }} catch(e) {{}}
-    }};
+                if (mini) {{
+                    if (item.key === "reaction" && hasOriginal) {{
+                        mini.style.display = "block";
+                        mini.muted = true;
+                        try {{
+                            mini.currentTime = 0;
+                            mini.play().catch(() => {{}});
+                        }} catch (_) {{}}
+                    }} else {{
+                        mini.pause();
+                        mini.style.display = "none";
+                    }}
+                }}
+            }}
 
-    // 📤 SHARE SOLO REACCIÓN
-    document.getElementById("share").onclick = async () => {{
-        const reactionUrl = reaction.querySelector("source").src;
+            video.addEventListener("play", function () {{
+                if (mini && sequence[currentIndex] && sequence[currentIndex].key === "reaction" && hasOriginal) {{
+                    try {{
+                        mini.currentTime = video.currentTime;
+                    }} catch (_) {{}}
+                    mini.play().catch(() => {{}});
+                }}
+            }});
 
-        if (navigator.share) {{
-            try {{
-                await navigator.share({{
-                    title: "ETERNA",
-                    text: "Esto es lo que provoca ETERNA.",
-                    url: reactionUrl
+            video.addEventListener("pause", function () {{
+                if (mini) mini.pause();
+            }});
+
+            video.addEventListener("timeupdate", function () {{
+                if (mini && sequence[currentIndex] && sequence[currentIndex].key === "reaction" && hasOriginal) {{
+                    const diff = Math.abs((mini.currentTime || 0) - (video.currentTime || 0));
+                    if (diff > 0.35) {{
+                        try {{
+                            mini.currentTime = video.currentTime;
+                        }} catch (_) {{}}
+                    }}
+                }}
+            }});
+
+            video.addEventListener("loadedmetadata", function () {{
+                if (isSwitchingSource && shouldAutoplayNext) {{
+                    const p = video.play();
+                    if (p && typeof p.catch === "function") {{
+                        p.catch(() => {{}});
+                    }}
+                }}
+                isSwitchingSource = false;
+            }});
+
+            video.addEventListener("ended", function () {{
+                if (currentIndex < sequence.length - 1) {{
+                    setPhase(currentIndex + 1, true);
+                    return;
+                }}
+
+                if (mini) {{
+                    mini.pause();
+                    mini.style.display = "none";
+                }}
+
+                if (shareWrap && hasReaction) {{
+                    shareWrap.style.display = "block";
+                }}
+            }});
+
+            if (replayBtn) {{
+                replayBtn.addEventListener("click", function () {{
+                    if (shareWrap) {{
+                        shareWrap.style.display = "none";
+                    }}
+                    setPhase(0, true);
                 }});
-            }} catch(e) {{}}
-        }} else {{
-            navigator.clipboard.writeText(reactionUrl);
-            alert("Link de la reacción copiado");
-        }}
-    }};
-
-    // 🎵 FADE IN
-    function fadeInMusic() {{
-        let v = 0;
-        const i = setInterval(() => {{
-            v += 0.02;
-            if (v >= 0.35) {{
-                v = 0.35;
-                clearInterval(i);
             }}
-            music.volume = v;
-        }}, 200);
-    }}
 
-    // 🎵 FADE OUT
-    function fadeOutMusic() {{
-        let v = music.volume;
-        const i = setInterval(() => {{
-            v -= 0.03;
-            if (v <= 0) {{
-                v = 0;
-                clearInterval(i);
-                music.pause();
+            if (shareBtn) {{
+                shareBtn.addEventListener("click", async function () {{
+                    if (!reactionUrl) return;
+
+                    if (navigator.share) {{
+                        try {{
+                            await navigator.share({{
+                                title: "ETERNA",
+                                text: "Esto es lo que provoca ETERNA.",
+                                url: reactionUrl
+                            }});
+                            return;
+                        }} catch (_) {{}}
+                    }}
+
+                    try {{
+                        await navigator.clipboard.writeText(reactionUrl);
+                        alert("Link de la reacción copiado");
+                    }} catch (_) {{
+                        alert(reactionUrl);
+                    }}
+                }});
             }}
-            music.volume = v;
-        }}, 150);
-    }}
 
-    // 🛑 VISIBILITY
-    document.addEventListener("visibilitychange", () => {{
-        if (document.hidden) {{
-            reaction.pause();
-            original.pause();
-            music.pause();
+            if (label && sequence[0]) {{
+                label.textContent = sequence[0].label;
+            }}
+
+            if (sequence[0]) {{
+                setPhase(0, false);
+            }}
+        }})();
+        </script>
+
+        <style>
+        @keyframes eternaPulseSoft {{
+            0% {{ transform: scale(1); opacity: 1; }}
+            25% {{ transform: scale(1.04); opacity: 1; }}
+            50% {{ transform: scale(1.00); opacity: .92; }}
+            75% {{ transform: scale(1.06); opacity: 1; }}
+            100% {{ transform: scale(1); opacity: 1; }}
         }}
-    }});
-    </script>
-    """
+
+        #eterna-vuelta-word {{
+            animation: eternaPulseSoft 2.4s ease-in-out infinite;
+            transform-origin: center;
+        }}
+        </style>
+        """
 
     return HTMLResponse(f"""
     <!doctype html>
     <html lang="es">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <title>ETERNA</title>
         <style>
+            html, body {{
+                margin: 0;
+                padding: 0;
+                background: #000;
+                color: #fff;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                min-height: 100%;
+            }}
+
             body {{
-                margin:0;
-                background:black;
-                color:white;
-                font-family: Arial, sans-serif;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000 45%, #000 100%);
+            }}
+
+            * {{
+                box-sizing: border-box;
+                -webkit-tap-highlight-color: transparent;
+            }}
+
+            a {{
+                color: inherit;
+            }}
+
+            video::-webkit-media-controls-panel {{
+                background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.15));
             }}
         </style>
     </head>
