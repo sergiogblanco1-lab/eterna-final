@@ -4215,7 +4215,7 @@ video {
         <div class="payoff-card">
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="loader" id="payoffLoader">Preparando tu cobro…</div>
+            <div class="loader" id="payoffLoader">Guardando este momento…</div>
         </div>
     </div>
 </div>
@@ -4343,63 +4343,20 @@ async function tryStartRecordingNonBlocking() {
     }
 }
 
-async function markExperienceCompleted() {
-    try {
-        await fetch("/complete-experience", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                recipient_token: recipientToken
-            })
-        });
-    } catch (e) {
-        console.error("complete experience error", e);
-    }
-}
-
-async function uploadReactionInBackground() {
-    try {
-        const blob = new Blob(recordedChunks, {
-            type: recordingMimeType || "video/webm"
-        });
-
-        console.log("chunks:", recordedChunks.length);
-        console.log("blob size:", blob.size);
-
-        if (!blob || blob.size <= 0) {
-            console.warn("⚠️ blob vacío, no se sube");
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append("video", blob, "reaction.webm");
-
-        const response = await fetch("/upload-reaction/" + recipientToken, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!response.ok) {
-            console.error("upload reaction failed:", response.status);
-            return;
-        }
-
-        console.log("✅ reacción subida correctamente");
-    } catch (e) {
-        console.error("upload error (no bloquea UX)", e);
-    }
-}
-
 async function finalizeExperienceFlow() {
     if (finishing) return;
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Preparando tu cobro…";
+    payoffLoader.innerText = "Guardando este momento…";
 
-    // 1) Cerrar grabación
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
+
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             try {
@@ -4418,7 +4375,7 @@ async function finalizeExperienceFlow() {
 
                 const timeoutId = setTimeout(finish, 2000);
 
-                mediaRecorder.addEventListener("dataavailable", finish, { once: true });
+                mediaRecorder.addEventListener("stop", finish, { once: true });
 
                 try {
                     mediaRecorder.stop();
@@ -4431,7 +4388,6 @@ async function finalizeExperienceFlow() {
         console.error("recorder stop error", e);
     }
 
-    // 2) Parar cámara
     try {
         if (stream) {
             stream.getTracks().forEach((t) => t.stop());
@@ -4440,7 +4396,6 @@ async function finalizeExperienceFlow() {
         console.error("stream stop error", e);
     }
 
-    // 3) Crear blob real
     let blob = null;
     try {
         blob = new Blob(recordedChunks, {
@@ -4453,11 +4408,11 @@ async function finalizeExperienceFlow() {
         console.error("blob error", e);
     }
 
-    // 4) Subir reacción ANTES de redirigir
     try {
         if (blob && blob.size > 0) {
+            const filename = "reaction." + recordingExtension;
             const formData = new FormData();
-            formData.append("video", blob, "reaction.webm");
+            formData.append("video", blob, filename);
 
             const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
                 method: "POST",
@@ -4472,32 +4427,16 @@ async function finalizeExperienceFlow() {
 
             console.log("✅ reacción subida");
         } else {
-            console.warn("⚠️ blob vacío, no se sube");
+            throw new Error("empty_blob");
         }
     } catch (e) {
         console.error("upload error", e);
-        payoffLoader.innerText = "No hemos podido guardar este momento. Toca de nuevo para intentarlo.";
+        payoffLoader.innerText = "No hemos podido guardar este momento. Recarga e inténtalo de nuevo.";
         finishing = false;
         return;
     }
 
-    // 5) Marcar experiencia completada
-    try {
-        await fetch("/complete-experience", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                recipient_token: recipientToken
-            })
-        });
-    } catch (e) {
-        console.error("complete experience error", e);
-    }
-
-    // 6) Ya sí: redirección a cobrar
-    window.location.replace("/cobrar/" + recipientToken);
+    window.location.replace("/finalizar-experiencia/" + recipientToken);
 }
 
 function armFinishFallbacks() {
@@ -4580,10 +4519,8 @@ startBtn.addEventListener("click", async () => {
     } catch (e) {
         console.error("experience start error", e);
         startBtn.disabled = false;
-
-        payoff.classList.add("show");
-        payoffLoader.innerText = "No hemos podido iniciar bien este momento. Toca de nuevo para intentarlo.";
-        finishing = false;
+        experienceStarted = false;
+        payoff.classList.remove("show");
     }
 });
 
@@ -4692,77 +4629,29 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_error=None,
         )
 
-        maybe_mark_eterna_completed(order["id"])
+        updated_order = maybe_mark_eterna_completed(order["id"])
 
-        def background_tasks():
-            try:
-                print("⚙️ BACKGROUND START:", order["id"])
+        try:
+            transfer_result = process_gift_transfer_for_order(updated_order)
+            print("💸 TRANSFER RESULT:", transfer_result)
+        except Exception as e:
+            log_error("process_gift_transfer_for_order", e)
 
-                refreshed = get_order_by_id(order["id"])
-
-                # =========================================================
-                # 💸 PROCESO DE TRANSFERENCIA
-                # =========================================================
-                try:
-                    process_gift_transfer_for_order(refreshed)
-                except Exception as e:
-                    log_error("process_gift_transfer_for_order", e)
-
-                refreshed = get_order_by_id(order["id"])
-
-                # =========================================================
-                # 📩 SMS REGALANTE DIRECTO
-                # =========================================================
-                try:
-                    sender_phone = (refreshed.get("sender_phone") or "").strip()
-
-                    if not sender_phone:
-                        print("⚠️ No sender_phone")
-                    else:
-                        sender_phone_e164 = to_e164(sender_phone)
-                        sender_url = f"{PUBLIC_BASE_URL}/sender/{refreshed['sender_token']}"
-
-                        print("📩 Enviando SMS a regalante:", sender_phone_e164)
-                        print("📩 Sender URL:", sender_url)
-
-                        message = f"Tu ETERNA ha vuelto.\n\n{sender_url}"
-
-                        # Usa tu helper actual de SMS si ya existe
-                        sms_result = send_sms(
-                            to=sender_phone_e164,
-                            body=message,
-                        )
-
-                        print("✅ SMS regalante resultado:", sms_result)
-
-                        update_order(
-                            refreshed["id"],
-                            sender_sms_sent_at=datetime.now(timezone.utc).isoformat(),
-                            sender_sms_sid=(sms_result or {}).get("sid") if isinstance(sms_result, dict) else None,
-                            sender_sms_attempts=int(refreshed.get("sender_sms_attempts") or 0) + 1,
-                            sender_sms_error=None,
-                        )
-
-                except Exception as e:
-                    log_error("SENDER SMS DIRECT ERROR", e)
-
-                maybe_mark_eterna_completed(order["id"])
-
-                print("✅ BACKGROUND DONE:", order["id"])
-
-            except Exception as e:
-                log_error("BACKGROUND TASK ERROR", e)
-
-        threading.Thread(target=background_tasks, daemon=True).start()
+        try:
+            sms_result = try_send_sender_sms(get_order_by_id(order["id"]))
+            print("📩 SMS REGALANTE RESULT:", sms_result)
+        except Exception as e:
+            log_error("try_send_sender_sms", e)
 
         return JSONResponse({
             "ok": True,
-            "redirect": f"/cobrar/{recipient_token}",
+            "redirect": f"/finalizar-experiencia/{recipient_token}",
         })
 
     except Exception as e:
         log_error("UPLOAD REACTION ERROR", e)
         raise HTTPException(status_code=500, detail="Error guardando reacción")
+
 
 # =========================================================
 # MI VIDEO (POST EXPERIENCIA)
@@ -4882,6 +4771,7 @@ h1 {{
 </body>
 </html>
     """)
+
 
 # =========================================================
 # COBRAR / CONNECT / PAYOUT (UNA SOLA PANTALLA)
@@ -5397,6 +5287,7 @@ def admin_process_all_due_deliveries(token: str = ""):
         "delivery_results": delivery_results,
         "sender_results": sender_results,
     })
+
 
 # =========================================================
 # FINALIZAR EXPERIENCIA (DEFINITIVO)
