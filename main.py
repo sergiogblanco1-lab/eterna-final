@@ -3455,11 +3455,22 @@ h1 {{
 
 @app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
 def checkout_exito(order_id: str):
+    order = get_order_by_id(order_id)
+    is_paid = bool(order.get("paid"))
+
+    refresh = '<meta http-equiv="refresh" content="6">' if not is_paid else ""
+    redirect_script = f"""
+        setTimeout(function() {{
+            window.location.href = "/post-pago/{safe_attr(order_id)}";
+        }}, 5000);
+    """ if is_paid else ""
+
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        {refresh}
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
         <style>
@@ -3488,29 +3499,22 @@ def checkout_exito(order_id: str):
                 line-height: 1.8;
                 color: rgba(255,255,255,0.92);
             }}
-
-            /* ✨ TEXTO ETERNA */
             .eterna-text {{
                 max-width: 600px;
                 margin: 0 auto;
             }}
-
             .eterna-heart {{
                 display: inline-block;
                 animation: eternaHeartbeat 3.6s ease-in-out infinite;
             }}
-
             @keyframes eternaHeartbeat {{
                 0%   {{ transform: scale(1); opacity: 0.9; }}
                 10%  {{ transform: scale(1.12); opacity: 1; }}
                 20%  {{ transform: scale(1); opacity: 0.95; }}
-
                 35%  {{ transform: scale(1.08); opacity: 1; }}
                 50%  {{ transform: scale(1); opacity: 0.9; }}
-
                 100% {{ transform: scale(1); opacity: 0.9; }}
             }}
-
             .buttons {{
                 margin-top: 34px;
                 display: grid;
@@ -3519,7 +3523,6 @@ def checkout_exito(order_id: str):
                 margin-left: auto;
                 margin-right: auto;
             }}
-
             .btn {{
                 display: block;
                 width: 100%;
@@ -3531,7 +3534,6 @@ def checkout_exito(order_id: str):
                 font-weight: bold;
                 font-size: 15px;
             }}
-
             .ghost {{
                 background: rgba(255,255,255,0.10);
                 color: white;
@@ -3541,11 +3543,9 @@ def checkout_exito(order_id: str):
     </head>
     <body>
         <div class="wrap">
-
             <div class="main eterna-text">
                 Lo que das<br>
                 se queda en alguien.<br><br>
-
                 Y un día,<br>
                 <span class="eterna-heart">vuelve</span>
             </div>
@@ -3554,8 +3554,9 @@ def checkout_exito(order_id: str):
                 <a class="btn" href="/crear">Crear otra experiencia</a>
                 <a class="btn ghost" href="/">Volver</a>
             </div>
-
         </div>
+
+        <script>{redirect_script}</script>
     </body>
     </html>
     """)
@@ -3957,58 +3958,6 @@ async def start_experience(recipient_token: str = Form(...)):
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
 
-
-# =========================================================
-# EXPERIENCE LOCK
-# =========================================================
-
-@app.post("/start-experience")
-async def start_experience(recipient_token: str = Form(...)):
-    try:
-        order = get_order_by_recipient_token_or_404(recipient_token)
-
-        print("🎬 START EXPERIENCE:", order["id"])
-
-        if not bool(order.get("paid")):
-            raise HTTPException(status_code=403, detail="not_paid")
-
-        if not original_video_ready(order):
-            raise HTTPException(status_code=403, detail="video_not_ready")
-
-        if not delivery_is_unlocked(order):
-            raise HTTPException(status_code=403, detail="delivery_locked")
-
-        update_order(
-            order["id"],
-            experience_started=1,
-        )
-
-        return JSONResponse({"ok": True})
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        log_error("START EXPERIENCE ERROR", e)
-        raise HTTPException(status_code=500, detail="start_experience_failed")
-
-
-@app.post("/complete-experience")
-async def complete_experience(request: Request):
-    data = await request.json()
-    recipient_token = (data.get("recipient_token") or "").strip()
-
-    if not recipient_token:
-        return JSONResponse({"status": "error"}, status_code=400)
-
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    update_order(
-        order["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-    )
-
-    return JSONResponse({"status": "ok"})
 
 
 # =========================================================
@@ -5362,6 +5311,32 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         url=f"/cobrar/{recipient_token}",
         status_code=303
     )
+@app.get("/admin/reset-recipient-session/{order_id}")
+def admin_reset_recipient_session(order_id: str, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    order = get_order_by_id(order_id)
+
+    update_order(
+        order_id,
+        recipient_session_token=None,
+        recipient_session_claimed_at=None,
+        experience_started=0,
+    )
+
+    refreshed = get_order_by_id(order_id)
+
+    return JSONResponse({
+        "ok": True,
+        "order_id": order_id,
+        "recipient_token": refreshed.get("recipient_token"),
+        "experience_started": bool(refreshed.get("experience_started")),
+        "experience_completed": bool(refreshed.get("experience_completed")),
+        "recipient_session_token": refreshed.get("recipient_session_token"),
+        "recipient_session_claimed_at": refreshed.get("recipient_session_claimed_at"),
+        "recipient_url": recipient_experience_url_from_order(refreshed),
+    })
 
 # =========================================================
 # MAIN
