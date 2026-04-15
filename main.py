@@ -4549,68 +4549,68 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
         maybe_mark_eterna_completed(order["id"])
 
-        def background_tasks():
-            try:
-                print("⚙️ BACKGROUND START:", order["id"])
+def background_tasks():
+    try:
+        print("⚙️ BACKGROUND START:", order["id"])
 
-                refreshed = get_order_by_id(order["id"])
+        refreshed = get_order_by_id(order["id"])
 
-                # =========================================================
-                # 💸 PROCESO DE TRANSFERENCIA (NO TOCAR)
-                # =========================================================
-                try:
-                    process_gift_transfer_for_order(refreshed)
-                except Exception as e:
-                    log_error("process_gift_transfer_for_order", e)
+        # =========================================================
+        # 💸 PROCESO DE TRANSFERENCIA (NO TOCAR)
+        # =========================================================
+        try:
+            process_gift_transfer_for_order(refreshed)
+        except Exception as e:
+            log_error("process_gift_transfer_for_order", e)
 
-                refreshed = get_order_by_id(order["id"])
+        refreshed = get_order_by_id(order["id"])
 
-                # =========================================================
-                # 📩 SMS REGALANTE (FORZADO Y LIMPIO)
-                # =========================================================
-                try:
-                    sender_phone = (refreshed.get("sender_phone") or "").strip()
+        # =========================================================
+        # 📩 SMS REGALANTE (FORZADO Y LIMPIO)
+        # =========================================================
+        try:
+            sender_phone = (refreshed.get("sender_phone") or "").strip()
 
-                    if not sender_phone:
-                        print("⚠️ No sender_phone")
-                    else:
-                        sender_phone_e164 = to_e164(sender_phone)
+            if not sender_phone:
+                print("⚠️ No sender_phone")
+            else:
+                sender_phone_e164 = to_e164(sender_phone)
 
-                        sender_url = f"{PUBLIC_BASE_URL}/sender/{refreshed['sender_token']}"
+                sender_url = f"{PUBLIC_BASE_URL}/sender/{refreshed['sender_token']}"
 
-                        print("📩 Enviando SMS a regalante:", sender_phone_e164)
-                        print("📩 Sender URL:", sender_url)
+                print("📩 Enviando SMS a regalante:", sender_phone_e164)
+                print("📩 Sender URL:", sender_url)
 
-                        message = f"Tu ETERNA ha vuelto.\n\n{sender_url}"
+                message = f"Tu ETERNA ha vuelto.\n\n{sender_url}"
 
-                        sms = twilio_client.messages.create(
-                            body=message,
-                            from_=TWILIO_FROM_NUMBER,
-                            to=sender_phone_e164
-                        )
+                sms = twilio_client.messages.create(
+                    body=message,
+                    from_=TWILIO_FROM_NUMBER,
+                    to=sender_phone_e164
+                )
 
-                        print("✅ SMS enviado:", sms.sid)
+                print("✅ SMS enviado:", sms.sid)
 
-                        update_order(
-                            refreshed["id"],
-                            sender_sms_sent_at=datetime.now(timezone.utc).isoformat(),
-                            sender_sms_sid=sms.sid,
-                            sender_sms_attempts=(refreshed.get("sender_sms_attempts") or 0) + 1,
-                            sender_sms_error=None
-                        )
+                update_order(
+                    refreshed["id"],
+                    sender_sms_sent_at=datetime.now(timezone.utc).isoformat(),
+                    sender_sms_sid=sms.sid,
+                    sender_sms_attempts=(refreshed.get("sender_sms_attempts") or 0) + 1,
+                    sender_sms_error=None
+                )
 
-                except Exception as e:
-                    log_error("SENDER SMS DIRECT ERROR", e)
+        except Exception as e:
+            log_error("SENDER SMS DIRECT ERROR", e)
 
-                # =========================================================
-                # FINAL
-                # =========================================================
-                maybe_mark_eterna_completed(order["id"])
+        # =========================================================
+        # FINAL
+        # =========================================================
+        maybe_mark_eterna_completed(order["id"])
 
-                print("✅ BACKGROUND DONE:", order["id"])
+        print("✅ BACKGROUND DONE:", order["id"])
 
-            except Exception as e:
-                log_error("BACKGROUND TASK ERROR", e)
+    except Exception as e:
+        log_error("BACKGROUND TASK ERROR", e)
 
 # =========================================================
 # MI VIDEO (POST EXPERIENCIA)
