@@ -5000,7 +5000,9 @@ def sender_pack(sender_token: str):
 
     cashout_status = compute_cashout_status(order)
 
-    sender_status = "Tu ETERNA ha vuelto." if bool(order.get("eterna_completed")) else "Tu ETERNA aún se está cerrando."
+    sender_status = "Tu ETERNA ha vuelto."
+    if not bool(order.get("eterna_completed")):
+        sender_status = "Tu ETERNA aún se está cerrando."
 
     cashout_line = ""
     if float(order.get("gift_amount") or 0) > 0:
@@ -5008,190 +5010,178 @@ def sender_pack(sender_token: str):
             cashout_line = "El regalo económico ya ha sido enviado."
         elif cashout_status == "processing":
             cashout_line = "El regalo económico se está procesando."
-        elif cashout_status == "ready_to_send":
-            cashout_line = "El regalo económico está listo para enviarse."
         else:
             cashout_line = "El regalo económico sigue pendiente de cobro."
 
-    reaction_block = ""
-    if reaction_url:
-        reaction_block = f"""
-        <div class="video-block">
-            <div class="video-label">Su reacción</div>
-            <video id="reactionVideo" controls playsinline class="video-player">
-                <source src="{safe_attr(reaction_url)}" type="{safe_attr(guess_media_type_from_url(reaction_url))}">
-            </video>
-        </div>
-        """
-    else:
-        reaction_block = """
-        <div class="empty-block">
-            La reacción todavía no está lista.
-        </div>
-        """
+    has_reaction = bool(reaction_url)
+    has_original = bool(original_video_url)
 
-    original_block = ""
-    if original_video_url:
-        original_block = f"""
-        <div class="video-block">
-            <div class="video-label">El vídeo original</div>
-            <video id="originalVideo" controls playsinline class="video-player">
-                <source src="{safe_attr(original_video_url)}" type="{safe_attr(guess_media_type_from_url(original_video_url))}">
-            </video>
-        </div>
-        """
+    player_initial_src = reaction_url if has_reaction else original_video_url
+    first_label = "Su reacción" if has_reaction else "El vídeo original"
 
     return HTMLResponse(f"""
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ETERNA</title>
+
 <style>
 html, body {{
     margin: 0;
-    min-height: 100%;
+    padding: 0;
     background: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }}
+
 body {{
-    min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 28%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
-    padding: 14px;
-    box-sizing: border-box;
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000 100%);
 }}
+
 .wrap {{
-    width: 100%;
-    max-width: 430px;
+    max-width: 720px;
     margin: 0 auto;
+    padding: 32px 16px 60px 16px;
     text-align: center;
 }}
+
 h1 {{
-    margin: 0 0 8px 0;
-    font-size: 28px;
-    line-height: 1.15;
+    font-size: 40px;
+    margin-bottom: 14px;
 }}
-.main {{
-    font-size: 15px;
-    line-height: 1.5;
-    color: rgba(255,255,255,0.88);
+
+.sub {{
+    font-size: 20px;
+    opacity: .9;
+    margin-bottom: 10px;
 }}
+
 .soft {{
-    margin-top: 8px;
-    font-size: 12px;
-    line-height: 1.5;
-    color: rgba(255,255,255,0.52);
+    font-size: 16px;
+    opacity: .6;
+    margin-bottom: 28px;
 }}
-.video-block {{
-    margin-top: 14px;
-}}
-.video-label {{
-    margin-bottom: 6px;
-    text-align: left;
-    color: rgba(255,255,255,0.60);
-    font-size: 12px;
-}}
-.video-player {{
+
+video {{
     width: 100%;
-    display: block;
+    border-radius: 20px;
     background: black;
-    border-radius: 14px;
-    max-height: 220px;
 }}
-.empty-block {{
-    margin-top: 14px;
-    color: rgba(255,255,255,0.52);
-    line-height: 1.6;
-    font-size: 13px;
-}}
-.actions {{
-    display: grid;
-    gap: 10px;
-    margin-top: 16px;
-    margin-bottom: 4px;
-}}
-.btn {{
-    display: block;
+
+button {{
     width: 100%;
-    padding: 14px 18px;
-    border-radius: 999px;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 14px;
     border: none;
+    border-radius: 999px;
+    padding: 18px;
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 20px;
     cursor: pointer;
-    box-sizing: border-box;
 }}
-.btn-primary {{
-    background: white;
-    color: black;
+
+.primary {{
+    background: #f3f3f3;
+    color: #000;
 }}
-.btn-secondary {{
-    background: rgba(255,255,255,0.10);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.10);
-}}
-@media (max-width: 430px) {{
-    h1 {{
-        font-size: 25px;
-    }}
-    .video-player {{
-        max-height: 200px;
-    }}
+
+.secondary {{
+    background: #111;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
 }}
 </style>
 </head>
+
 <body>
-    <div class="wrap">
-        <h1>{safe_text(sender_status)}</h1>
-        <div class="main">Aquí tienes el pack final.</div>
-        <div class="soft">{safe_text(cashout_line)}</div>
 
-        {reaction_block}
-        {original_block}
+<div class="wrap">
 
-        <div class="actions">
-            <button class="btn btn-primary" onclick="replayPack()">
-                Reproducir de nuevo
-            </button>
-            <a class="btn btn-secondary" href="/crear">
-                Crear otra ETERNA
-            </a>
-        </div>
+    <h1>{sender_status}</h1>
+
+    <div class="sub">
+        Lo que diste… ha encontrado el camino de
+        <span id="pulse-word">vuelta</span>.
     </div>
 
-    <script>
-        function replayPack() {{
-            const reaction = document.getElementById("reactionVideo");
-            const original = document.getElementById("originalVideo");
+    <div class="soft">{cashout_line}</div>
 
-            if (reaction) {{
-                reaction.pause();
-                reaction.currentTime = 0;
-            }}
+    <div id="label" style="margin-bottom:10px;opacity:.7;">
+        {first_label}
+    </div>
 
-            if (original) {{
-                original.pause();
-                original.currentTime = 0;
-            }}
+    <video id="player" controls playsinline>
+        <source src="{player_initial_src}" type="video/mp4">
+    </video>
 
-            if (reaction) {{
-                reaction.play().catch(() => null);
+    <button class="primary" id="replay">Reproducir de nuevo</button>
 
-                if (original) {{
-                    reaction.onended = () => {{
-                        original.play().catch(() => null);
-                    }};
-                }}
-            }} else if (original) {{
-                original.play().catch(() => null);
-            }}
+    <a href="/" style="text-decoration:none;">
+        <button class="secondary">Crear otra ETERNA</button>
+    </a>
+
+</div>
+
+<script>
+(function() {{
+    const video = document.getElementById("player");
+    const label = document.getElementById("label");
+    const replay = document.getElementById("replay");
+
+    const sequence = [];
+
+    const reaction = {json.dumps(reaction_url)};
+    const original = {json.dumps(original_video_url)};
+
+    if (reaction) {{
+        sequence.push({{label:"Su reacción", src:reaction}});
+    }}
+
+    if (original) {{
+        sequence.push({{label:"El vídeo original", src:original}});
+    }}
+
+    let index = 0;
+
+    function playIndex(i, autoplay=false) {{
+        if (!sequence[i]) return;
+
+        index = i;
+        video.src = sequence[i].src;
+        label.textContent = sequence[i].label;
+        video.load();
+
+        if (autoplay) {{
+            video.play().catch(()=>{{}});
         }}
-    </script>
+    }}
+
+    video.addEventListener("ended", () => {{
+        if (index < sequence.length - 1) {{
+            playIndex(index + 1, true);
+        }}
+    }});
+
+    replay.onclick = () => playIndex(0, true);
+})();
+</script>
+
+<style>
+@keyframes pulse {{
+    0% {{ transform: scale(1); }}
+    50% {{ transform: scale(1.05); }}
+    100% {{ transform: scale(1); }}
+}}
+
+#pulse-word {{
+    display:inline-block;
+    animation: pulse 2s infinite;
+}}
+</style>
+
 </body>
 </html>
     """)
