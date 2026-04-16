@@ -1625,6 +1625,309 @@ def condiciones(request: Request):
 def privacidad(request: Request):
     return templates.TemplateResponse("privacidad.html", {"request": request})
 
+    async def create_order_and_redirect(
+    customer_name: str,
+    customer_email: str,
+    customer_country_code: str,
+    customer_phone: str,
+    recipient_name: str,
+    recipient_country_code: str,
+    recipient_phone: str,
+    message_type: str,
+    phrase_mode: str,
+    phrase_1: str,
+    phrase_2: str,
+    phrase_3: str,
+    delivery_mode: str,
+    delivery_date: str,
+    delivery_time: str,
+    gift_amount: float,
+    photo1: UploadFile,
+    photo2: UploadFile,
+    photo3: UploadFile,
+    photo4: UploadFile,
+    photo5: UploadFile,
+    photo6: UploadFile,
+):
+    customer_name = (customer_name or "").strip()
+    customer_email = (customer_email or "").strip()
+    customer_country_code = (customer_country_code or "").strip()
+    customer_phone = (customer_phone or "").strip()
+
+    recipient_name = (recipient_name or "").strip()
+    recipient_country_code = (recipient_country_code or "").strip()
+    recipient_phone = (recipient_phone or "").strip()
+
+    message_type = (message_type or "").strip()
+    phrase_mode = (phrase_mode or "auto").strip().lower()
+
+    phrase_1 = (phrase_1 or "").strip()
+    phrase_2 = (phrase_2 or "").strip()
+    phrase_3 = (phrase_3 or "").strip()
+
+    delivery_mode = (delivery_mode or "instant").strip().lower()
+    delivery_date = (delivery_date or "").strip()
+    delivery_time = (delivery_time or "").strip()
+
+    if delivery_mode not in {"instant", "scheduled"}:
+        raise HTTPException(status_code=400, detail="Modo de entrega no válido")
+
+    if not customer_name:
+        raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
+
+    if not recipient_name:
+        raise HTTPException(status_code=400, detail="El nombre del destinatario es obligatorio")
+
+    if not message_type:
+        raise HTTPException(status_code=400, detail="Debes elegir una emoción")
+
+    if phrase_mode == "auto":
+        phrase_1, phrase_2, phrase_3 = get_phrases_by_type(message_type)
+    else:
+        if not phrase_1 or not phrase_2 or not phrase_3:
+            raise HTTPException(status_code=400, detail="Las 3 frases son obligatorias")
+
+    if len(phrase_1) > 160 or len(phrase_2) > 160 or len(phrase_3) > 160:
+        raise HTTPException(status_code=400, detail="Las frases son demasiado largas")
+
+    scheduled_delivery_at = None
+    if delivery_mode == "scheduled":
+        scheduled_delivery_at = parse_scheduled_delivery_local(delivery_date, delivery_time)
+        if not scheduled_delivery_at:
+            raise HTTPException(status_code=400, detail="La fecha de entrega no es válida")
+
+        scheduled_dt = parse_iso_dt(scheduled_delivery_at)
+        if not scheduled_dt or scheduled_dt <= now_dt():
+            raise HTTPException(status_code=400, detail="La fecha de entrega debe estar en el futuro")
+
+    try:
+        gift_amount = round(float(gift_amount or 0), 2)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Importe no válido")
+
+    if gift_amount < 0:
+        raise HTTPException(status_code=400, detail="Importe no válido")
+
+    sender_phone = build_global_phone(customer_country_code, customer_phone)
+    recipient_phone_global = build_global_phone(recipient_country_code, recipient_phone)
+
+    sender_phone_e164 = to_e164(sender_phone)
+    recipient_phone_e164 = to_e164(recipient_phone_global)
+
+    if not sender_phone_e164:
+        raise HTTPException(status_code=400, detail="Tu teléfono no es válido")
+
+    if not recipient_phone_e164:
+        raise HTTPException(status_code=400, detail="El teléfono del destinatario no es válido")
+
+    photos = {
+        "photo1": photo1,
+        "photo2": photo2,
+        "photo3": photo3,
+        "photo4": photo4,
+        "photo5": photo5,
+        "photo6": photo6,
+    }
+
+    for slot_name, upload in photos.items():
+        if not upload or not upload.filename:
+            raise HTTPException(status_code=400, detail=f"Falta {slot_name}")
+
+        content_type = (upload.content_type or "").lower().strip()
+        filename = (upload.filename or "").lower().strip()
+
+        is_valid_type = content_type.startswith("image/")
+        is_valid_name = (
+            filename.endswith(".jpg")
+            or filename.endswith(".jpeg")
+            or filename.endswith(".png")
+            or filename.endswith(".webp")
+        )
+
+        if not is_valid_type and not is_valid_name:
+            raise HTTPException(status_code=400, detail=f"{slot_name} no es una imagen válida")
+
+    order_id = new_order_id()
+    recipient_token = new_token()
+    sender_token = new_token()
+
+    fees = calculate_fees(gift_amount, delivery_mode)
+    created_at = now_iso()
+
+    conn = db_conn()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            """
+            INSERT INTO senders (name, email, phone, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (customer_name, customer_email, sender_phone_e164, created_at),
+        )
+        sender_id = cur.lastrowid
+
+        cur.execute(
+            """
+            INSERT INTO recipients (name, phone, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (recipient_name, recipient_phone_e164, created_at),
+        )
+        recipient_id = cur.lastrowid
+
+        placeholders = ", ".join(["?"] * 60)
+
+        cur.execute(
+            f"""
+            INSERT INTO orders (
+                id, sender_id, recipient_id,
+                message_type, phrase_mode,
+                phrase_1, phrase_2, phrase_3,
+                gift_amount, platform_fixed_fee, platform_variable_fee, platform_total_fee, scheduled_delivery_fee, total_amount,
+                paid, delivered_to_recipient, reaction_uploaded,
+                cashout_completed, transfer_completed, transfer_in_progress, sender_notified,
+                experience_started, experience_completed,
+                connect_onboarding_completed, gift_refunded,
+                stripe_session_id, stripe_payment_status, stripe_payment_intent_id, stripe_connected_account_id, stripe_transfer_id, stripe_gift_refund_id,
+                recipient_token, sender_token,
+                reaction_video_local, reaction_video_public_url, experience_video_url, share_video_url,
+                gift_refund_deadline_at,
+                recipient_sms_sent_at, sender_sms_sent_at, recipient_sms_sid, sender_sms_sid,
+                recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
+                reaction_upload_pending, reaction_upload_error, eterna_completed,
+                delivery_mode, scheduled_delivery_at, delivery_locked, delivery_sent, delivery_sent_at,
+                video_render_requested, video_render_requested_at,
+                recipient_session_token, recipient_session_claimed_at,
+                created_at, updated_at
+            )
+            VALUES ({placeholders})
+            """,
+            (
+                order_id, sender_id, recipient_id,
+                message_type, phrase_mode,
+                phrase_1, phrase_2, phrase_3,
+                fees["gift_amount"], fees["fixed_fee"], fees["variable_fee"], fees["total_fee"], fees["scheduled_delivery_fee"], fees["total_amount"],
+                0, 0, 0,
+                0, 0, 0, 0,
+                0, 0,
+                0, 0,
+                None, None, None, None, None, None,
+                recipient_token, sender_token,
+                None, None, None, None,
+                None,
+                None, None, None, None,
+                0, 0, None, None,
+                0, None, 0,
+                delivery_mode, scheduled_delivery_at, 1 if delivery_mode == "scheduled" else 0, 0, None,
+                0, None,
+                None, None,
+                created_at, created_at,
+            ),
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    try:
+        for slot_name, upload in photos.items():
+            filepath = build_photo_path(order_id, slot_name, upload)
+
+            with open(filepath, "wb") as f:
+                while True:
+                    chunk = await upload.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+
+            insert_asset(
+                order_id=order_id,
+                asset_type=slot_name,
+                file_url=filepath,
+                storage_provider="local",
+            )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error guardando fotos: {e}")
+
+    finally:
+        for upload in photos.values():
+            try:
+                await upload.close()
+            except Exception:
+                pass
+
+    if not STRIPE_SECRET_KEY:
+        update_order(
+            order_id,
+            paid=1,
+            stripe_payment_status="test_no_stripe",
+            gift_refund_deadline_at=gift_refund_deadline_iso(),
+            delivery_locked=1 if delivery_mode == "scheduled" else 0,
+        )
+
+        try:
+            order = get_order_by_id(order_id)
+
+            if not render_request_already_marked(order) and not original_video_ready(order):
+                mark_video_render_requested(order_id)
+                trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
+                print("⏳ Render aceptado por el video engine. Esperando callback.")
+
+        except Exception as e:
+            clear_video_render_requested(order_id)
+            log_error("video engine test_no_stripe", e)
+
+        return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
+
+    try:
+        session = stripe.checkout.Session.create(
+            client_reference_id=order_id,
+            metadata={"order_id": order_id},
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": CURRENCY,
+                        "product_data": {
+                            "name": "ETERNA",
+                            "description": (
+                                f"Base {money(BASE_PRICE)}€ + "
+                                f"regalo {money(fees['gift_amount'])}€ + "
+                                f"comisión {money(fees['total_fee'])}€ + "
+                                f"programación {money(fees['scheduled_delivery_fee'])}€"
+                            ),
+                        },
+                        "unit_amount": int(round(fees["total_amount"] * 100)),
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=f"{PUBLIC_BASE_URL}/checkout-exito/{order_id}",
+            cancel_url=f"{PUBLIC_BASE_URL}/crear",
+        )
+
+        update_order(
+            order_id,
+            stripe_session_id=session.id,
+            stripe_payment_status="created",
+        )
+
+        return RedirectResponse(url=session.url, status_code=303)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
+
 
 # =========================================================
 # FORM
