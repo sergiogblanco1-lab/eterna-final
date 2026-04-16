@@ -3419,7 +3419,7 @@ h1 {
         """)
 
     # =========================================================
-    # PEDIDO VÁLIDO
+    # PEDIDO VÁLIDO PERO NO PAGADO
     # =========================================================
     if not bool(order.get("paid")):
         return HTMLResponse("""
@@ -3481,12 +3481,13 @@ h1 {
 </html>
         """)
 
-    if original_video_ready(order) and delivery_is_unlocked(order):
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+    # =========================================================
+    # SI EL VÍDEO NO ESTÁ LISTO O LA ENTREGA AÚN NO TOCA
+    # =========================================================
+    if not original_video_ready(order) or not delivery_is_unlocked(order):
+        refresh = '<meta http-equiv="refresh" content="8">'
 
-    refresh = '<meta http-equiv="refresh" content="8">' if not original_video_ready(order) else ""
-
-    html_page = f"""
+        html_page = f"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3577,6 +3578,193 @@ h1 {{
             <a class="btn" href="/pedido/{safe_attr(recipient_token)}">Entrar</a>
         </div>
     </div>
+</body>
+</html>
+        """
+        return HTMLResponse(html_page)
+
+    # =========================================================
+    # PANTALLA PREVIA RITUAL ANTES DE LA EXPERIENCIA
+    # =========================================================
+    html_page = f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+* {{
+    box-sizing: border-box;
+}}
+
+html, body {{
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+    overflow-x: hidden;
+}}
+
+body {{
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    font-family: Arial, sans-serif;
+    color: #f5f1e8;
+    text-align: center;
+    padding: 28px 22px;
+}}
+
+.container {{
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+}}
+
+.brand {{
+    font-size: 12px;
+    letter-spacing: 0.30em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.28);
+    margin-bottom: 28px;
+}}
+
+.line {{
+    font-size: 21px;
+    line-height: 1.9;
+    margin: 0 0 8px 0;
+    color: rgba(245,241,232,0.94);
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeUp 0.9s ease forwards;
+}}
+
+.line.l1 {{ animation-delay: 0.15s; }}
+.line.l2 {{ animation-delay: 0.90s; }}
+.line.l3 {{ animation-delay: 1.70s; }}
+.line.l4 {{ animation-delay: 2.50s; }}
+.line.l5 {{ animation-delay: 3.30s; }}
+.line.l6 {{ animation-delay: 4.10s; }}
+.line.l7 {{ animation-delay: 4.90s; }}
+.line.l8 {{ animation-delay: 5.70s; }}
+
+.actions {{
+    margin-top: 34px;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeUp 0.9s ease forwards;
+    animation-delay: 6.60s;
+}}
+
+.btn {{
+    width: 100%;
+    max-width: 320px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 28px;
+    border: none;
+    border-radius: 999px;
+    background: #f5f1e8;
+    color: #000;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+}}
+
+.btn:active {{
+    transform: scale(0.985);
+}}
+
+.note {{
+    margin-top: 18px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.34);
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeUp 0.9s ease forwards;
+    animation-delay: 6.95s;
+}}
+
+.fade-out {{
+    animation: fadeOut 0.65s ease forwards;
+}}
+
+@keyframes fadeUp {{
+    to {{
+        opacity: 1;
+        transform: translateY(0);
+    }}
+}}
+
+@keyframes fadeOut {{
+    to {{
+        opacity: 0;
+        transform: translateY(-4px);
+    }}
+}}
+
+@media (max-width: 640px) {{
+    body {{
+        padding: 24px 18px;
+    }}
+
+    .container {{
+        max-width: 100%;
+    }}
+
+    .line {{
+        font-size: 18px;
+        line-height: 1.85;
+    }}
+
+    .btn {{
+        width: 100%;
+        max-width: none;
+        font-size: 16px;
+    }}
+}}
+</style>
+</head>
+<body>
+    <div class="container" id="container">
+        <div class="brand">ETERNA</div>
+
+        <p class="line l1">Shhh…</p>
+        <p class="line l2">Esto no es un vídeo.</p>
+        <p class="line l3">Antes de empezar, haz algo por ti.</p>
+        <p class="line l4">Busca un lugar tranquilo. A solas.</p>
+        <p class="line l5">Si puedes, ponte auriculares.</p>
+        <p class="line l6">Sube el volumen. Sube el brillo.</p>
+        <p class="line l7">No lo pongas sin pensar.</p>
+        <p class="line l8">Respira un segundo… y entra.</p>
+
+        <div class="actions">
+            <button class="btn" onclick="startExperience()">Estoy listo</button>
+            <div class="note">Este momento merece que lo vivas bien.</div>
+        </div>
+    </div>
+
+<script>
+function startExperience() {{
+    const container = document.getElementById("container");
+    if (container) {{
+        container.classList.add("fade-out");
+    }}
+
+    setTimeout(() => {{
+        window.location.href = "/experiencia/{safe_attr(recipient_token)}";
+    }}, 650);
+}}
+</script>
 </body>
 </html>
     """
@@ -4172,11 +4360,10 @@ video {
     align-items: center;
     justify-content: center;
     background:
-        radial-gradient(circle at top, rgba(198,167,94,0.10), transparent 34%),
-        linear-gradient(180deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.98) 100%);
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
+        linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
     padding: 28px;
     text-align: center;
-    overflow-y: auto;
 }
 
 .overlay.hidden {
@@ -4193,60 +4380,32 @@ video {
     font-size: 12px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(198,167,94,0.72);
-    margin-bottom: 22px;
+    color: rgba(255,255,255,0.36);
+    margin-bottom: 24px;
 }
 
 .title {
-    font-size: 42px;
-    line-height: 1.12;
+    font-size: 54px;
+    line-height: 1.06;
     font-weight: 700;
-    margin: 0 0 18px 0;
-    color: #f6f1e7;
+    margin: 0 0 22px 0;
+    color: white;
 }
 
 .text {
-    font-size: 18px;
-    line-height: 1.85;
-    color: rgba(255,255,255,0.88);
+    font-size: 24px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.86);
     margin: 0 auto 22px auto;
     max-width: 520px;
 }
 
-.steps {
-    margin: 0 auto 24px auto;
-    max-width: 520px;
-    text-align: center;
-}
-
-.step {
-    margin-bottom: 18px;
-    font-size: 17px;
+.soft {
+    font-size: 16px;
     line-height: 1.8;
-    color: rgba(255,255,255,0.88);
-}
-
-.step-number {
-    color: #c6a75e;
-    font-weight: 700;
-}
-
-.gold {
-    color: #c6a75e;
-}
-
-.final-block {
-    margin-top: 10px;
-    font-size: 20px;
-    line-height: 1.8;
-    color: #f6f1e7;
-}
-
-.final-gold {
-    margin-top: 18px;
-    font-size: 22px;
-    line-height: 1.7;
-    color: #c6a75e;
+    color: rgba(255,255,255,0.46);
+    margin: 0 auto 34px auto;
+    max-width: 460px;
 }
 
 .btn {
@@ -4254,13 +4413,12 @@ video {
     min-width: 220px;
     padding: 18px 26px;
     border-radius: 999px;
-    border: 1px solid rgba(198,167,94,0.55);
-    background: #c6a75e;
+    border: 0;
+    background: white;
     color: black;
     font-weight: 700;
     font-size: 17px;
     cursor: pointer;
-    margin-top: 28px;
 }
 
 .btn:disabled {
@@ -4278,8 +4436,8 @@ video {
     text-align: center;
     padding: 28px;
     background:
-        radial-gradient(circle at top, rgba(198,167,94,0.08), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.98) 100%);
+        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
+        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
 }
 
 .payoff.show {
@@ -4297,7 +4455,7 @@ video {
     line-height: 1.12;
     font-weight: 700;
     margin: 0 0 18px 0;
-    color: #f6f1e7;
+    color: white;
 }
 
 .payoff-text {
@@ -4312,28 +4470,16 @@ video {
     margin-top: 28px;
     font-size: 15px;
     line-height: 1.7;
-    color: rgba(198,167,94,0.70);
+    color: rgba(255,255,255,0.48);
 }
 
 @media (max-width: 720px) {
     .title {
-        font-size: 34px;
+        font-size: 42px;
     }
 
     .text {
-        font-size: 17px;
-    }
-
-    .step {
-        font-size: 16px;
-    }
-
-    .final-block {
-        font-size: 18px;
-    }
-
-    .final-gold {
-        font-size: 20px;
+        font-size: 21px;
     }
 
     .payoff-title {
@@ -4360,55 +4506,14 @@ video {
     <div class="overlay" id="overlay">
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
-            <h1 class="title">Antes de ver esto, sigue estos pasos</h1>
-
-            <div class="steps">
-                <div class="step">
-                    <span class="step-number">Paso 1.</span> Busca un lugar tranquilo<br>
-                    Donde puedas estar a solas, sin ruido ni interrupciones.
-                </div>
-
-                <div class="step">
-                    <span class="step-number">Paso 2.</span> Prepárate<br>
-                    Si puedes, ponte auriculares.
-                </div>
-
-                <div class="step">
-                    <span class="step-number">Paso 3.</span> Ajusta el momento<br>
-                    Sube el volumen y el brillo de la pantalla.
-                </div>
-
-                <div class="step">
-                    <span class="step-number">Paso 4.</span> No lo pongas sin pensar<br>
-                    No lo veas con gente. No lo pongas de fondo. No tengas prisa.
-                </div>
-
-                <div class="step">
-                    <span class="step-number">Paso 5.</span> Entra de verdad<br>
-                    Respira un segundo…<br>
-                    y entra a vivirlo con ganas.
-                </div>
+            <h1 class="title">Shhh…</h1>
+            <div class="text">
+                Esto no es un vídeo.<br>
+                Es un momento que está a punto de ocurrir.
             </div>
-
-            <div class="final-block">
-                Esto no es un vídeo cualquiera.<br>
-                Es un regalo que alguien ha preparado para ti.
+            <div class="soft">
+                Cuando estés listo, pulsa y vívelo de verdad.
             </div>
-
-            <div class="final-gold">
-                Y lo que estás a punto de sentir…<br>
-                no vuelve igual dos veces.
-            </div>
-
-            <div class="final-block" style="margin-top:16px;">
-                Este momento es solo ahora.
-            </div>
-
-            <div class="final-gold" style="margin-top:16px;">
-                No lo mires.<br>
-                Vívelo.
-            </div>
-
             <button class="btn" id="startBtn">Estoy listo</button>
         </div>
     </div>
