@@ -2835,17 +2835,21 @@ def crear_get():
     return render_create_form()
 
 
+# =========================================================
+# CREAR PEDIDO
+# =========================================================
+
 @app.post("/crear")
 async def crear_post(
     customer_name: str = Form(...),
     customer_email: str = Form(""),
-    customer_country_code: str = Form("+34"),
+    customer_country_code: str = Form(...),
     customer_phone: str = Form(...),
     recipient_name: str = Form(...),
-    recipient_country_code: str = Form("+34"),
+    recipient_country_code: str = Form(...),
     recipient_phone: str = Form(...),
     message_type: str = Form(...),
-    phrase_mode: str = Form("auto"),
+    phrase_mode: str = Form(...),
     phrase_1: str = Form(""),
     phrase_2: str = Form(""),
     phrase_3: str = Form(""),
@@ -2860,30 +2864,35 @@ async def crear_post(
     photo5: UploadFile = File(...),
     photo6: UploadFile = File(...),
 ):
-    return await create_order_and_redirect(
-        customer_name=customer_name,
-        customer_email=customer_email,
-        customer_country_code=customer_country_code,
-        customer_phone=customer_phone,
-        recipient_name=recipient_name,
-        recipient_country_code=recipient_country_code,
-        recipient_phone=recipient_phone,
-        message_type=message_type,
-        phrase_mode=phrase_mode,
-        phrase_1=phrase_1,
-        phrase_2=phrase_2,
-        phrase_3=phrase_3,
-        delivery_mode=delivery_mode,
-        delivery_date=delivery_date,
-        delivery_time=delivery_time,
-        gift_amount=gift_amount,
-        photo1=photo1,
-        photo2=photo2,
-        photo3=photo3,
-        photo4=photo4,
-        photo5=photo5,
-        photo6=photo6,
-    )
+    try:
+        return await create_order_and_redirect(
+            customer_name,
+            customer_email,
+            customer_country_code,
+            customer_phone,
+            recipient_name,
+            recipient_country_code,
+            recipient_phone,
+            message_type,
+            phrase_mode,
+            phrase_1,
+            phrase_2,
+            phrase_3,
+            delivery_mode,
+            delivery_date,
+            delivery_time,
+            gift_amount,
+            photo1,
+            photo2,
+            photo3,
+            photo4,
+            photo5,
+            photo6,
+        )
+
+    except Exception as e:
+        print("🔥 ERROR EN /crear:", str(e))
+        raise HTTPException(status_code=500, detail="Error creando el pedido")
 
 
 # =========================================================
