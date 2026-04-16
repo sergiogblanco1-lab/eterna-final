@@ -4172,10 +4172,11 @@ video {
     align-items: center;
     justify-content: center;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
-        linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
+        radial-gradient(circle at top, rgba(198,167,94,0.10), transparent 34%),
+        linear-gradient(180deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.98) 100%);
     padding: 28px;
     text-align: center;
+    overflow-y: auto;
 }
 
 .overlay.hidden {
@@ -4192,32 +4193,60 @@ video {
     font-size: 12px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.36);
-    margin-bottom: 24px;
+    color: rgba(198,167,94,0.72);
+    margin-bottom: 22px;
 }
 
 .title {
-    font-size: 54px;
-    line-height: 1.06;
+    font-size: 42px;
+    line-height: 1.12;
     font-weight: 700;
-    margin: 0 0 22px 0;
-    color: white;
+    margin: 0 0 18px 0;
+    color: #f6f1e7;
 }
 
 .text {
-    font-size: 24px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.86);
+    font-size: 18px;
+    line-height: 1.85;
+    color: rgba(255,255,255,0.88);
     margin: 0 auto 22px auto;
     max-width: 520px;
 }
 
-.soft {
-    font-size: 16px;
+.steps {
+    margin: 0 auto 24px auto;
+    max-width: 520px;
+    text-align: center;
+}
+
+.step {
+    margin-bottom: 18px;
+    font-size: 17px;
     line-height: 1.8;
-    color: rgba(255,255,255,0.46);
-    margin: 0 auto 34px auto;
-    max-width: 460px;
+    color: rgba(255,255,255,0.88);
+}
+
+.step-number {
+    color: #c6a75e;
+    font-weight: 700;
+}
+
+.gold {
+    color: #c6a75e;
+}
+
+.final-block {
+    margin-top: 10px;
+    font-size: 20px;
+    line-height: 1.8;
+    color: #f6f1e7;
+}
+
+.final-gold {
+    margin-top: 18px;
+    font-size: 22px;
+    line-height: 1.7;
+    color: #c6a75e;
 }
 
 .btn {
@@ -4225,12 +4254,13 @@ video {
     min-width: 220px;
     padding: 18px 26px;
     border-radius: 999px;
-    border: 0;
-    background: white;
+    border: 1px solid rgba(198,167,94,0.55);
+    background: #c6a75e;
     color: black;
     font-weight: 700;
     font-size: 17px;
     cursor: pointer;
+    margin-top: 28px;
 }
 
 .btn:disabled {
@@ -4248,8 +4278,8 @@ video {
     text-align: center;
     padding: 28px;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
+        radial-gradient(circle at top, rgba(198,167,94,0.08), transparent 30%),
+        linear-gradient(180deg, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.98) 100%);
 }
 
 .payoff.show {
@@ -4267,7 +4297,7 @@ video {
     line-height: 1.12;
     font-weight: 700;
     margin: 0 0 18px 0;
-    color: white;
+    color: #f6f1e7;
 }
 
 .payoff-text {
@@ -4282,16 +4312,28 @@ video {
     margin-top: 28px;
     font-size: 15px;
     line-height: 1.7;
-    color: rgba(255,255,255,0.48);
+    color: rgba(198,167,94,0.70);
 }
 
 @media (max-width: 720px) {
     .title {
-        font-size: 42px;
+        font-size: 34px;
     }
 
     .text {
-        font-size: 21px;
+        font-size: 17px;
+    }
+
+    .step {
+        font-size: 16px;
+    }
+
+    .final-block {
+        font-size: 18px;
+    }
+
+    .final-gold {
+        font-size: 20px;
     }
 
     .payoff-title {
@@ -4318,14 +4360,55 @@ video {
     <div class="overlay" id="overlay">
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
-            <h1 class="title">Shhh…</h1>
-            <div class="text">
-                Esto no es un vídeo.<br>
-                Es un momento que está a punto de ocurrir.
+            <h1 class="title">Antes de ver esto, sigue estos pasos</h1>
+
+            <div class="steps">
+                <div class="step">
+                    <span class="step-number">Paso 1.</span> Busca un lugar tranquilo<br>
+                    Donde puedas estar a solas, sin ruido ni interrupciones.
+                </div>
+
+                <div class="step">
+                    <span class="step-number">Paso 2.</span> Prepárate<br>
+                    Si puedes, ponte auriculares.
+                </div>
+
+                <div class="step">
+                    <span class="step-number">Paso 3.</span> Ajusta el momento<br>
+                    Sube el volumen y el brillo de la pantalla.
+                </div>
+
+                <div class="step">
+                    <span class="step-number">Paso 4.</span> No lo pongas sin pensar<br>
+                    No lo veas con gente. No lo pongas de fondo. No tengas prisa.
+                </div>
+
+                <div class="step">
+                    <span class="step-number">Paso 5.</span> Entra de verdad<br>
+                    Respira un segundo…<br>
+                    y entra a vivirlo con ganas.
+                </div>
             </div>
-            <div class="soft">
-                Cuando estés listo, pulsa y vívelo de verdad.
+
+            <div class="final-block">
+                Esto no es un vídeo cualquiera.<br>
+                Es un regalo que alguien ha preparado para ti.
             </div>
+
+            <div class="final-gold">
+                Y lo que estás a punto de sentir…<br>
+                no vuelve igual dos veces.
+            </div>
+
+            <div class="final-block" style="margin-top:16px;">
+                Este momento es solo ahora.
+            </div>
+
+            <div class="final-gold" style="margin-top:16px;">
+                No lo mires.<br>
+                Vívelo.
+            </div>
+
             <button class="btn" id="startBtn">Estoy listo</button>
         </div>
     </div>
