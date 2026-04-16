@@ -1625,7 +1625,8 @@ def condiciones(request: Request):
 def privacidad(request: Request):
     return templates.TemplateResponse("privacidad.html", {"request": request})
 
-    async def create_order_and_redirect(
+
+async def create_order_and_redirect(
     customer_name: str,
     customer_email: str,
     customer_country_code: str,
@@ -1927,7 +1928,6 @@ def privacidad(request: Request):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
-
 
 # =========================================================
 # FORM
