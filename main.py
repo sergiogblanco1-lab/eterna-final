@@ -42,17 +42,6 @@ try:
 except ImportError:
     Client = None
 
-# =========================================================
-# TEST INTERNO (USUARIO GRATIS)
-# =========================================================
-
-INTERNAL_TEST_PHONE = "+34674713885"
-
-def is_internal_test(phone: str) -> bool:
-    if not phone:
-        return False
-    return phone.strip() == INTERNAL_TEST_PHONE
-
 
 app = FastAPI(title="ETERNA FINAL PRODUCTO DEFINITIVO")
 templates = Jinja2Templates(directory="templates")
