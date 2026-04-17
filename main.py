@@ -1867,34 +1867,28 @@ async def create_order_and_redirect(
             except Exception:
                 pass
 
-if not STRIPE_SECRET_KEY or is_internal_test(sender_phone_e164):
+    if not STRIPE_SECRET_KEY:
+        update_order(
+            order_id,
+            paid=1,
+            stripe_payment_status="test_no_stripe",
+            gift_refund_deadline_at=gift_refund_deadline_iso(),
+            delivery_locked=1 if delivery_mode == "scheduled" else 0,
+        )
 
-    update_order(
-        order_id,
-        paid=1,
-        stripe_payment_status="internal_free_test" if is_internal_test(sender_phone_e164) else "test_no_stripe",
-        gift_refund_deadline_at=gift_refund_deadline_iso(),
-        delivery_locked=1 if delivery_mode == "scheduled" else 0,
-    )
+        try:
+            order = get_order_by_id(order_id)
 
-    try:
-        order = get_order_by_id(order_id)
+            if not render_request_already_marked(order) and not original_video_ready(order):
+                mark_video_render_requested(order_id)
+                trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
+                print("⏳ Render aceptado por el video engine. Esperando callback.")
 
-        if not render_request_already_marked(order) and not original_video_ready(order):
-            mark_video_render_requested(order_id)
-            trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
-            print("⏳ Render aceptado por el video engine. Esperando callback.")
+        except Exception as e:
+            clear_video_render_requested(order_id)
+            log_error("video engine test_no_stripe", e)
 
-    except Exception as e:
-        clear_video_render_requested(order_id)
-        log_error("video engine free test", e)
-
-    return RedirectResponse(
-        url=f"/post-pago/{order_id}",
-        status_code=303
-    )
-
-
+        return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
 
     try:
         session = stripe.checkout.Session.create(
