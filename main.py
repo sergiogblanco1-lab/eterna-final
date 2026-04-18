@@ -1167,7 +1167,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         "ok": False,
         "reason": result.get("error") or "sms_error",
     }
-    
+
 # =========================================================
 # HELPERS EXTRA
 # =========================================================
@@ -1477,45 +1477,16 @@ def refresh_connect_status(order: dict) -> bool:
 
 def process_gift_transfer_for_order(order: dict) -> dict:
     order = get_order_by_id(order["id"])
+    order_id = order["id"]
     gift_amount = float(order.get("gift_amount") or 0)
 
-    
-
     if bool(order.get("gift_refunded")):
+        update_order(order_id, transfer_in_progress=0)
         return {"status": "gift_already_refunded"}
 
-    if gift_amount <= 0:
+    if bool(order.get("stripe_transfer_id")):
         update_order(
-            order["id"],
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-            connect_onboarding_completed=1,
-        )
-        return {"status": "no_gift"}
-
-    if not STRIPE_SECRET_KEY:
-        update_order(
-            order["id"],
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-            connect_onboarding_completed=1,
-        )
-        return {"status": "stripe_disabled_test_mode"}
-
-    if not bool(order.get("paid")):
-        return {"status": "not_paid"}
-
-    if not bool(order.get("experience_completed")):
-        return {"status": "experience_not_completed"}
-
-    if not bool(order.get("connect_onboarding_completed")):
-        return {"status": "onboarding_not_ready"}
-
-    if order.get("stripe_transfer_id"):
-        update_order(
-            order["id"],
+            order_id,
             transfer_completed=1,
             cashout_completed=1,
             transfer_in_progress=0,
@@ -1525,45 +1496,121 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             "transfer_id": order.get("stripe_transfer_id"),
         }
 
+    if bool(order.get("transfer_completed")) or bool(order.get("cashout_completed")):
+        update_order(order_id, transfer_in_progress=0)
+        return {
+            "status": "already_transferred",
+            "transfer_id": order.get("stripe_transfer_id"),
+        }
+
+    if gift_amount <= 0:
+        update_order(
+            order_id,
+            transfer_completed=1,
+            cashout_completed=1,
+            transfer_in_progress=0,
+            connect_onboarding_completed=1,
+        )
+        return {"status": "no_gift"}
+
+    if not STRIPE_SECRET_KEY:
+        update_order(
+            order_id,
+            transfer_completed=1,
+            cashout_completed=1,
+            transfer_in_progress=0,
+            connect_onboarding_completed=1,
+        )
+        return {"status": "stripe_disabled_test_mode"}
+
+    if not bool(order.get("paid")):
+        update_order(order_id, transfer_in_progress=0)
+        return {"status": "not_paid"}
+
+    if not bool(order.get("experience_completed")):
+        update_order(order_id, transfer_in_progress=0)
+        return {"status": "experience_not_completed"}
+
+    if not bool(order.get("reaction_uploaded")):
+        update_order(order_id, transfer_in_progress=0)
+        return {"status": "reaction_not_uploaded"}
+
+    if not bool(order.get("connect_onboarding_completed")):
+        update_order(order_id, transfer_in_progress=0)
+        return {"status": "onboarding_not_ready"}
+
     destination = (order.get("stripe_connected_account_id") or "").strip()
     if not destination:
+        update_order(order_id, transfer_in_progress=0)
         return {"status": "missing_destination"}
 
-    if not try_acquire_transfer_lock(order["id"]):
-        refreshed = get_order_by_id(order["id"])
+    if not try_acquire_transfer_lock(order_id):
+        refreshed = get_order_by_id(order_id)
+
         if refreshed.get("stripe_transfer_id"):
+            update_order(
+                order_id,
+                transfer_completed=1,
+                cashout_completed=1,
+                transfer_in_progress=0,
+            )
             return {
                 "status": "already_transferred",
                 "transfer_id": refreshed.get("stripe_transfer_id"),
             }
+
         if bool(refreshed.get("gift_refunded")):
+            update_order(order_id, transfer_in_progress=0)
             return {"status": "gift_already_refunded"}
+
         return {"status": "transfer_in_progress"}
 
     try:
+        refreshed = get_order_by_id(order_id)
+
+        if refreshed.get("stripe_transfer_id"):
+            update_order(
+                order_id,
+                transfer_completed=1,
+                cashout_completed=1,
+                transfer_in_progress=0,
+            )
+            return {
+                "status": "already_transferred",
+                "transfer_id": refreshed.get("stripe_transfer_id"),
+            }
+
+        if bool(refreshed.get("gift_refunded")):
+            update_order(order_id, transfer_in_progress=0)
+            return {"status": "gift_already_refunded"}
+
         transfer = stripe.Transfer.create(
             amount=int(round(gift_amount * 100)),
             currency=CURRENCY,
             destination=destination,
             metadata={
-                "order_id": order["id"],
+                "order_id": order_id,
                 "type": "eterna_gift_transfer",
             },
-            transfer_group=f"ETERNA_ORDER_{order['id']}",
+            transfer_group=f"ETERNA_ORDER_{order_id}",
         )
 
         update_order(
-            order["id"],
+            order_id,
             stripe_transfer_id=transfer.id,
             transfer_completed=1,
             cashout_completed=1,
             transfer_in_progress=0,
         )
-        return {"status": "ok", "transfer_id": transfer.id}
+
+        return {
+            "status": "ok",
+            "transfer_id": transfer.id,
+        }
 
     except Exception as e:
         log_error("Transfer error", e)
-        update_order(order["id"], transfer_in_progress=0)
+        update_order(order_id, transfer_in_progress=0)
         return {
             "status": "error",
             "error": str(e),
