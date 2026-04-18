@@ -1883,15 +1883,16 @@ async def create_order_and_redirect(
         )
 
         try:
-            order = get_order_by_id(order_id)
-
-            if not render_request_already_marked(order) and not original_video_ready(order):
-                mark_video_render_requested(order_id)
-                trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
-                print("⏳ Render aceptado por el video engine. Esperando callback.")
+            render_result = start_video_generation_for_order(
+                order_id=order_id,
+                source="test_no_stripe",
+                force=False,
+            )
+            print("⏳ RESULTADO RENDER TEST NO STRIPE:", render_result)
 
         except Exception as e:
             clear_video_render_requested(order_id)
+            mark_render_attempt(order_id, f"test_no_stripe_render_error:{str(e)}", increment_retry=True)
             log_error("video engine test_no_stripe", e)
 
         return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
@@ -3203,6 +3204,236 @@ async def crear_post(
         print("🔥 ERROR EN /crear:", str(e))
         raise HTTPException(status_code=500, detail="Error creando el pedido")
 
+# =========================================================
+# RENDER HARDENING + RESCUE
+# =========================================================
+
+RENDER_RESCUE_MAX_ATTEMPTS = 3
+RENDER_RESCUE_MIN_AGE_SECONDS = 240
+
+
+def list_missing_order_photos(order_id: str) -> list[str]:
+    missing = []
+
+    for i in range(1, 7):
+        slot_name = f"photo{i}"
+        path = get_photo_asset_path(order_id, slot_name)
+
+        if not path:
+            missing.append(slot_name)
+            continue
+
+        if not os.path.exists(path):
+            missing.append(slot_name)
+
+    return missing
+
+
+def mark_render_attempt(order_id: str, error_message: Optional[str] = None, increment_retry: bool = False):
+    conn = db_conn()
+    cur = conn.cursor()
+
+    if increment_retry:
+        cur.execute("""
+            UPDATE orders
+            SET
+                render_retry_count = COALESCE(render_retry_count, 0) + 1,
+                last_render_attempt_at = ?,
+                last_render_error = ?,
+                updated_at = ?
+            WHERE id = ?
+        """, (
+            now_iso(),
+            (error_message or "")[:800] if error_message is not None else None,
+            now_iso(),
+            order_id,
+        ))
+    else:
+        cur.execute("""
+            UPDATE orders
+            SET
+                last_render_attempt_at = ?,
+                last_render_error = ?,
+                updated_at = ?
+            WHERE id = ?
+        """, (
+            now_iso(),
+            (error_message or "")[:800] if error_message is not None else None,
+            now_iso(),
+            order_id,
+        ))
+
+    conn.commit()
+    conn.close()
+
+
+def clear_render_error_state(order_id: str):
+    update_order(
+        order_id,
+        last_render_error=None,
+    )
+
+
+def render_attempt_is_stale(order: dict) -> bool:
+    if not bool(order.get("video_render_requested")):
+        return True
+
+    raw = (order.get("video_render_requested_at") or "").strip()
+    if not raw:
+        return True
+
+    dt = parse_iso_dt(raw)
+    if not dt:
+        return True
+
+    age = (now_dt() - dt).total_seconds()
+    return age >= RENDER_RESCUE_MIN_AGE_SECONDS
+
+
+def can_attempt_render(order: dict, force: bool = False) -> tuple[bool, str]:
+    if not bool(order.get("paid")):
+        return False, "order_not_paid"
+
+    if original_video_ready(order):
+        return False, "video_already_ready"
+
+    retry_count = int(order.get("render_retry_count") or 0)
+    if retry_count >= RENDER_RESCUE_MAX_ATTEMPTS and not force:
+        return False, "max_render_retries_reached"
+
+    missing = list_missing_order_photos(order["id"])
+    if missing:
+        return False, f"missing_photos:{','.join(missing)}"
+
+    if render_request_already_marked(order) and not force:
+        return False, "render_already_requested"
+
+    if render_request_already_marked(order) and force and not render_attempt_is_stale(order):
+        return False, "render_request_not_stale_yet"
+
+    return True, "ok"
+
+
+def start_video_generation_for_order(order_id: str, source: str = "manual", force: bool = False) -> dict:
+    try:
+        order = get_order_by_id(order_id)
+    except Exception as e:
+        return {
+            "ok": False,
+            "reason": f"order_not_found:{e}",
+            "order_id": order_id,
+            "source": source,
+        }
+
+    allowed, reason = can_attempt_render(order, force=force)
+    if not allowed:
+        print(f"⚠️ RENDER BLOCKED [{source}] {order_id}: {reason}")
+
+        if reason.startswith("missing_photos:"):
+            clear_video_render_requested(order_id)
+            mark_render_attempt(order_id, reason, increment_retry=True)
+
+        return {
+            "ok": False,
+            "reason": reason,
+            "order_id": order_id,
+            "source": source,
+        }
+
+    phrases = [
+        (order.get("phrase_1") or "").strip(),
+        (order.get("phrase_2") or "").strip(),
+        (order.get("phrase_3") or "").strip(),
+    ]
+
+    try:
+        mark_video_render_requested(order_id)
+        mark_render_attempt(order_id, None, increment_retry=False)
+
+        data = trigger_video_engine(order_id, phrases)
+
+        print(f"✅ RENDER REQUESTED [{source}] {order_id}: {data}")
+
+        return {
+            "ok": True,
+            "reason": "render_requested",
+            "order_id": order_id,
+            "source": source,
+            "data": data,
+        }
+
+    except Exception as e:
+        clear_video_render_requested(order_id)
+        mark_render_attempt(order_id, f"render_request_error:{str(e)}", increment_retry=True)
+        log_error(f"start_video_generation_for_order[{source}]", e)
+
+        return {
+            "ok": False,
+            "reason": f"render_request_error:{str(e)}",
+            "order_id": order_id,
+            "source": source,
+        }
+
+
+def list_pending_render_rescue_orders():
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE
+            paid = 1
+            AND COALESCE(experience_video_url, '') = ''
+            AND COALESCE(render_retry_count, 0) < ?
+        ORDER BY created_at ASC
+    """, (RENDER_RESCUE_MAX_ATTEMPTS,))
+    rows = cur.fetchall()
+    conn.close()
+    return [r["id"] for r in rows]
+
+
+def process_all_due_render_rescues() -> list[dict]:
+    results = []
+
+    for order_id in list_pending_render_rescue_orders():
+        try:
+            order = get_order_by_id(order_id)
+
+            if original_video_ready(order):
+                results.append({
+                    "order_id": order_id,
+                    "result": {"ok": True, "reason": "video_already_ready"},
+                })
+                continue
+
+            if not render_attempt_is_stale(order):
+                results.append({
+                    "order_id": order_id,
+                    "result": {"ok": False, "reason": "render_request_not_stale_yet"},
+                })
+                continue
+
+            result = start_video_generation_for_order(
+                order_id=order_id,
+                source="rescue_worker",
+                force=True,
+            )
+
+            print("🛟 Worker render rescue:", order_id, result)
+
+            results.append({
+                "order_id": order_id,
+                "result": result,
+            })
+
+        except Exception as e:
+            log_error("render_rescue_worker_process", e)
+            results.append({
+                "order_id": order_id,
+                "result": {"ok": False, "reason": str(e)},
+            })
+
+    return results
 
 # =========================================================
 # DELIVERY WORKER
@@ -3243,6 +3474,7 @@ def list_pending_sender_notifications():
     conn.close()
     return [r["id"] for r in rows]
 
+
 def list_pending_payout_orders():
     conn = db_conn()
     cur = conn.cursor()
@@ -3263,6 +3495,7 @@ def list_pending_payout_orders():
     rows = cur.fetchall()
     conn.close()
     return [r["id"] for r in rows]
+
 
 def process_all_due_scheduled_deliveries() -> list[dict]:
     results = []
@@ -3301,6 +3534,7 @@ def process_all_due_sender_notifications() -> list[dict]:
                 "result": {"ok": False, "reason": str(e)},
             })
     return results
+
 
 def process_all_due_payouts() -> list[dict]:
     results = []
@@ -3347,15 +3581,30 @@ def process_all_due_payouts() -> list[dict]:
 
     return results
 
+
 def delivery_worker_loop():
     print("🚀 DELIVERY WORKER STARTED")
+
     while True:
         try:
+            process_all_due_render_rescues()
+        except Exception as e:
+            log_error("delivery_worker_loop_render_rescue", e)
+
+        try:
             process_all_due_scheduled_deliveries()
+        except Exception as e:
+            log_error("delivery_worker_loop_deliveries", e)
+
+        try:
             process_all_due_sender_notifications()
+        except Exception as e:
+            log_error("delivery_worker_loop_sender_notifications", e)
+
+        try:
             process_all_due_payouts()
         except Exception as e:
-            log_error("delivery_worker_loop", e)
+            log_error("delivery_worker_loop_payouts", e)
 
         time.sleep(max(5, DELIVERY_WORKER_INTERVAL_SECONDS))
 
@@ -3831,38 +4080,36 @@ async def stripe_webhook(request: Request):
             delivery_locked=1 if (order.get("delivery_mode") or "instant") == "scheduled" else 0,
         )
 
-        order = get_order_by_id(order_id)
+        render_result = start_video_generation_for_order(
+            order_id=order_id,
+            source="stripe_webhook",
+            force=False,
+        )
 
-        if original_video_ready(order):
+        if render_result.get("ok"):
             return {
                 "status": "ok",
-                "reason": "video_already_ready",
+                "reason": "render_requested",
                 "order_id": order_id,
+                "render_result": render_result,
             }
 
-        if render_request_already_marked(order):
+        reason = render_result.get("reason") or "render_not_requested"
+
+        if reason in {"video_already_ready", "render_already_requested"}:
             return {
                 "status": "ok",
-                "reason": "render_already_requested",
+                "reason": reason,
                 "order_id": order_id,
+                "render_result": render_result,
             }
 
-        phrases = [
-            (order.get("phrase_1") or "").strip(),
-            (order.get("phrase_2") or "").strip(),
-            (order.get("phrase_3") or "").strip(),
-        ]
-
-        try:
-            mark_video_render_requested(order_id)
-            data = trigger_video_engine(order_id, phrases)
-            print("✅ Video engine aceptó el trabajo:", data)
-        except Exception as e:
-            clear_video_render_requested(order_id)
-            log_error("webhook_video_engine", e)
-            raise HTTPException(status_code=500, detail=f"video_engine_error: {e}")
-
-        return {"status": "ok", "reason": "render_requested"}
+        return {
+            "status": "ok",
+            "reason": reason,
+            "order_id": order_id,
+            "render_result": render_result,
+        }
 
     except Exception as e:
         log_error("webhook", e)
@@ -3896,6 +4143,10 @@ async def internal_video_ready(request: Request):
     print("🎬 video_url:", video_url)
 
     if not order_id or not video_url:
+        if order_id:
+            clear_video_render_requested(order_id)
+            mark_render_attempt(order_id, "callback_missing_data", increment_retry=True)
+
         return JSONResponse(
             status_code=400,
             content={"status": "error", "reason": "missing_data"},
@@ -3905,6 +4156,9 @@ async def internal_video_ready(request: Request):
         order = get_order_by_id(order_id)
 
         if not bool(order.get("paid")):
+            clear_video_render_requested(order_id)
+            mark_render_attempt(order_id, "callback_order_not_paid", increment_retry=True)
+
             return JSONResponse(
                 status_code=400,
                 content={"status": "error", "reason": "order_not_paid"},
@@ -3914,6 +4168,9 @@ async def internal_video_ready(request: Request):
 
         if existing_video:
             print("⚠️ Callback duplicado ignorado")
+            clear_video_render_requested(order_id)
+            clear_render_error_state(order_id)
+
             return JSONResponse({
                 "status": "ok",
                 "reason": "video_already_saved",
@@ -3927,6 +4184,8 @@ async def internal_video_ready(request: Request):
             order_id,
             experience_video_url=video_url,
             video_render_requested=0,
+            video_render_requested_at=None,
+            last_render_error=None,
         )
 
         if not asset_exists(order_id, "rendered_video", video_url):
@@ -3949,8 +4208,6 @@ async def internal_video_ready(request: Request):
         print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
         print("📦 delivery_sent:", bool(order.get("delivery_sent")))
 
-        # SOLO AQUÍ intentamos enviar al regalado,
-        # porque aquí ya sabemos que el vídeo real existe.
         delivery_result = process_scheduled_recipient_delivery(order_id)
         print("📩 Resultado entrega programada callback:", delivery_result)
 
@@ -3967,6 +4224,8 @@ async def internal_video_ready(request: Request):
         })
 
     except Exception as e:
+        clear_video_render_requested(order_id)
+        mark_render_attempt(order_id, f"callback_internal_error:{str(e)}", increment_retry=True)
         log_error("internal_video_ready", e)
         return JSONResponse(
             status_code=500,
