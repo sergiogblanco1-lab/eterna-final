@@ -1252,6 +1252,7 @@ def try_start_experience(order_id: str) -> str:
         experience_started=1,
         delivered_to_recipient=1,
     )
+
     return "started"
 
 
@@ -3295,6 +3296,7 @@ def clear_render_error_state(order_id: str):
     update_order(
         order_id,
         last_render_error=None,
+        render_retry_count=0,
     )
 
 
@@ -4210,6 +4212,7 @@ async def internal_video_ready(request: Request):
             video_render_requested=0,
             video_render_requested_at=None,
             last_render_error=None,
+            render_retry_count=0,
         )
 
         if not asset_exists(order_id, "rendered_video", video_url):
@@ -4430,19 +4433,24 @@ async def start_experience(recipient_token: str = Form(...)):
         if not delivery_is_unlocked(order):
             raise HTTPException(status_code=403, detail="delivery_locked")
 
-        update_order(
-            order["id"],
-            experience_started=1
-        )
+        start_result = try_start_experience(order["id"])
 
-        return JSONResponse({
-            "ok": True
-        })
+        if start_result == "not_paid":
+            raise HTTPException(status_code=403, detail="not_paid")
 
+        if start_result == "video_not_ready":
+            raise HTTPException(status_code=403, detail="video_not_ready")
+
+        if start_result in {"already_started", "already_completed", "started"}:
+            return JSONResponse({"ok": True})
+
+        raise HTTPException(status_code=400, detail=start_result)
+
+    except HTTPException:
+        raise
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
-
 
 
 # =========================================================
