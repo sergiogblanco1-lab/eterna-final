@@ -1100,80 +1100,42 @@ def send_sms(phone: str, message: str) -> dict:
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
-    attempts = int(order.get("recipient_sms_attempts") or 0)
-    sms_sent_at = (order.get("recipient_sms_sent_at") or "").strip()
-    sms_sid = (order.get("recipient_sms_sid") or "").strip()
-
-    # Si ya llegamos al máximo, no seguimos intentando
-    if attempts >= 3:
-        return {
-            "ok": False,
-            "reason": "max_attempts_reached",
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
-            "delivery_sent": bool(order.get("delivery_sent")),
-            "delivery_sent_at": order.get("delivery_sent_at"),
-        }
-
-    # Validaciones base
-    if not bool(order.get("paid")):
-        return {
-            "ok": False,
-            "reason": "order_not_paid",
-            "delivery_sent": bool(order.get("delivery_sent")),
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
-        }
-
-    if not original_video_ready(order):
-        return {
-            "ok": False,
-            "reason": "original_video_not_ready",
-            "delivery_sent": bool(order.get("delivery_sent")),
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
-        }
-
-    if not delivery_is_unlocked(order):
-        return {
-            "ok": False,
-            "reason": "scheduled_delivery_not_ready",
-            "delivery_sent": bool(order.get("delivery_sent")),
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
-        }
-
-    # Si ya hubo un intento aceptado por Twilio, no volvemos a marcar delivery_sent aquí.
-    # Dejamos que el pedido siga visible y controlable sin bloquearlo demasiado pronto.
-    if sms_sent_at and sms_sid:
+    if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
         return {
             "ok": True,
-            "reason": "sms_already_accepted_by_twilio",
-            "sid": sms_sid,
-            "delivery_sent": bool(order.get("delivery_sent")),
+            "reason": "already_sent",
+            "delivery_sent": True,
             "delivery_sent_at": order.get("delivery_sent_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
         }
+
+    attempts = int(order.get("recipient_sms_attempts") or 0)
+
+    if attempts >= 3:
+        return {"ok": False, "reason": "max_attempts_reached"}
+
+    if not bool(order.get("paid")):
+        return {"ok": False, "reason": "order_not_paid"}
+
+    if not original_video_ready(order):
+        return {"ok": False, "reason": "original_video_not_ready"}
+
+    if not delivery_is_unlocked(order):
+        return {"ok": False, "reason": "scheduled_delivery_not_ready"}
 
     message = build_recipient_message(order)
     result = send_sms(order.get("recipient_phone", ""), message)
 
     attempts = attempts + 1
 
-    if result.get("ok"):
+    # 🔥 CLAVE: detectar éxito REAL
+    success = (
+        result.get("ok") or
+        "accepted" in str(result.get("reason", "")).lower() or
+        "queued" in str(result.get("reason", "")).lower() or
+        "sent" in str(result.get("reason", "")).lower()
+    )
+
+    if success:
         sent_at = now_iso()
 
         update_order(
@@ -1182,43 +1144,30 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             recipient_sms_error=None,
             recipient_sms_sid=result.get("sid"),
             recipient_sms_sent_at=sent_at,
-            # OJO:
-            # ya NO marcamos delivery_sent=1 aquí
-            # ya NO marcamos delivery_sent_at aquí
-            # ya NO marcamos delivered_to_recipient=1 aquí
+            delivery_sent=1,
+            delivery_sent_at=sent_at,
+            delivered_to_recipient=1,
         )
 
-        refreshed = get_order_by_id(order_id)
         return {
             "ok": True,
-            "reason": "sms_accepted_by_twilio",
-            "sid": refreshed.get("recipient_sms_sid"),
-            "delivery_sent": bool(refreshed.get("delivery_sent")),
-            "delivery_sent_at": refreshed.get("delivery_sent_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(refreshed),
-            "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": int(refreshed.get("recipient_sms_attempts") or 0),
-            "recipient_sms_error": refreshed.get("recipient_sms_error"),
+            "reason": "sent",
+            "delivery_sent": True,
+            "delivery_sent_at": sent_at,
         }
 
+    # ❌ fallo real
     update_order(
         order_id,
         recipient_sms_attempts=attempts,
         recipient_sms_error=result.get("error") or "sms_error",
     )
 
-    refreshed = get_order_by_id(order_id)
     return {
         "ok": False,
         "reason": result.get("error") or "sms_error",
-        "delivery_sent": bool(refreshed.get("delivery_sent")),
-        "delivery_sent_at": refreshed.get("delivery_sent_at"),
-        "scheduled_delivery_display": scheduled_delivery_display(refreshed),
-        "recipient_sms_sent_at": refreshed.get("recipient_sms_sent_at"),
-        "recipient_sms_attempts": int(refreshed.get("recipient_sms_attempts") or 0),
-        "recipient_sms_error": refreshed.get("recipient_sms_error"),
     }
-
+    
 # =========================================================
 # HELPERS EXTRA
 # =========================================================
