@@ -3237,6 +3237,26 @@ def list_pending_sender_notifications():
     conn.close()
     return [r["id"] for r in rows]
 
+def list_pending_payout_orders():
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE
+            COALESCE(paid, 0) = 1
+            AND COALESCE(gift_amount, 0) > 0
+            AND COALESCE(reaction_uploaded, 0) = 1
+            AND COALESCE(experience_completed, 0) = 1
+            AND COALESCE(connect_onboarding_completed, 0) = 1
+            AND COALESCE(transfer_completed, 0) = 0
+            AND COALESCE(cashout_completed, 0) = 0
+            AND COALESCE(gift_refunded, 0) = 0
+        ORDER BY created_at ASC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    return [r["id"] for r in rows]
 
 def process_all_due_scheduled_deliveries() -> list[dict]:
     results = []
@@ -3276,6 +3296,50 @@ def process_all_due_sender_notifications() -> list[dict]:
             })
     return results
 
+def process_all_due_payouts() -> list[dict]:
+    results = []
+
+    for order_id in list_pending_payout_orders():
+        try:
+            order = get_order_by_id(order_id)
+
+            try:
+                if order.get("stripe_connected_account_id"):
+                    refresh_connect_status(order)
+                    order = get_order_by_id(order_id)
+            except Exception as e:
+                log_error("payout_worker_refresh_connect_status", e)
+
+            if not bool(order.get("connect_onboarding_completed")):
+                results.append({
+                    "order_id": order_id,
+                    "result": {
+                        "status": "onboarding_not_ready",
+                        "retry": True,
+                    },
+                })
+                continue
+
+            result = process_gift_transfer_for_order(order)
+            print("💸 Worker payout:", order_id, result)
+
+            results.append({
+                "order_id": order_id,
+                "result": result,
+            })
+
+        except Exception as e:
+            log_error("payout_worker_process", e)
+            results.append({
+                "order_id": order_id,
+                "result": {
+                    "status": "error",
+                    "error": str(e),
+                    "retry": True,
+                },
+            })
+
+    return results
 
 def delivery_worker_loop():
     print("🚀 DELIVERY WORKER STARTED")
@@ -3283,8 +3347,10 @@ def delivery_worker_loop():
         try:
             process_all_due_scheduled_deliveries()
             process_all_due_sender_notifications()
+            process_all_due_payouts()
         except Exception as e:
             log_error("delivery_worker_loop", e)
+
         time.sleep(max(5, DELIVERY_WORKER_INTERVAL_SECONDS))
 
 
@@ -5497,6 +5563,7 @@ def admin_delivery_worker_status(token: str = ""):
         "delivery_worker_interval_seconds": DELIVERY_WORKER_INTERVAL_SECONDS,
         "pending_order_ids": list_pending_scheduled_deliveries(),
         "pending_sender_notification_ids": list_pending_sender_notifications(),
+        "pending_payout_order_ids": list_pending_payout_orders(),
     })
 
 
@@ -5507,13 +5574,16 @@ def admin_process_all_due_deliveries(token: str = ""):
 
     delivery_results = process_all_due_scheduled_deliveries()
     sender_results = process_all_due_sender_notifications()
+    payout_results = process_all_due_payouts()
 
     return JSONResponse({
         "ok": True,
         "delivery_count": len(delivery_results),
         "sender_count": len(sender_results),
+        "payout_count": len(payout_results),
         "delivery_results": delivery_results,
         "sender_results": sender_results,
+        "payout_results": payout_results,
     })
 
 
