@@ -194,6 +194,8 @@ def init_db():
     # TABLAS BASE
     # =========================
 
+    
+
     cur.execute("""
     CREATE TABLE IF NOT EXISTS senders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -317,6 +319,28 @@ def init_db():
     # =========================
     # COLUMNAS DINÁMICAS (BLINDADO)
     # =========================
+
+# =========================================================
+# 🔥 RENDER HARDENING COLUMNS
+# =========================================================
+
+    add_column_if_missing(
+        "orders",
+        "render_retry_count",
+        "ALTER TABLE orders ADD COLUMN render_retry_count INTEGER DEFAULT 0"
+)
+
+    add_column_if_missing(
+        "orders",
+        "last_render_attempt_at",
+        "ALTER TABLE orders ADD COLUMN last_render_attempt_at TEXT DEFAULT ''"
+)
+
+    add_column_if_missing(
+        "orders",
+        "last_render_error",
+        "ALTER TABLE orders ADD COLUMN last_render_error TEXT DEFAULT ''"
+)
 
     add_column_if_missing("orders", "message_type", "ALTER TABLE orders ADD COLUMN message_type TEXT")
     add_column_if_missing("orders", "phrase_mode", "ALTER TABLE orders ADD COLUMN phrase_mode TEXT NOT NULL DEFAULT 'auto'")
