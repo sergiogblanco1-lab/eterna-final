@@ -4848,13 +4848,21 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     print("🎥 UPLOAD REACTION START")
     print("➡️ order_id:", order["id"])
 
+    # =========================================================
+    # VALIDACIONES BÁSICAS
+    # =========================================================
+
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="not_paid")
 
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
-        content_type = (video.content_type or "").lower().strip()
+    # =========================================================
+    # READ + VALIDATION
+    # =========================================================
+
+    content_type = (video.content_type or "").lower().strip()
 
     # 🔥 iPhone/Safari workaround
     if not content_type or content_type not in ALLOWED_VIDEO_TYPES:
@@ -4862,19 +4870,20 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     print("📦 upload content_type:", content_type)
 
-    # 👉 SIEMPRE leer primero
     data = await video.read()
 
     print("📦 upload size:", len(data))
 
-    # 🔥 BLOQUE CRÍTICO: validaciones correctas
     if len(data) == 0:
         raise HTTPException(status_code=400, detail="empty_video")
 
     if len(data) > MAX_VIDEO_SIZE:
         raise HTTPException(status_code=400, detail="video_too_large")
 
-    # 👉 ahora sí seguimos
+    # =========================================================
+    # SAVE LOCAL
+    # =========================================================
+
     extension = detect_video_extension(video)
     local_path = reaction_video_path(order["id"], extension)
 
@@ -4884,22 +4893,34 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
         print("💾 Guardado local:", local_path)
 
+        # =========================================================
+        # R2 UPLOAD (BLINDADO)
+        # =========================================================
+
         public_url = None
+
         try:
             if r2_enabled():
                 remote_name = f"reactions/{order['id']}.{extension}"
-            safe_upload_content_type = content_type
-            if not safe_upload_content_type:
-                safe_upload_content_type = "video/mp4" if extension == "mp4" else "video/webm"
 
-            public_url = upload_video_to_r2(
-                local_path,
+                safe_upload_content_type = content_type
+                if not safe_upload_content_type:
+                    safe_upload_content_type = "video/mp4" if extension == "mp4" else "video/webm"
+
+                public_url = upload_video_to_r2(
+                    local_path,
                     remote_name,
                     content_type=safe_upload_content_type,
-)
+                )
+
                 print("☁️ Subido a R2:", public_url)
+
         except Exception as e:
             print("⚠️ Error subiendo a R2:", e)
+
+        # =========================================================
+        # UPDATE DB
+        # =========================================================
 
         update_order(
             order["id"],
@@ -4911,6 +4932,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_pending=0,
             reaction_upload_error=None,
         )
+
+        # =========================================================
+        # POST-PROCESOS
+        # =========================================================
 
         updated_order = maybe_mark_eterna_completed(order["id"])
 
