@@ -4854,11 +4854,11 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
-    content_type = (video.content_type or "").lower().strip()
+        content_type = (video.content_type or "").lower().strip()
 
     # 🔥 iPhone/Safari workaround
     if not content_type or content_type not in ALLOWED_VIDEO_TYPES:
-    print("⚠️ Content-Type no fiable:", content_type)
+        print("⚠️ Content-Type no fiable:", content_type)
 
     print("📦 upload content_type:", content_type)
 
@@ -4869,10 +4869,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     # 🔥 BLOQUE CRÍTICO: validaciones correctas
     if len(data) == 0:
-    raise HTTPException(status_code=400, detail="empty_video")
+        raise HTTPException(status_code=400, detail="empty_video")
 
     if len(data) > MAX_VIDEO_SIZE:
-    raise HTTPException(status_code=400, detail="video_too_large")
+        raise HTTPException(status_code=400, detail="video_too_large")
 
     # 👉 ahora sí seguimos
     extension = detect_video_extension(video)
