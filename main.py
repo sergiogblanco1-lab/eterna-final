@@ -4855,10 +4855,17 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
     content_type = (video.content_type or "").lower().strip()
-    if content_type not in ALLOWED_VIDEO_TYPES:
-        raise HTTPException(status_code=400, detail="invalid_video_type")
+
+    # 🔥 iPhone/Safari workaround
+    if not content_type or content_type not in ALLOWED_VIDEO_TYPES:
+    print("⚠️ Content-Type no fiable:", content_type)
+    # NO bloqueamos -> seguimos
+
+    print("📦 upload content_type:", content_type)
 
     data = await video.read()
+
+    print("📦 upload size:", len(data))
 
     if len(data) > MAX_VIDEO_SIZE:
         raise HTTPException(status_code=400, detail="video_too_large")
