@@ -739,11 +739,10 @@ def maybe_mark_eterna_completed(order_id: str) -> dict:
 
     if is_eterna_complete(order):
         update_order(
-            order_id,
-            eterna_completed=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-        )
+    order["id"],
+    experience_started=1,
+    delivered_to_recipient=1,
+)
     else:
         update_order(order_id, eterna_completed=0)
 
@@ -1696,16 +1695,16 @@ async def create_order_and_redirect(
         content_type = (upload.content_type or "").lower().strip()
         filename = (upload.filename or "").lower().strip()
 
-        is_valid_type = content_type.startswith("image/")
+        is_valid_type = content_type in {"image/jpeg", "image/png", "image/webp"}
         is_valid_name = (
             filename.endswith(".jpg")
             or filename.endswith(".jpeg")
             or filename.endswith(".png")
             or filename.endswith(".webp")
-        )
+)
 
-        if not is_valid_type and not is_valid_name:
-            raise HTTPException(status_code=400, detail=f"{slot_name} no es una imagen válida")
+if not is_valid_type and not is_valid_name:
+    raise HTTPException(status_code=400, detail=f"{slot_name} no es una imagen válida")
 
     order_id = new_order_id()
     recipient_token = new_token()
