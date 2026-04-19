@@ -4854,7 +4854,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
-     content_type = (video.content_type or "").lower().strip()
+    content_type = (video.content_type or "").lower().strip()
 
     # 🔥 iPhone/Safari workaround
     if not content_type or content_type not in ALLOWED_VIDEO_TYPES:
