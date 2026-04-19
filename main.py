@@ -4682,6 +4682,24 @@ startBtn.addEventListener("click", async () => {
     clearStartError();
 
     try {
+        try {
+            video.pause();
+        } catch (_) {}
+
+        try {
+            video.currentTime = 0;
+        } catch (_) {}
+
+        // 1) PRIMERO pedir permisos y arrancar grabación real
+        const recordingStarted = await tryStartRecordingStrict();
+
+        if (!recordingStarted) {
+            showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
+            startBtn.disabled = false;
+            return;
+        }
+
+        // 2) SOLO cuando la grabación ya está viva, avisamos al backend
         const formData = new FormData();
         formData.append("recipient_token", recipientToken);
 
@@ -4704,14 +4722,7 @@ startBtn.addEventListener("click", async () => {
             return;
         }
 
-        const recordingStarted = await tryStartRecordingStrict();
-
-        if (!recordingStarted) {
-            showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
-            startBtn.disabled = false;
-            return;
-        }
-
+        // 3) Solo ahora preparamos y arrancamos vídeo
         video.load();
         await waitForVideoReady();
 
@@ -4724,6 +4735,7 @@ startBtn.addEventListener("click", async () => {
             await video.play();
         } catch (e) {
             console.error("video play error", e);
+
             showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
             experienceStarted = false;
             overlay.classList.remove("hidden");
@@ -4746,14 +4758,35 @@ startBtn.addEventListener("click", async () => {
             recordedChunks = [];
             recordingMimeType = "";
             recordingExtension = "webm";
+
             return;
         }
 
     } catch (e) {
         console.error("experience start error", e);
+
         startBtn.disabled = false;
         experienceStarted = false;
         payoff.classList.remove("show");
+
+        try {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
+        } catch (_) {}
+
+        try {
+            if (stream) {
+                stream.getTracks().forEach((t) => t.stop());
+            }
+        } catch (_) {}
+
+        stream = null;
+        mediaRecorder = null;
+        recordedChunks = [];
+        recordingMimeType = "";
+        recordingExtension = "webm";
+
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
     }
 });
