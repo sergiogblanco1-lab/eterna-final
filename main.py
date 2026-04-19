@@ -4854,25 +4854,27 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
-    content_type = (video.content_type or "").lower().strip()
+     content_type = (video.content_type or "").lower().strip()
 
     # 🔥 iPhone/Safari workaround
     if not content_type or content_type not in ALLOWED_VIDEO_TYPES:
-        print("⚠️ Content-Type no fiable:", content_type)
-        # NO bloqueamos → seguimos
+    print("⚠️ Content-Type no fiable:", content_type)
 
     print("📦 upload content_type:", content_type)
 
+    # 👉 SIEMPRE leer primero
     data = await video.read()
 
     print("📦 upload size:", len(data))
 
+    # 🔥 BLOQUE CRÍTICO: validaciones correctas
     if len(data) == 0:
     raise HTTPException(status_code=400, detail="empty_video")
 
     if len(data) > MAX_VIDEO_SIZE:
-        raise HTTPException(status_code=400, detail="video_too_large")
+    raise HTTPException(status_code=400, detail="video_too_large")
 
+    # 👉 ahora sí seguimos
     extension = detect_video_extension(video)
     local_path = reaction_video_path(order["id"], extension)
 
@@ -4892,8 +4894,8 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
             public_url = upload_video_to_r2(
                 local_path,
-                remote_name,
-                content_type=safe_upload_content_type,
+                    remote_name,
+                    content_type=safe_upload_content_type,
 )
                 print("☁️ Subido a R2:", public_url)
         except Exception as e:
