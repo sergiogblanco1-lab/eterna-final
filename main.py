@@ -4266,6 +4266,21 @@ video {
     cursor: default;
 }
 
+.error-note {
+    margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.62);
+    max-width: 460px;
+    margin-left: auto;
+    margin-right: auto;
+    display: none;
+}
+
+.error-note.show {
+    display: block;
+}
+
 .payoff {
     position: absolute;
     inset: 0;
@@ -4355,6 +4370,7 @@ video {
                 Cuando estés listo, pulsa y vívelo de verdad.
             </div>
             <button class="btn" id="startBtn">Estoy listo</button>
+            <div class="error-note" id="errorNote"></div>
         </div>
     </div>
 
@@ -4373,6 +4389,7 @@ const overlay = document.getElementById("overlay");
 const video = document.getElementById("video");
 const payoff = document.getElementById("payoff");
 const payoffLoader = document.getElementById("payoffLoader");
+const errorNote = document.getElementById("errorNote");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
 let stream = null;
@@ -4383,6 +4400,18 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+
+function showStartError(message) {
+    if (!errorNote) return;
+    errorNote.textContent = message || "No hemos podido preparar la grabación.";
+    errorNote.classList.add("show");
+}
+
+function clearStartError() {
+    if (!errorNote) return;
+    errorNote.textContent = "";
+    errorNote.classList.remove("show");
+}
 
 function waitForVideoReady() {
     return new Promise((resolve) => {
@@ -4450,7 +4479,7 @@ function detectRecordingFormat() {
     return { mimeType: "", extension: "webm" };
 }
 
-async function tryStartRecordingNonBlocking() {
+async function tryStartRecordingStrict() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({
             video: true,
@@ -4477,15 +4506,42 @@ async function tryStartRecordingNonBlocking() {
         };
 
         mediaRecorder.start(1000);
+
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    resolve();
+                } else {
+                    reject(new Error("recorder_not_running"));
+                }
+            }, 700);
+
+            try {
+                mediaRecorder.addEventListener("start", () => {
+                    clearTimeout(timer);
+                    resolve();
+                }, { once: true });
+            } catch (_) {}
+        });
+
         console.log("🎥 grabación iniciada");
         return true;
+
     } catch (recordingError) {
         console.error("recording init error", recordingError);
+
+        try {
+            if (stream) {
+                stream.getTracks().forEach((t) => t.stop());
+            }
+        } catch (_) {}
+
         stream = null;
         mediaRecorder = null;
         recordedChunks = [];
         recordingMimeType = "";
         recordingExtension = "webm";
+
         return false;
     }
 }
@@ -4520,7 +4576,7 @@ async function finalizeExperienceFlow() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 2000);
+                const timeoutId = setTimeout(finish, 2500);
 
                 mediaRecorder.addEventListener("stop", finish, { once: true });
 
@@ -4594,7 +4650,7 @@ function armFinishFallbacks() {
     let fallbackMs = 120000;
 
     if (Number.isFinite(video.duration) && video.duration > 0) {
-        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 2000);
+        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 2500);
     }
 
     finishTimeout = setTimeout(() => {
@@ -4623,6 +4679,7 @@ startBtn.addEventListener("click", async () => {
     if (experienceStarted) return;
 
     startBtn.disabled = true;
+    clearStartError();
 
     try {
         const formData = new FormData();
@@ -4647,6 +4704,14 @@ startBtn.addEventListener("click", async () => {
             return;
         }
 
+        const recordingStarted = await tryStartRecordingStrict();
+
+        if (!recordingStarted) {
+            showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
+            startBtn.disabled = false;
+            return;
+        }
+
         video.load();
         await waitForVideoReady();
 
@@ -4659,15 +4724,37 @@ startBtn.addEventListener("click", async () => {
             await video.play();
         } catch (e) {
             console.error("video play error", e);
-        }
+            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
+            experienceStarted = false;
+            overlay.classList.remove("hidden");
+            startBtn.disabled = false;
 
-        await tryStartRecordingNonBlocking();
+            try {
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    mediaRecorder.stop();
+                }
+            } catch (_) {}
+
+            try {
+                if (stream) {
+                    stream.getTracks().forEach((t) => t.stop());
+                }
+            } catch (_) {}
+
+            stream = null;
+            mediaRecorder = null;
+            recordedChunks = [];
+            recordingMimeType = "";
+            recordingExtension = "webm";
+            return;
+        }
 
     } catch (e) {
         console.error("experience start error", e);
         startBtn.disabled = false;
         experienceStarted = false;
         payoff.classList.remove("show");
+        showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
     }
 });
 
