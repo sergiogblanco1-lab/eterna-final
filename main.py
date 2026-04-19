@@ -1701,10 +1701,10 @@ async def create_order_and_redirect(
             or filename.endswith(".jpeg")
             or filename.endswith(".png")
             or filename.endswith(".webp")
-)
+        )
 
-if not is_valid_type and not is_valid_name:
-    raise HTTPException(status_code=400, detail=f"{slot_name} no es una imagen válida")
+        if not is_valid_type and not is_valid_name:
+            raise HTTPException(status_code=400, detail=f"{slot_name} no es una imagen válida")
 
     order_id = new_order_id()
     recipient_token = new_token()
@@ -1808,6 +1808,9 @@ if not is_valid_type and not is_valid_name:
                         break
                     f.write(chunk)
 
+            if not os.path.exists(filepath) or os.path.getsize(filepath) <= 0:
+                raise HTTPException(status_code=400, detail=f"{slot_name} no se ha guardado correctamente")
+
             insert_asset(
                 order_id=order_id,
                 asset_type=slot_name,
@@ -1887,6 +1890,7 @@ if not is_valid_type and not is_valid_name:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
 
+    
 # =========================================================
 # FORM
 # =========================================================
