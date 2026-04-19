@@ -4858,8 +4858,8 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     # 🔥 iPhone/Safari workaround
     if not content_type or content_type not in ALLOWED_VIDEO_TYPES:
-    print("⚠️ Content-Type no fiable:", content_type)
-    # NO bloqueamos -> seguimos
+        print("⚠️ Content-Type no fiable:", content_type)
+        # NO bloqueamos → seguimos
 
     print("📦 upload content_type:", content_type)
 
