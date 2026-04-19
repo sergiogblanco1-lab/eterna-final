@@ -4867,6 +4867,9 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     print("📦 upload size:", len(data))
 
+    if len(data) == 0:
+    raise HTTPException(status_code=400, detail="empty_video")
+
     if len(data) > MAX_VIDEO_SIZE:
         raise HTTPException(status_code=400, detail="video_too_large")
 
@@ -4883,11 +4886,15 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         try:
             if r2_enabled():
                 remote_name = f"reactions/{order['id']}.{extension}"
-                public_url = upload_video_to_r2(
-                    local_path,
-                    remote_name,
-                    content_type=content_type,
-                )
+            safe_upload_content_type = content_type
+            if not safe_upload_content_type:
+                safe_upload_content_type = "video/mp4" if extension == "mp4" else "video/webm"
+
+            public_url = upload_video_to_r2(
+                local_path,
+                remote_name,
+                content_type=safe_upload_content_type,
+)
                 print("☁️ Subido a R2:", public_url)
         except Exception as e:
             print("⚠️ Error subiendo a R2:", e)
