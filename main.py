@@ -4328,6 +4328,37 @@ video {
     color: rgba(255,255,255,0.48);
 }
 
+.retry-actions {
+    margin-top: 24px;
+    display: none;
+    gap: 12px;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.retry-actions.show {
+    display: grid;
+}
+
+.retry-btn {
+    width: 100%;
+    padding: 16px 22px;
+    border-radius: 999px;
+    border: 0;
+    background: white;
+    color: black;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.retry-btn.secondary {
+    background: rgba(255,255,255,0.10);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.10);
+}
+
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4374,11 +4405,15 @@ video {
         </div>
     </div>
 
-    <div class="payoff" id="payoff">
-        <div class="payoff-card">
-            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
-            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="loader" id="payoffLoader">Guardando este momento…</div>
+<div class="payoff" id="payoff">
+    <div class="payoff-card">
+        <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
+        <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
+        <div class="loader" id="payoffLoader">Guardando este momento…</div>
+
+        <div class="retry-actions" id="retryActions">
+            <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
+            <button class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
         </div>
     </div>
 </div>
@@ -4389,6 +4424,9 @@ const overlay = document.getElementById("overlay");
 const video = document.getElementById("video");
 const payoff = document.getElementById("payoff");
 const payoffLoader = document.getElementById("payoffLoader");
+const retryActions = document.getElementById("retryActions");
+const retryExperienceBtn = document.getElementById("retryExperienceBtn");
+const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
@@ -4412,6 +4450,84 @@ function clearStartError() {
     errorNote.textContent = "";
     errorNote.classList.remove("show");
 }
+
+function showRetryActions() {
+    if (retryActions) {
+        retryActions.classList.add("show");
+    }
+}
+
+function hideRetryActions() {
+    if (retryActions) {
+        retryActions.classList.remove("show");
+    }
+}
+
+function buildFriendlyUploadMessage(errorCode) {
+    const code = String(errorCode || "").toLowerCase();
+
+    if (code.includes("empty_video")) {
+        return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
+    }
+
+    if (code.includes("video_too_large")) {
+        return "No se ha podido guardar porque el vídeo ocupa demasiado. Inténtalo otra vez.";
+    }
+
+    if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
+        return "No se ha podido grabar la reacción porque faltan permisos de cámara o micrófono.";
+    }
+
+    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
+        return "No se ha podido subir la reacción por un problema de conexión. Revisa internet e inténtalo de nuevo.";
+    }
+
+    return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
+}
+
+function resetRecordingState() {
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
+
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+        }
+    } catch (_) {}
+
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (_) {}
+
+    stream = null;
+    mediaRecorder = null;
+    recordedChunks = [];
+    recordingMimeType = "";
+    recordingExtension = "webm";
+    finishing = false;
+    experienceStarted = false;
+
+    try {
+        video.pause();
+    } catch (_) {}
+
+    try {
+        video.currentTime = 0;
+    } catch (_) {}
+
+    overlay.classList.remove("hidden");
+    payoff.classList.remove("show");
+    startBtn.disabled = false;
+    clearStartError();
+    hideRetryActions();
+}
+
 
 function waitForVideoReady() {
     return new Promise((resolve) => {
@@ -4634,7 +4750,14 @@ async function finalizeExperienceFlow() {
         }
     } catch (e) {
         console.error("upload error", e);
-        payoffLoader.innerText = "No hemos podido guardar este momento. Recarga e inténtalo de nuevo.";
+
+        let humanMessage = buildFriendlyUploadMessage(
+            e?.message || e?.detail || ""
+        );
+
+        payoffLoader.innerText = humanMessage;
+        showRetryActions();
+
         finishing = false;
         return;
     }
@@ -4823,6 +4946,20 @@ window.addEventListener("beforeunload", () => {
         }
     } catch (_) {}
 });
+
+if (retryExperienceBtn) {
+    retryExperienceBtn.addEventListener("click", () => {
+        resetRecordingState();
+        clearStartError();
+    });
+}
+
+if (backToStartBtn) {
+    backToStartBtn.addEventListener("click", () => {
+        window.location.replace("/pedido/" + recipientToken);
+    });
+}
+
 </script>
 </body>
 </html>
