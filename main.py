@@ -1099,40 +1099,88 @@ def send_sms(phone: str, message: str) -> dict:
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
+    print("📦 PROCESS RECIPIENT DELIVERY START")
+    print("➡️ order_id:", order_id)
+
+    # =========================================================
+    # YA ENVIADO
+    # =========================================================
     if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
         return {
             "ok": True,
             "reason": "already_sent",
             "delivery_sent": True,
             "delivery_sent_at": order.get("delivery_sent_at"),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
+    # =========================================================
+    # VALIDACIONES PREVIAS
+    # =========================================================
     attempts = int(order.get("recipient_sms_attempts") or 0)
 
     if attempts >= 3:
-        return {"ok": False, "reason": "max_attempts_reached"}
+        return {
+            "ok": False,
+            "reason": "max_attempts_reached",
+            "delivery_sent": False,
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": attempts,
+            "recipient_sms_error": order.get("recipient_sms_error"),
+        }
 
     if not bool(order.get("paid")):
-        return {"ok": False, "reason": "order_not_paid"}
+        return {
+            "ok": False,
+            "reason": "order_not_paid",
+            "delivery_sent": False,
+        }
 
     if not original_video_ready(order):
-        return {"ok": False, "reason": "original_video_not_ready"}
+        return {
+            "ok": False,
+            "reason": "original_video_not_ready",
+            "delivery_sent": False,
+        }
 
     if not delivery_is_unlocked(order):
-        return {"ok": False, "reason": "scheduled_delivery_not_ready"}
+        return {
+            "ok": False,
+            "reason": "scheduled_delivery_not_ready",
+            "delivery_sent": False,
+            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+        }
 
+    # =========================================================
+    # SMS
+    # =========================================================
     message = build_recipient_message(order)
     result = send_sms(order.get("recipient_phone", ""), message)
 
+    print("📩 RECIPIENT SMS RESULT:", result)
+
     attempts = attempts + 1
 
-    # 🔥 CLAVE: detectar éxito REAL
-    success = (
-        result.get("ok") or
-        "accepted" in str(result.get("reason", "")).lower() or
-        "queued" in str(result.get("reason", "")).lower() or
-        "sent" in str(result.get("reason", "")).lower()
-    )
+    sms_ok = bool(result.get("ok"))
+    sms_sid = (result.get("sid") or "").strip() or None
+    sms_error = (result.get("error") or "").strip() or None
+    sms_reason = (result.get("reason") or "").strip().lower()
+
+    # =========================================================
+    # ÉXITO REAL
+    # =========================================================
+    success = False
+
+    if sms_ok:
+        success = True
+    elif sms_reason in {"accepted", "queued", "sent"}:
+        success = True
+    elif sms_sid:
+        success = True
 
     if success:
         sent_at = now_iso()
@@ -1141,30 +1189,48 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             order_id,
             recipient_sms_attempts=attempts,
             recipient_sms_error=None,
-            recipient_sms_sid=result.get("sid"),
+            recipient_sms_sid=sms_sid,
             recipient_sms_sent_at=sent_at,
             delivery_sent=1,
             delivery_sent_at=sent_at,
             delivered_to_recipient=1,
         )
 
+        updated = get_order_by_id(order_id)
+
         return {
             "ok": True,
             "reason": "sent",
             "delivery_sent": True,
-            "delivery_sent_at": sent_at,
+            "delivery_sent_at": updated.get("delivery_sent_at"),
+            "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+            "recipient_sms_sid": updated.get("recipient_sms_sid"),
+            "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": updated.get("recipient_sms_error"),
         }
 
-    # ❌ fallo real
+    # =========================================================
+    # FALLO REAL
+    # =========================================================
+    final_error = sms_error or sms_reason or "sms_error"
+
     update_order(
         order_id,
         recipient_sms_attempts=attempts,
-        recipient_sms_error=result.get("error") or "sms_error",
+        recipient_sms_error=final_error,
     )
+
+    updated = get_order_by_id(order_id)
 
     return {
         "ok": False,
-        "reason": result.get("error") or "sms_error",
+        "reason": final_error,
+        "delivery_sent": bool(updated.get("delivery_sent")),
+        "delivery_sent_at": updated.get("delivery_sent_at"),
+        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+        "recipient_sms_sid": updated.get("recipient_sms_sid"),
+        "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
+        "recipient_sms_error": updated.get("recipient_sms_error"),
     }
     
 # =========================================================
@@ -5004,7 +5070,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     print("➡️ order_id:", order["id"])
 
     # =========================================================
-    # VALIDACIONES BÁSICAS
+    # VALIDACIONES
     # =========================================================
 
     if not bool(order.get("paid")):
@@ -5014,25 +5080,21 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
     # =========================================================
-    # READ + VALIDATION
+    # READ VIDEO
     # =========================================================
 
     content_type = (video.content_type or "").lower().strip()
-
-    # 🔥 iPhone/Safari workaround
-    if not content_type or content_type not in ALLOWED_VIDEO_TYPES:
-        print("⚠️ Content-Type no fiable:", content_type)
-
-    print("📦 upload content_type:", content_type)
+    print("📦 content_type:", content_type)
 
     data = await video.read()
+    size = len(data)
 
-    print("📦 upload size:", len(data))
+    print("📦 size:", size)
 
-    if len(data) == 0:
+    if size == 0:
         raise HTTPException(status_code=400, detail="empty_video")
 
-    if len(data) > MAX_VIDEO_SIZE:
+    if size > MAX_VIDEO_SIZE:
         raise HTTPException(status_code=400, detail="video_too_large")
 
     # =========================================================
@@ -5046,37 +5108,42 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         with open(local_path, "wb") as f:
             f.write(data)
 
-        print("💾 Guardado local:", local_path)
+        print("💾 Guardado local OK")
 
-        # =========================================================
-        # R2 UPLOAD (BLINDADO)
-        # =========================================================
+    except Exception as e:
+        log_error("save_local_reaction", e)
+        raise HTTPException(status_code=500, detail="local_save_failed")
 
-        public_url = None
+    # =========================================================
+    # SUBIDA A R2 (NO BLOQUEANTE)
+    # =========================================================
 
-        try:
-            if r2_enabled():
-                remote_name = f"reactions/{order['id']}.{extension}"
+    public_url = None
 
-                safe_upload_content_type = content_type
-                if not safe_upload_content_type:
-                    safe_upload_content_type = "video/mp4" if extension == "mp4" else "video/webm"
+    try:
+        if r2_enabled():
+            remote_name = f"reactions/{order['id']}.{extension}"
 
-                public_url = upload_video_to_r2(
-                    local_path,
-                    remote_name,
-                    content_type=safe_upload_content_type,
-                )
+            safe_type = content_type or ("video/mp4" if extension == "mp4" else "video/webm")
 
-                print("☁️ Subido a R2:", public_url)
+            public_url = upload_video_to_r2(
+                local_path,
+                remote_name,
+                content_type=safe_type,
+            )
 
-        except Exception as e:
-            print("⚠️ Error subiendo a R2:", e)
+            print("☁️ Subido a R2:", public_url)
 
-        # =========================================================
-        # UPDATE DB
-        # =========================================================
+    except Exception as e:
+        # ⚠️ NO romper flujo si falla R2
+        log_error("r2_upload_failed", e)
+        print("⚠️ R2 FALLÓ pero seguimos")
 
+    # =========================================================
+    # UPDATE DB (CRÍTICO)
+    # =========================================================
+
+    try:
         update_order(
             order["id"],
             reaction_video_local=local_path,
@@ -5088,32 +5155,44 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_error=None,
         )
 
-        # =========================================================
-        # POST-PROCESOS
-        # =========================================================
-
-        updated_order = maybe_mark_eterna_completed(order["id"])
-
-        try:
-            transfer_result = process_gift_transfer_for_order(updated_order)
-            print("💸 TRANSFER RESULT:", transfer_result)
-        except Exception as e:
-            log_error("process_gift_transfer_for_order", e)
-
-        try:
-            sms_result = try_send_sender_sms(get_order_by_id(order["id"]))
-            print("📩 SMS REGALANTE RESULT:", sms_result)
-        except Exception as e:
-            log_error("try_send_sender_sms", e)
-
-        return JSONResponse({
-            "ok": True,
-            "redirect": f"/finalizar-experiencia/{recipient_token}",
-        })
+        print("✅ DB actualizada")
 
     except Exception as e:
-        log_error("UPLOAD REACTION ERROR", e)
-        raise HTTPException(status_code=500, detail="Error guardando reacción")
+        log_error("update_order_reaction", e)
+        raise HTTPException(status_code=500, detail="db_update_failed")
+
+    # =========================================================
+    # POST PROCESOS (NO BLOQUEANTES)
+    # =========================================================
+
+    try:
+        updated_order = maybe_mark_eterna_completed(order["id"])
+    except Exception as e:
+        log_error("mark_eterna_completed", e)
+        updated_order = get_order_by_id(order["id"])
+
+    # 💸 INTENTO DE PAGO (NO BLOQUEA)
+    try:
+        process_gift_transfer_for_order(updated_order)
+        print("💸 intento payout OK")
+    except Exception as e:
+        log_error("payout_error", e)
+
+    # 📩 SMS REGALANTE (NO BLOQUEA)
+    try:
+        try_send_sender_sms(get_order_by_id(order["id"]))
+        print("📩 SMS regalante OK")
+    except Exception as e:
+        log_error("sender_sms_error", e)
+
+    # =========================================================
+    # RESPUESTA SIEMPRE OK (CLAVE)
+    # =========================================================
+
+    return JSONResponse({
+        "ok": True,
+        "redirect": f"/finalizar-experiencia/{recipient_token}",
+    })
 
 
 # =========================================================
