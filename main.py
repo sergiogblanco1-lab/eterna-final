@@ -1707,14 +1707,124 @@ def process_gift_transfer_for_order(order: dict) -> dict:
 # LEGAL
 # =========================================================
 
+from fastapi.responses import HTMLResponse
+
 @app.get("/condiciones", response_class=HTMLResponse)
-def condiciones(request: Request):
-    return templates.TemplateResponse("condiciones.html", {"request": request})
+def condiciones():
+    return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Condiciones — Tu ETERNA</title>
+<style>
+body {
+    margin:0;
+    background:#000;
+    color:#fff;
+    font-family:Arial,sans-serif;
+    padding:24px;
+    line-height:1.7;
+}
+h1 { font-size:28px; margin-bottom:20px; }
+h2 { font-size:18px; margin-top:28px; }
+p { opacity:0.85; }
+</style>
+</head>
+<body>
+
+<h1>Condiciones de uso — Tu ETERNA</h1>
+
+<h2>1. Objeto</h2>
+<p>Tu ETERNA permite crear experiencias audiovisuales emocionales personalizadas entre usuarios.</p>
+
+<h2>2. Funcionamiento</h2>
+<p>El usuario crea una experiencia y el destinatario accede mediante un enlace único.</p>
+
+<h2>3. Consentimiento y grabación</h2>
+<p>Al acceder y continuar en la experiencia, el destinatario acepta que su reacción podrá ser captada mediante cámara y/o micrófono y compartida únicamente con la persona que creó la experiencia.</p>
+
+<h2>4. Uso de imagen</h2>
+<p>El contenido generado es privado y no será utilizado públicamente sin consentimiento adicional.</p>
+
+<h2>5. Responsabilidad del usuario</h2>
+<p>El usuario garantiza que dispone de derechos sobre el contenido subido.</p>
+
+<h2>6. Datos personales</h2>
+<p>Los datos se utilizan únicamente para prestar el servicio.</p>
+
+<h2>7. Pagos</h2>
+<p>Al tratarse de un producto digital personalizado, no se admiten devoluciones tras iniciar el proceso.</p>
+
+<h2>8. Limitación de responsabilidad</h2>
+<p>Tu ETERNA no se responsabiliza de fallos técnicos del dispositivo, conexión o condiciones de grabación.</p>
+
+<h2>9. Aceptación</h2>
+<p>El uso del servicio implica la aceptación de estas condiciones.</p>
+
+</body>
+</html>
+""")
 
 
 @app.get("/privacidad", response_class=HTMLResponse)
-def privacidad(request: Request):
-    return templates.TemplateResponse("privacidad.html", {"request": request})
+def privacidad():
+    return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacidad — Tu ETERNA</title>
+<style>
+body {
+    margin:0;
+    background:#000;
+    color:#fff;
+    font-family:Arial,sans-serif;
+    padding:24px;
+    line-height:1.7;
+}
+h1 { font-size:28px; margin-bottom:20px; }
+h2 { font-size:18px; margin-top:28px; }
+p { opacity:0.85; }
+</style>
+</head>
+<body>
+
+<h1>Política de privacidad — Tu ETERNA</h1>
+
+<h2>1. Responsable</h2>
+<p>Tu ETERNA es responsable del tratamiento de los datos proporcionados.</p>
+
+<h2>2. Datos recogidos</h2>
+<p>Nombre, teléfono, fotos, frases y vídeo de reacción.</p>
+
+<h2>3. Finalidad</h2>
+<p>Crear la experiencia emocional y entregar el contenido al usuario correspondiente.</p>
+
+<h2>4. Grabación</h2>
+<p>Al iniciar la experiencia, el usuario acepta la grabación de su reacción.</p>
+
+<h2>5. Uso del contenido</h2>
+<p>El contenido es privado y solo se comparte con quien crea la experiencia.</p>
+
+<h2>6. Conservación</h2>
+<p>Los datos se almacenan durante el tiempo necesario para prestar el servicio.</p>
+
+<h2>7. Derechos</h2>
+<p>El usuario puede solicitar acceso, rectificación o eliminación.</p>
+
+<h2>8. Seguridad</h2>
+<p>Se aplican medidas para proteger la información.</p>
+
+<h2>9. Aceptación</h2>
+<p>El uso del servicio implica la aceptación de esta política.</p>
+
+</body>
+</html>
+""")
 
 
 async def create_order_and_redirect(
@@ -2749,9 +2859,17 @@ def render_create_form() -> str:
 
                         <div class="error-box" id="errorBox"></div>
 
+                        <div style="margin-top:14px;font-size:13px;line-height:1.7;color:rgba(255,255,255,0.58);text-align:center;">
+                            Al continuar, aceptas las
+                            <a href="/condiciones" target="_blank" style="color:white;text-decoration:underline;">condiciones</a>
+                            y la
+                            <a href="/privacidad" target="_blank" style="color:white;text-decoration:underline;">política de privacidad</a>.
+                        </div>
+
                         <div class="buttons">
-                            <button type="submit" id="submitBtn">SEGUIR CREANDO</button>
-                            <a class="btn ghost" href="/">Volver</a>
+                        <button type="submit" id="submitBtn">SEGUIR CREANDO</button>
+                        <a class="btn ghost" href="/">Volver</a>
+                        </div>
                         </div>
                     </div>
                 </form>
@@ -3735,19 +3853,17 @@ h1 {{
             Cuando esté listo, entrarás aquí para vivirlo de verdad.
         </div>
         <div style="
-            margin-top:22px;
-            font-size:14px;
-            line-height:1.7;
-            color:rgba(255,255,255,0.55);
-            max-width:420px;
-            margin-left:auto;
-            margin-right:auto;
+        margin-top:22px;
+        font-size:14px;
+        line-height:1.7;
+        color:rgba(255,255,255,0.55);
+        max-width:420px;
+        margin-left:auto;
+        margin-right:auto;
 ">
-            Para que este momento pueda volver a quien lo creó,<br>
-            se registrará lo que ocurra durante la experiencia.<br><br>
-            Al continuar, aceptas que este momento sea guardado<br>
-            y compartido únicamente con esa persona.
-        </div>
+        Al continuar, aceptas que este momento sea guardado
+        y compartido únicamente con quien lo creó.
+    </div>
         <div class="actions">
             <a class="btn" href="/pedido/{safe_attr(recipient_token)}">Entrar</a>
         </div>
@@ -4528,11 +4644,21 @@ video {
 <body>
 <div class="wrap">
     <video
-        id="video"
-        playsinline
-        webkit-playsinline
-        preload="auto"
-    >
+    id="video"
+    playsinline
+    webkit-playsinline
+    preload="auto"
+    style="
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.15);
+        transform-origin: center;
+        background: black;
+    "
+>
         <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
