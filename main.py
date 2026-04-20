@@ -4228,15 +4228,26 @@ video {
     font-size: 54px;
     line-height: 1.06;
     font-weight: 700;
-    margin: 0 0 22px 0;
+    margin: 0 0 16px 0;
     color: white;
+}
+
+.guided-line {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+}
+
+.guided-line.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .text {
     font-size: 24px;
     line-height: 1.7;
     color: rgba(255,255,255,0.86);
-    margin: 0 auto 22px auto;
+    margin: 0 auto 14px auto;
     max-width: 520px;
 }
 
@@ -4244,7 +4255,7 @@ video {
     font-size: 16px;
     line-height: 1.8;
     color: rgba(255,255,255,0.46);
-    margin: 0 auto 34px auto;
+    margin: 0 auto 0 auto;
     max-width: 460px;
 }
 
@@ -4264,6 +4275,17 @@ video {
 .btn:disabled {
     opacity: 0.7;
     cursor: default;
+}
+
+.start-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.9s ease;
+}
+
+.start-hidden.show {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .error-note {
@@ -4391,29 +4413,68 @@ video {
 
     <div class="overlay" id="overlay">
         <div class="overlay-card">
-            <div class="eyebrow">ETERNA</div>
-            <h1 class="title">Shhh…</h1>
-            <div class="text">
-                Esto no es un vídeo.<br>
-                Es un momento que está a punto de ocurrir.
+            <div class="eyebrow guided-line" id="introEyebrow">ETERNA</div>
+
+            <h1 class="title guided-line" id="intro1">Shhh…</h1>
+
+            <div class="text guided-line" id="intro2">
+                Esto no es un vídeo.
             </div>
-            <div class="soft">
-                Cuando estés listo, pulsa y vívelo de verdad.
+
+            <div class="soft guided-line" id="intro3" style="margin-top:10px;">
+                Es algo que alguien ha guardado para ti.
             </div>
-            <button class="btn" id="startBtn">Estoy listo</button>
+
+            <div class="soft guided-line" id="intro4" style="margin-top:24px;">
+                Antes de empezar…
+            </div>
+
+            <div class="soft guided-line" id="intro5" style="margin-top:12px;">
+                busca un momento tranquilo
+            </div>
+
+            <div class="soft guided-line" id="intro6" style="margin-top:6px;">
+                y, si puedes, siéntate
+            </div>
+
+            <div class="soft guided-line" id="intro7" style="margin-top:24px;">
+                sostén el móvil frente a ti
+            </div>
+
+            <div class="soft guided-line" id="intro8" style="margin-top:6px;">
+                y míralo como si esa persona estuviera aquí
+            </div>
+
+            <div class="soft guided-line" id="intro9" style="margin-top:24px;">
+                No hace falta hacer nada más.
+            </div>
+
+            <div class="soft guided-line" id="intro10" style="margin-top:6px;">
+                Solo estar.
+            </div>
+
+            <div class="soft guided-line" id="intro11" style="margin-top:24px;">
+                Cuando estés listo…
+            </div>
+
+            <button class="btn start-hidden" id="startBtn" style="margin-top:32px;">
+                empezar
+            </button>
+
             <div class="error-note" id="errorNote"></div>
         </div>
     </div>
 
-<div class="payoff" id="payoff">
-    <div class="payoff-card">
-        <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
-        <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-        <div class="loader" id="payoffLoader">Guardando este momento…</div>
+    <div class="payoff" id="payoff">
+        <div class="payoff-card">
+            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
+            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
+            <div class="loader" id="payoffLoader">Guardando este momento…</div>
 
-        <div class="retry-actions" id="retryActions">
-            <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
-            <button class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
+            <div class="retry-actions" id="retryActions">
+                <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
+                <button class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
+            </div>
         </div>
     </div>
 </div>
@@ -4438,6 +4499,36 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+
+function runIntroSequence() {
+    const steps = [
+        { id: "introEyebrow", delay: 200 },
+        { id: "intro1", delay: 700 },
+        { id: "intro2", delay: 1500 },
+        { id: "intro3", delay: 2600 },
+        { id: "intro4", delay: 4200 },
+        { id: "intro5", delay: 5200 },
+        { id: "intro6", delay: 6300 },
+        { id: "intro7", delay: 7900 },
+        { id: "intro8", delay: 9200 },
+        { id: "intro9", delay: 11100 },
+        { id: "intro10", delay: 12300 },
+        { id: "intro11", delay: 14100 },
+    ];
+
+    steps.forEach((step) => {
+        setTimeout(() => {
+            const el = document.getElementById(step.id);
+            if (el) {
+                el.classList.add("show");
+            }
+        }, step.delay);
+    });
+
+    setTimeout(() => {
+        startBtn.classList.add("show");
+    }, 15600);
+}
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -4527,7 +4618,6 @@ function resetRecordingState() {
     clearStartError();
     hideRetryActions();
 }
-
 
 function waitForVideoReady() {
     return new Promise((resolve) => {
@@ -4813,7 +4903,6 @@ startBtn.addEventListener("click", async () => {
             video.currentTime = 0;
         } catch (_) {}
 
-        // 1) PRIMERO pedir permisos y arrancar grabación real
         const recordingStarted = await tryStartRecordingStrict();
 
         if (!recordingStarted) {
@@ -4822,7 +4911,6 @@ startBtn.addEventListener("click", async () => {
             return;
         }
 
-        // 2) SOLO cuando la grabación ya está viva, avisamos al backend
         const formData = new FormData();
         formData.append("recipient_token", recipientToken);
 
@@ -4845,7 +4933,6 @@ startBtn.addEventListener("click", async () => {
             return;
         }
 
-        // 3) Solo ahora preparamos y arrancamos vídeo
         video.load();
         await waitForVideoReady();
 
@@ -4960,6 +5047,7 @@ if (backToStartBtn) {
     });
 }
 
+runIntroSequence();
 </script>
 </body>
 </html>
