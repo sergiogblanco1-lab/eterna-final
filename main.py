@@ -54,6 +54,7 @@ templates = Jinja2Templates(directory="templates")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
+ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
@@ -92,6 +93,7 @@ TWILIO_FROM_NUMBER = (
     or os.getenv("TWILIO_PHONE_NUMBER", "").strip()
 )
 SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
+ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
@@ -1095,6 +1097,71 @@ def send_sms(phone: str, message: str) -> dict:
     except Exception as e:
         return {"ok": False, "sid": None, "error": str(e)}
 
+def send_admin_alert(message: str):
+    try:
+        if not ADMIN_ALERT_PHONE:
+            return
+        send_sms(ADMIN_ALERT_PHONE, message)
+    except Exception as e:
+        log_error("admin_alert_sms", e)
+
+
+def build_admin_eterna_completed_message(order: dict) -> str:
+    sender = order.get("sender_name") or ""
+    recipient = order.get("recipient_name") or ""
+
+    ida = order.get("experience_video_url") or ""
+    vuelta = sender_pack_url_from_order(order)
+
+    return (
+        "✨ Tu ETERNA completada\n\n"
+        f"{sender} → {recipient}\n\n"
+        "IDA:\n"
+        f"{ida}\n\n"
+        "VUELTA:\n"
+        f"{vuelta}"
+    )
+
+
+def send_admin_eterna_completed(order: dict):
+    try:
+        msg = build_admin_eterna_completed_message(order)
+        send_admin_alert(msg)
+    except Exception as e:
+        log_error("admin_eterna_completed", e)
+
+def send_admin_alert(message: str):
+    try:
+        if not ADMIN_ALERT_PHONE:
+            return
+        send_sms(ADMIN_ALERT_PHONE, message)
+    except Exception as e:
+        log_error("admin_alert_sms", e)
+
+
+def build_admin_eterna_completed_message(order: dict) -> str:
+    sender = order.get("sender_name") or ""
+    recipient = order.get("recipient_name") or ""
+
+    ida = order.get("experience_video_url") or ""
+    vuelta = sender_pack_url_from_order(order)
+
+    return (
+        "✨ Tu ETERNA completada\n\n"
+        f"{sender} → {recipient}\n\n"
+        "IDA:\n"
+        f"{ida}\n\n"
+        "VUELTA:\n"
+        f"{vuelta}"
+    )
+
+
+def send_admin_eterna_completed(order: dict):
+    try:
+        msg = build_admin_eterna_completed_message(order)
+        send_admin_alert(msg)
+    except Exception as e:
+        log_error("admin_eterna_completed", e)
 
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
@@ -5180,10 +5247,16 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     # 📩 SMS REGALANTE (NO BLOQUEA)
     try:
-        try_send_sender_sms(get_order_by_id(order["id"]))
-        print("📩 SMS regalante OK")
+        sms_result = try_send_sender_sms(get_order_by_id(order["id"]))
+        print("📩 SMS REGALANTE RESULT:", sms_result)
     except Exception as e:
-        log_error("sender_sms_error", e)
+        log_error("try_send_sender_sms", e)
+
+    try:
+        send_admin_eterna_completed(get_order_by_id(order["id"]))
+        print("📲 ADMIN SMS ENVIADO")
+    except Exception as e:
+        log_error("admin_sms_error", e)
 
     # =========================================================
     # RESPUESTA SIEMPRE OK (CLAVE)
