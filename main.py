@@ -3601,6 +3601,20 @@ h1 {{
         <div class="soft">
             Cuando esté listo, entrarás aquí para vivirlo de verdad.
         </div>
+        <div style="
+            margin-top:22px;
+            font-size:14px;
+            line-height:1.7;
+            color:rgba(255,255,255,0.55);
+            max-width:420px;
+            margin-left:auto;
+            margin-right:auto;
+">
+            Para que este momento pueda volver a quien lo creó,<br>
+            se registrará lo que ocurra durante la experiencia.<br><br>
+            Al continuar, aceptas que este momento sea guardado<br>
+            y compartido únicamente con esa persona.
+        </div>
         <div class="actions">
             <a class="btn" href="/pedido/{safe_attr(recipient_token)}">Entrar</a>
         </div>
@@ -4412,58 +4426,42 @@ video {
     </video>
 
     <div class="overlay" id="overlay">
-        <div class="overlay-card">
-            <div class="eyebrow guided-line" id="introEyebrow">ETERNA</div>
+    <div class="overlay-card">
+        <div class="eyebrow">ETERNA</div>
 
-            <h1 class="title guided-line" id="intro1">Shhh…</h1>
+        <h1 class="title">Shhh…</h1>
 
-            <div class="text guided-line" id="intro2">
-                Esto no es un vídeo.
-            </div>
-
-            <div class="soft guided-line" id="intro3" style="margin-top:10px;">
-                Es algo que alguien ha guardado para ti.
-            </div>
-
-            <div class="soft guided-line" id="intro4" style="margin-top:24px;">
-                Antes de empezar…
-            </div>
-
-            <div class="soft guided-line" id="intro5" style="margin-top:12px;">
-                busca un momento tranquilo
-            </div>
-
-            <div class="soft guided-line" id="intro6" style="margin-top:6px;">
-                y, si puedes, siéntate
-            </div>
-
-            <div class="soft guided-line" id="intro7" style="margin-top:24px;">
-                sostén el móvil frente a ti
-            </div>
-
-            <div class="soft guided-line" id="intro8" style="margin-top:6px;">
-                y míralo como si esa persona estuviera aquí
-            </div>
-
-            <div class="soft guided-line" id="intro9" style="margin-top:24px;">
-                No hace falta hacer nada más.
-            </div>
-
-            <div class="soft guided-line" id="intro10" style="margin-top:6px;">
-                Solo estar.
-            </div>
-
-            <div class="soft guided-line" id="intro11" style="margin-top:24px;">
-                Cuando estés listo…
-            </div>
-
-            <button class="btn start-hidden" id="startBtn" style="margin-top:32px;">
-                empezar
-            </button>
-
-            <div class="error-note" id="errorNote"></div>
+        <div class="text">
+            Esto no es un vídeo.<br>
+            Es un momento que está a punto de ocurrir.
         </div>
+
+        <div class="soft">
+            Cuando estés listo, pulsa y vívelo de verdad.
+        </div>
+
+        <div style="
+            margin-top:22px;
+            font-size:14px;
+            line-height:1.7;
+            color:rgba(255,255,255,0.55);
+            max-width:420px;
+            margin-left:auto;
+            margin-right:auto;
+        ">
+            Para que este momento pueda volver a quien lo creó,<br>
+            se registrará lo que ocurra durante la experiencia.<br><br>
+            Al continuar, aceptas que este momento sea guardado<br>
+            y compartido únicamente con esa persona.
+        </div>
+
+        <button class="btn" id="startBtn" style="margin-top:28px;">
+            Estoy listo
+        </button>
+
+        <div class="error-note" id="errorNote"></div>
     </div>
+</div>
 
     <div class="payoff" id="payoff">
         <div class="payoff-card">
