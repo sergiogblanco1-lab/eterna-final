@@ -741,12 +741,16 @@ def maybe_mark_eterna_completed(order_id: str) -> dict:
 
     if is_eterna_complete(order):
         update_order(
-    order["id"],
-    experience_started=1,
-    delivered_to_recipient=1,
-)
+            order["id"],
+            eterna_completed=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+        )
     else:
-        update_order(order_id, eterna_completed=0)
+        update_order(
+            order_id,
+            eterna_completed=0,
+        )
 
     return get_order_by_id(order_id)
 
@@ -1097,38 +1101,6 @@ def send_sms(phone: str, message: str) -> dict:
     except Exception as e:
         return {"ok": False, "sid": None, "error": str(e)}
 
-def send_admin_alert(message: str):
-    try:
-        if not ADMIN_ALERT_PHONE:
-            return
-        send_sms(ADMIN_ALERT_PHONE, message)
-    except Exception as e:
-        log_error("admin_alert_sms", e)
-
-
-def build_admin_eterna_completed_message(order: dict) -> str:
-    sender = order.get("sender_name") or ""
-    recipient = order.get("recipient_name") or ""
-
-    ida = order.get("experience_video_url") or ""
-    vuelta = sender_pack_url_from_order(order)
-
-    return (
-        "✨ Tu ETERNA completada\n\n"
-        f"{sender} → {recipient}\n\n"
-        "IDA:\n"
-        f"{ida}\n\n"
-        "VUELTA:\n"
-        f"{vuelta}"
-    )
-
-
-def send_admin_eterna_completed(order: dict):
-    try:
-        msg = build_admin_eterna_completed_message(order)
-        send_admin_alert(msg)
-    except Exception as e:
-        log_error("admin_eterna_completed", e)
 
 def send_admin_alert(message: str):
     try:
@@ -5363,21 +5335,21 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     updated_order = get_order_by_id(order["id"])
 
-    # 💸 INTENTO DE PAGO
+    # 💸 INTENTO DE PAGO (NO BLOQUEA)
     try:
         process_gift_transfer_for_order(updated_order)
         print("💸 intento payout OK")
     except Exception as e:
         log_error("payout_error", e)
 
-    # 📩 SMS REGALANTE
+    # 📩 SMS REGALANTE (NO BLOQUEA)
     try:
         sms_result = try_send_sender_sms(updated_order)
         print("📩 SMS REGALANTE RESULT:", sms_result)
     except Exception as e:
         log_error("try_send_sender_sms", e)
 
-    # 📲 SMS ADMIN
+    # 📲 SMS ADMIN (NO BLOQUEA)
     try:
         send_admin_eterna_completed(updated_order)
         print("📲 ADMIN SMS ENVIADO")
