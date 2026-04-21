@@ -5316,7 +5316,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     try:
         if r2_enabled():
             remote_name = f"reactions/{order['id']}.{extension}"
-
             safe_type = content_type or ("video/mp4" if extension == "mp4" else "video/webm")
 
             public_url = upload_video_to_r2(
@@ -5362,17 +5361,16 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     except Exception as e:
         log_error("mark_eterna_completed", e)
 
-    # 🔥 SIEMPRE RECARGAMOS EL ORDER REAL
     updated_order = get_order_by_id(order["id"])
 
-    # 💸 INTENTO DE PAGO (NO BLOQUEA)
+    # 💸 INTENTO DE PAGO
     try:
         process_gift_transfer_for_order(updated_order)
         print("💸 intento payout OK")
     except Exception as e:
         log_error("payout_error", e)
 
-    # 📩 SMS REGALANTE (NO BLOQUEA)
+    # 📩 SMS REGALANTE
     try:
         sms_result = try_send_sender_sms(updated_order)
         print("📩 SMS REGALANTE RESULT:", sms_result)
