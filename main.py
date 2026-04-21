@@ -4463,7 +4463,7 @@ video {
     font-size: 54px;
     line-height: 1.06;
     font-weight: 700;
-    margin: 0 0 22px 0;
+    margin: 0 0 16px 0;
     color: white;
 }
 
@@ -4594,6 +4594,24 @@ video {
     border: 1px solid rgba(255,255,255,0.10);
 }
 
+.guide-step {
+    display: none;
+}
+
+.guide-step.active {
+    display: block;
+}
+
+.guide-legal {
+    margin-top: 22px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.55);
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4616,45 +4634,96 @@ video {
 <body>
 <div class="wrap">
     <video
-    id="video"
-    playsinline
-    webkit-playsinline
-    preload="auto"
-    style="
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform: scale(1.15);
-        transform-origin: center;
-        background: black;
-    "
->
+        id="video"
+        playsinline
+        webkit-playsinline
+        preload="auto"
+    >
         <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
     <div class="overlay" id="overlay">
         <div class="overlay-card">
-            <div class="eyebrow">ETERNA</div>
 
-            <h1 class="title">Shhh…</h1>
-
-            <div class="text">
-                Esto no es un vídeo.<br>
-                Es un momento.
+            <div class="guide-step active" id="guideStep1">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Shhh…</h1>
+                <div class="text">
+                    Esto merece ser escuchado bien.
+                </div>
+                <div class="soft">
+                    Si puedes, usa auriculares o sube el volumen.
+                </div>
+                <button class="btn" id="guideBtn1" style="margin-top:28px;">
+                    Tengo sonido
+                </button>
             </div>
 
-            <div class="soft">
-                No pienses.<br>
-                Solo deja que ocurra.
+            <div class="guide-step" id="guideStep2">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Un momento solo para ti</h1>
+                <div class="text">
+                    Busca un lugar tranquilo.
+                </div>
+                <div class="soft">
+                    Sin ruido. Sin interrupciones.
+                </div>
+                <button class="btn" id="guideBtn2" style="margin-top:28px;">
+                    Estoy en un sitio tranquilo
+                </button>
             </div>
 
-            <button class="btn" id="startBtn" style="margin-top:28px;">
-                Estoy listo
-            </button>
+            <div class="guide-step" id="guideStep3">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Colócalo frente a ti</h1>
+                <div class="text">
+                    Un poco más lejos… así es mejor.
+                </div>
+                <div class="soft">
+                    Queremos verte bien durante este momento.
+                </div>
+                <button class="btn" id="guideBtn3" style="margin-top:28px;">
+                    Ya está colocado
+                </button>
+            </div>
 
-            <div class="error-note" id="errorNote"></div>
+            <div class="guide-step" id="guideStep4">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Cuida la luz</h1>
+                <div class="text">
+                    Evita tener la luz detrás.
+                </div>
+                <div class="soft">
+                    Si puedes, quédate donde tu cara se vea bien.
+                </div>
+                <button class="btn" id="guideBtn4" style="margin-top:28px;">
+                    Se me ve bien
+                </button>
+            </div>
+
+            <div class="guide-step" id="guideStep5">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Ahora sí</h1>
+                <div class="text">
+                    Esto no es un vídeo.<br>
+                    Es un momento que está a punto de ocurrir.
+                </div>
+                <div class="soft">
+                    Esto solo pasa una vez.
+                </div>
+
+                <div class="guide-legal">
+                    Al continuar, aceptas que este momento sea guardado
+                    y compartido únicamente con quien lo creó.
+                </div>
+
+                <button class="btn" id="startBtn" style="margin-top:28px;">
+                    Estoy listo
+                </button>
+
+                <div class="error-note" id="errorNote"></div>
+            </div>
+
         </div>
     </div>
 
@@ -4684,6 +4753,15 @@ const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
+const guideSteps = [
+    document.getElementById("guideStep1"),
+    document.getElementById("guideStep2"),
+    document.getElementById("guideStep3"),
+    document.getElementById("guideStep4"),
+    document.getElementById("guideStep5")
+];
+
+let currentGuideStep = 0;
 let stream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -4692,6 +4770,30 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+
+function showGuideStep(index) {
+    currentGuideStep = index;
+    guideSteps.forEach((step, i) => {
+        if (!step) return;
+        if (i === index) {
+            step.classList.add("active");
+        } else {
+            step.classList.remove("active");
+        }
+    });
+}
+
+function nextGuideStep() {
+    const next = currentGuideStep + 1;
+    if (next < guideSteps.length) {
+        showGuideStep(next);
+    }
+}
+
+document.getElementById("guideBtn1")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn2")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn3")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn4")?.addEventListener("click", () => nextGuideStep());
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -4780,6 +4882,7 @@ function resetRecordingState() {
     startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
+    showGuideStep(0);
 }
 
 function waitForVideoReady() {
@@ -5209,6 +5312,8 @@ if (backToStartBtn) {
         window.location.replace("/pedido/" + recipientToken);
     });
 }
+
+showGuideStep(0);
 </script>
 </body>
 </html>
@@ -5221,7 +5326,6 @@ if (backToStartBtn) {
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
     return HTMLResponse(html_page)
-
 
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
