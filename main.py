@@ -5328,7 +5328,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             print("☁️ Subido a R2:", public_url)
 
     except Exception as e:
-        # ⚠️ NO romper flujo si falla R2
         log_error("r2_upload_failed", e)
         print("⚠️ R2 FALLÓ pero seguimos")
 
@@ -5359,10 +5358,11 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     # =========================================================
 
     try:
-        updated_order = maybe_mark_eterna_completed(order["id"])
+        maybe_mark_eterna_completed(order["id"])
     except Exception as e:
         log_error("mark_eterna_completed", e)
-        updated_order = get_order_by_id(order["id"])
+
+    updated_order = get_order_by_id(order["id"])
 
     # 💸 INTENTO DE PAGO (NO BLOQUEA)
     try:
@@ -5373,13 +5373,13 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     # 📩 SMS REGALANTE (NO BLOQUEA)
     try:
-        sms_result = try_send_sender_sms(get_order_by_id(order["id"]))
+        sms_result = try_send_sender_sms(updated_order)
         print("📩 SMS REGALANTE RESULT:", sms_result)
     except Exception as e:
         log_error("try_send_sender_sms", e)
 
     try:
-        send_admin_eterna_completed(get_order_by_id(order["id"]))
+        send_admin_eterna_completed(updated_order)
         print("📲 ADMIN SMS ENVIADO")
     except Exception as e:
         log_error("admin_sms_error", e)
