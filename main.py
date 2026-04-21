@@ -5362,6 +5362,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     except Exception as e:
         log_error("mark_eterna_completed", e)
 
+    # 🔥 SIEMPRE RECARGAMOS EL ORDER REAL
     updated_order = get_order_by_id(order["id"])
 
     # 💸 INTENTO DE PAGO (NO BLOQUEA)
@@ -5378,6 +5379,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     except Exception as e:
         log_error("try_send_sender_sms", e)
 
+    # 📲 SMS ADMIN
     try:
         send_admin_eterna_completed(updated_order)
         print("📲 ADMIN SMS ENVIADO")
@@ -5385,7 +5387,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         log_error("admin_sms_error", e)
 
     # =========================================================
-    # RESPUESTA SIEMPRE OK (CLAVE)
+    # RESPUESTA FINAL
     # =========================================================
 
     return JSONResponse({
