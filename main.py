@@ -54,7 +54,6 @@ templates = Jinja2Templates(directory="templates")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
-ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
@@ -3378,9 +3377,11 @@ async def crear_post(
             photo6,
         )
 
-    except Exception as e:
-        print("🔥 ERROR EN /crear:", str(e))
-        raise HTTPException(status_code=500, detail="Error creando el pedido")
+    except HTTPException:
+    raise
+except Exception as e:
+    print("🔥 ERROR EN /crear:", str(e))
+    raise HTTPException(status_code=500, detail=f"Error creando el pedido: {e}")
 
 
 # =========================================================
@@ -3824,7 +3825,7 @@ h1 {{
         <div class="soft">
             Cuando esté listo, entrarás aquí para vivirlo de verdad.
         </div>
-        <div style="
+<div style="
         margin-top:22px;
         font-size:14px;
         line-height:1.7;
@@ -3833,8 +3834,9 @@ h1 {{
         margin-left:auto;
         margin-right:auto;
 ">
-        Al continuar, aceptas que este momento sea guardado
-        y compartido únicamente con quien lo creó.
+        Al continuar, aceptas que lo que ocurra durante este momento
+        pueda ser grabado, guardado y enviado únicamente
+        a la persona que creó este ETERNA.
     </div>
         <div class="actions">
             <a class="btn" href="/pedido/{safe_attr(recipient_token)}">Entrar</a>
@@ -4713,15 +4715,21 @@ video {
                 </div>
 
                 <div class="guide-legal">
-                    Al continuar, aceptas que este momento sea guardado
-                    y compartido únicamente con quien lo creó.
+                    Al continuar, aceptas que lo que ocurra durante este momento
+                    pueda ser grabado, guardado y enviado únicamente
+                    a la persona que creó este ETERNA.
                 </div>
 
                 <button class="btn" id="startBtn" style="margin-top:28px;">
-                    Estoy listo
+                    Lo acepto. Estoy listo
                 </button>
 
                 <div class="error-note" id="errorNote"></div>
+
+                <div class="retry-actions" id="startFailActions" style="margin-top:18px;">
+                    <button class="retry-btn" id="retryStartBtn">Intentarlo otra vez</button>
+                    <button class="retry-btn secondary" id="backFromStartBtn">Volver al inicio</button>
+                </div>
             </div>
 
         </div>
@@ -4751,6 +4759,9 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
+const startFailActions = document.getElementById("startFailActions");
+const retryStartBtn = document.getElementById("retryStartBtn");
+const backFromStartBtn = document.getElementById("backFromStartBtn");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
 const guideSteps = [
@@ -4819,6 +4830,18 @@ function hideRetryActions() {
     }
 }
 
+function showStartFailActions() {
+    if (startFailActions) {
+        startFailActions.classList.add("show");
+    }
+}
+
+function hideStartFailActions() {
+    if (startFailActions) {
+        startFailActions.classList.remove("show");
+    }
+}
+
 function buildFriendlyUploadMessage(errorCode) {
     const code = String(errorCode || "").toLowerCase();
 
@@ -4882,6 +4905,7 @@ function resetRecordingState() {
     startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
+    hideStartFailActions();
     showGuideStep(0);
 }
 
@@ -5159,6 +5183,7 @@ startBtn.addEventListener("click", async () => {
 
     startBtn.disabled = true;
     clearStartError();
+    hideStartFailActions();
 
     try {
         try {
@@ -5174,6 +5199,7 @@ startBtn.addEventListener("click", async () => {
         if (!recordingStarted) {
             showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
             startBtn.disabled = false;
+            showStartFailActions();
             return;
         }
 
@@ -5216,6 +5242,7 @@ startBtn.addEventListener("click", async () => {
             experienceStarted = false;
             overlay.classList.remove("hidden");
             startBtn.disabled = false;
+            showStartFailActions();
 
             try {
                 if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -5264,6 +5291,7 @@ startBtn.addEventListener("click", async () => {
         recordingExtension = "webm";
 
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
+        showStartFailActions();
     }
 });
 
@@ -5309,6 +5337,22 @@ if (retryExperienceBtn) {
 
 if (backToStartBtn) {
     backToStartBtn.addEventListener("click", () => {
+        window.location.replace("/pedido/" + recipientToken);
+    });
+}
+
+if (retryStartBtn) {
+    retryStartBtn.addEventListener("click", () => {
+        resetRecordingState();
+        clearStartError();
+        hideStartFailActions();
+        startBtn.disabled = false;
+        showGuideStep(4);
+    });
+}
+
+if (backFromStartBtn) {
+    backFromStartBtn.addEventListener("click", () => {
         window.location.replace("/pedido/" + recipientToken);
     });
 }
