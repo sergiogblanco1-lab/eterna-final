@@ -356,7 +356,6 @@ def init_db():
     add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
 init_db()
 
-
 # =========================================================
 # HELPERS BASE
 # =========================================================
@@ -1135,9 +1134,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     print("📦 PROCESS RECIPIENT DELIVERY START")
     print("➡️ order_id:", order_id)
 
-    # =========================================================
-    # YA ENVIADO
-    # =========================================================
     if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
         return {
             "ok": True,
@@ -1149,9 +1145,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    # =========================================================
-    # VALIDACIONES PREVIAS
-    # =========================================================
     attempts = int(order.get("recipient_sms_attempts") or 0)
 
     if attempts >= 3:
@@ -1188,9 +1181,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "scheduled_delivery_display": scheduled_delivery_display(order),
         }
 
-    # =========================================================
-    # SMS
-    # =========================================================
     message = build_recipient_message(order)
 
     phone_raw = order.get("recipient_phone", "")
@@ -1210,9 +1200,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     sms_sid = (result.get("sid") or "").strip() or None
     sms_error = (result.get("error") or "").strip() or None
 
-    # =========================================================
-    # ÉXITO
-    # =========================================================
     if sms_ok:
         sent_at = now_iso()
 
@@ -1240,9 +1227,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": updated.get("recipient_sms_error"),
         }
 
-    # =========================================================
-    # FALLO
-    # =========================================================
     final_error = sms_error or "sms_error"
 
     update_order(
@@ -1263,6 +1247,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
         "recipient_sms_error": updated.get("recipient_sms_error"),
     }
+
 
 # =========================================================
 # HELPERS EXTRA
@@ -1361,22 +1346,18 @@ def has_valid_recipient_session(order: dict, request: Request) -> bool:
     expected = (order.get("recipient_session_token") or "").strip()
     got = (request.cookies.get(cookie_key) or "").strip()
 
-    # 🔥 CASO 1: aún no ha empezado → dejamos pasar SIEMPRE
     if not bool(order.get("experience_started")):
         return True
 
-    # 🔥 CASO 2: si no hay token esperado → dejamos pasar
     if not expected:
         return True
 
-    # 🔥 CASO 3: comparación segura
     try:
         if got and secrets.compare_digest(expected, got):
             return True
     except Exception:
         pass
 
-    # 🔥 CASO FINAL: bloqueo solo si ya empezó Y no coincide
     return False
 
 
@@ -1385,7 +1366,6 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
     expected = (order.get("recipient_session_token") or "").strip()
     got = (request.cookies.get(cookie_key) or "").strip()
 
-    # Si la cookie ya coincide, todo bien
     if expected and got:
         try:
             if secrets.compare_digest(expected, got):
@@ -1393,7 +1373,6 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
         except Exception:
             pass
 
-    # Si todavía no existe sesión en DB, la creamos
     if not expected:
         new_session = new_token()
 
@@ -1414,8 +1393,6 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
         )
         return True
 
-    # Si la experiencia todavía no ha empezado ni terminado,
-    # permitimos recuperar la cookie en el navegador real del destinatario
     if not bool(order.get("experience_started")) and not bool(order.get("experience_completed")):
         response.set_cookie(
             key=cookie_key,
@@ -1428,7 +1405,6 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
         )
         return True
 
-    # Si ya empezó o terminó y no coincide la cookie, sí bloqueamos
     return False
 
 
