@@ -3378,10 +3378,10 @@ async def crear_post(
         )
 
     except HTTPException:
-    raise
-except Exception as e:
-    print("🔥 ERROR EN /crear:", str(e))
-    raise HTTPException(status_code=500, detail=f"Error creando el pedido: {e}")
+        raise
+    except Exception as e:
+        print("🔥 ERROR EN /crear:", str(e))
+        raise HTTPException(status_code=500, detail=f"Error creando el pedido: {e}")
 
 
 # =========================================================
