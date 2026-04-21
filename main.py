@@ -1197,13 +1197,15 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     # SMS
     # =========================================================
     message = build_recipient_message(order)
+
     phone_raw = order.get("recipient_phone", "")
     phone_e164 = to_e164(phone_raw)
 
     print("📱 PHONE RAW:", phone_raw)
     print("📱 PHONE E164:", phone_e164)
+    print("📩 RECIPIENT MESSAGE:", message)
 
-    result = send_sms(phone_e164)
+    result = send_sms(phone_raw, message)
 
     print("📩 RECIPIENT SMS RESULT:", result)
 
@@ -1213,12 +1215,10 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     sms_sid = (result.get("sid") or "").strip() or None
     sms_error = (result.get("error") or "").strip() or None
 
-# =========================================================
-# ÉXITO REAL
-# =========================================================
-    success = sms_ok
-
-    if success:
+    # =========================================================
+    # ÉXITO
+    # =========================================================
+    if sms_ok:
         sent_at = now_iso()
 
         update_order(
@@ -1246,9 +1246,9 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         }
 
     # =========================================================
-    # FALLO REAL
+    # FALLO
     # =========================================================
-    final_error = sms_error or sms_reason or "sms_error"
+    final_error = sms_error or "sms_error"
 
     update_order(
         order_id,
@@ -1268,6 +1268,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
         "recipient_sms_error": updated.get("recipient_sms_error"),
     }
+
     
 # =========================================================
 # HELPERS EXTRA
