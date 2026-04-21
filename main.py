@@ -1197,7 +1197,13 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     # SMS
     # =========================================================
     message = build_recipient_message(order)
-    result = send_sms(order.get("recipient_phone", ""), message)
+    phone_raw = order.get("recipient_phone", "")
+    phone_e164 = to_e164(phone_raw)
+
+    print("📱 PHONE RAW:", phone_raw)
+    print("📱 PHONE E164:", phone_e164)
+
+    result = send_sms(phone_e164)
 
     print("📩 RECIPIENT SMS RESULT:", result)
 
@@ -1206,19 +1212,11 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     sms_ok = bool(result.get("ok"))
     sms_sid = (result.get("sid") or "").strip() or None
     sms_error = (result.get("error") or "").strip() or None
-    sms_reason = (result.get("reason") or "").strip().lower()
 
-    # =========================================================
-    # ÉXITO REAL
-    # =========================================================
-    success = False
-
-    if sms_ok:
-        success = True
-    elif sms_reason in {"accepted", "queued", "sent"}:
-        success = True
-    elif sms_sid:
-        success = True
+# =========================================================
+# ÉXITO REAL
+# =========================================================
+    success = sms_ok
 
     if success:
         sent_at = now_iso()
