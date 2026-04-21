@@ -1102,37 +1102,16 @@ def send_sms(phone: str, message: str) -> dict:
 
 
 def send_admin_alert(message: str):
-    try:
-        if not ADMIN_ALERT_PHONE:
-            return
-        send_sms(ADMIN_ALERT_PHONE, message)
-    except Exception as e:
-        log_error("admin_alert_sms", e)
+    return
 
 
 def build_admin_eterna_completed_message(order: dict) -> str:
-    sender = order.get("sender_name") or ""
-    recipient = order.get("recipient_name") or ""
-
-    ida = order.get("experience_video_url") or ""
-    vuelta = sender_pack_url_from_order(order)
-
-    return (
-        "✨ Tu ETERNA completada\n\n"
-        f"{sender} → {recipient}\n\n"
-        "IDA:\n"
-        f"{ida}\n\n"
-        "VUELTA:\n"
-        f"{vuelta}"
-    )
+    return ""
 
 
 def send_admin_eterna_completed(order: dict):
-    try:
-        msg = build_admin_eterna_completed_message(order)
-        send_admin_alert(msg)
-    except Exception as e:
-        log_error("admin_eterna_completed", e)
+    return
+
 
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
@@ -1269,7 +1248,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         "recipient_sms_error": updated.get("recipient_sms_error"),
     }
 
-    
 # =========================================================
 # HELPERS EXTRA
 # =========================================================
