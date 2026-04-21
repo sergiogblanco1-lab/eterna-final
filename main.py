@@ -1077,7 +1077,16 @@ def twilio_enabled() -> bool:
 def send_sms(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
 
+    print("📲 SEND_SMS START")
+    print("📲 PHONE RAW:", phone)
+    print("📲 PHONE E164:", to_phone)
+    print("📲 TWILIO FROM:", TWILIO_FROM_NUMBER)
+    print("📲 SMS ENABLED:", SMS_ENABLED)
+    print("📲 TWILIO CONFIGURED:", twilio_enabled())
+    print("📲 MESSAGE:", message)
+
     if not to_phone:
+        print("❌ SEND_SMS invalid_phone")
         return {"ok": False, "sid": None, "error": "invalid_phone"}
 
     if not SMS_ENABLED:
@@ -1087,6 +1096,7 @@ def send_sms(phone: str, message: str) -> dict:
         return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
 
     if not twilio_enabled():
+        print("❌ SEND_SMS twilio_not_configured")
         return {"ok": False, "sid": None, "error": "twilio_not_configured"}
 
     try:
@@ -1096,8 +1106,14 @@ def send_sms(phone: str, message: str) -> dict:
             from_=TWILIO_FROM_NUMBER,
             to=to_phone,
         )
+
+        print("✅ SEND_SMS ACCEPTED")
+        print("✅ TWILIO SID:", sms.sid)
+
         return {"ok": True, "sid": sms.sid, "error": None}
+
     except Exception as e:
+        print("❌ SEND_SMS EXCEPTION:", str(e))
         return {"ok": False, "sid": None, "error": str(e)}
 
 
