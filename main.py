@@ -3705,7 +3705,7 @@ h1 {
     if original_video_ready(order) and delivery_is_unlocked(order):
         return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
-    refresh = '<meta http-equiv="refresh" content="8">' if not original_video_ready(order) else ""
+    refresh = '<meta http-equiv="refresh" content="8">' if not (original_video_ready(order) and delivery_is_unlocked(order)) else ""
 
     html_page = f"""
 <!DOCTYPE html>
@@ -4318,11 +4318,11 @@ async def start_experience(recipient_token: str = Form(...)):
             "ok": True
         })
 
+    except HTTPException:
+        raise
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
-
-
 
 # =========================================================
 # EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
@@ -5466,12 +5466,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     except Exception as e:
         log_error("try_send_sender_sms", e)
 
-    # 📲 SMS ADMIN (NO BLOQUEA)
-    try:
-        send_admin_eterna_completed(updated_order)
-        print("📲 ADMIN SMS ENVIADO")
-    except Exception as e:
-        log_error("admin_sms_error", e)
+
 
     # =========================================================
     # RESPUESTA FINAL
