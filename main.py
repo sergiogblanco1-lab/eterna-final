@@ -4035,8 +4035,13 @@ async def stripe_webhook(request: Request):
 async def internal_video_ready(request: Request):
     incoming_secret = (request.headers.get("X-Video-Engine-Secret") or "").strip()
 
+    print("🎬 CALLBACK VIDEO READY START")
+    print("🎬 incoming_secret_present:", bool(incoming_secret))
+    print("🎬 expected_secret_present:", bool(VIDEO_READY_CALLBACK_SECRET))
+
     if VIDEO_READY_CALLBACK_SECRET:
         if incoming_secret != VIDEO_READY_CALLBACK_SECRET:
+            print("❌ CALLBACK SECRET INVALID")
             return JSONResponse(
                 status_code=403,
                 content={"status": "error", "reason": "invalid_secret"},
@@ -4044,7 +4049,8 @@ async def internal_video_ready(request: Request):
 
     try:
         data = await request.json()
-    except Exception:
+    except Exception as e:
+        log_error("internal_video_ready_invalid_json", e)
         return JSONResponse(
             status_code=400,
             content={"status": "error", "reason": "invalid_json"},
@@ -4058,6 +4064,7 @@ async def internal_video_ready(request: Request):
     print("🎬 video_url:", video_url)
 
     if not order_id or not video_url:
+        print("❌ CALLBACK missing_data")
         return JSONResponse(
             status_code=400,
             content={"status": "error", "reason": "missing_data"},
@@ -4066,7 +4073,18 @@ async def internal_video_ready(request: Request):
     try:
         order = get_order_by_id(order_id)
 
+        print("📦 ORDER FOUND:", order["id"])
+        print("📦 paid:", bool(order.get("paid")))
+        print("📦 existing_video:", bool((order.get("experience_video_url") or "").strip()))
+        print("📦 delivery_mode:", order.get("delivery_mode"))
+        print("📦 scheduled_delivery_at:", order.get("scheduled_delivery_at"))
+        print("📦 delivery_sent:", bool(order.get("delivery_sent")))
+        print("📦 recipient_sms_sent_at:", order.get("recipient_sms_sent_at"))
+        print("📦 recipient_sms_attempts:", int(order.get("recipient_sms_attempts") or 0))
+        print("📦 recipient_phone:", order.get("recipient_phone"))
+
         if not bool(order.get("paid")):
+            print("❌ CALLBACK order_not_paid")
             return JSONResponse(
                 status_code=400,
                 content={"status": "error", "reason": "order_not_paid"},
@@ -4075,7 +4093,7 @@ async def internal_video_ready(request: Request):
         existing_video = (order.get("experience_video_url") or "").strip()
 
         if existing_video:
-            print("⚠️ Callback duplicado ignorado")
+            print("⚠️ CALLBACK duplicado ignorado")
             return JSONResponse({
                 "status": "ok",
                 "reason": "video_already_saved",
@@ -4083,13 +4101,18 @@ async def internal_video_ready(request: Request):
                 "video_url": existing_video,
                 "recipient_url": recipient_experience_url_from_order(order),
                 "sender_url": sender_pack_url_from_order(order),
+                "delivery_sent": bool(order.get("delivery_sent")),
+                "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
             })
 
         update_order(
             order_id,
             experience_video_url=video_url,
             video_render_requested=0,
+            video_render_requested_at=None,
         )
+
+        print("✅ VIDEO URL GUARDADA EN ORDER")
 
         if not asset_exists(order_id, "rendered_video", video_url):
             insert_asset(
@@ -4098,11 +4121,13 @@ async def internal_video_ready(request: Request):
                 file_url=video_url,
                 storage_provider="video_engine",
             )
+            print("✅ ASSET rendered_video INSERTADO")
+        else:
+            print("ℹ️ ASSET rendered_video YA EXISTÍA")
 
         order = get_order_by_id(order_id)
 
-        print("🔥 CALLBACK VIDEO READY 🔥")
-        print("🎬 VIDEO GENERADO")
+        print("🔥 CALLBACK VIDEO READY OK 🔥")
         print("➡️ Recipient experience:", recipient_experience_url_from_order(order))
         print("➡️ Sender pack:", sender_pack_url_from_order(order))
         print("🕒 delivery_mode:", order.get("delivery_mode"))
@@ -4110,22 +4135,41 @@ async def internal_video_ready(request: Request):
         print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
         print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
         print("📦 delivery_sent:", bool(order.get("delivery_sent")))
+        print("📦 recipient_sms_sent_at:", order.get("recipient_sms_sent_at"))
+        print("📦 recipient_sms_attempts:", int(order.get("recipient_sms_attempts") or 0))
 
-        # SOLO AQUÍ intentamos enviar al regalado,
-        # porque aquí ya sabemos que el vídeo real existe.
+        can_send, reason = can_send_recipient_delivery(order)
+        print("📩 can_send_recipient_delivery:", can_send, reason)
+
         delivery_result = process_scheduled_recipient_delivery(order_id)
-        print("📩 Resultado entrega programada callback:", delivery_result)
+        print("📩 RESULTADO ENTREGA CALLBACK:", delivery_result)
+
+        updated = get_order_by_id(order_id)
+
+        print("📦 ESTADO FINAL CALLBACK")
+        print("📦 delivery_sent:", bool(updated.get("delivery_sent")))
+        print("📦 delivery_sent_at:", updated.get("delivery_sent_at"))
+        print("📦 recipient_sms_sent_at:", updated.get("recipient_sms_sent_at"))
+        print("📦 recipient_sms_sid:", updated.get("recipient_sms_sid"))
+        print("📦 recipient_sms_attempts:", int(updated.get("recipient_sms_attempts") or 0))
+        print("📦 recipient_sms_error:", updated.get("recipient_sms_error"))
 
         return JSONResponse({
             "status": "ok",
             "order_id": order_id,
             "video_url": video_url,
-            "recipient_url": recipient_experience_url_from_order(order),
-            "sender_url": sender_pack_url_from_order(order),
-            "delivery_mode": order.get("delivery_mode"),
-            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "recipient_url": recipient_experience_url_from_order(updated),
+            "sender_url": sender_pack_url_from_order(updated),
+            "delivery_mode": updated.get("delivery_mode"),
+            "scheduled_delivery_at": updated.get("scheduled_delivery_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(updated),
             "delivery_result": delivery_result,
+            "delivery_sent": bool(updated.get("delivery_sent")),
+            "delivery_sent_at": updated.get("delivery_sent_at"),
+            "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+            "recipient_sms_sid": updated.get("recipient_sms_sid"),
+            "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": updated.get("recipient_sms_error"),
         })
 
     except Exception as e:
@@ -4289,6 +4333,7 @@ def resumen(order_id: str):
     </html>
     """)
 
+
 # =========================================================
 # START EXPERIENCE (FIX CRÍTICO)
 # =========================================================
@@ -4309,9 +4354,16 @@ async def start_experience(recipient_token: str = Form(...)):
         if not delivery_is_unlocked(order):
             raise HTTPException(status_code=403, detail="delivery_locked")
 
+        if bool(order.get("experience_completed")):
+            return JSONResponse({
+                "ok": True,
+                "redirect_url": f"/cobrar/{recipient_token}",
+            })
+
         update_order(
             order["id"],
-            experience_started=1
+            experience_started=1,
+            delivered_to_recipient=1,
         )
 
         return JSONResponse({
@@ -4323,6 +4375,7 @@ async def start_experience(recipient_token: str = Form(...)):
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
+
 
 # =========================================================
 # EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
@@ -4341,11 +4394,14 @@ def experiencia(request: Request, recipient_token: str):
     if not delivery_is_unlocked(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+    temp_response = HTMLResponse("")
+    if not attach_recipient_session_if_needed(order, request, temp_response):
+        return render_viral_block_page()
+
+    order = get_order_by_recipient_token_or_404(recipient_token)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
@@ -5338,32 +5394,43 @@ showGuideStep(0);
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
-    return HTMLResponse(html_page)
+    response = HTMLResponse(html_page)
+
+    cookie_key = recipient_cookie_name(order["recipient_token"])
+    session_value = (order.get("recipient_session_token") or "").strip()
+    if session_value:
+        response.set_cookie(
+            key=cookie_key,
+            value=session_value,
+            max_age=60 * 60 * 24 * 365 * 5,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite="lax",
+            path="/",
+        )
+
+    return response
+
 
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
 # =========================================================
 
 @app.post("/upload-reaction/{recipient_token}")
-async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
+async def upload_reaction(request: Request, recipient_token: str, video: UploadFile = File(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     print("🎥 UPLOAD REACTION START")
     print("➡️ order_id:", order["id"])
 
-    # =========================================================
-    # VALIDACIONES
-    # =========================================================
+    if not has_valid_recipient_session(order, request):
+        raise HTTPException(status_code=403, detail="invalid_recipient_session")
 
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="not_paid")
 
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
-
-    # =========================================================
-    # READ VIDEO
-    # =========================================================
 
     content_type = (video.content_type or "").lower().strip()
     print("📦 content_type:", content_type)
@@ -5379,10 +5446,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if size > MAX_VIDEO_SIZE:
         raise HTTPException(status_code=400, detail="video_too_large")
 
-    # =========================================================
-    # SAVE LOCAL
-    # =========================================================
-
     extension = detect_video_extension(video)
     local_path = reaction_video_path(order["id"], extension)
 
@@ -5395,10 +5458,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     except Exception as e:
         log_error("save_local_reaction", e)
         raise HTTPException(status_code=500, detail="local_save_failed")
-
-    # =========================================================
-    # SUBIDA A R2 (NO BLOQUEANTE)
-    # =========================================================
 
     public_url = None
 
@@ -5419,10 +5478,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         log_error("r2_upload_failed", e)
         print("⚠️ R2 FALLÓ pero seguimos")
 
-    # =========================================================
-    # UPDATE DB (CRÍTICO)
-    # =========================================================
-
     try:
         update_order(
             order["id"],
@@ -5441,10 +5496,6 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         log_error("update_order_reaction", e)
         raise HTTPException(status_code=500, detail="db_update_failed")
 
-    # =========================================================
-    # POST PROCESOS (NO BLOQUEANTES)
-    # =========================================================
-
     try:
         maybe_mark_eterna_completed(order["id"])
     except Exception as e:
@@ -5452,25 +5503,17 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     updated_order = get_order_by_id(order["id"])
 
-    # 💸 INTENTO DE PAGO (NO BLOQUEA)
     try:
         process_gift_transfer_for_order(updated_order)
         print("💸 intento payout OK")
     except Exception as e:
         log_error("payout_error", e)
 
-    # 📩 SMS REGALANTE (NO BLOQUEA)
     try:
         sms_result = try_send_sender_sms(updated_order)
         print("📩 SMS REGALANTE RESULT:", sms_result)
     except Exception as e:
         log_error("try_send_sender_sms", e)
-
-
-
-    # =========================================================
-    # RESPUESTA FINAL
-    # =========================================================
 
     return JSONResponse({
         "ok": True,
@@ -5842,6 +5885,9 @@ def sender_pack(sender_token: str):
 
     sender_status = "Tu ETERNA ha vuelto."
 
+    reaction_type = guess_media_type_from_url(reaction_url) if reaction_url else "video/mp4"
+    original_type = guess_media_type_from_url(original_video_url) if original_video_url else "video/mp4"
+
     body_content = f"""
     <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
 
@@ -5855,7 +5901,6 @@ def sender_pack(sender_token: str):
 
         <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
 
-            <!-- VIDEO REACCIÓN -->
             <video
                 id="eterna-reaction-player"
                 playsinline
@@ -5864,10 +5909,9 @@ def sender_pack(sender_token: str):
                 preload="metadata"
                 style="width:100%;display:block;background:black;"
             >
-                <source src="{reaction_url}" type="video/mp4">
+                <source src="{safe_attr(reaction_url)}" type="{safe_attr(reaction_type)}">
             </video>
 
-            <!-- VIDEO ORIGINAL MINI -->
             <video
                 id="eterna-mini-original"
                 muted
@@ -5884,7 +5928,7 @@ def sender_pack(sender_token: str):
                     background:black;
                 "
             >
-                <source src="{original_video_url}" type="video/mp4">
+                <source src="{safe_attr(original_video_url)}" type="{safe_attr(original_type)}">
             </video>
 
         </div>
@@ -5904,7 +5948,7 @@ def sender_pack(sender_token: str):
         <div id="eterna-share-wrap" style="display:none;margin-top:22px;">
 
             <a
-                href="{reaction_url}"
+                href="{safe_attr(reaction_url)}"
                 download
                 style="display:block;width:100%;border-radius:999px;padding:20px;font-size:20px;font-weight:700;background:#fff;color:#000;text-decoration:none;">
                 Descargar su reacción
@@ -6005,7 +6049,7 @@ def sender_pack(sender_token: str):
         if (shareBtn) {{
             shareBtn.addEventListener("click", async function () {{
 
-                const url = "{reaction_url}";
+                const url = "{safe_attr(reaction_url)}";
 
                 if (navigator.share) {{
                     try {{
@@ -6227,6 +6271,32 @@ def admin_process_all_due_deliveries(token: str = ""):
     })
 
 
+@app.get("/admin/reset-recipient-session/{order_id}")
+def admin_reset_recipient_session(order_id: str, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    update_order(
+        order_id,
+        recipient_session_token=None,
+        recipient_session_claimed_at=None,
+        experience_started=0,
+    )
+
+    refreshed = get_order_by_id(order_id)
+
+    return JSONResponse({
+        "ok": True,
+        "order_id": order_id,
+        "recipient_token": refreshed.get("recipient_token"),
+        "experience_started": bool(refreshed.get("experience_started")),
+        "experience_completed": bool(refreshed.get("experience_completed")),
+        "recipient_session_token": refreshed.get("recipient_session_token"),
+        "recipient_session_claimed_at": refreshed.get("recipient_session_claimed_at"),
+        "recipient_url": recipient_experience_url_from_order(refreshed),
+    })
+
+
 # =========================================================
 # FINALIZAR EXPERIENCIA (DEFINITIVO)
 # =========================================================
@@ -6260,32 +6330,7 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         url=f"/cobrar/{recipient_token}",
         status_code=303
     )
-@app.get("/admin/reset-recipient-session/{order_id}")
-def admin_reset_recipient_session(order_id: str, token: str = ""):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="No autorizado")
 
-    order = get_order_by_id(order_id)
-
-    update_order(
-        order_id,
-        recipient_session_token=None,
-        recipient_session_claimed_at=None,
-        experience_started=0,
-    )
-
-    refreshed = get_order_by_id(order_id)
-
-    return JSONResponse({
-        "ok": True,
-        "order_id": order_id,
-        "recipient_token": refreshed.get("recipient_token"),
-        "experience_started": bool(refreshed.get("experience_started")),
-        "experience_completed": bool(refreshed.get("experience_completed")),
-        "recipient_session_token": refreshed.get("recipient_session_token"),
-        "recipient_session_claimed_at": refreshed.get("recipient_session_claimed_at"),
-        "recipient_url": recipient_experience_url_from_order(refreshed),
-    })
 
 # =========================================================
 # MAIN
