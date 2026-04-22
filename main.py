@@ -4740,13 +4740,13 @@ video {
                 </div>
 
                 <div class="guide-legal">
-                    Al continuar, aceptas que lo que ocurra durante este momento
-                    pueda ser grabado, guardado y enviado únicamente
-                    a la persona que creó este ETERNA.
+                    Al continuar, aceptas que este momento
+                    pueda ser guardado y llegar
+                    a la persona que lo creó.
                 </div>
 
                 <button class="btn" id="startBtn" style="margin-top:28px;">
-                    Lo acepto. Estoy listo
+                    Quiero vivirlo
                 </button>
 
                 <div class="error-note" id="errorNote"></div>
