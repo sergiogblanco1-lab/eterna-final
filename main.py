@@ -1346,19 +1346,37 @@ def has_valid_recipient_session(order: dict, request: Request) -> bool:
     expected = (order.get("recipient_session_token") or "").strip()
     got = (request.cookies.get(cookie_key) or "").strip()
 
-    if not bool(order.get("experience_started")):
+    experience_started = bool(order.get("experience_started"))
+    experience_completed = bool(order.get("experience_completed"))
+    reaction_uploaded = bool(order.get("reaction_uploaded"))
+
+    # =========================================================
+    # SI NUNCA HA EMPEZADO, NO BLOQUEAMOS
+    # =========================================================
+    if not experience_started:
         return True
 
-    if not expected:
-        return True
-
-    try:
-        if got and secrets.compare_digest(expected, got):
+    # =========================================================
+    # SI YA ESTÁ COMPLETADA O YA HAY REACCIÓN,
+    # MANTENEMOS EL CONTROL DE SESIÓN NORMAL
+    # =========================================================
+    if experience_completed or reaction_uploaded:
+        if not expected:
             return True
-    except Exception:
-        pass
 
-    return False
+        try:
+            if got and secrets.compare_digest(expected, got):
+                return True
+        except Exception:
+            pass
+
+        return False
+
+    # =========================================================
+    # SI ESTÁ EMPEZADA PERO NO COMPLETADA Y SIN REACCIÓN,
+    # DEJAMOS REENTRAR PARA NO MATAR LA EXPERIENCIA
+    # =========================================================
+    return True
 
 
 def attach_recipient_session_if_needed(order: dict, request: Request, response) -> bool:
@@ -1366,6 +1384,13 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
     expected = (order.get("recipient_session_token") or "").strip()
     got = (request.cookies.get(cookie_key) or "").strip()
 
+    experience_started = bool(order.get("experience_started"))
+    experience_completed = bool(order.get("experience_completed"))
+    reaction_uploaded = bool(order.get("reaction_uploaded"))
+
+    # =========================================================
+    # SI YA HAY COOKIE VÁLIDA, PERFECTO
+    # =========================================================
     if expected and got:
         try:
             if secrets.compare_digest(expected, got):
@@ -1373,6 +1398,9 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
         except Exception:
             pass
 
+    # =========================================================
+    # SI NO EXISTE SESIÓN, LA CREAMOS
+    # =========================================================
     if not expected:
         new_session = new_token()
 
@@ -1393,7 +1421,11 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
         )
         return True
 
-    if not bool(order.get("experience_started")) and not bool(order.get("experience_completed")):
+    # =========================================================
+    # SI EXISTE SESIÓN PERO TODAVÍA NO HAY EXPERIENCIA CERRADA,
+    # VOLVEMOS A PONER LA COOKIE Y DEJAMOS PASAR
+    # =========================================================
+    if not experience_completed and not reaction_uploaded:
         response.set_cookie(
             key=cookie_key,
             value=expected,
@@ -1405,6 +1437,9 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
         )
         return True
 
+    # =========================================================
+    # SI YA ESTÁ CERRADA, EXIGIMOS SESIÓN CORRECTA
+    # =========================================================
     return False
 
 
@@ -4354,10 +4389,22 @@ async def start_experience(recipient_token: str = Form(...)):
         if not delivery_is_unlocked(order):
             raise HTTPException(status_code=403, detail="delivery_locked")
 
-        if bool(order.get("experience_completed")):
+        # =========================================================
+        # SI YA ESTÁ COMPLETADA, REDIRIGIMOS A COBRAR
+        # =========================================================
+        if bool(order.get("experience_completed")) and bool(order.get("reaction_uploaded")):
             return JSONResponse({
                 "ok": True,
                 "redirect_url": f"/cobrar/{recipient_token}",
+            })
+
+        # =========================================================
+        # SI YA TENÍA STARTED PERO NO HAY REACCIÓN,
+        # NO BLOQUEAMOS: DEJAMOS CONTINUAR
+        # =========================================================
+        if bool(order.get("experience_started")) and not bool(order.get("reaction_uploaded")):
+            return JSONResponse({
+                "ok": True
             })
 
         update_order(
@@ -4394,7 +4441,10 @@ def experiencia(request: Request, recipient_token: str):
     if not delivery_is_unlocked(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if bool(order.get("experience_completed")):
+    # =========================================================
+    # SOLO SI YA ESTÁ COMPLETADA DE VERDAD, SACAMOS A COBRAR
+    # =========================================================
+    if bool(order.get("experience_completed")) and bool(order.get("reaction_uploaded")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     temp_response = HTMLResponse("")
@@ -4740,13 +4790,12 @@ video {
                 </div>
 
                 <div class="guide-legal">
-                    Al continuar, aceptas que este momento
-                    pueda ser guardado y llegar
-                    a la persona que lo creó.
+                    Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
+                    y que lo que ocurra en ella pueda volver a quien la creó.
                 </div>
 
                 <button class="btn" id="startBtn" style="margin-top:28px;">
-                    Quiero vivirlo
+                    Lo acepto. Estoy listo
                 </button>
 
                 <div class="error-note" id="errorNote"></div>
@@ -4879,11 +4928,11 @@ function buildFriendlyUploadMessage(errorCode) {
     }
 
     if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
-        return "No se ha podido grabar la reacción porque faltan permisos de cámara o micrófono.";
+        return "No se ha podido grabar este momento porque faltan permisos de cámara o micrófono.";
     }
 
     if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
-        return "No se ha podido subir la reacción por un problema de conexión. Revisa internet e inténtalo de nuevo.";
+        return "No se ha podido guardar este momento por un problema de conexión. Revisa internet e inténtalo de nuevo.";
     }
 
     return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
@@ -5417,14 +5466,11 @@ showGuideStep(0);
 # =========================================================
 
 @app.post("/upload-reaction/{recipient_token}")
-async def upload_reaction(request: Request, recipient_token: str, video: UploadFile = File(...)):
+async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     print("🎥 UPLOAD REACTION START")
     print("➡️ order_id:", order["id"])
-
-    if not has_valid_recipient_session(order, request):
-        raise HTTPException(status_code=403, detail="invalid_recipient_session")
 
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="not_paid")
@@ -5441,15 +5487,31 @@ async def upload_reaction(request: Request, recipient_token: str, video: UploadF
     print("📦 size:", size)
 
     if size == 0:
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error="empty_video",
+        )
         raise HTTPException(status_code=400, detail="empty_video")
 
     if size > MAX_VIDEO_SIZE:
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error="video_too_large",
+        )
         raise HTTPException(status_code=400, detail="video_too_large")
 
     extension = detect_video_extension(video)
     local_path = reaction_video_path(order["id"], extension)
 
     try:
+        update_order(
+            order["id"],
+            reaction_upload_pending=1,
+            reaction_upload_error=None,
+        )
+
         with open(local_path, "wb") as f:
             f.write(data)
 
@@ -5457,6 +5519,11 @@ async def upload_reaction(request: Request, recipient_token: str, video: UploadF
 
     except Exception as e:
         log_error("save_local_reaction", e)
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error="local_save_failed",
+        )
         raise HTTPException(status_code=500, detail="local_save_failed")
 
     public_url = None
@@ -5494,6 +5561,11 @@ async def upload_reaction(request: Request, recipient_token: str, video: UploadF
 
     except Exception as e:
         log_error("update_order_reaction", e)
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error="db_update_failed",
+        )
         raise HTTPException(status_code=500, detail="db_update_failed")
 
     try:
@@ -6281,6 +6353,9 @@ def admin_reset_recipient_session(order_id: str, token: str = ""):
         recipient_session_token=None,
         recipient_session_claimed_at=None,
         experience_started=0,
+        experience_completed=0,
+        reaction_upload_pending=0,
+        reaction_upload_error=None,
     )
 
     refreshed = get_order_by_id(order_id)
@@ -6291,6 +6366,7 @@ def admin_reset_recipient_session(order_id: str, token: str = ""):
         "recipient_token": refreshed.get("recipient_token"),
         "experience_started": bool(refreshed.get("experience_started")),
         "experience_completed": bool(refreshed.get("experience_completed")),
+        "reaction_uploaded": bool(refreshed.get("reaction_uploaded")),
         "recipient_session_token": refreshed.get("recipient_session_token"),
         "recipient_session_claimed_at": refreshed.get("recipient_session_claimed_at"),
         "recipient_url": recipient_experience_url_from_order(refreshed),
@@ -6314,40 +6390,38 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     try:
+        # =========================================================
+        # SOLO CERRAMOS SI DE VERDAD HAY REACCIÓN
+        # =========================================================
+        if bool(order.get("reaction_uploaded")):
+            update_order(
+                order["id"],
+                experience_completed=1,
+                delivered_to_recipient=1,
+                gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+                reaction_upload_pending=0,
+                reaction_upload_error=None,
+            )
+
+            maybe_mark_eterna_completed(order["id"])
+            return RedirectResponse(
+                url=f"/cobrar/{recipient_token}",
+                status_code=303
+            )
+
+        # =========================================================
+        # SI NO HAY REACCIÓN, NO MATAMOS LA EXPERIENCIA:
+        # VOLVEMOS A /experiencia PARA PODER REINTENTAR
+        # =========================================================
         update_order(
             order["id"],
-            experience_completed=1,
-            delivered_to_recipient=1,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+            experience_completed=0,
         )
-
-        maybe_mark_eterna_completed(order["id"])
 
     except Exception as e:
         log_error("FINALIZAR EXPERIENCE ERROR", e)
 
     return RedirectResponse(
-        url=f"/cobrar/{recipient_token}",
+        url=f"/experiencia/{recipient_token}",
         status_code=303
-    )
-
-
-# =========================================================
-# MAIN
-# =========================================================
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    port = int(os.environ.get("PORT", 10000))
-
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=port
     )
