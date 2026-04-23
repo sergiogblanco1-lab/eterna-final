@@ -939,6 +939,136 @@ def build_sender_ready_message(order: dict) -> str:
     )
 
 
+def twilio_enabled() -> bool:
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
+
+
+def send_sms(phone: str, message: str) -> dict:
+    to_phone = to_e164(phone)
+
+    print("📲 SEND_SMS START")
+    print("📲 PHONE RAW:", phone)
+    print("📲 PHONE E164:", to_phone)
+    print("📲 TWILIO FROM:", TWILIO_FROM_NUMBER)
+    print("📲 SMS ENABLED:", SMS_ENABLED)
+    print("📲 TWILIO CONFIGURED:", twilio_enabled())
+    print("📲 MESSAGE:", message)
+
+    if not to_phone:
+        print("❌ SEND_SMS invalid_phone")
+        return {"ok": False, "channel": "sms", "sid": None, "error": "invalid_phone"}
+
+    if not SMS_ENABLED:
+        print("🚫 SMS DESACTIVADO POR CONFIG")
+        return {"ok": False, "channel": "sms", "sid": None, "error": "sms_disabled_by_config"}
+
+    if not twilio_enabled():
+        print("❌ SEND_SMS twilio_not_configured")
+        return {"ok": False, "channel": "sms", "sid": None, "error": "twilio_not_configured"}
+
+    if not TWILIO_FROM_NUMBER:
+        print("❌ SEND_SMS missing_from_number")
+        return {"ok": False, "channel": "sms", "sid": None, "error": "missing_from_number"}
+
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        sms = client.messages.create(
+            body=message,
+            from_=TWILIO_FROM_NUMBER,
+            to=to_phone,
+        )
+
+        print("✅ SEND_SMS ACCEPTED")
+        print("✅ TWILIO SID:", sms.sid)
+
+        return {"ok": True, "channel": "sms", "sid": sms.sid, "error": None}
+
+    except Exception as e:
+        print("❌ SEND_SMS EXCEPTION:", str(e))
+        return {"ok": False, "channel": "sms", "sid": None, "error": str(e)}
+
+
+def whatsapp_enabled() -> bool:
+    return os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
+
+
+def whatsapp_from_number() -> str:
+    return (os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886") or "").strip()
+
+
+def send_whatsapp(phone: str, message: str) -> dict:
+    to_phone = to_e164(phone)
+    wa_from = whatsapp_from_number()
+
+    print("🟢 SEND_WHATSAPP START")
+    print("🟢 PHONE RAW:", phone)
+    print("🟢 PHONE E164:", to_phone)
+    print("🟢 WHATSAPP FROM:", wa_from)
+    print("🟢 WHATSAPP ENABLED:", whatsapp_enabled())
+    print("🟢 TWILIO CONFIGURED:", twilio_enabled())
+    print("🟢 MESSAGE:", message)
+
+    if not to_phone:
+        print("❌ SEND_WHATSAPP invalid_phone")
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
+
+    if not whatsapp_enabled():
+        print("🚫 WHATSAPP DESACTIVADO POR CONFIG")
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled_by_config"}
+
+    if not twilio_enabled():
+        print("❌ SEND_WHATSAPP twilio_not_configured")
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
+
+    if not wa_from:
+        print("❌ SEND_WHATSAPP missing_whatsapp_from")
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_whatsapp_from"}
+
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+        wa = client.messages.create(
+            body=message,
+            from_=wa_from,
+            to=f"whatsapp:{to_phone}",
+        )
+
+        print("✅ SEND_WHATSAPP ACCEPTED")
+        print("✅ TWILIO WHATSAPP SID:", wa.sid)
+
+        return {"ok": True, "channel": "whatsapp", "sid": wa.sid, "error": None}
+
+    except Exception as e:
+        print("❌ SEND_WHATSAPP EXCEPTION:", str(e))
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
+
+
+def send_delivery_message(phone: str, message: str) -> dict:
+    """
+    1) Intenta WhatsApp
+    2) Si falla, intenta SMS
+    """
+    wa_result = send_whatsapp(phone, message)
+
+    if wa_result.get("ok"):
+        return wa_result
+
+    print("⚠️ WHATSAPP FALLÓ, PROBANDO SMS...")
+    sms_result = send_sms(phone, message)
+
+    if sms_result.get("ok"):
+        return sms_result
+
+    return {
+        "ok": False,
+        "channel": sms_result.get("channel") or wa_result.get("channel"),
+        "sid": None,
+        "error": sms_result.get("error") or wa_result.get("error") or "delivery_failed",
+        "whatsapp_error": wa_result.get("error"),
+        "sms_error": sms_result.get("error"),
+    }
+
+
 def try_send_sender_sms(order: dict) -> dict:
     order = get_order_by_id(order["id"])
 
@@ -973,7 +1103,7 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     message = build_sender_ready_message(order)
-    result = send_sms(order.get("sender_phone", ""), message)
+    result = send_delivery_message(order.get("sender_phone", ""), message)
 
     attempts = attempts + 1
 
@@ -993,6 +1123,7 @@ def try_send_sender_sms(order: dict) -> dict:
         return {
             "ok": True,
             "reason": "sent",
+            "channel": result.get("channel"),
             "sid": refreshed.get("sender_sms_sid"),
             "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
             "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
@@ -1002,13 +1133,14 @@ def try_send_sender_sms(order: dict) -> dict:
     update_order(
         order["id"],
         sender_sms_attempts=attempts,
-        sender_sms_error=result.get("error") or "sms_error",
+        sender_sms_error=result.get("error") or "delivery_error",
     )
 
     refreshed = get_order_by_id(order["id"])
     return {
         "ok": False,
-        "reason": result.get("error") or "sms_error",
+        "reason": result.get("error") or "delivery_error",
+        "channel": result.get("channel"),
         "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
         "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
         "sender_sms_error": refreshed.get("sender_sms_error"),
@@ -1067,53 +1199,6 @@ def get_phrases_by_type(message_type: str):
         ],
     }
     return phrase_templates.get(message_type, phrase_templates["sorpresa"])
-
-
-def twilio_enabled() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
-
-
-def send_sms(phone: str, message: str) -> dict:
-    to_phone = to_e164(phone)
-
-    print("📲 SEND_SMS START")
-    print("📲 PHONE RAW:", phone)
-    print("📲 PHONE E164:", to_phone)
-    print("📲 TWILIO FROM:", TWILIO_FROM_NUMBER)
-    print("📲 SMS ENABLED:", SMS_ENABLED)
-    print("📲 TWILIO CONFIGURED:", twilio_enabled())
-    print("📲 MESSAGE:", message)
-
-    if not to_phone:
-        print("❌ SEND_SMS invalid_phone")
-        return {"ok": False, "sid": None, "error": "invalid_phone"}
-
-    if not SMS_ENABLED:
-        print("🚫 SMS DESACTIVADO POR CONFIG")
-        print("🚫 Destino:", to_phone)
-        print("🚫 Mensaje:", message)
-        return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
-
-    if not twilio_enabled():
-        print("❌ SEND_SMS twilio_not_configured")
-        return {"ok": False, "sid": None, "error": "twilio_not_configured"}
-
-    try:
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        sms = client.messages.create(
-            body=message,
-            from_=TWILIO_FROM_NUMBER,
-            to=to_phone,
-        )
-
-        print("✅ SEND_SMS ACCEPTED")
-        print("✅ TWILIO SID:", sms.sid)
-
-        return {"ok": True, "sid": sms.sid, "error": None}
-
-    except Exception as e:
-        print("❌ SEND_SMS EXCEPTION:", str(e))
-        return {"ok": False, "sid": None, "error": str(e)}
 
 
 def send_admin_alert(message: str):
@@ -1190,24 +1275,24 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     print("📱 PHONE E164:", phone_e164)
     print("📩 RECIPIENT MESSAGE:", message)
 
-    result = send_sms(phone_raw, message)
+    result = send_delivery_message(phone_raw, message)
 
-    print("📩 RECIPIENT SMS RESULT:", result)
+    print("📩 RECIPIENT DELIVERY RESULT:", result)
 
     attempts = attempts + 1
 
-    sms_ok = bool(result.get("ok"))
-    sms_sid = (result.get("sid") or "").strip() or None
-    sms_error = (result.get("error") or "").strip() or None
+    delivery_ok = bool(result.get("ok"))
+    delivery_sid = (result.get("sid") or "").strip() or None
+    delivery_error = (result.get("error") or "").strip() or None
 
-    if sms_ok:
+    if delivery_ok:
         sent_at = now_iso()
 
         update_order(
             order_id,
             recipient_sms_attempts=attempts,
             recipient_sms_error=None,
-            recipient_sms_sid=sms_sid,
+            recipient_sms_sid=delivery_sid,
             recipient_sms_sent_at=sent_at,
             delivery_sent=1,
             delivery_sent_at=sent_at,
@@ -1219,6 +1304,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         return {
             "ok": True,
             "reason": "sent",
+            "channel": result.get("channel"),
             "delivery_sent": True,
             "delivery_sent_at": updated.get("delivery_sent_at"),
             "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
@@ -1227,7 +1313,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": updated.get("recipient_sms_error"),
         }
 
-    final_error = sms_error or "sms_error"
+    final_error = delivery_error or "delivery_error"
 
     update_order(
         order_id,
@@ -1240,6 +1326,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     return {
         "ok": False,
         "reason": final_error,
+        "channel": result.get("channel"),
         "delivery_sent": bool(updated.get("delivery_sent")),
         "delivery_sent_at": updated.get("delivery_sent_at"),
         "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
