@@ -4430,7 +4430,7 @@ async def start_experience(recipient_token: str = Form(...)):
 
 
 # =========================================================
-# EXPERIENCE (VERSIÓN DEFINITIVA BLINDADA)
+# EXPERIENCE (VERSIÓN COMPLETA BLINDADA)
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
@@ -4459,11 +4459,11 @@ def experiencia(request: Request, recipient_token: str):
     gift_amount = float(order.get("gift_amount") or 0)
 
     if gift_amount > 0:
-        payoff_title = "Esto no termina aquí."
-        payoff_text = "Este momento ha sido guardado."
+        final_success_title = "Esto no termina aquí."
+        final_success_text = "Este momento ha sido guardado."
     else:
-        payoff_title = "Esto ya es tuyo."
-        payoff_text = "Y lo será para siempre."
+        final_success_title = "Esto ya es tuyo."
+        final_success_text = "Y lo será para siempre."
 
     html_page = """
 <!DOCTYPE html>
@@ -4472,6 +4472,7 @@ def experiencia(request: Request, recipient_token: str):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ETERNA</title>
+
 <style>
 html, body {
     margin: 0;
@@ -4691,6 +4692,23 @@ video {
     margin-right: auto;
 }
 
+.inapp-warning {
+    display: none;
+    margin: 0 auto 18px auto;
+    max-width: 460px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.72);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.inapp-warning.show {
+    display: block;
+}
+
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4710,8 +4728,10 @@ video {
 }
 </style>
 </head>
+
 <body>
 <div class="wrap">
+
     <video
         id="video"
         playsinline
@@ -4727,43 +4747,75 @@ video {
             <div class="guide-step active" id="guideStep1">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Shhh…</h1>
-                <div class="text">Esto merece ser escuchado bien.</div>
-                <div class="soft">Si puedes, usa auriculares o sube el volumen.</div>
-                <button class="btn" id="guideBtn1" style="margin-top:28px;">Tengo sonido</button>
+                <div class="text">
+                    Esto merece ser escuchado bien.
+                </div>
+                <div class="soft">
+                    Si puedes, usa auriculares o sube el volumen.
+                </div>
+                <button class="btn" id="guideBtn1" style="margin-top:28px;">
+                    Tengo sonido
+                </button>
             </div>
 
             <div class="guide-step" id="guideStep2">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Un momento solo para ti</h1>
-                <div class="text">Busca un lugar tranquilo.</div>
-                <div class="soft">Sin ruido. Sin interrupciones.</div>
-                <button class="btn" id="guideBtn2" style="margin-top:28px;">Estoy en un sitio tranquilo</button>
+                <div class="text">
+                    Busca un lugar tranquilo.
+                </div>
+                <div class="soft">
+                    Sin ruido. Sin interrupciones.
+                </div>
+                <button class="btn" id="guideBtn2" style="margin-top:28px;">
+                    Estoy en un sitio tranquilo
+                </button>
             </div>
 
             <div class="guide-step" id="guideStep3">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Colócalo frente a ti</h1>
-                <div class="text">Un poco más lejos… así es mejor.</div>
-                <div class="soft">Queremos verte bien durante este momento.</div>
-                <button class="btn" id="guideBtn3" style="margin-top:28px;">Ya está colocado</button>
+                <div class="text">
+                    Un poco más lejos… así es mejor.
+                </div>
+                <div class="soft">
+                    Queremos verte bien durante este momento.
+                </div>
+                <button class="btn" id="guideBtn3" style="margin-top:28px;">
+                    Ya está colocado
+                </button>
             </div>
 
             <div class="guide-step" id="guideStep4">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Cuida la luz</h1>
-                <div class="text">Evita tener la luz detrás.</div>
-                <div class="soft">Si puedes, quédate donde tu cara se vea bien.</div>
-                <button class="btn" id="guideBtn4" style="margin-top:28px;">Se me ve bien</button>
+                <div class="text">
+                    Evita tener la luz detrás.
+                </div>
+                <div class="soft">
+                    Si puedes, quédate donde tu cara se vea bien.
+                </div>
+                <button class="btn" id="guideBtn4" style="margin-top:28px;">
+                    Se me ve bien
+                </button>
             </div>
 
             <div class="guide-step" id="guideStep5">
                 <div class="eyebrow">ETERNA</div>
+
+                <div class="inapp-warning" id="inappWarning">
+                    Si estás dentro de WhatsApp o Instagram y falla la grabación,
+                    abre este enlace en Safari para que la cámara pueda guardar bien el momento.
+                </div>
+
                 <h1 class="title">Ahora sí</h1>
                 <div class="text">
                     Esto no es un vídeo.<br>
                     Es un momento que está a punto de ocurrir.
                 </div>
-                <div class="soft">Esto solo pasa una vez.</div>
+                <div class="soft">
+                    Esto solo pasa una vez.
+                </div>
 
                 <div class="guide-legal">
                     Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
@@ -4787,9 +4839,9 @@ video {
 
     <div class="payoff" id="payoff">
         <div class="payoff-card">
-            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
-            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="loader" id="payoffLoader">Guardando este momento…</div>
+            <div class="payoff-title" id="payoffTitle">Guardando este momento…</div>
+            <div class="payoff-text" id="payoffText">No cierres esta pantalla.</div>
+            <div class="loader" id="payoffLoader">Preparando la grabación…</div>
 
             <div class="retry-actions" id="retryActions">
                 <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
@@ -4797,82 +4849,16 @@ video {
             </div>
         </div>
     </div>
+
 </div>
-
-<script>
-(function () {
-    const ua = navigator.userAgent || "";
-
-    const isInAppBrowser =
-        ua.includes("FBAN") ||
-        ua.includes("FBAV") ||
-        ua.includes("Instagram") ||
-        ua.includes("WhatsApp");
-
-    if (!isInAppBrowser) return;
-
-    document.body.innerHTML = `
-        <div style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            height:100vh;
-            background:
-                radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
-                linear-gradient(180deg, #050505 0%, #000000 100%);
-            color:white;
-            text-align:center;
-            padding:24px;
-            font-family:Arial,sans-serif;
-        ">
-            <div style="max-width:520px;">
-                <div style="
-                    font-size:12px;
-                    letter-spacing:0.3em;
-                    text-transform:uppercase;
-                    opacity:.4;
-                    margin-bottom:20px;
-                ">
-                    ETERNA
-                </div>
-
-                <h1 style="
-                    font-size:36px;
-                    line-height:1.2;
-                    margin-bottom:18px;
-                    font-weight:700;
-                ">
-                    Este momento<br>merece ser vivido bien
-                </h1>
-
-                <p style="
-                    font-size:18px;
-                    line-height:1.7;
-                    opacity:.75;
-                ">
-                    Para poder guardar lo que está a punto de pasar,<br>
-                    abre este enlace en Safari o en tu navegador.
-                </p>
-
-                <div style="
-                    margin-top:34px;
-                    font-size:15px;
-                    opacity:.5;
-                    line-height:1.6;
-                ">
-                    Copia el enlace y ábrelo fuera de WhatsApp.
-                </div>
-            </div>
-        </div>
-    `;
-})();
-</script>
 
 <script>
 const startBtn = document.getElementById("startBtn");
 const overlay = document.getElementById("overlay");
 const video = document.getElementById("video");
 const payoff = document.getElementById("payoff");
+const payoffTitle = document.getElementById("payoffTitle");
+const payoffText = document.getElementById("payoffText");
 const payoffLoader = document.getElementById("payoffLoader");
 const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
@@ -4881,7 +4867,10 @@ const errorNote = document.getElementById("errorNote");
 const startFailActions = document.getElementById("startFailActions");
 const retryStartBtn = document.getElementById("retryStartBtn");
 const backFromStartBtn = document.getElementById("backFromStartBtn");
+const inappWarning = document.getElementById("inappWarning");
 const recipientToken = "__RECIPIENT_TOKEN__";
+const finalSuccessTitle = "__FINAL_SUCCESS_TITLE__";
+const finalSuccessText = "__FINAL_SUCCESS_TEXT__";
 
 const guideSteps = [
     document.getElementById("guideStep1"),
@@ -4901,10 +4890,25 @@ let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
 
+(function detectInAppWarning() {
+    const ua = navigator.userAgent || "";
+    const isInApp =
+        ua.includes("FBAN") ||
+        ua.includes("FBAV") ||
+        ua.includes("Instagram") ||
+        ua.includes("WhatsApp");
+
+    if (isInApp && inappWarning) {
+        inappWarning.classList.add("show");
+    }
+})();
+
 function showGuideStep(index) {
     currentGuideStep = index;
+
     guideSteps.forEach((step, i) => {
         if (!step) return;
+
         if (i === index) {
             step.classList.add("active");
         } else {
@@ -4915,6 +4919,7 @@ function showGuideStep(index) {
 
 function nextGuideStep() {
     const next = currentGuideStep + 1;
+
     if (next < guideSteps.length) {
         showGuideStep(next);
     }
@@ -4927,49 +4932,97 @@ document.getElementById("guideBtn4")?.addEventListener("click", () => nextGuideS
 
 function showStartError(message) {
     if (!errorNote) return;
+
     errorNote.textContent = message || "No hemos podido preparar la grabación.";
     errorNote.classList.add("show");
 }
 
 function clearStartError() {
     if (!errorNote) return;
+
     errorNote.textContent = "";
     errorNote.classList.remove("show");
 }
 
 function showRetryActions() {
-    if (retryActions) retryActions.classList.add("show");
+    if (retryActions) {
+        retryActions.classList.add("show");
+    }
 }
 
 function hideRetryActions() {
-    if (retryActions) retryActions.classList.remove("show");
+    if (retryActions) {
+        retryActions.classList.remove("show");
+    }
 }
 
 function showStartFailActions() {
-    if (startFailActions) startFailActions.classList.add("show");
+    if (startFailActions) {
+        startFailActions.classList.add("show");
+    }
 }
 
 function hideStartFailActions() {
-    if (startFailActions) startFailActions.classList.remove("show");
+    if (startFailActions) {
+        startFailActions.classList.remove("show");
+    }
+}
+
+function setPayoffSaving() {
+    payoffTitle.innerText = "Guardando este momento…";
+    payoffText.innerText = "No cierres esta pantalla.";
+    payoffLoader.innerText = "Preparando la grabación…";
+    hideRetryActions();
+}
+
+function setPayoffUploading() {
+    payoffTitle.innerText = "Guardando este momento…";
+    payoffText.innerText = "La emoción se está guardando.";
+    payoffLoader.innerText = "Subiendo este momento…";
+    hideRetryActions();
+}
+
+function setPayoffSuccess() {
+    payoffTitle.innerText = finalSuccessTitle;
+    payoffText.innerText = finalSuccessText;
+    payoffLoader.innerText = "Todo ha salido bien.";
+    hideRetryActions();
+}
+
+function setPayoffError(message) {
+    payoffTitle.innerText = "No se ha guardado bien.";
+    payoffText.innerText = "La reacción todavía no está guardada.";
+    payoffLoader.innerText = message || "Vamos a intentarlo otra vez sin salir de aquí.";
+    showRetryActions();
 }
 
 function buildFriendlyUploadMessage(errorCode) {
     const code = String(errorCode || "").toLowerCase();
 
-    if (code.includes("empty_video") || code.includes("empty_blob")) {
-        return "No se ha detectado una grabación válida. Vamos a intentarlo de nuevo sin salir de aquí.";
+    if (code.includes("empty_video") || code.includes("empty_blob") || code.includes("small_blob")) {
+        return "No se ha detectado una grabación válida. Vamos a intentarlo otra vez sin salir de aquí.";
     }
 
     if (code.includes("video_too_large")) {
         return "No se ha podido guardar porque el vídeo ocupa demasiado. Inténtalo otra vez.";
     }
 
-    if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
-        return "No se ha podido grabar este momento porque faltan permisos de cámara o micrófono.";
+    if (
+        code.includes("notallowederror") ||
+        code.includes("permission") ||
+        code.includes("camera") ||
+        code.includes("microphone")
+    ) {
+        return "No se ha podido grabar porque faltan permisos de cámara o micrófono.";
     }
 
-    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
-        return "No se ha podido guardar este momento por un problema de conexión. Revisa internet e inténtalo de nuevo.";
+    if (
+        code.includes("network") ||
+        code.includes("failed to fetch") ||
+        code.includes("fetch") ||
+        code.includes("upload")
+    ) {
+        return "No se ha podido subir por conexión. Revisa internet e inténtalo otra vez.";
     }
 
     return "No se ha podido guardar este momento. Vamos a intentarlo otra vez sin salir de aquí.";
@@ -4983,28 +5036,22 @@ function detectRecordingFormat() {
     const ua = navigator.userAgent || "";
     const isiPhone = /iPhone|iPad|iPod/i.test(ua);
 
-    if (isiPhone) {
-        const iphoneCandidates = [
-            { mimeType: "video/mp4", extension: "mp4" },
-            { mimeType: "", extension: "mp4" }
-        ];
+    const iphoneCandidates = [
+        { mimeType: "video/mp4", extension: "mp4" },
+        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
+        { mimeType: "video/webm", extension: "webm" },
+        { mimeType: "", extension: isiPhone ? "mp4" : "webm" }
+    ];
 
-        for (const candidate of iphoneCandidates) {
-            try {
-                if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                    console.log("FORMAT:", candidate);
-                    return candidate;
-                }
-            } catch (_) {}
-        }
-    }
-
-    const candidates = [
+    const normalCandidates = [
         { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
         { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
         { mimeType: "video/webm", extension: "webm" },
+        { mimeType: "video/mp4", extension: "mp4" },
         { mimeType: "", extension: "webm" }
     ];
+
+    const candidates = isiPhone ? iphoneCandidates : normalCandidates;
 
     for (const candidate of candidates) {
         try {
@@ -5034,10 +5081,13 @@ function waitForVideoReady() {
 
         const done = () => {
             if (resolved) return;
+
             resolved = true;
+
             video.removeEventListener("loadedmetadata", onReady);
             video.removeEventListener("loadeddata", onReady);
             video.removeEventListener("canplay", onReady);
+
             clearTimeout(timeoutId);
             resolve();
         };
@@ -5048,7 +5098,9 @@ function waitForVideoReady() {
                 video.duration > 0 &&
                 video.readyState >= 1;
 
-            if (readyNow) done();
+            if (readyNow) {
+                done();
+            }
         };
 
         const timeoutId = setTimeout(done, 5000);
@@ -5059,7 +5111,55 @@ function waitForVideoReady() {
     });
 }
 
-function resetRecordingState() {
+async function stopRecordingSafely() {
+    try {
+        if (!mediaRecorder) return;
+
+        if (mediaRecorder.state === "recording") {
+            try {
+                mediaRecorder.requestData();
+            } catch (_) {}
+
+            await new Promise((resolve) => {
+                let done = false;
+
+                const finish = () => {
+                    if (done) return;
+
+                    done = true;
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+
+                const timeoutId = setTimeout(finish, 4000);
+
+                try {
+                    mediaRecorder.addEventListener("stop", finish, { once: true });
+                } catch (_) {}
+
+                try {
+                    mediaRecorder.stop();
+                } catch (_) {
+                    finish();
+                }
+            });
+        }
+    } catch (e) {
+        console.error("recorder stop error", e);
+    }
+}
+
+function stopStreamSafely() {
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (e) {
+        console.error("stream stop error", e);
+    }
+}
+
+async function resetRecordingState() {
     try {
         if (finishTimeout) {
             clearTimeout(finishTimeout);
@@ -5067,18 +5167,8 @@ function resetRecordingState() {
         }
     } catch (_) {}
 
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            try { mediaRecorder.requestData(); } catch (_) {}
-            mediaRecorder.stop();
-        }
-    } catch (_) {}
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (_) {}
+    await stopRecordingSafely();
+    stopStreamSafely();
 
     stream = null;
     mediaRecorder = null;
@@ -5088,26 +5178,39 @@ function resetRecordingState() {
     finishing = false;
     experienceStarted = false;
 
-    try { video.pause(); } catch (_) {}
-    try { video.currentTime = 0; } catch (_) {}
+    try {
+        video.pause();
+    } catch (_) {}
+
+    try {
+        video.currentTime = 0;
+    } catch (_) {}
 
     overlay.classList.remove("hidden");
     payoff.classList.remove("show");
+
     startBtn.disabled = false;
+
     clearStartError();
     hideRetryActions();
     hideStartFailActions();
+
     showGuideStep(4);
 }
 
 async function tryStartRecordingStrict() {
     try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("camera_not_supported");
+        }
+
         stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
         });
 
         const format = detectRecordingFormat();
+
         recordingMimeType = format.mimeType;
         recordingExtension = format.extension;
         recordedChunks = [];
@@ -5136,7 +5239,7 @@ async function tryStartRecordingStrict() {
                 } else {
                     reject(new Error("recorder_not_running"));
                 }
-            }, 900);
+            }, 1200);
 
             try {
                 mediaRecorder.addEventListener("start", () => {
@@ -5146,7 +5249,7 @@ async function tryStartRecordingStrict() {
             } catch (_) {}
         });
 
-        await new Promise(res => setTimeout(res, 800));
+        await new Promise(res => setTimeout(res, 900));
 
         console.log("grabacion iniciada");
         return true;
@@ -5154,11 +5257,7 @@ async function tryStartRecordingStrict() {
     } catch (recordingError) {
         console.error("recording init error", recordingError);
 
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
+        stopStreamSafely();
 
         stream = null;
         mediaRecorder = null;
@@ -5170,49 +5269,13 @@ async function tryStartRecordingStrict() {
     }
 }
 
-async function stopRecordingSafely() {
-    try {
-        if (!mediaRecorder) return;
-
-        if (mediaRecorder.state === "recording") {
-            try {
-                mediaRecorder.requestData();
-            } catch (_) {}
-
-            await new Promise((resolve) => {
-                let done = false;
-
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    clearTimeout(timeoutId);
-                    resolve();
-                };
-
-                const timeoutId = setTimeout(finish, 3500);
-
-                try {
-                    mediaRecorder.addEventListener("stop", finish, { once: true });
-                } catch (_) {}
-
-                try {
-                    mediaRecorder.stop();
-                } catch (_) {
-                    finish();
-                }
-            });
-        }
-    } catch (e) {
-        console.error("recorder stop error", e);
-    }
-}
-
 async function finalizeExperienceFlow() {
     if (finishing) return;
+
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
+    setPayoffSaving();
 
     try {
         if (finishTimeout) {
@@ -5222,40 +5285,43 @@ async function finalizeExperienceFlow() {
     } catch (_) {}
 
     await stopRecordingSafely();
+    stopStreamSafely();
 
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (e) {
-        console.error("stream stop error", e);
-    }
-
-    await new Promise(res => setTimeout(res, 1200));
+    await new Promise(res => setTimeout(res, 1400));
 
     let blob = null;
 
     try {
+        const safeType =
+            recordingMimeType ||
+            (recordingExtension === "mp4" ? "video/mp4" : "video/webm");
+
         blob = new Blob(recordedChunks, {
-            type: recordingMimeType || "video/webm"
+            type: safeType
         });
 
         console.log("chunks:", recordedChunks.length);
         console.log("blob size:", blob.size);
+        console.log("blob type:", safeType);
     } catch (e) {
         console.error("blob error", e);
     }
 
     try {
-        if (!blob || blob.size < 10000) {
+        if (!blob || blob.size <= 0) {
             throw new Error("empty_blob");
+        }
+
+        if (blob.size < 10000) {
+            throw new Error("small_blob");
         }
 
         const filename = "reaction." + recordingExtension;
         const formData = new FormData();
+
         formData.append("video", blob, filename);
 
-        payoffLoader.innerText = "Subiendo este momento…";
+        setPayoffUploading();
 
         const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
             method: "POST",
@@ -5273,14 +5339,18 @@ async function finalizeExperienceFlow() {
     } catch (e) {
         console.error("upload error", e);
 
-        payoffLoader.innerText = buildFriendlyUploadMessage(e?.message || "");
-        showRetryActions();
+        setPayoffError(buildFriendlyUploadMessage(e?.message || e?.detail || ""));
 
         finishing = false;
+        experienceStarted = false;
         return;
     }
 
-    window.location.replace("/finalizar-experiencia/" + recipientToken);
+    setPayoffSuccess();
+
+    setTimeout(() => {
+        window.location.replace("/finalizar-experiencia/" + recipientToken);
+    }, 1000);
 }
 
 function armFinishFallbacks() {
@@ -5320,12 +5390,19 @@ startBtn.addEventListener("click", async () => {
     if (experienceStarted) return;
 
     startBtn.disabled = true;
+
     clearStartError();
     hideStartFailActions();
+    hideRetryActions();
 
     try {
-        try { video.pause(); } catch (_) {}
-        try { video.currentTime = 0; } catch (_) {}
+        try {
+            video.pause();
+        } catch (_) {}
+
+        try {
+            video.currentTime = 0;
+        } catch (_) {}
 
         const recordingStarted = await tryStartRecordingStrict();
 
@@ -5345,6 +5422,7 @@ startBtn.addEventListener("click", async () => {
         });
 
         let data = {};
+
         try {
             data = await response.json();
         } catch (_) {}
@@ -5359,8 +5437,8 @@ startBtn.addEventListener("click", async () => {
         }
 
         video.load();
-        await waitForVideoReady();
 
+        await waitForVideoReady();
         await new Promise(res => setTimeout(res, 700));
 
         overlay.classList.add("hidden");
@@ -5373,19 +5451,8 @@ startBtn.addEventListener("click", async () => {
         } catch (e) {
             console.error("video play error", e);
 
-            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
-            experienceStarted = false;
-            overlay.classList.remove("hidden");
-            startBtn.disabled = false;
-            showStartFailActions();
-
             await stopRecordingSafely();
-
-            try {
-                if (stream) {
-                    stream.getTracks().forEach((t) => t.stop());
-                }
-            } catch (_) {}
+            stopStreamSafely();
 
             stream = null;
             mediaRecorder = null;
@@ -5393,29 +5460,33 @@ startBtn.addEventListener("click", async () => {
             recordingMimeType = "";
             recordingExtension = "webm";
 
+            experienceStarted = false;
+
+            overlay.classList.remove("hidden");
+            startBtn.disabled = false;
+
+            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
+            showStartFailActions();
+
             return;
         }
 
     } catch (e) {
         console.error("experience start error", e);
 
-        startBtn.disabled = false;
-        experienceStarted = false;
-        payoff.classList.remove("show");
-
         await stopRecordingSafely();
-
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
+        stopStreamSafely();
 
         stream = null;
         mediaRecorder = null;
         recordedChunks = [];
         recordingMimeType = "";
         recordingExtension = "webm";
+
+        startBtn.disabled = false;
+        experienceStarted = false;
+
+        payoff.classList.remove("show");
 
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
         showStartFailActions();
@@ -5432,6 +5503,7 @@ document.addEventListener("visibilitychange", async () => {
 
 window.addEventListener("focus", async () => {
     if (!experienceStarted || finishing) return;
+
     await safeResumePlayback();
 });
 
@@ -5456,8 +5528,8 @@ window.addEventListener("beforeunload", () => {
 });
 
 if (retryExperienceBtn) {
-    retryExperienceBtn.addEventListener("click", () => {
-        resetRecordingState();
+    retryExperienceBtn.addEventListener("click", async () => {
+        await resetRecordingState();
         clearStartError();
     });
 }
@@ -5469,8 +5541,8 @@ if (backToStartBtn) {
 }
 
 if (retryStartBtn) {
-    retryStartBtn.addEventListener("click", () => {
-        resetRecordingState();
+    retryStartBtn.addEventListener("click", async () => {
+        await resetRecordingState();
         clearStartError();
         hideStartFailActions();
         startBtn.disabled = false;
@@ -5486,6 +5558,7 @@ if (backFromStartBtn) {
 
 showGuideStep(0);
 </script>
+
 </body>
 </html>
     """
@@ -5493,13 +5566,14 @@ showGuideStep(0);
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-    html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
-    html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
+    html_page = html_page.replace("__FINAL_SUCCESS_TITLE__", safe_text(final_success_title))
+    html_page = html_page.replace("__FINAL_SUCCESS_TEXT__", safe_text(final_success_text))
 
     response = HTMLResponse(html_page)
 
     cookie_key = recipient_cookie_name(order["recipient_token"])
     session_value = (order.get("recipient_session_token") or "").strip()
+
     if session_value:
         response.set_cookie(
             key=cookie_key,
