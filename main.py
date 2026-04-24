@@ -978,6 +978,26 @@ def whatsapp_from_number() -> str:
     return (os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886") or "").strip()
 
 
+# =========================================================
+# 📲 WHATSAPP + SMS (ETERNA REAL DELIVERY SYSTEM)
+# =========================================================
+
+def whatsapp_enabled() -> bool:
+    return os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
+
+
+def whatsapp_from_number() -> str:
+    raw = (os.getenv("TWILIO_WHATSAPP_FROM", "") or "").strip()
+
+    if not raw:
+        return ""
+
+    if raw.startswith("whatsapp:"):
+        return raw
+
+    return f"whatsapp:{raw}"
+
+
 def send_whatsapp(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
@@ -988,13 +1008,36 @@ def send_whatsapp(phone: str, message: str) -> dict:
     print("🟢 WHATSAPP FROM:", wa_from)
 
     if not to_phone:
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
+        return {
+            "ok": False,
+            "channel": "whatsapp",
+            "sid": None,
+            "error": "invalid_phone",
+        }
 
     if not whatsapp_enabled():
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
+        return {
+            "ok": False,
+            "channel": "whatsapp",
+            "sid": None,
+            "error": "whatsapp_disabled",
+        }
+
+    if not wa_from:
+        return {
+            "ok": False,
+            "channel": "whatsapp",
+            "sid": None,
+            "error": "missing_twilio_whatsapp_from",
+        }
 
     if not twilio_enabled():
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
+        return {
+            "ok": False,
+            "channel": "whatsapp",
+            "sid": None,
+            "error": "twilio_not_configured",
+        }
 
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
@@ -1006,11 +1049,23 @@ def send_whatsapp(phone: str, message: str) -> dict:
         )
 
         print("✅ SEND_WHATSAPP ACCEPTED:", msg.sid)
-        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
+
+        return {
+            "ok": True,
+            "channel": "whatsapp",
+            "sid": msg.sid,
+            "error": None,
+        }
 
     except Exception as e:
         print("❌ SEND_WHATSAPP ERROR:", str(e))
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
+
+        return {
+            "ok": False,
+            "channel": "whatsapp",
+            "sid": None,
+            "error": str(e),
+        }
 
 
 def send_sms(phone: str, message: str) -> dict:
@@ -1023,16 +1078,36 @@ def send_sms(phone: str, message: str) -> dict:
     print("🔵 SMS FROM:", sms_from)
 
     if not to_phone:
-        return {"ok": False, "channel": "sms", "sid": None, "error": "invalid_phone"}
+        return {
+            "ok": False,
+            "channel": "sms",
+            "sid": None,
+            "error": "invalid_phone",
+        }
 
     if not SMS_ENABLED:
-        return {"ok": False, "channel": "sms", "sid": None, "error": "sms_disabled"}
+        return {
+            "ok": False,
+            "channel": "sms",
+            "sid": None,
+            "error": "sms_disabled",
+        }
 
     if not sms_from:
-        return {"ok": False, "channel": "sms", "sid": None, "error": "missing_twilio_from_number"}
+        return {
+            "ok": False,
+            "channel": "sms",
+            "sid": None,
+            "error": "missing_twilio_from_number",
+        }
 
     if not twilio_enabled():
-        return {"ok": False, "channel": "sms", "sid": None, "error": "twilio_not_configured"}
+        return {
+            "ok": False,
+            "channel": "sms",
+            "sid": None,
+            "error": "twilio_not_configured",
+        }
 
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
@@ -1044,35 +1119,57 @@ def send_sms(phone: str, message: str) -> dict:
         )
 
         print("✅ SEND_SMS ACCEPTED:", msg.sid)
-        return {"ok": True, "channel": "sms", "sid": msg.sid, "error": None}
+
+        return {
+            "ok": True,
+            "channel": "sms",
+            "sid": msg.sid,
+            "error": None,
+        }
 
     except Exception as e:
         print("❌ SEND_SMS ERROR:", str(e))
-        return {"ok": False, "channel": "sms", "sid": None, "error": str(e)}
+
+        return {
+            "ok": False,
+            "channel": "sms",
+            "sid": None,
+            "error": str(e),
+        }
 
 
 def send_message_best_effort(phone: str, message: str) -> dict:
     """
-    ETERNA BLINDADO:
-    1) intenta WhatsApp
-    2) si WhatsApp falla, intenta SMS normal
-    3) solo devuelve ok=True si Twilio acepta un mensaje real con SID
+    ETERNA DELIVERY STRATEGY:
+
+    1. Intentar WhatsApp
+    2. Si falla → fallback a SMS
+    3. Nunca romper el flujo
     """
+
+    print("🚀 SEND_MESSAGE_BEST_EFFORT")
+    print("📞 PHONE:", phone)
 
     whatsapp_result = send_whatsapp(phone, message)
 
     if whatsapp_result.get("ok"):
+        print("✅ ENTREGADO POR WHATSAPP")
         return whatsapp_result
 
-    print("⚠️ WHATSAPP FALLÓ, PROBANDO SMS NORMAL")
-    print("⚠️ whatsapp_error:", whatsapp_result.get("error"))
+    print("⚠️ WHATSAPP FALLÓ → intentando SMS")
+    print("⚠️ ERROR:", whatsapp_result.get("error"))
 
     sms_result = send_sms(phone, message)
 
     if sms_result.get("ok"):
+        print("✅ ENTREGADO POR SMS (fallback)")
+
         sms_result["fallback_from"] = "whatsapp"
         sms_result["whatsapp_error"] = whatsapp_result.get("error")
+
         return sms_result
+
+    print("❌ ERROR TOTAL DE ENTREGA")
 
     return {
         "ok": False,
@@ -1211,6 +1308,7 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
         "scheduled_delivery_fee": scheduled_fee,
         "total_amount": total_amount,
     }
+
 
 # =========================================================
 # HELPERS EXTRA
@@ -1649,7 +1747,6 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             "error": str(e),
             "retry": True,
         }
-
 
 # =========================================================
 # LEGAL
