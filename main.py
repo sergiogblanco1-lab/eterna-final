@@ -950,21 +950,59 @@ def maybe_mark_eterna_completed(order_id: str) -> dict:
     return get_order_by_id(order_id)
 
 
+# =========================================================
+# 💬 ETERNA MESSAGE BUILDERS (EMOCIÓN REAL)
+# =========================================================
+
 def build_recipient_message(order: dict) -> str:
-    return (
-        "ETERNA\n\n"
-        "Tienes algo que ver…\n\n"
-        f"{recipient_experience_url_from_order(order)}"
-    )
+    recipient_name = (order.get("recipient_name") or "").strip()
+    url = (order.get("recipient_experience_url") or "").strip()
+
+    greeting = f"{recipient_name}," if recipient_name else ""
+
+    return f"""
+Shhh…
+
+{greeting}
+
+Esto no es un vídeo.
+
+No es solo un momento.
+
+Es algo que alguien ha creado para ti.
+
+Pero hay algo más…
+
+Dentro hay algo que también es tuyo.
+
+Ábrelo cuando estés tranquilo.
+
+{url}
+""".strip()
 
 
 def build_sender_ready_message(order: dict) -> str:
-    return (
-        "Tu ETERNA ha vuelto.\n\n"
-        "Al otro lado,\n"
-        "algo ha pasado.\n\n"
-        f"{sender_pack_url_from_order(order)}"
-    )
+    sender_name = (order.get("sender_name") or "").strip()
+    url = (order.get("sender_pack_url") or "").strip()
+
+    greeting = f"{sender_name}," if sender_name else ""
+
+    return f"""
+{greeting}
+
+Ya ha pasado.
+
+Tu ETERNA ha vuelto.
+
+Lo que diste…
+ya ha encontrado su camino de vuelta.
+
+Y ahora puedes verlo.
+
+{url}
+""".strip()
+
+
 
 def twilio_enabled() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
