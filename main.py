@@ -664,7 +664,29 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
 
 def original_video_ready(order: dict) -> bool:
     url = (order.get("experience_video_url") or "").strip()
-    return bool(url)
+
+    if not url:
+        return False
+
+    try:
+        # comprobamos que el vídeo responde (head ligero)
+        r = requests.head(url, timeout=5)
+
+        if r.status_code != 200:
+            print("❌ VIDEO NO DISPONIBLE TODAVÍA:", r.status_code)
+            return False
+
+        content_type = (r.headers.get("Content-Type") or "").lower()
+
+        if "video" not in content_type:
+            print("❌ NO ES VIDEO REAL:", content_type)
+            return False
+
+        return True
+
+    except Exception as e:
+        print("❌ ERROR COMPROBANDO VIDEO:", str(e))
+        return False
 
 
 def reaction_exists(order: dict) -> bool:
@@ -4548,54 +4570,6 @@ def resumen(order_id: str):
 
 
 # =========================================================
-# START EXPERIENCE (FIX CRÍTICO)
-# =========================================================
-
-@app.post("/start-experience")
-async def start_experience(recipient_token: str = Form(...)):
-    try:
-        order = get_order_by_recipient_token_or_404(recipient_token)
-
-        print("🎬 START EXPERIENCE:", order["id"])
-
-        if not bool(order.get("paid")):
-            raise HTTPException(status_code=403, detail="not_paid")
-
-        if not original_video_ready(order):
-            raise HTTPException(status_code=403, detail="video_not_ready")
-
-        if not delivery_is_unlocked(order):
-            raise HTTPException(status_code=403, detail="delivery_locked")
-
-        if reaction_is_safe(order):
-            return JSONResponse({
-                "ok": True,
-                "redirect_url": f"/cobrar/{recipient_token}",
-            })
-
-        attempts = int(order.get("reaction_attempts") or 0)
-
-        update_order(
-            order["id"],
-            experience_started=1,
-            experience_completed=0,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-            reaction_attempts=attempts + 1,
-            reaction_last_attempt_at=now_iso(),
-        )
-
-        return JSONResponse({"ok": True})
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        log_error("START EXPERIENCE ERROR", e)
-        raise HTTPException(status_code=500, detail="start_experience_failed")
-
-
-# =========================================================
 # START EXPERIENCE (BLINDADO)
 # =========================================================
 
@@ -5785,135 +5759,7 @@ def finalizar_experiencia(request: Request, recipient_token: str):
 
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-# =========================================================
-# UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
-# =========================================================
 
-@app.post("/upload-reaction/{recipient_token}")
-async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    print("🎥 UPLOAD REACTION START")
-    print("➡️ order_id:", order["id"])
-
-    if not bool(order.get("paid")):
-        raise HTTPException(status_code=403, detail="not_paid")
-
-    if not original_video_ready(order):
-        raise HTTPException(status_code=403, detail="video_not_ready")
-
-    try:
-        update_order(
-            order["id"],
-            reaction_upload_pending=1,
-            reaction_upload_error=None,
-            experience_completed=0,
-        )
-
-        content_type = (video.content_type or "").lower().strip()
-        data = await video.read()
-        size = len(data)
-
-        print("📦 content_type:", content_type)
-        print("📦 size:", size)
-
-        if size <= 0:
-            raise HTTPException(status_code=400, detail="empty_video")
-
-        if size > MAX_VIDEO_SIZE:
-            raise HTTPException(status_code=400, detail="video_too_large")
-
-        extension = detect_video_extension(video)
-        local_path = reaction_video_path(order["id"], extension)
-
-        with open(local_path, "wb") as f:
-            f.write(data)
-
-        if not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
-            raise Exception("local_file_empty_after_write")
-
-        print("💾 Reacción guardada local OK:", local_path)
-
-    except HTTPException as e:
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error=str(e.detail),
-            experience_completed=0,
-        )
-        raise
-
-    except Exception as e:
-        log_error("upload_reaction_save_error", e)
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error="local_save_failed",
-            experience_completed=0,
-        )
-        raise HTTPException(status_code=500, detail="local_save_failed")
-
-    public_url = None
-
-    try:
-        if r2_enabled():
-            remote_name = f"reactions/{order['id']}.{extension}"
-            safe_type = content_type or ("video/mp4" if extension == "mp4" else "video/webm")
-
-            public_url = upload_video_to_r2(
-                local_path,
-                remote_name,
-                content_type=safe_type,
-            )
-
-            print("☁️ Reacción subida a R2:", public_url)
-
-    except Exception as e:
-        log_error("r2_upload_failed", e)
-        print("⚠️ R2 FALLÓ, pero ETERNA sigue con archivo local")
-
-    try:
-        update_order(
-            order["id"],
-            reaction_video_local=local_path,
-            reaction_video_public_url=public_url,
-            reaction_uploaded=1,
-            experience_completed=1,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-        )
-
-        updated_order = maybe_mark_eterna_completed(order["id"])
-        print("✅ ETERNA marcada con reacción segura")
-
-    except Exception as e:
-        log_error("update_order_reaction", e)
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error="db_update_failed",
-            experience_completed=0,
-        )
-        raise HTTPException(status_code=500, detail="db_update_failed")
-
-    try:
-        sms_result = try_send_sender_sms(updated_order)
-        print("📩 WHATSAPP REGALANTE:", sms_result)
-    except Exception as e:
-        log_error("try_send_sender_sms", e)
-
-    try:
-        payout_result = process_gift_transfer_for_order(updated_order)
-        print("💸 PAYOUT RESULT:", payout_result)
-    except Exception as e:
-        log_error("payout_error", e)
-
-    return JSONResponse({
-        "ok": True,
-        "redirect": f"/finalizar-experiencia/{recipient_token}",
-    })
 # =========================================================
 # MI VIDEO (POST EXPERIENCIA)
 # =========================================================
@@ -6697,53 +6543,4 @@ def admin_reset_recipient_session(order_id: str, token: str = ""):
         "recipient_url": recipient_experience_url_from_order(refreshed),
     })
 
-
-# =========================================================
-# FINALIZAR EXPERIENCIA (DEFINITIVO)
-# =========================================================
-
-@app.get("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
-
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
-    if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if reaction_is_safe(order):
-        update_order(
-            order["id"],
-            experience_completed=1,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-        )
-
-        updated_order = maybe_mark_eterna_completed(order["id"])
-
-        try:
-            try_send_sender_sms(updated_order)
-        except Exception as e:
-            log_error("finalizar_try_send_sender_sms", e)
-
-        try:
-            process_gift_transfer_for_order(updated_order)
-        except Exception as e:
-            log_error("finalizar_process_gift_transfer", e)
-
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    update_order(
-        order["id"],
-        experience_completed=0,
-        reaction_upload_pending=0,
-        reaction_upload_error=order.get("reaction_upload_error") or "missing_reaction_on_finalize",
-    )
-
-    return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
