@@ -5018,7 +5018,7 @@ function waitForVideoReady() {
             }
         };
 
-        const timeoutId = setTimeout(done, 4000);
+        const timeoutId = setTimeout(done, 5000);
 
         video.addEventListener("loadedmetadata", onReady);
         video.addEventListener("loadeddata", onReady);
@@ -5102,7 +5102,7 @@ async function tryStartRecordingStrict() {
                 } else {
                     reject(new Error("recorder_not_running"));
                 }
-            }, 700);
+            }, 900);
 
             try {
                 mediaRecorder.addEventListener("start", () => {
@@ -5154,6 +5154,8 @@ async function finalizeExperienceFlow() {
                 mediaRecorder.requestData();
             } catch (_) {}
 
+            await new Promise(res => setTimeout(res, 600));
+
             await new Promise((resolve) => {
                 let done = false;
 
@@ -5164,7 +5166,7 @@ async function finalizeExperienceFlow() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 3000);
+                const timeoutId = setTimeout(finish, 4000);
 
                 try {
                     mediaRecorder.addEventListener("stop", finish, { once: true });
@@ -5189,9 +5191,10 @@ async function finalizeExperienceFlow() {
         console.error("stream stop error", e);
     }
 
-    await new Promise(res => setTimeout(res, 350));
+    await new Promise(res => setTimeout(res, 900));
 
     let blob = null;
+
     try {
         blob = new Blob(recordedChunks, {
             type: recordingMimeType || "video/webm"
@@ -5204,7 +5207,7 @@ async function finalizeExperienceFlow() {
     }
 
     try {
-        if (blob && blob.size > 0) {
+        if (blob && blob.size > 10000) {
             const filename = "reaction." + recordingExtension;
             const formData = new FormData();
             formData.append("video", blob, filename);
@@ -5227,7 +5230,7 @@ async function finalizeExperienceFlow() {
     } catch (e) {
         console.error("upload error", e);
 
-        let humanMessage = buildFriendlyUploadMessage(
+        const humanMessage = buildFriendlyUploadMessage(
             e?.message || e?.detail || ""
         );
 
@@ -5319,7 +5322,7 @@ startBtn.addEventListener("click", async () => {
         video.load();
         await waitForVideoReady();
 
-        await new Promise(res => setTimeout(res, 600));
+        await new Promise(res => setTimeout(res, 800));
 
         overlay.classList.add("hidden");
         experienceStarted = true;
