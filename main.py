@@ -4967,49 +4967,49 @@ function buildFriendlyUploadMessage(errorCode) {
     return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
 }
 
-function resetRecordingState() {
-    try {
-        if (finishTimeout) {
-            clearTimeout(finishTimeout);
-            finishTimeout = null;
+function detectRecordingFormat() {
+    if (typeof MediaRecorder === "undefined") {
+        throw new Error("media_recorder_not_supported");
+    }
+
+    const ua = navigator.userAgent || "";
+    const isiPhone = /iPhone|iPad|iPod/i.test(ua);
+
+    // iPhone / iPad: MP4 primero
+    if (isiPhone) {
+        const iphoneCandidates = [
+            { mimeType: "video/mp4", extension: "mp4" },
+            { mimeType: "", extension: "mp4" }
+        ];
+
+        for (const candidate of iphoneCandidates) {
+            try {
+                if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
+                    console.log("🎥 FORMAT:", candidate);
+                    return candidate;
+                }
+            } catch (_) {}
         }
-    } catch (_) {}
+    }
 
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-        }
-    } catch (_) {}
+    // Android / Chrome: WebM
+    const candidates = [
+        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
+        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
+        { mimeType: "video/webm", extension: "webm" },
+        { mimeType: "", extension: "webm" }
+    ];
 
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (_) {}
+    for (const candidate of candidates) {
+        try {
+            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
+                console.log("🎥 FORMAT:", candidate);
+                return candidate;
+            }
+        } catch (_) {}
+    }
 
-    stream = null;
-    mediaRecorder = null;
-    recordedChunks = [];
-    recordingMimeType = "";
-    recordingExtension = "webm";
-    finishing = false;
-    experienceStarted = false;
-
-    try {
-        video.pause();
-    } catch (_) {}
-
-    try {
-        video.currentTime = 0;
-    } catch (_) {}
-
-    overlay.classList.remove("hidden");
-    payoff.classList.remove("show");
-    startBtn.disabled = false;
-    clearStartError();
-    hideRetryActions();
-    hideStartFailActions();
-    showGuideStep(0);
+    return { mimeType: "", extension: "webm" };
 }
 
 function waitForVideoReady() {
