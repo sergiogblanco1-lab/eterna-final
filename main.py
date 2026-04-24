@@ -4921,8 +4921,8 @@ function hideStartFailActions() {
 function buildFriendlyUploadMessage(errorCode) {
     const code = String(errorCode || "").toLowerCase();
 
-    if (code.includes("empty_video") || code.includes("empty_blob")) {
-        return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
+    if (code.includes("empty_video") || code.includes("empty_blob") || code.includes("small_blob")) {
+        return "No se ha detectado una grabación válida. Vamos a intentarlo otra vez.";
     }
 
     if (code.includes("video_too_large")) {
@@ -4933,7 +4933,7 @@ function buildFriendlyUploadMessage(errorCode) {
         return "No se ha podido grabar este momento porque faltan permisos de cámara o micrófono.";
     }
 
-    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
+    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch") || code.includes("upload")) {
         return "No se ha podido guardar este momento por un problema de conexión. Revisa internet e inténtalo de nuevo.";
     }
 
@@ -4945,29 +4945,11 @@ function detectRecordingFormat() {
         throw new Error("media_recorder_not_supported");
     }
 
-    const ua = navigator.userAgent || "";
-    const isiPhone = /iPhone|iPad|iPod/i.test(ua);
-
-    if (isiPhone) {
-        const iphoneCandidates = [
-            { mimeType: "video/mp4", extension: "mp4" },
-            { mimeType: "", extension: "mp4" }
-        ];
-
-        for (const candidate of iphoneCandidates) {
-            try {
-                if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                    console.log("🎥 FORMAT:", candidate);
-                    return candidate;
-                }
-            } catch (_) {}
-        }
-    }
-
     const candidates = [
         { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
         { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
         { mimeType: "video/webm", extension: "webm" },
+        { mimeType: "video/mp4", extension: "mp4" },
         { mimeType: "", extension: "webm" }
     ];
 
@@ -5018,7 +5000,7 @@ function waitForVideoReady() {
             }
         };
 
-        const timeoutId = setTimeout(done, 4000);
+        const timeoutId = setTimeout(done, 5000);
 
         video.addEventListener("loadedmetadata", onReady);
         video.addEventListener("loadeddata", onReady);
@@ -5026,7 +5008,54 @@ function waitForVideoReady() {
     });
 }
 
-function resetRecordingState() {
+async function stopRecordingSafely() {
+    try {
+        if (!mediaRecorder) return;
+
+        if (mediaRecorder.state === "recording") {
+            try {
+                mediaRecorder.requestData();
+            } catch (_) {}
+
+            await new Promise((resolve) => {
+                let done = false;
+
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+
+                const timeoutId = setTimeout(finish, 4000);
+
+                try {
+                    mediaRecorder.addEventListener("stop", finish, { once: true });
+                } catch (_) {}
+
+                try {
+                    mediaRecorder.stop();
+                } catch (_) {
+                    finish();
+                }
+            });
+        }
+    } catch (e) {
+        console.error("recorder stop error", e);
+    }
+}
+
+function stopStreamSafely() {
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (e) {
+        console.error("stream stop error", e);
+    }
+}
+
+async function resetRecordingState() {
     try {
         if (finishTimeout) {
             clearTimeout(finishTimeout);
@@ -5034,18 +5063,8 @@ function resetRecordingState() {
         }
     } catch (_) {}
 
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            try { mediaRecorder.requestData(); } catch (_) {}
-            mediaRecorder.stop();
-        }
-    } catch (_) {}
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (_) {}
+    await stopRecordingSafely();
+    stopStreamSafely();
 
     stream = null;
     mediaRecorder = null;
@@ -5061,14 +5080,19 @@ function resetRecordingState() {
     overlay.classList.remove("hidden");
     payoff.classList.remove("show");
     startBtn.disabled = false;
+
     clearStartError();
     hideRetryActions();
     hideStartFailActions();
-    showGuideStep(0);
+    showGuideStep(4);
 }
 
 async function tryStartRecordingStrict() {
     try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("camera_not_supported");
+        }
+
         stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
@@ -5086,6 +5110,7 @@ async function tryStartRecordingStrict() {
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
                 recordedChunks.push(e.data);
+                console.log("chunk:", e.data.size);
             }
         };
 
@@ -5102,7 +5127,7 @@ async function tryStartRecordingStrict() {
                 } else {
                     reject(new Error("recorder_not_running"));
                 }
-            }, 700);
+            }, 1200);
 
             try {
                 mediaRecorder.addEventListener("start", () => {
@@ -5112,17 +5137,15 @@ async function tryStartRecordingStrict() {
             } catch (_) {}
         });
 
+        await new Promise(res => setTimeout(res, 900));
+
         console.log("🎥 grabación iniciada");
         return true;
 
     } catch (recordingError) {
         console.error("recording init error", recordingError);
 
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
+        stopStreamSafely();
 
         stream = null;
         mediaRecorder = null;
@@ -5148,111 +5171,74 @@ async function finalizeExperienceFlow() {
         }
     } catch (_) {}
 
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            try {
-                mediaRecorder.requestData();
-            } catch (_) {}
+    await stopRecordingSafely();
+    stopStreamSafely();
 
-            await new Promise((resolve) => {
-                let done = false;
-
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    clearTimeout(timeoutId);
-                    resolve();
-                };
-
-                const timeoutId = setTimeout(finish, 3000);
-
-                try {
-                    mediaRecorder.addEventListener("stop", finish, { once: true });
-                } catch (_) {}
-
-                try {
-                    mediaRecorder.stop();
-                } catch (_) {
-                    finish();
-                }
-            });
-        }
-    } catch (e) {
-        console.error("recorder stop error", e);
-    }
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (e) {
-        console.error("stream stop error", e);
-    }
-
-    await new Promise(res => setTimeout(res, 350));
-    
-    await new Promise(res => setTimeout(res, 500));
+    await new Promise(res => setTimeout(res, 1400));
 
     let blob = null;
+
     try {
+        const safeType =
+            recordingMimeType ||
+            (recordingExtension === "mp4" ? "video/mp4" : "video/webm");
+
         blob = new Blob(recordedChunks, {
-            type: recordingMimeType || "video/webm"
+            type: safeType
         });
 
         console.log("chunks:", recordedChunks.length);
         console.log("blob size:", blob.size);
+        console.log("blob type:", safeType);
     } catch (e) {
         console.error("blob error", e);
     }
 
     try {
-        if (blob && blob.size > 10000) {
+        if (!blob || blob.size <= 0) {
+            throw new Error("empty_blob");
+        }
 
-            const filename = "reaction." + recordingExtension;
-            const formData = new FormData();
-            formData.append("video", blob, filename);
+        if (blob.size < 5000) {
+            throw new Error("small_blob");
+        }
 
-            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
+        const filename = "reaction." + recordingExtension;
+        const formData = new FormData();
+
+        formData.append("video", blob, filename);
+
+        payoffLoader.innerText = "Subiendo este momento…";
+
+        const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
             method: "POST",
             body: formData
-            });
+        });
 
-            const uploadData = await uploadResponse.json().catch(() => ({}));
+        const uploadData = await uploadResponse.json().catch(() => ({}));
 
-            if (!uploadResponse.ok) {
+        if (!uploadResponse.ok) {
             throw new Error(uploadData.detail || "upload_reaction_failed");
-            }
-
-            console.log("✅ reacción subida");
-
-        } else {
-            throw new Error("empty_blob");
         }
-            const uploadData = await uploadResponse.json().catch(() => ({}));
 
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.detail || "upload_reaction_failed");
-            }
+        console.log("✅ reacción subida");
 
-            console.log("✅ reacción subida");
-        } else {
-            throw new Error("empty_blob");
-        }
     } catch (e) {
         console.error("upload error", e);
 
-        let humanMessage = buildFriendlyUploadMessage(
-            e?.message || e?.detail || ""
-        );
-
-        payoffLoader.innerText = humanMessage;
+        payoffLoader.innerText = buildFriendlyUploadMessage(e?.message || e?.detail || "");
         showRetryActions();
 
         finishing = false;
+        experienceStarted = false;
         return;
     }
 
-    window.location.replace("/finalizar-experiencia/" + recipientToken);
+    payoffLoader.innerText = "Todo ha salido bien.";
+
+    setTimeout(() => {
+        window.location.replace("/finalizar-experiencia/" + recipientToken);
+    }, 1000);
 }
 
 function armFinishFallbacks() {
@@ -5294,6 +5280,7 @@ startBtn.addEventListener("click", async () => {
     startBtn.disabled = true;
     clearStartError();
     hideStartFailActions();
+    hideRetryActions();
 
     try {
         try { video.pause(); } catch (_) {}
@@ -5333,7 +5320,7 @@ startBtn.addEventListener("click", async () => {
         video.load();
         await waitForVideoReady();
 
-        await new Promise(res => setTimeout(res, 600));
+        await new Promise(res => setTimeout(res, 700));
 
         overlay.classList.add("hidden");
         experienceStarted = true;
@@ -5345,30 +5332,21 @@ startBtn.addEventListener("click", async () => {
         } catch (e) {
             console.error("video play error", e);
 
-            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
-            experienceStarted = false;
-            overlay.classList.remove("hidden");
-            startBtn.disabled = false;
-            showStartFailActions();
-
-            try {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    try { mediaRecorder.requestData(); } catch (_) {}
-                    mediaRecorder.stop();
-                }
-            } catch (_) {}
-
-            try {
-                if (stream) {
-                    stream.getTracks().forEach((t) => t.stop());
-                }
-            } catch (_) {}
+            await stopRecordingSafely();
+            stopStreamSafely();
 
             stream = null;
             mediaRecorder = null;
             recordedChunks = [];
             recordingMimeType = "";
             recordingExtension = "webm";
+            experienceStarted = false;
+
+            overlay.classList.remove("hidden");
+            startBtn.disabled = false;
+
+            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
+            showStartFailActions();
 
             return;
         }
@@ -5376,28 +5354,18 @@ startBtn.addEventListener("click", async () => {
     } catch (e) {
         console.error("experience start error", e);
 
-        startBtn.disabled = false;
-        experienceStarted = false;
-        payoff.classList.remove("show");
-
-        try {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                try { mediaRecorder.requestData(); } catch (_) {}
-                mediaRecorder.stop();
-            }
-        } catch (_) {}
-
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
+        await stopRecordingSafely();
+        stopStreamSafely();
 
         stream = null;
         mediaRecorder = null;
         recordedChunks = [];
         recordingMimeType = "";
         recordingExtension = "webm";
+
+        startBtn.disabled = false;
+        experienceStarted = false;
+        payoff.classList.remove("show");
 
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
         showStartFailActions();
@@ -5438,8 +5406,8 @@ window.addEventListener("beforeunload", () => {
 });
 
 if (retryExperienceBtn) {
-    retryExperienceBtn.addEventListener("click", () => {
-        resetRecordingState();
+    retryExperienceBtn.addEventListener("click", async () => {
+        await resetRecordingState();
         clearStartError();
     });
 }
@@ -5451,8 +5419,8 @@ if (backToStartBtn) {
 }
 
 if (retryStartBtn) {
-    retryStartBtn.addEventListener("click", () => {
-        resetRecordingState();
+    retryStartBtn.addEventListener("click", async () => {
+        await resetRecordingState();
         clearStartError();
         hideStartFailActions();
         startBtn.disabled = false;
@@ -5469,93 +5437,6 @@ if (backFromStartBtn) {
 showGuideStep(0);
 </script>
 
-<script>
-(function () {
-    const ua = navigator.userAgent || "";
-
-    const isInAppBrowser =
-        ua.includes("FBAN") ||
-        ua.includes("FBAV") ||
-        ua.includes("Instagram") ||
-        ua.includes("WhatsApp");
-
-    if (!isInAppBrowser) return;
-
-    document.body.innerHTML = `
-        <div style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            height:100vh;
-            background:
-                radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
-                linear-gradient(180deg, #050505 0%, #000000 100%);
-            color:white;
-            text-align:center;
-            padding:24px;
-            font-family:Arial,sans-serif;
-        ">
-            <div style="max-width:520px;">
-                <div style="
-                    font-size:12px;
-                    letter-spacing:0.3em;
-                    text-transform:uppercase;
-                    opacity:.4;
-                    margin-bottom:20px;
-                ">
-                    ETERNA
-                </div>
-
-                <h1 style="
-                    font-size:36px;
-                    line-height:1.2;
-                    margin-bottom:18px;
-                    font-weight:700;
-                ">
-                    Este momento<br>merece ser vivido bien
-                </h1>
-
-                <p style="
-                    font-size:18px;
-                    line-height:1.7;
-                    opacity:.75;
-                ">
-                    Para poder guardar lo que está a punto de pasar,<br>
-                    abre este enlace en tu navegador.
-                </p>
-
-                <div style="
-                    margin-top:34px;
-                    font-size:15px;
-                    opacity:.5;
-                    line-height:1.6;
-                ">
-                    Pulsa el botón y luego elige <b>Abrir en Safari</b>
-                </div>
-
-                <button onclick="openExternal()" style="
-                    margin-top:28px;
-                    padding:18px 26px;
-                    border-radius:999px;
-                    background:white;
-                    color:black;
-                    font-weight:700;
-                    font-size:16px;
-                    border:none;
-                    cursor:pointer;
-                ">
-                    Abrir correctamente
-                </button>
-            </div>
-        </div>
-    `;
-
-    window.openExternal = function () {
-        window.location.href = window.location.href;
-    };
-})();
-</script>
-
 </body>
 </html>
     """
@@ -5570,6 +5451,7 @@ showGuideStep(0);
 
     cookie_key = recipient_cookie_name(order["recipient_token"])
     session_value = (order.get("recipient_session_token") or "").strip()
+
     if session_value:
         response.set_cookie(
             key=cookie_key,
@@ -5582,7 +5464,6 @@ showGuideStep(0);
         )
 
     return response
-
 
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
