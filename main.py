@@ -4430,7 +4430,55 @@ async def start_experience(recipient_token: str = Form(...)):
 
 
 # =========================================================
-# EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
+# START EXPERIENCE (BLINDADO)
+# =========================================================
+
+@app.post("/start-experience")
+async def start_experience(recipient_token: str = Form(...)):
+    try:
+        order = get_order_by_recipient_token_or_404(recipient_token)
+
+        print("🎬 START EXPERIENCE:", order["id"])
+
+        if not bool(order.get("paid")):
+            raise HTTPException(status_code=403, detail="not_paid")
+
+        if not original_video_ready(order):
+            raise HTTPException(status_code=403, detail="video_not_ready")
+
+        if not delivery_is_unlocked(order):
+            raise HTTPException(status_code=403, detail="delivery_locked")
+
+        if reaction_is_safe(order):
+            return JSONResponse({
+                "ok": True,
+                "redirect_url": f"/cobrar/{recipient_token}",
+            })
+
+        attempts = int(order.get("reaction_attempts") or 0)
+
+        update_order(
+            order["id"],
+            experience_started=1,
+            experience_completed=0,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+            reaction_attempts=attempts + 1,
+            reaction_last_attempt_at=now_iso(),
+        )
+
+        return JSONResponse({"ok": True})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("START EXPERIENCE ERROR", e)
+        raise HTTPException(status_code=500, detail="start_experience_failed")
+
+
+# =========================================================
+# EXPERIENCE (VERSIÓN ESTABLE LIMPIA + FINAL BLINDADO)
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
@@ -4712,12 +4760,7 @@ video {
 </head>
 <body>
 <div class="wrap">
-    <video
-        id="video"
-        playsinline
-        webkit-playsinline
-        preload="auto"
-    >
+    <video id="video" playsinline webkit-playsinline preload="auto">
         <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
@@ -4727,57 +4770,33 @@ video {
             <div class="guide-step active" id="guideStep1">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Shhh…</h1>
-                <div class="text">
-                    Esto merece ser escuchado bien.
-                </div>
-                <div class="soft">
-                    Si puedes, usa auriculares o sube el volumen.
-                </div>
-                <button class="btn" id="guideBtn1" style="margin-top:28px;">
-                    Tengo sonido
-                </button>
+                <div class="text">Esto merece ser escuchado bien.</div>
+                <div class="soft">Si puedes, usa auriculares o sube el volumen.</div>
+                <button class="btn" id="guideBtn1" style="margin-top:28px;">Tengo sonido</button>
             </div>
 
             <div class="guide-step" id="guideStep2">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Un momento solo para ti</h1>
-                <div class="text">
-                    Busca un lugar tranquilo.
-                </div>
-                <div class="soft">
-                    Sin ruido. Sin interrupciones.
-                </div>
-                <button class="btn" id="guideBtn2" style="margin-top:28px;">
-                    Estoy en un sitio tranquilo
-                </button>
+                <div class="text">Busca un lugar tranquilo.</div>
+                <div class="soft">Sin ruido. Sin interrupciones.</div>
+                <button class="btn" id="guideBtn2" style="margin-top:28px;">Estoy en un sitio tranquilo</button>
             </div>
 
             <div class="guide-step" id="guideStep3">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Colócalo frente a ti</h1>
-                <div class="text">
-                    Un poco más lejos… así es mejor.
-                </div>
-                <div class="soft">
-                    Queremos verte bien durante este momento.
-                </div>
-                <button class="btn" id="guideBtn3" style="margin-top:28px;">
-                    Ya está colocado
-                </button>
+                <div class="text">Un poco más lejos… así es mejor.</div>
+                <div class="soft">Queremos verte bien durante este momento.</div>
+                <button class="btn" id="guideBtn3" style="margin-top:28px;">Ya está colocado</button>
             </div>
 
             <div class="guide-step" id="guideStep4">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Cuida la luz</h1>
-                <div class="text">
-                    Evita tener la luz detrás.
-                </div>
-                <div class="soft">
-                    Si puedes, quédate donde tu cara se vea bien.
-                </div>
-                <button class="btn" id="guideBtn4" style="margin-top:28px;">
-                    Se me ve bien
-                </button>
+                <div class="text">Evita tener la luz detrás.</div>
+                <div class="soft">Si puedes, quédate donde tu cara se vea bien.</div>
+                <button class="btn" id="guideBtn4" style="margin-top:28px;">Se me ve bien</button>
             </div>
 
             <div class="guide-step" id="guideStep5">
@@ -4787,9 +4806,7 @@ video {
                     Esto no es un vídeo.<br>
                     Es un momento que está a punto de ocurrir.
                 </div>
-                <div class="soft">
-                    Esto solo pasa una vez.
-                </div>
+                <div class="soft">Esto solo pasa una vez.</div>
 
                 <div class="guide-legal">
                     Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
@@ -4862,19 +4879,14 @@ function showGuideStep(index) {
     currentGuideStep = index;
     guideSteps.forEach((step, i) => {
         if (!step) return;
-        if (i === index) {
-            step.classList.add("active");
-        } else {
-            step.classList.remove("active");
-        }
+        if (i === index) step.classList.add("active");
+        else step.classList.remove("active");
     });
 }
 
 function nextGuideStep() {
     const next = currentGuideStep + 1;
-    if (next < guideSteps.length) {
-        showGuideStep(next);
-    }
+    if (next < guideSteps.length) showGuideStep(next);
 }
 
 document.getElementById("guideBtn1")?.addEventListener("click", () => nextGuideStep());
@@ -4895,27 +4907,19 @@ function clearStartError() {
 }
 
 function showRetryActions() {
-    if (retryActions) {
-        retryActions.classList.add("show");
-    }
+    if (retryActions) retryActions.classList.add("show");
 }
 
 function hideRetryActions() {
-    if (retryActions) {
-        retryActions.classList.remove("show");
-    }
+    if (retryActions) retryActions.classList.remove("show");
 }
 
 function showStartFailActions() {
-    if (startFailActions) {
-        startFailActions.classList.add("show");
-    }
+    if (startFailActions) startFailActions.classList.add("show");
 }
 
 function hideStartFailActions() {
-    if (startFailActions) {
-        startFailActions.classList.remove("show");
-    }
+    if (startFailActions) startFailActions.classList.remove("show");
 }
 
 function buildFriendlyUploadMessage(errorCode) {
@@ -4945,13 +4949,25 @@ function detectRecordingFormat() {
         throw new Error("media_recorder_not_supported");
     }
 
-    const candidates = [
+    const ua = navigator.userAgent || "";
+    const isiPhone = /iPhone|iPad|iPod/i.test(ua);
+
+    const iphoneCandidates = [
+        { mimeType: "video/mp4", extension: "mp4" },
+        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
+        { mimeType: "video/webm", extension: "webm" },
+        { mimeType: "", extension: "mp4" }
+    ];
+
+    const normalCandidates = [
         { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
         { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
         { mimeType: "video/webm", extension: "webm" },
         { mimeType: "video/mp4", extension: "mp4" },
         { mimeType: "", extension: "webm" }
     ];
+
+    const candidates = isiPhone ? iphoneCandidates : normalCandidates;
 
     for (const candidate of candidates) {
         try {
@@ -4995,9 +5011,7 @@ function waitForVideoReady() {
                 video.duration > 0 &&
                 video.readyState >= 1;
 
-            if (readyNow) {
-                done();
-            }
+            if (readyNow) done();
         };
 
         const timeoutId = setTimeout(done, 5000);
@@ -5013,9 +5027,7 @@ async function stopRecordingSafely() {
         if (!mediaRecorder) return;
 
         if (mediaRecorder.state === "recording") {
-            try {
-                mediaRecorder.requestData();
-            } catch (_) {}
+            try { mediaRecorder.requestData(); } catch (_) {}
 
             await new Promise((resolve) => {
                 let done = false;
@@ -5027,7 +5039,7 @@ async function stopRecordingSafely() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 4000);
+                const timeoutId = setTimeout(finish, 4500);
 
                 try {
                     mediaRecorder.addEventListener("stop", finish, { once: true });
@@ -5047,9 +5059,7 @@ async function stopRecordingSafely() {
 
 function stopStreamSafely() {
     try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
+        if (stream) stream.getTracks().forEach((t) => t.stop());
     } catch (e) {
         console.error("stream stop error", e);
     }
@@ -5122,11 +5132,8 @@ async function tryStartRecordingStrict() {
 
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    resolve();
-                } else {
-                    reject(new Error("recorder_not_running"));
-                }
+                if (mediaRecorder && mediaRecorder.state === "recording") resolve();
+                else reject(new Error("recorder_not_running"));
             }, 1200);
 
             try {
@@ -5183,9 +5190,7 @@ async function finalizeExperienceFlow() {
             recordingMimeType ||
             (recordingExtension === "mp4" ? "video/mp4" : "video/webm");
 
-        blob = new Blob(recordedChunks, {
-            type: safeType
-        });
+        blob = new Blob(recordedChunks, { type: safeType });
 
         console.log("chunks:", recordedChunks.length);
         console.log("blob size:", blob.size);
@@ -5195,17 +5200,11 @@ async function finalizeExperienceFlow() {
     }
 
     try {
-        if (!blob || blob.size <= 0) {
-            throw new Error("empty_blob");
-        }
-
-        if (blob.size < 5000) {
-            throw new Error("small_blob");
-        }
+        if (!blob || blob.size <= 0) throw new Error("empty_blob");
+        if (blob.size < 5000) throw new Error("small_blob");
 
         const filename = "reaction." + recordingExtension;
         const formData = new FormData();
-
         formData.append("video", blob, filename);
 
         payoffLoader.innerText = "Subiendo este momento…";
@@ -5238,7 +5237,7 @@ async function finalizeExperienceFlow() {
 
     setTimeout(() => {
         window.location.replace("/finalizar-experiencia/" + recipientToken);
-    }, 1000);
+    }, 800);
 }
 
 function armFinishFallbacks() {
@@ -5304,13 +5303,9 @@ startBtn.addEventListener("click", async () => {
         });
 
         let data = {};
-        try {
-            data = await response.json();
-        } catch (_) {}
+        try { data = await response.json(); } catch (_) {}
 
-        if (!response.ok) {
-            throw new Error(data.detail || "start_experience_error");
-        }
+        if (!response.ok) throw new Error(data.detail || "start_experience_error");
 
         if (data.redirect_url) {
             window.location.replace(data.redirect_url);
@@ -5319,7 +5314,6 @@ startBtn.addEventListener("click", async () => {
 
         video.load();
         await waitForVideoReady();
-
         await new Promise(res => setTimeout(res, 700));
 
         overlay.classList.add("hidden");
@@ -5374,10 +5368,7 @@ startBtn.addEventListener("click", async () => {
 
 document.addEventListener("visibilitychange", async () => {
     if (!experienceStarted || finishing) return;
-
-    if (document.visibilityState === "visible") {
-        await safeResumePlayback();
-    }
+    if (document.visibilityState === "visible") await safeResumePlayback();
 });
 
 window.addEventListener("focus", async () => {
@@ -5387,21 +5378,15 @@ window.addEventListener("focus", async () => {
 
 window.addEventListener("pagehide", () => {
     if (!experienceStarted || finishing) return;
-
     try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
+        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.requestData();
     } catch (_) {}
 });
 
 window.addEventListener("beforeunload", () => {
     if (!experienceStarted || finishing) return;
-
     try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
+        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.requestData();
     } catch (_) {}
 });
 
@@ -5464,6 +5449,175 @@ showGuideStep(0);
         )
 
     return response
+
+
+# =========================================================
+# UPLOAD REACTION (RESPUESTA RÁPIDA + FINAL BLINDADO)
+# =========================================================
+
+@app.post("/upload-reaction/{recipient_token}")
+async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    print("🎥 UPLOAD REACTION START")
+    print("➡️ order_id:", order["id"])
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="not_paid")
+
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="video_not_ready")
+
+    try:
+        update_order(
+            order["id"],
+            reaction_upload_pending=1,
+            reaction_upload_error=None,
+            experience_completed=0,
+        )
+
+        content_type = (video.content_type or "").lower().strip()
+        data = await video.read()
+        size = len(data)
+
+        print("📦 content_type:", content_type)
+        print("📦 size:", size)
+
+        if size <= 0:
+            raise HTTPException(status_code=400, detail="empty_video")
+
+        if size > MAX_VIDEO_SIZE:
+            raise HTTPException(status_code=400, detail="video_too_large")
+
+        extension = detect_video_extension(video)
+        local_path = reaction_video_path(order["id"], extension)
+
+        with open(local_path, "wb") as f:
+            f.write(data)
+
+        if not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
+            raise Exception("local_file_empty_after_write")
+
+        print("💾 Reacción guardada local OK:", local_path)
+
+        update_order(
+            order["id"],
+            reaction_video_local=local_path,
+            reaction_video_public_url=None,
+            reaction_uploaded=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+
+        updated_order = maybe_mark_eterna_completed(order["id"])
+
+        print("✅ DB ACTUALIZADA: reacción segura")
+        print("✅ reaction_is_safe:", reaction_is_safe(updated_order))
+
+        return JSONResponse({
+            "ok": True,
+            "redirect": f"/finalizar-experiencia/{recipient_token}",
+        })
+
+    except HTTPException as e:
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error=str(e.detail),
+            experience_completed=0,
+        )
+        raise
+
+    except Exception as e:
+        log_error("upload_reaction_save_error", e)
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error="local_save_failed",
+            experience_completed=0,
+        )
+        raise HTTPException(status_code=500, detail="local_save_failed")
+
+
+# =========================================================
+# FINALIZAR EXPERIENCIA (SMS + COBRO + R2 SIN BLOQUEAR)
+# =========================================================
+
+@app.get("/finalizar-experiencia/{recipient_token}")
+def finalizar_experiencia(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not reaction_is_safe(order):
+        update_order(
+            order["id"],
+            experience_completed=0,
+            reaction_upload_pending=0,
+            reaction_upload_error=order.get("reaction_upload_error") or "missing_reaction_on_finalize",
+        )
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+
+    update_order(
+        order["id"],
+        experience_completed=1,
+        delivered_to_recipient=1,
+        reaction_upload_pending=0,
+        reaction_upload_error=None,
+        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
+
+    updated_order = maybe_mark_eterna_completed(order["id"])
+
+    try:
+        if r2_enabled() and not (updated_order.get("reaction_video_public_url") or "").strip():
+            local_path = (updated_order.get("reaction_video_local") or "").strip()
+
+            if local_path and os.path.exists(local_path):
+                ext = "mp4" if local_path.lower().endswith(".mp4") else "webm"
+                remote_name = f"reactions/{updated_order['id']}.{ext}"
+                safe_type = "video/mp4" if ext == "mp4" else "video/webm"
+
+                public_url = upload_video_to_r2(
+                    local_path,
+                    remote_name,
+                    content_type=safe_type,
+                )
+
+                if public_url:
+                    update_order(
+                        updated_order["id"],
+                        reaction_video_public_url=public_url,
+                    )
+                    updated_order = get_order_by_id(updated_order["id"])
+                    print("☁️ Reacción subida a R2:", public_url)
+
+    except Exception as e:
+        log_error("finalizar_r2_upload_failed", e)
+        print("⚠️ R2 FALLÓ, pero ETERNA sigue con archivo local")
+
+    try:
+        sms_result = try_send_sender_sms(updated_order)
+        print("📩 WHATSAPP REGALANTE:", sms_result)
+    except Exception as e:
+        log_error("finalizar_try_send_sender_sms", e)
+
+    try:
+        payout_result = process_gift_transfer_for_order(updated_order)
+        print("💸 PAYOUT RESULT:", payout_result)
+    except Exception as e:
+        log_error("finalizar_process_gift_transfer", e)
+
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
