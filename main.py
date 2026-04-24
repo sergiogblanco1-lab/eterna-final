@@ -668,30 +668,17 @@ def original_video_ready(order: dict) -> bool:
     if not url:
         return False
 
-    try:
-        # comprobamos que el vídeo responde (head ligero)
-        r = requests.head(url, timeout=5)
-
-        if r.status_code != 200:
-            print("❌ VIDEO NO DISPONIBLE TODAVÍA:", r.status_code)
-            return False
-
-        content_type = (r.headers.get("Content-Type") or "").lower()
-
-        if "video" not in content_type:
-            print("❌ NO ES VIDEO REAL:", content_type)
-            return False
-
-        return True
-
-    except Exception as e:
-        print("❌ ERROR COMPROBANDO VIDEO:", str(e))
-        return False
+    # IMPORTANTE:
+    # Si el callback del video engine ya guardó una URL,
+    # para ETERNA el vídeo se considera listo.
+    # No bloqueamos por HEAD porque algunos servidores/CDN fallan con HEAD.
+    return True
 
 
 def reaction_exists(order: dict) -> bool:
     if order.get("reaction_video_public_url"):
         return True
+
     local_path = (order.get("reaction_video_local") or "").strip()
     return bool(local_path) and os.path.exists(local_path)
 
@@ -732,7 +719,7 @@ def delivery_is_unlocked(order: dict) -> bool:
 
 
 def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
-    if order.get("delivery_sent"):
+    if delivery_already_sent(order):
         return False, "delivery_already_sent"
 
     if not bool(order.get("paid")):
@@ -741,9 +728,6 @@ def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
     if not original_video_ready(order):
         return False, "original_video_not_ready"
 
-    if delivery_already_sent(order):
-        return False, "delivery_already_sent"
-
     if not scheduled_delivery_ready(order):
         return False, "scheduled_delivery_not_ready"
 
@@ -751,28 +735,23 @@ def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
 
 
 def is_eterna_complete(order: dict) -> bool:
-    return (
-        original_video_ready(order)
-        and bool(order.get("reaction_uploaded"))
-        and reaction_exists(order)
-    )
+    return original_video_ready(order) and reaction_is_safe(order)
 
 
 def maybe_mark_eterna_completed(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
-    if is_eterna_complete(order):
+    if original_video_ready(order) and reaction_is_safe(order):
         update_order(
             order["id"],
             eterna_completed=1,
             experience_completed=1,
             delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
         )
     else:
-        update_order(
-            order_id,
-            eterna_completed=0,
-        )
+        update_order(order_id, eterna_completed=0)
 
     return get_order_by_id(order_id)
 
@@ -3593,17 +3572,18 @@ def list_pending_scheduled_deliveries():
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id
-        FROM orders
+        SELECT o.id
+        FROM orders o
+        JOIN recipients r ON r.id = o.recipient_id
         WHERE
-            paid = 1
-            AND COALESCE(delivery_sent, 0) = 0
-            AND COALESCE(recipient_sms_sent_at, '') = ''
-            AND COALESCE(experience_video_url, '') <> ''
-            AND COALESCE(recipient_token, '') <> ''
-            AND COALESCE(recipient_phone, '') <> ''
-            AND COALESCE(recipient_sms_attempts, 0) < 3
-        ORDER BY created_at ASC
+            COALESCE(o.paid, 0) = 1
+            AND COALESCE(o.delivery_sent, 0) = 0
+            AND COALESCE(o.recipient_sms_sent_at, '') = ''
+            AND COALESCE(o.experience_video_url, '') <> ''
+            AND COALESCE(o.recipient_token, '') <> ''
+            AND COALESCE(r.phone, '') <> ''
+            AND COALESCE(o.recipient_sms_attempts, 0) < 3
+        ORDER BY o.created_at ASC
     """)
     rows = cur.fetchall()
     conn.close()
@@ -3767,7 +3747,9 @@ def ensure_delivery_worker_started():
 
 @app.on_event("startup")
 def startup_event():
+    ensure_all_columns()
     ensure_delivery_worker_started()
+    
 
 
 # =========================================================
