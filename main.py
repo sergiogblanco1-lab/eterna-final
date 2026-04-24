@@ -951,57 +951,56 @@ def maybe_mark_eterna_completed(order_id: str) -> dict:
 
 
 # =========================================================
-# 💬 ETERNA MESSAGE BUILDERS (EMOCIÓN REAL)
+# ✉️ MENSAJES ETERNA (RECIPIENT + SENDER)
 # =========================================================
 
 def build_recipient_message(order: dict) -> str:
     recipient_name = (order.get("recipient_name") or "").strip()
-    url = (order.get("recipient_experience_url") or "").strip()
+    url = (recipient_experience_url_from_order(order) or "").strip()
 
     greeting = f"{recipient_name}," if recipient_name else ""
 
-    return f"""
-Shhh…
+    message = ""
 
-{greeting}
+    if greeting:
+        message += f"Shhh…\n\n{greeting}\n\n"
+    else:
+        message += "Shhh…\n\n"
 
-Esto no es un vídeo.
+    message += (
+        "Esto no es un vídeo.\n\n"
+        "No es solo un momento.\n\n"
+        "Es algo que alguien ha creado para ti.\n\n"
+        "Pero hay algo más…\n\n"
+        "Dentro hay algo que también es tuyo.\n\n"
+        "Ábrelo cuando estés tranquilo:\n\n"
+        f"{url}"
+    )
 
-No es solo un momento.
-
-Es algo que alguien ha creado para ti.
-
-Pero hay algo más…
-
-Dentro hay algo que también es tuyo.
-
-Ábrelo cuando estés tranquilo.
-
-{url}
-""".strip()
+    return message.strip()
 
 
 def build_sender_ready_message(order: dict) -> str:
     sender_name = (order.get("sender_name") or "").strip()
-    url = (order.get("sender_pack_url") or "").strip()
+    url = (sender_pack_url_from_order(order) or "").strip()
 
     greeting = f"{sender_name}," if sender_name else ""
 
-    return f"""
-{greeting}
+    message = ""
 
-Ya ha pasado.
+    if greeting:
+        message += f"{greeting}\n\n"
 
-Tu ETERNA ha vuelto.
+    message += (
+        "Ya ha pasado.\n\n"
+        "Tu ETERNA ha vuelto.\n\n"
+        "Lo que diste…\n"
+        "ya ha encontrado el camino de vuelta.\n\n"
+        "Ahora puedes verlo aquí:\n\n"
+        f"{url}"
+    )
 
-Lo que diste…
-ya ha encontrado su camino de vuelta.
-
-Y ahora puedes verlo.
-
-{url}
-""".strip()
-
+    return message.strip()
 
 
 def twilio_enabled() -> bool:
