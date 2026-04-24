@@ -3403,30 +3403,6 @@ async def crear_post(
 # DELIVERY WORKER
 # =========================================================
 
-def delivery_worker_loop():
-    print("🔥 DELIVERY WORKER LOOP RUNNING 🔥")
-
-    while True:
-        try:
-            order_ids = list_pending_scheduled_deliveries()
-
-            for order_id in order_ids:
-                print("🚀 DELIVERY WORKER intentando:", order_id)
-                result = process_scheduled_recipient_delivery(order_id)
-                print("📩 RESULT:", result)
-
-            sender_ids = list_pending_sender_notifications()
-
-            for order_id in sender_ids:
-                print("📤 SENDER WORKER intentando:", order_id)
-                order = get_order_by_id(order_id)
-                result = try_send_sender_sms(order)
-                print("📩 SENDER RESULT:", result)
-
-        except Exception as e:
-            log_error("delivery_worker_loop", e)
-
-        time.sleep(10)
 
 def list_pending_scheduled_deliveries():
     conn = db_conn()
@@ -4470,9 +4446,6 @@ def experiencia(request: Request, recipient_token: str):
     if not delivery_is_unlocked(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    # =========================================================
-    # SOLO SI YA ESTÁ COMPLETADA DE VERDAD, SACAMOS A COBRAR
-    # =========================================================
     if reaction_is_safe(order):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
@@ -4948,7 +4921,7 @@ function hideStartFailActions() {
 function buildFriendlyUploadMessage(errorCode) {
     const code = String(errorCode || "").toLowerCase();
 
-    if (code.includes("empty_video")) {
+    if (code.includes("empty_video") || code.includes("empty_blob")) {
         return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
     }
 
@@ -4975,7 +4948,6 @@ function detectRecordingFormat() {
     const ua = navigator.userAgent || "";
     const isiPhone = /iPhone|iPad|iPod/i.test(ua);
 
-    // iPhone / iPad: MP4 primero
     if (isiPhone) {
         const iphoneCandidates = [
             { mimeType: "video/mp4", extension: "mp4" },
@@ -4992,7 +4964,6 @@ function detectRecordingFormat() {
         }
     }
 
-    // Android / Chrome: WebM
     const candidates = [
         { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
         { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
@@ -5055,29 +5026,45 @@ function waitForVideoReady() {
     });
 }
 
-function detectRecordingFormat() {
-    if (typeof MediaRecorder === "undefined") {
-        throw new Error("media_recorder_not_supported");
-    }
+function resetRecordingState() {
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
 
-    // 🔥 FIX iPhone / Safari:
-    // evitamos video/mp4 porque a veces arranca pero genera blob vacío.
-    const candidates = [
-        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
-        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
-        { mimeType: "video/webm", extension: "webm" },
-        { mimeType: "", extension: "webm" }
-    ];
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            try { mediaRecorder.requestData(); } catch (_) {}
+            mediaRecorder.stop();
+        }
+    } catch (_) {}
 
-    for (const candidate of candidates) {
-        try {
-            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                return candidate;
-            }
-        } catch (_) {}
-    }
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (_) {}
 
-    return { mimeType: "", extension: "webm" };
+    stream = null;
+    mediaRecorder = null;
+    recordedChunks = [];
+    recordingMimeType = "";
+    recordingExtension = "webm";
+    finishing = false;
+    experienceStarted = false;
+
+    try { video.pause(); } catch (_) {}
+    try { video.currentTime = 0; } catch (_) {}
+
+    overlay.classList.remove("hidden");
+    payoff.classList.remove("show");
+    startBtn.disabled = false;
+    clearStartError();
+    hideRetryActions();
+    hideStartFailActions();
+    showGuideStep(0);
 }
 
 async function tryStartRecordingStrict() {
@@ -5106,7 +5093,7 @@ async function tryStartRecordingStrict() {
             console.error("mediaRecorder error", e);
         };
 
-        mediaRecorder.start();
+        mediaRecorder.start(1000);
 
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -5164,7 +5151,7 @@ async function finalizeExperienceFlow() {
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             try {
-                
+                mediaRecorder.requestData();
             } catch (_) {}
 
             await new Promise((resolve) => {
@@ -5177,9 +5164,11 @@ async function finalizeExperienceFlow() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 2500);
+                const timeoutId = setTimeout(finish, 3000);
 
-                mediaRecorder.addEventListener("stop", finish, { once: true });
+                try {
+                    mediaRecorder.addEventListener("stop", finish, { once: true });
+                } catch (_) {}
 
                 try {
                     mediaRecorder.stop();
@@ -5199,6 +5188,8 @@ async function finalizeExperienceFlow() {
     } catch (e) {
         console.error("stream stop error", e);
     }
+
+    await new Promise(res => setTimeout(res, 350));
 
     let blob = null;
     try {
@@ -5258,7 +5249,7 @@ function armFinishFallbacks() {
     let fallbackMs = 120000;
 
     if (Number.isFinite(video.duration) && video.duration > 0) {
-        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 2500);
+        fallbackMs = Math.max(30000, Math.floor(video.duration * 1000) + 5000);
     }
 
     finishTimeout = setTimeout(() => {
@@ -5291,13 +5282,8 @@ startBtn.addEventListener("click", async () => {
     hideStartFailActions();
 
     try {
-        try {
-            video.pause();
-        } catch (_) {}
-
-        try {
-            video.currentTime = 0;
-        } catch (_) {}
+        try { video.pause(); } catch (_) {}
+        try { video.currentTime = 0; } catch (_) {}
 
         const recordingStarted = await tryStartRecordingStrict();
 
@@ -5333,6 +5319,8 @@ startBtn.addEventListener("click", async () => {
         video.load();
         await waitForVideoReady();
 
+        await new Promise(res => setTimeout(res, 600));
+
         overlay.classList.add("hidden");
         experienceStarted = true;
 
@@ -5351,6 +5339,7 @@ startBtn.addEventListener("click", async () => {
 
             try {
                 if (mediaRecorder && mediaRecorder.state === "recording") {
+                    try { mediaRecorder.requestData(); } catch (_) {}
                     mediaRecorder.stop();
                 }
             } catch (_) {}
@@ -5379,6 +5368,7 @@ startBtn.addEventListener("click", async () => {
 
         try {
             if (mediaRecorder && mediaRecorder.state === "recording") {
+                try { mediaRecorder.requestData(); } catch (_) {}
                 mediaRecorder.stop();
             }
         } catch (_) {}
@@ -5418,7 +5408,7 @@ window.addEventListener("pagehide", () => {
 
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
-            
+            mediaRecorder.requestData();
         }
     } catch (_) {}
 });
@@ -5428,7 +5418,7 @@ window.addEventListener("beforeunload", () => {
 
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
-            
+            mediaRecorder.requestData();
         }
     } catch (_) {}
 });
@@ -5464,9 +5454,9 @@ if (backFromStartBtn) {
 
 showGuideStep(0);
 </script>
+
 <script>
 (function () {
-
     const ua = navigator.userAgent || "";
 
     const isInAppBrowser =
@@ -5492,7 +5482,6 @@ showGuideStep(0);
             font-family:Arial,sans-serif;
         ">
             <div style="max-width:520px;">
-
                 <div style="
                     font-size:12px;
                     letter-spacing:0.3em;
@@ -5543,20 +5532,16 @@ showGuideStep(0);
                 ">
                     Abrir correctamente
                 </button>
-
             </div>
         </div>
     `;
 
     window.openExternal = function () {
-        const url = window.location.href;
-
-        // Forzamos abrir fuera del webview
-        window.location.href = url;
+        window.location.href = window.location.href;
     };
-
 })();
 </script>
+
 </body>
 </html>
     """
@@ -6547,12 +6532,3 @@ def finalizar_experiencia(request: Request, recipient_token: str):
 
     return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
-    # =========================================================
-# DELIVERY WORKER START (AL FINAL DEL MAIN)
-# =========================================================
-
-import threading
-
-if DELIVERY_WORKER_ENABLED:
-    print("🔥 DELIVERY WORKER STARTED 🔥")
-    threading.Thread(target=delivery_worker_loop, daemon=True).start()
