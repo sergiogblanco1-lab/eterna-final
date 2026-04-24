@@ -4430,7 +4430,7 @@ async def start_experience(recipient_token: str = Form(...)):
 
 
 # =========================================================
-# EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
+# EXPERIENCE (VERSIÓN DEFINITIVA BLINDADA)
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
@@ -4458,12 +4458,8 @@ def experiencia(request: Request, recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
 
-    if gift_amount > 0:
-        payoff_title = "Esto no termina aquí."
-        payoff_text = "Este momento ha sido guardado."
-    else:
-        payoff_title = "Esto ya es tuyo."
-        payoff_text = "Y lo será para siempre."
+    payoff_title = "Guardando este momento…"
+    payoff_text = "No cierres esta pantalla."
 
     html_page = """
 <!DOCTYPE html>
@@ -4482,13 +4478,11 @@ html, body {
     overflow: hidden;
     font-family: Arial, sans-serif;
 }
-
 body {
     position: fixed;
     inset: 0;
     background: black;
 }
-
 .wrap {
     position: relative;
     width: 100vw;
@@ -4496,7 +4490,6 @@ body {
     overflow: hidden;
     background: black;
 }
-
 video {
     position: absolute;
     inset: 0;
@@ -4505,7 +4498,6 @@ video {
     object-fit: contain;
     background: black;
 }
-
 .overlay {
     position: absolute;
     inset: 0;
@@ -4519,17 +4511,14 @@ video {
     padding: 28px;
     text-align: center;
 }
-
 .overlay.hidden {
     display: none;
 }
-
 .overlay-card {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
 }
-
 .eyebrow {
     font-size: 12px;
     letter-spacing: 0.28em;
@@ -4537,7 +4526,6 @@ video {
     color: rgba(255,255,255,0.36);
     margin-bottom: 24px;
 }
-
 .title {
     font-size: 54px;
     line-height: 1.06;
@@ -4545,7 +4533,6 @@ video {
     margin: 0 0 16px 0;
     color: white;
 }
-
 .text {
     font-size: 24px;
     line-height: 1.7;
@@ -4553,7 +4540,6 @@ video {
     margin: 0 auto 14px auto;
     max-width: 520px;
 }
-
 .soft {
     font-size: 16px;
     line-height: 1.8;
@@ -4561,7 +4547,6 @@ video {
     margin: 0 auto 0 auto;
     max-width: 460px;
 }
-
 .btn {
     display: inline-block;
     min-width: 220px;
@@ -4574,12 +4559,10 @@ video {
     font-size: 17px;
     cursor: pointer;
 }
-
 .btn:disabled {
     opacity: 0.7;
     cursor: default;
 }
-
 .error-note {
     margin-top: 18px;
     font-size: 14px;
@@ -4590,11 +4573,9 @@ video {
     margin-right: auto;
     display: none;
 }
-
 .error-note.show {
     display: block;
 }
-
 .payoff {
     position: absolute;
     inset: 0;
@@ -4606,42 +4587,36 @@ video {
     padding: 28px;
     background:
         radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
+        linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.98) 100%);
 }
-
 .payoff.show {
     display: flex;
 }
-
 .payoff-card {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
 }
-
 .payoff-title {
-    font-size: 46px;
-    line-height: 1.12;
+    font-size: 42px;
+    line-height: 1.15;
     font-weight: 700;
     margin: 0 0 18px 0;
     color: white;
 }
-
 .payoff-text {
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1.7;
     color: rgba(255,255,255,0.82);
     margin: 0 auto;
     max-width: 520px;
 }
-
 .loader {
     margin-top: 28px;
     font-size: 15px;
     line-height: 1.7;
     color: rgba(255,255,255,0.48);
 }
-
 .retry-actions {
     margin-top: 24px;
     display: none;
@@ -4650,11 +4625,9 @@ video {
     margin-left: auto;
     margin-right: auto;
 }
-
 .retry-actions.show {
     display: grid;
 }
-
 .retry-btn {
     width: 100%;
     padding: 16px 22px;
@@ -4666,21 +4639,17 @@ video {
     font-size: 15px;
     cursor: pointer;
 }
-
 .retry-btn.secondary {
     background: rgba(255,255,255,0.10);
     color: white;
     border: 1px solid rgba(255,255,255,0.10);
 }
-
 .guide-step {
     display: none;
 }
-
 .guide-step.active {
     display: block;
 }
-
 .guide-legal {
     margin-top: 22px;
     font-size: 14px;
@@ -4690,34 +4659,25 @@ video {
     margin-left: auto;
     margin-right: auto;
 }
-
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
     }
-
     .text {
         font-size: 21px;
     }
-
     .payoff-title {
-        font-size: 36px;
+        font-size: 34px;
     }
-
     .payoff-text {
-        font-size: 19px;
+        font-size: 18px;
     }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-    <video
-        id="video"
-        playsinline
-        webkit-playsinline
-        preload="auto"
-    >
+    <video id="video" playsinline webkit-playsinline preload="auto">
         <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
@@ -4727,57 +4687,33 @@ video {
             <div class="guide-step active" id="guideStep1">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Shhh…</h1>
-                <div class="text">
-                    Esto merece ser escuchado bien.
-                </div>
-                <div class="soft">
-                    Si puedes, usa auriculares o sube el volumen.
-                </div>
-                <button class="btn" id="guideBtn1" style="margin-top:28px;">
-                    Tengo sonido
-                </button>
+                <div class="text">Esto merece ser escuchado bien.</div>
+                <div class="soft">Si puedes, usa auriculares o sube el volumen.</div>
+                <button class="btn" id="guideBtn1" style="margin-top:28px;">Tengo sonido</button>
             </div>
 
             <div class="guide-step" id="guideStep2">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Un momento solo para ti</h1>
-                <div class="text">
-                    Busca un lugar tranquilo.
-                </div>
-                <div class="soft">
-                    Sin ruido. Sin interrupciones.
-                </div>
-                <button class="btn" id="guideBtn2" style="margin-top:28px;">
-                    Estoy en un sitio tranquilo
-                </button>
+                <div class="text">Busca un lugar tranquilo.</div>
+                <div class="soft">Sin ruido. Sin interrupciones.</div>
+                <button class="btn" id="guideBtn2" style="margin-top:28px;">Estoy en un sitio tranquilo</button>
             </div>
 
             <div class="guide-step" id="guideStep3">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Colócalo frente a ti</h1>
-                <div class="text">
-                    Un poco más lejos… así es mejor.
-                </div>
-                <div class="soft">
-                    Queremos verte bien durante este momento.
-                </div>
-                <button class="btn" id="guideBtn3" style="margin-top:28px;">
-                    Ya está colocado
-                </button>
+                <div class="text">Un poco más lejos… así es mejor.</div>
+                <div class="soft">Queremos verte bien durante este momento.</div>
+                <button class="btn" id="guideBtn3" style="margin-top:28px;">Ya está colocado</button>
             </div>
 
             <div class="guide-step" id="guideStep4">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Cuida la luz</h1>
-                <div class="text">
-                    Evita tener la luz detrás.
-                </div>
-                <div class="soft">
-                    Si puedes, quédate donde tu cara se vea bien.
-                </div>
-                <button class="btn" id="guideBtn4" style="margin-top:28px;">
-                    Se me ve bien
-                </button>
+                <div class="text">Evita tener la luz detrás.</div>
+                <div class="soft">Si puedes, quédate donde tu cara se vea bien.</div>
+                <button class="btn" id="guideBtn4" style="margin-top:28px;">Se me ve bien</button>
             </div>
 
             <div class="guide-step" id="guideStep5">
@@ -4787,9 +4723,7 @@ video {
                     Esto no es un vídeo.<br>
                     Es un momento que está a punto de ocurrir.
                 </div>
-                <div class="soft">
-                    Esto solo pasa una vez.
-                </div>
+                <div class="soft">Esto solo pasa una vez.</div>
 
                 <div class="guide-legal">
                     Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
@@ -4831,6 +4765,8 @@ const overlay = document.getElementById("overlay");
 const video = document.getElementById("video");
 const payoff = document.getElementById("payoff");
 const payoffLoader = document.getElementById("payoffLoader");
+const payoffTitle = document.getElementById("payoffTitle");
+const payoffText = document.getElementById("payoffText");
 const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
@@ -4895,34 +4831,26 @@ function clearStartError() {
 }
 
 function showRetryActions() {
-    if (retryActions) {
-        retryActions.classList.add("show");
-    }
+    if (retryActions) retryActions.classList.add("show");
 }
 
 function hideRetryActions() {
-    if (retryActions) {
-        retryActions.classList.remove("show");
-    }
+    if (retryActions) retryActions.classList.remove("show");
 }
 
 function showStartFailActions() {
-    if (startFailActions) {
-        startFailActions.classList.add("show");
-    }
+    if (startFailActions) startFailActions.classList.add("show");
 }
 
 function hideStartFailActions() {
-    if (startFailActions) {
-        startFailActions.classList.remove("show");
-    }
+    if (startFailActions) startFailActions.classList.remove("show");
 }
 
 function buildFriendlyUploadMessage(errorCode) {
     const code = String(errorCode || "").toLowerCase();
 
-    if (code.includes("empty_video") || code.includes("empty_blob")) {
-        return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
+    if (code.includes("empty_video") || code.includes("empty_blob") || code.includes("blob_too_small")) {
+        return "No se ha podido guardar bien la grabación. Vamos a intentarlo de nuevo.";
     }
 
     if (code.includes("video_too_large")) {
@@ -4930,14 +4858,14 @@ function buildFriendlyUploadMessage(errorCode) {
     }
 
     if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
-        return "No se ha podido grabar este momento porque faltan permisos de cámara o micrófono.";
+        return "Faltan permisos de cámara o micrófono. Actívalos y vuelve a intentarlo.";
     }
 
     if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
-        return "No se ha podido guardar este momento por un problema de conexión. Revisa internet e inténtalo de nuevo.";
+        return "Ha fallado la conexión al guardar. Revisa internet e inténtalo otra vez.";
     }
 
-    return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
+    return "No se ha podido guardar este momento. Vamos a intentarlo otra vez.";
 }
 
 function detectRecordingFormat() {
@@ -4945,36 +4873,18 @@ function detectRecordingFormat() {
         throw new Error("media_recorder_not_supported");
     }
 
-    const ua = navigator.userAgent || "";
-    const isiPhone = /iPhone|iPad|iPod/i.test(ua);
-
-    if (isiPhone) {
-        const iphoneCandidates = [
-            { mimeType: "video/mp4", extension: "mp4" },
-            { mimeType: "", extension: "mp4" }
-        ];
-
-        for (const candidate of iphoneCandidates) {
-            try {
-                if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                    console.log("🎥 FORMAT:", candidate);
-                    return candidate;
-                }
-            } catch (_) {}
-        }
-    }
-
     const candidates = [
         { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
         { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
         { mimeType: "video/webm", extension: "webm" },
+        { mimeType: "video/mp4", extension: "mp4" },
         { mimeType: "", extension: "webm" }
     ];
 
     for (const candidate of candidates) {
         try {
             if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                console.log("🎥 FORMAT:", candidate);
+                console.log("FORMAT:", candidate);
                 return candidate;
             }
         } catch (_) {}
@@ -5013,9 +4923,7 @@ function waitForVideoReady() {
                 video.duration > 0 &&
                 video.readyState >= 1;
 
-            if (readyNow) {
-                done();
-            }
+            if (readyNow) done();
         };
 
         const timeoutId = setTimeout(done, 5000);
@@ -5086,6 +4994,7 @@ async function tryStartRecordingStrict() {
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
                 recordedChunks.push(e.data);
+                console.log("chunk:", e.data.size);
             }
         };
 
@@ -5112,7 +5021,9 @@ async function tryStartRecordingStrict() {
             } catch (_) {}
         });
 
-        console.log("🎥 grabación iniciada");
+        await new Promise(res => setTimeout(res, 700));
+
+        console.log("grabación iniciada");
         return true;
 
     } catch (recordingError) {
@@ -5139,7 +5050,10 @@ async function finalizeExperienceFlow() {
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
+    payoffTitle.innerText = "Guardando este momento…";
+    payoffText.innerText = "No cierres esta pantalla.";
+    payoffLoader.innerText = "Preparando la grabación…";
+    hideRetryActions();
 
     try {
         if (finishTimeout) {
@@ -5154,7 +5068,7 @@ async function finalizeExperienceFlow() {
                 mediaRecorder.requestData();
             } catch (_) {}
 
-            await new Promise(res => setTimeout(res, 600));
+            await new Promise(res => setTimeout(res, 700));
 
             await new Promise((resolve) => {
                 let done = false;
@@ -5166,7 +5080,7 @@ async function finalizeExperienceFlow() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 4000);
+                const timeoutId = setTimeout(finish, 3500);
 
                 try {
                     mediaRecorder.addEventListener("stop", finish, { once: true });
@@ -5207,41 +5121,46 @@ async function finalizeExperienceFlow() {
     }
 
     try {
-        if (blob && blob.size > 10000) {
-            const filename = "reaction." + recordingExtension;
-            const formData = new FormData();
-            formData.append("video", blob, filename);
-
-            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
-                method: "POST",
-                body: formData
-            });
-
-            const uploadData = await uploadResponse.json().catch(() => ({}));
-
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.detail || "upload_reaction_failed");
-            }
-
-            console.log("✅ reacción subida");
-        } else {
-            throw new Error("empty_blob");
+        if (!blob || blob.size <= 10000) {
+            throw new Error("blob_too_small");
         }
+
+        payoffLoader.innerText = "Subiendo la reacción…";
+
+        const filename = "reaction." + recordingExtension;
+        const formData = new FormData();
+        formData.append("video", blob, filename);
+
+        const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
+            method: "POST",
+            body: formData
+        });
+
+        const uploadData = await uploadResponse.json().catch(() => ({}));
+
+        if (!uploadResponse.ok) {
+            throw new Error(uploadData.detail || "upload_reaction_failed");
+        }
+
+        payoffTitle.innerText = "Ahora sí.";
+        payoffText.innerText = "Este momento ha sido guardado.";
+        payoffLoader.innerText = "Llevándote a tu regalo…";
+
+        setTimeout(() => {
+            window.location.replace("/finalizar-experiencia/" + recipientToken);
+        }, 900);
+
     } catch (e) {
         console.error("upload error", e);
 
-        const humanMessage = buildFriendlyUploadMessage(
-            e?.message || e?.detail || ""
-        );
+        payoffTitle.innerText = "No se ha guardado bien.";
+        payoffText.innerText = buildFriendlyUploadMessage(e?.message || e?.detail || "");
+        payoffLoader.innerText = "La reacción todavía no está guardada.";
 
-        payoffLoader.innerText = humanMessage;
         showRetryActions();
-
         finishing = false;
         return;
     }
-
-    window.location.replace("/finalizar-experiencia/" + recipientToken);
 }
 
 function armFinishFallbacks() {
@@ -5358,7 +5277,6 @@ startBtn.addEventListener("click", async () => {
             recordedChunks = [];
             recordingMimeType = "";
             recordingExtension = "webm";
-
             return;
         }
 
@@ -5457,94 +5375,6 @@ if (backFromStartBtn) {
 
 showGuideStep(0);
 </script>
-
-<script>
-(function () {
-    const ua = navigator.userAgent || "";
-
-    const isInAppBrowser =
-        ua.includes("FBAN") ||
-        ua.includes("FBAV") ||
-        ua.includes("Instagram") ||
-        ua.includes("WhatsApp");
-
-    if (!isInAppBrowser) return;
-
-    document.body.innerHTML = `
-        <div style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            height:100vh;
-            background:
-                radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
-                linear-gradient(180deg, #050505 0%, #000000 100%);
-            color:white;
-            text-align:center;
-            padding:24px;
-            font-family:Arial,sans-serif;
-        ">
-            <div style="max-width:520px;">
-                <div style="
-                    font-size:12px;
-                    letter-spacing:0.3em;
-                    text-transform:uppercase;
-                    opacity:.4;
-                    margin-bottom:20px;
-                ">
-                    ETERNA
-                </div>
-
-                <h1 style="
-                    font-size:36px;
-                    line-height:1.2;
-                    margin-bottom:18px;
-                    font-weight:700;
-                ">
-                    Este momento<br>merece ser vivido bien
-                </h1>
-
-                <p style="
-                    font-size:18px;
-                    line-height:1.7;
-                    opacity:.75;
-                ">
-                    Para poder guardar lo que está a punto de pasar,<br>
-                    abre este enlace en tu navegador.
-                </p>
-
-                <div style="
-                    margin-top:34px;
-                    font-size:15px;
-                    opacity:.5;
-                    line-height:1.6;
-                ">
-                    Pulsa el botón y luego elige <b>Abrir en Safari</b>
-                </div>
-
-                <button onclick="openExternal()" style="
-                    margin-top:28px;
-                    padding:18px 26px;
-                    border-radius:999px;
-                    background:white;
-                    color:black;
-                    font-weight:700;
-                    font-size:16px;
-                    border:none;
-                    cursor:pointer;
-                ">
-                    Abrir correctamente
-                </button>
-            </div>
-        </div>
-    `;
-
-    window.openExternal = function () {
-        window.location.href = window.location.href;
-    };
-})();
-</script>
-
 </body>
 </html>
     """
@@ -5559,6 +5389,7 @@ showGuideStep(0);
 
     cookie_key = recipient_cookie_name(order["recipient_token"])
     session_value = (order.get("recipient_session_token") or "").strip()
+
     if session_value:
         response.set_cookie(
             key=cookie_key,
