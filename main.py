@@ -1238,8 +1238,7 @@ def try_send_sender_sms(order: dict) -> dict:
     if bool(order.get("sender_sms_sent_at")):
         return {"ok": True, "reason": "already_sent"}
 
-        if attempts >= 3:
-        return {"ok": False, "reason": "max_attempts_reached"}
+    
 
     result = send_message_best_effort(
         order.get("sender_phone", ""),
@@ -1284,8 +1283,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
 
     attempts = int(order.get("recipient_sms_attempts") or 0)
 
-    if attempts >= 3:
-        return {"ok": False, "reason": "max_attempts_reached"}
 
     if not bool(order.get("paid")):
         return {"ok": False, "reason": "order_not_paid"}
@@ -6428,17 +6425,6 @@ def admin_retry_recipient_message(order_id: str, request: Request):
             "delivery_sent_at": order.get("delivery_sent_at"),
         }
 
-    if attempts >= 3:
-        return {
-            "ok": False,
-            "reason": "max_attempts_reached",
-            "order_id": order_id,
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
-            "delivery_sent": bool(order.get("delivery_sent")),
-            "delivery_sent_at": order.get("delivery_sent_at"),
-        }
 
     result = process_scheduled_recipient_delivery(order_id)
     result["order_id"] = order_id
