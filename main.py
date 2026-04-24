@@ -5464,6 +5464,99 @@ if (backFromStartBtn) {
 
 showGuideStep(0);
 </script>
+<script>
+(function () {
+
+    const ua = navigator.userAgent || "";
+
+    const isInAppBrowser =
+        ua.includes("FBAN") ||
+        ua.includes("FBAV") ||
+        ua.includes("Instagram") ||
+        ua.includes("WhatsApp");
+
+    if (!isInAppBrowser) return;
+
+    document.body.innerHTML = `
+        <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            background:
+                radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+                linear-gradient(180deg, #050505 0%, #000000 100%);
+            color:white;
+            text-align:center;
+            padding:24px;
+            font-family:Arial,sans-serif;
+        ">
+            <div style="max-width:520px;">
+
+                <div style="
+                    font-size:12px;
+                    letter-spacing:0.3em;
+                    text-transform:uppercase;
+                    opacity:.4;
+                    margin-bottom:20px;
+                ">
+                    ETERNA
+                </div>
+
+                <h1 style="
+                    font-size:36px;
+                    line-height:1.2;
+                    margin-bottom:18px;
+                    font-weight:700;
+                ">
+                    Este momento<br>merece ser vivido bien
+                </h1>
+
+                <p style="
+                    font-size:18px;
+                    line-height:1.7;
+                    opacity:.75;
+                ">
+                    Para poder guardar lo que está a punto de pasar,<br>
+                    abre este enlace en tu navegador.
+                </p>
+
+                <div style="
+                    margin-top:34px;
+                    font-size:15px;
+                    opacity:.5;
+                    line-height:1.6;
+                ">
+                    Pulsa el botón y luego elige <b>Abrir en Safari</b>
+                </div>
+
+                <button onclick="openExternal()" style="
+                    margin-top:28px;
+                    padding:18px 26px;
+                    border-radius:999px;
+                    background:white;
+                    color:black;
+                    font-weight:700;
+                    font-size:16px;
+                    border:none;
+                    cursor:pointer;
+                ">
+                    Abrir correctamente
+                </button>
+
+            </div>
+        </div>
+    `;
+
+    window.openExternal = function () {
+        const url = window.location.href;
+
+        // Forzamos abrir fuera del webview
+        window.location.href = url;
+    };
+
+})();
+</script>
 </body>
 </html>
     """
