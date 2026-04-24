@@ -361,7 +361,7 @@ init_db()
 # =========================================================
 
 def now_dt() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc)    
 
 
 def now_iso() -> str:
@@ -1121,44 +1121,21 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
 # =========================================================
 # HELPERS EXTRA
 # =========================================================
+
 def compute_cashout_status(order: dict) -> str:
     if bool(order.get("gift_refunded")):
         return "gift_refunded"
+
     if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
         return "completed"
+
     if bool(order.get("transfer_in_progress")):
         return "processing"
+
     if bool(order.get("connect_onboarding_completed")):
         return "ready_to_send"
+
     return "pending"
-
-    def reaction_is_safe(order: dict) -> bool:
-    return bool(order.get("reaction_uploaded")) and reaction_exists(order)
-
-
-def is_eterna_complete(order: dict) -> bool:
-    return original_video_ready(order) and reaction_is_safe(order)
-
-
-def maybe_mark_eterna_completed(order_id: str) -> dict:
-    order = get_order_by_id(order_id)
-
-    if is_eterna_complete(order):
-        update_order(
-            order["id"],
-            eterna_completed=1,
-            experience_completed=1,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-        )
-    else:
-        update_order(
-            order_id,
-            eterna_completed=0,
-        )
-
-    return get_order_by_id(order_id)
 
 
 def try_acquire_transfer_lock(order_id: str) -> bool:
@@ -1508,15 +1485,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     if not bool(order.get("paid")):
         return {"status": "not_paid"}
 
-    # 🔒 REGLA SAGRADA ETERNA:
-    # Sin reacción real guardada, no se libera dinero.
     if not reaction_is_safe(order):
-        update_order(
-            order["id"],
-            transfer_in_progress=0,
-            cashout_completed=0,
-            transfer_completed=0,
-        )
         return {"status": "reaction_not_safe"}
 
     if not bool(order.get("connect_onboarding_completed")):
@@ -1579,13 +1548,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
 
     except Exception as e:
         log_error("Transfer error", e)
-
-        update_order(
-            order["id"],
-            transfer_in_progress=0,
-            cashout_completed=0,
-            transfer_completed=0,
-        )
+        update_order(order["id"], transfer_in_progress=0)
 
         return {
             "status": "error",
@@ -1716,6 +1679,44 @@ p { opacity:0.85; }
 </body>
 </html>
 """)
+
+def get_phrases_by_type(message_type: str) -> tuple[str, str, str]:
+    message_type = (message_type or "").strip().lower()
+
+    phrases = {
+        "cumpleanos": (
+            "Hoy no es un día más.",
+            "Hay recuerdos que merecen volver.",
+            "Y personas que merecen sentirse eternas.",
+        ),
+        "amor": (
+            "Hay cosas que no siempre se dicen.",
+            "Pero se sienten todos los días.",
+            "Esto es una forma de volver a decírtelo.",
+        ),
+        "familia": (
+            "Hay personas que son casa.",
+            "Aunque pase el tiempo.",
+            "Siempre vuelven al corazón.",
+        ),
+        "superacion": (
+            "Mira todo lo que has superado.",
+            "Aunque a veces no lo veas.",
+            "Eres mucho más fuerte de lo que crees.",
+        ),
+        "esfuerzo": (
+            "Nadie ve todo lo que cuesta.",
+            "Pero yo sí lo veo.",
+            "Y quería que lo sintieras.",
+        ),
+        "sorpresa": (
+            "No esperabas esto.",
+            "Pero alguien pensó en ti.",
+            "Y quiso que este momento fuera solo tuyo.",
+        ),
+    }
+
+    return phrases.get(message_type, phrases["sorpresa"])
 
 
 async def create_order_and_redirect(
