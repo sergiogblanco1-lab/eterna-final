@@ -4430,7 +4430,7 @@ async def start_experience(recipient_token: str = Form(...)):
 
 
 # =========================================================
-# EXPERIENCE (VERSIÓN COMPLETA BLINDADA)
+# EXPERIENCE (VERSIÓN DEFINITIVA BLINDADA)
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
@@ -4458,12 +4458,8 @@ def experiencia(request: Request, recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
 
-    if gift_amount > 0:
-        final_success_title = "Esto no termina aquí."
-        final_success_text = "Este momento ha sido guardado."
-    else:
-        final_success_title = "Esto ya es tuyo."
-        final_success_text = "Y lo será para siempre."
+    final_success_title = "Esto no termina aquí." if gift_amount > 0 else "Esto ya es tuyo."
+    final_success_text = "Este momento ha sido guardado." if gift_amount > 0 else "Y lo será para siempre."
 
     html_page = """
 <!DOCTYPE html>
@@ -4747,57 +4743,33 @@ video {
             <div class="guide-step active" id="guideStep1">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Shhh…</h1>
-                <div class="text">
-                    Esto merece ser escuchado bien.
-                </div>
-                <div class="soft">
-                    Si puedes, usa auriculares o sube el volumen.
-                </div>
-                <button class="btn" id="guideBtn1" style="margin-top:28px;">
-                    Tengo sonido
-                </button>
+                <div class="text">Esto merece ser escuchado bien.</div>
+                <div class="soft">Si puedes, usa auriculares o sube el volumen.</div>
+                <button class="btn" id="guideBtn1" style="margin-top:28px;">Tengo sonido</button>
             </div>
 
             <div class="guide-step" id="guideStep2">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Un momento solo para ti</h1>
-                <div class="text">
-                    Busca un lugar tranquilo.
-                </div>
-                <div class="soft">
-                    Sin ruido. Sin interrupciones.
-                </div>
-                <button class="btn" id="guideBtn2" style="margin-top:28px;">
-                    Estoy en un sitio tranquilo
-                </button>
+                <div class="text">Busca un lugar tranquilo.</div>
+                <div class="soft">Sin ruido. Sin interrupciones.</div>
+                <button class="btn" id="guideBtn2" style="margin-top:28px;">Estoy en un sitio tranquilo</button>
             </div>
 
             <div class="guide-step" id="guideStep3">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Colócalo frente a ti</h1>
-                <div class="text">
-                    Un poco más lejos… así es mejor.
-                </div>
-                <div class="soft">
-                    Queremos verte bien durante este momento.
-                </div>
-                <button class="btn" id="guideBtn3" style="margin-top:28px;">
-                    Ya está colocado
-                </button>
+                <div class="text">Un poco más lejos… así es mejor.</div>
+                <div class="soft">Queremos verte bien durante este momento.</div>
+                <button class="btn" id="guideBtn3" style="margin-top:28px;">Ya está colocado</button>
             </div>
 
             <div class="guide-step" id="guideStep4">
                 <div class="eyebrow">ETERNA</div>
                 <h1 class="title">Cuida la luz</h1>
-                <div class="text">
-                    Evita tener la luz detrás.
-                </div>
-                <div class="soft">
-                    Si puedes, quédate donde tu cara se vea bien.
-                </div>
-                <button class="btn" id="guideBtn4" style="margin-top:28px;">
-                    Se me ve bien
-                </button>
+                <div class="text">Evita tener la luz detrás.</div>
+                <div class="soft">Si puedes, quédate donde tu cara se vea bien.</div>
+                <button class="btn" id="guideBtn4" style="margin-top:28px;">Se me ve bien</button>
             </div>
 
             <div class="guide-step" id="guideStep5">
@@ -4813,9 +4785,7 @@ video {
                     Esto no es un vídeo.<br>
                     Es un momento que está a punto de ocurrir.
                 </div>
-                <div class="soft">
-                    Esto solo pasa una vez.
-                </div>
+                <div class="soft">Esto solo pasa una vez.</div>
 
                 <div class="guide-legal">
                     Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
@@ -4868,6 +4838,7 @@ const startFailActions = document.getElementById("startFailActions");
 const retryStartBtn = document.getElementById("retryStartBtn");
 const backFromStartBtn = document.getElementById("backFromStartBtn");
 const inappWarning = document.getElementById("inappWarning");
+
 const recipientToken = "__RECIPIENT_TOKEN__";
 const finalSuccessTitle = "__FINAL_SUCCESS_TITLE__";
 const finalSuccessText = "__FINAL_SUCCESS_TEXT__";
@@ -4905,10 +4876,8 @@ let finishTimeout = null;
 
 function showGuideStep(index) {
     currentGuideStep = index;
-
     guideSteps.forEach((step, i) => {
         if (!step) return;
-
         if (i === index) {
             step.classList.add("active");
         } else {
@@ -4919,7 +4888,6 @@ function showGuideStep(index) {
 
 function nextGuideStep() {
     const next = currentGuideStep + 1;
-
     if (next < guideSteps.length) {
         showGuideStep(next);
     }
@@ -4932,40 +4900,30 @@ document.getElementById("guideBtn4")?.addEventListener("click", () => nextGuideS
 
 function showStartError(message) {
     if (!errorNote) return;
-
     errorNote.textContent = message || "No hemos podido preparar la grabación.";
     errorNote.classList.add("show");
 }
 
 function clearStartError() {
     if (!errorNote) return;
-
     errorNote.textContent = "";
     errorNote.classList.remove("show");
 }
 
 function showRetryActions() {
-    if (retryActions) {
-        retryActions.classList.add("show");
-    }
+    if (retryActions) retryActions.classList.add("show");
 }
 
 function hideRetryActions() {
-    if (retryActions) {
-        retryActions.classList.remove("show");
-    }
+    if (retryActions) retryActions.classList.remove("show");
 }
 
 function showStartFailActions() {
-    if (startFailActions) {
-        startFailActions.classList.add("show");
-    }
+    if (startFailActions) startFailActions.classList.add("show");
 }
 
 function hideStartFailActions() {
-    if (startFailActions) {
-        startFailActions.classList.remove("show");
-    }
+    if (startFailActions) startFailActions.classList.remove("show");
 }
 
 function setPayoffSaving() {
@@ -5033,25 +4991,13 @@ function detectRecordingFormat() {
         throw new Error("media_recorder_not_supported");
     }
 
-    const ua = navigator.userAgent || "";
-    const isiPhone = /iPhone|iPad|iPod/i.test(ua);
-
-    const iphoneCandidates = [
-        { mimeType: "video/mp4", extension: "mp4" },
-        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
-        { mimeType: "video/webm", extension: "webm" },
-        { mimeType: "", extension: isiPhone ? "mp4" : "webm" }
-    ];
-
-    const normalCandidates = [
+    const candidates = [
         { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
         { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
         { mimeType: "video/webm", extension: "webm" },
         { mimeType: "video/mp4", extension: "mp4" },
         { mimeType: "", extension: "webm" }
     ];
-
-    const candidates = isiPhone ? iphoneCandidates : normalCandidates;
 
     for (const candidate of candidates) {
         try {
@@ -5081,7 +5027,6 @@ function waitForVideoReady() {
 
         const done = () => {
             if (resolved) return;
-
             resolved = true;
 
             video.removeEventListener("loadedmetadata", onReady);
@@ -5125,7 +5070,6 @@ async function stopRecordingSafely() {
 
                 const finish = () => {
                     if (done) return;
-
                     done = true;
                     clearTimeout(timeoutId);
                     resolve();
