@@ -5056,16 +5056,18 @@ function waitForVideoReady() {
 }
 
 function detectRecordingFormat() {
-    const candidates = [
-        { mimeType: "video/mp4", extension: "mp4" },
-        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
-        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
-        { mimeType: "video/webm", extension: "webm" }
-    ];
-
     if (typeof MediaRecorder === "undefined") {
         throw new Error("media_recorder_not_supported");
     }
+
+    // 🔥 FIX iPhone / Safari:
+    // evitamos video/mp4 porque a veces arranca pero genera blob vacío.
+    const candidates = [
+        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
+        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
+        { mimeType: "video/webm", extension: "webm" },
+        { mimeType: "", extension: "webm" }
+    ];
 
     for (const candidate of candidates) {
         try {
@@ -5104,7 +5106,7 @@ async function tryStartRecordingStrict() {
             console.error("mediaRecorder error", e);
         };
 
-        mediaRecorder.start(1000);
+        mediaRecorder.start();
 
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -5162,7 +5164,7 @@ async function finalizeExperienceFlow() {
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             try {
-                mediaRecorder.requestData();
+                
             } catch (_) {}
 
             await new Promise((resolve) => {
@@ -5416,7 +5418,7 @@ window.addEventListener("pagehide", () => {
 
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
+            
         }
     } catch (_) {}
 });
@@ -5426,7 +5428,7 @@ window.addEventListener("beforeunload", () => {
 
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
+            
         }
     } catch (_) {}
 });
