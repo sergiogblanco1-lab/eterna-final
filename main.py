@@ -3567,7 +3567,6 @@ async def crear_post(
 # DELIVERY WORKER
 # =========================================================
 
-
 def list_pending_scheduled_deliveries():
     conn = db_conn()
     cur = conn.cursor()
@@ -3607,6 +3606,7 @@ def list_pending_sender_notifications():
     conn.close()
     return [r["id"] for r in rows]
 
+
 def list_pending_payout_orders():
     conn = db_conn()
     cur = conn.cursor()
@@ -3627,6 +3627,7 @@ def list_pending_payout_orders():
     rows = cur.fetchall()
     conn.close()
     return [r["id"] for r in rows]
+
 
 def process_all_due_scheduled_deliveries() -> list[dict]:
     results = []
@@ -3665,6 +3666,7 @@ def process_all_due_sender_notifications() -> list[dict]:
                 "result": {"ok": False, "reason": str(e)},
             })
     return results
+
 
 def process_all_due_payouts() -> list[dict]:
     results = []
@@ -3711,6 +3713,7 @@ def process_all_due_payouts() -> list[dict]:
 
     return results
 
+
 def delivery_worker_loop():
     print("🚀 DELIVERY WORKER STARTED")
     while True:
@@ -3745,11 +3748,14 @@ def ensure_delivery_worker_started():
         print("✅ DELIVERY WORKER THREAD LANZADO")
 
 
+# =========================================================
+# STARTUP
+# =========================================================
+
 @app.on_event("startup")
 def startup_event():
-    ensure_all_columns()
+    init_db()
     ensure_delivery_worker_started()
-    
 
 
 # =========================================================
