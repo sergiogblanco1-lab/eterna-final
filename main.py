@@ -1276,6 +1276,8 @@ def try_send_sender_sms(order: dict) -> dict:
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
+    print("📦 PROCESS RECIPIENT DELIVERY:", order_id)
+
     if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
         return {"ok": True, "reason": "already_sent"}
 
@@ -1287,21 +1289,41 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     if not bool(order.get("paid")):
         return {"ok": False, "reason": "order_not_paid"}
 
+    video_url = (order.get("experience_video_url") or "").strip()
+
+    if not video_url:
+        return {"ok": False, "reason": "video_url_missing"}
+
     if not original_video_ready(order):
         return {"ok": False, "reason": "video_not_ready"}
 
     if not delivery_is_unlocked(order):
         return {"ok": False, "reason": "delivery_locked"}
 
+    recipient_url = recipient_experience_url_from_order(order)
+
+    if not recipient_url:
+        return {"ok": False, "reason": "recipient_url_missing"}
+
+    message = build_recipient_message(order)
+
+    if not message or recipient_url not in message:
+        return {"ok": False, "reason": "message_without_url"}
+
+    print("📩 ENTREGA AUTORIZADA")
+    print("📩 recipient_url:", recipient_url)
+    print("📩 video_url:", video_url)
+
     result = send_message_best_effort(
         order.get("recipient_phone", ""),
-        build_recipient_message(order),
+        message,
     )
 
     attempts += 1
 
     if result.get("ok"):
         sent_at = now_iso()
+
         update_order(
             order_id,
             recipient_sms_attempts=attempts,
@@ -1312,11 +1334,14 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             delivery_sent_at=sent_at,
             delivered_to_recipient=1,
         )
+
         return {
             "ok": True,
             "reason": "sent",
             "channel": result.get("channel"),
             "sid": result.get("sid"),
+            "recipient_url": recipient_url,
+            "video_url": video_url,
         }
 
     update_order(
@@ -1325,8 +1350,12 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         recipient_sms_error=result.get("error") or "message_error",
     )
 
-    return {"ok": False, "reason": result.get("error") or "message_error"}
-
+    return {
+        "ok": False,
+        "reason": result.get("error") or "message_error",
+        "recipient_url": recipient_url,
+        "video_url": video_url,
+    }
 
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
@@ -3547,7 +3576,10 @@ def list_pending_scheduled_deliveries():
         WHERE
             paid = 1
             AND COALESCE(delivery_sent, 0) = 0
+            AND COALESCE(recipient_sms_sent_at, '') = ''
             AND COALESCE(experience_video_url, '') <> ''
+            AND COALESCE(recipient_token, '') <> ''
+            AND COALESCE(recipient_phone, '') <> ''
             AND COALESCE(recipient_sms_attempts, 0) < 3
         ORDER BY created_at ASC
     """)
