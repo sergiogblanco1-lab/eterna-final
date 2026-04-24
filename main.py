@@ -966,7 +966,6 @@ def build_sender_ready_message(order: dict) -> str:
         f"{sender_pack_url_from_order(order)}"
     )
 
-
 def twilio_enabled() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
 
@@ -1014,6 +1013,82 @@ def send_whatsapp(phone: str, message: str) -> dict:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
 
 
+def send_sms(phone: str, message: str) -> dict:
+    to_phone = to_e164(phone)
+    sms_from = (TWILIO_FROM_NUMBER or "").strip()
+
+    print("🔵 SEND_SMS START")
+    print("🔵 PHONE RAW:", phone)
+    print("🔵 PHONE E164:", to_phone)
+    print("🔵 SMS FROM:", sms_from)
+
+    if not to_phone:
+        return {"ok": False, "channel": "sms", "sid": None, "error": "invalid_phone"}
+
+    if not SMS_ENABLED:
+        return {"ok": False, "channel": "sms", "sid": None, "error": "sms_disabled"}
+
+    if not sms_from:
+        return {"ok": False, "channel": "sms", "sid": None, "error": "missing_twilio_from_number"}
+
+    if not twilio_enabled():
+        return {"ok": False, "channel": "sms", "sid": None, "error": "twilio_not_configured"}
+
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+        msg = client.messages.create(
+            body=message,
+            from_=sms_from,
+            to=to_phone,
+        )
+
+        print("✅ SEND_SMS ACCEPTED:", msg.sid)
+        return {"ok": True, "channel": "sms", "sid": msg.sid, "error": None}
+
+    except Exception as e:
+        print("❌ SEND_SMS ERROR:", str(e))
+        return {"ok": False, "channel": "sms", "sid": None, "error": str(e)}
+
+
+def send_message_best_effort(phone: str, message: str) -> dict:
+    """
+    ETERNA BLINDADO:
+    1) intenta WhatsApp
+    2) si WhatsApp falla, intenta SMS normal
+    3) solo devuelve ok=True si Twilio acepta un mensaje real con SID
+    """
+
+    whatsapp_result = send_whatsapp(phone, message)
+
+    if whatsapp_result.get("ok"):
+        return whatsapp_result
+
+    print("⚠️ WHATSAPP FALLÓ, PROBANDO SMS NORMAL")
+    print("⚠️ whatsapp_error:", whatsapp_result.get("error"))
+
+    sms_result = send_sms(phone, message)
+
+    if sms_result.get("ok"):
+        sms_result["fallback_from"] = "whatsapp"
+        sms_result["whatsapp_error"] = whatsapp_result.get("error")
+        return sms_result
+
+    return {
+        "ok": False,
+        "channel": "none",
+        "sid": None,
+        "error": (
+            "whatsapp_error="
+            + str(whatsapp_result.get("error"))
+            + " | sms_error="
+            + str(sms_result.get("error"))
+        ),
+        "whatsapp_error": whatsapp_result.get("error"),
+        "sms_error": sms_result.get("error"),
+    }
+
+
 def try_send_sender_sms(order: dict) -> dict:
     order = get_order_by_id(order["id"])
 
@@ -1031,7 +1106,11 @@ def try_send_sender_sms(order: dict) -> dict:
     if attempts >= 3:
         return {"ok": False, "reason": "max_attempts_reached"}
 
-    result = send_whatsapp(order.get("sender_phone", ""), build_sender_ready_message(order))
+    result = send_message_best_effort(
+        order.get("sender_phone", ""),
+        build_sender_ready_message(order),
+    )
+
     attempts += 1
 
     if result.get("ok"):
@@ -1044,15 +1123,20 @@ def try_send_sender_sms(order: dict) -> dict:
             sender_sms_sent_at=sent_at,
             sender_notified=1,
         )
-        return {"ok": True, "reason": "sent", "channel": "whatsapp", "sid": result.get("sid")}
+        return {
+            "ok": True,
+            "reason": "sent",
+            "channel": result.get("channel"),
+            "sid": result.get("sid"),
+        }
 
     update_order(
         order["id"],
         sender_sms_attempts=attempts,
-        sender_sms_error=result.get("error") or "whatsapp_error",
+        sender_sms_error=result.get("error") or "message_error",
     )
 
-    return {"ok": False, "reason": result.get("error") or "whatsapp_error"}
+    return {"ok": False, "reason": result.get("error") or "message_error"}
 
 
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
@@ -1075,7 +1159,11 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     if not delivery_is_unlocked(order):
         return {"ok": False, "reason": "delivery_locked"}
 
-    result = send_whatsapp(order.get("recipient_phone", ""), build_recipient_message(order))
+    result = send_message_best_effort(
+        order.get("recipient_phone", ""),
+        build_recipient_message(order),
+    )
+
     attempts += 1
 
     if result.get("ok"):
@@ -1090,15 +1178,20 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             delivery_sent_at=sent_at,
             delivered_to_recipient=1,
         )
-        return {"ok": True, "reason": "sent", "channel": "whatsapp", "sid": result.get("sid")}
+        return {
+            "ok": True,
+            "reason": "sent",
+            "channel": result.get("channel"),
+            "sid": result.get("sid"),
+        }
 
     update_order(
         order_id,
         recipient_sms_attempts=attempts,
-        recipient_sms_error=result.get("error") or "whatsapp_error",
+        recipient_sms_error=result.get("error") or "message_error",
     )
 
-    return {"ok": False, "reason": result.get("error") or "whatsapp_error"}
+    return {"ok": False, "reason": result.get("error") or "message_error"}
 
 
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
@@ -1118,7 +1211,6 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
         "scheduled_delivery_fee": scheduled_fee,
         "total_amount": total_amount,
     }
-
 
 # =========================================================
 # HELPERS EXTRA
@@ -3310,6 +3402,31 @@ async def crear_post(
 # =========================================================
 # DELIVERY WORKER
 # =========================================================
+
+def delivery_worker_loop():
+    print("🔥 DELIVERY WORKER LOOP RUNNING 🔥")
+
+    while True:
+        try:
+            order_ids = list_pending_scheduled_deliveries()
+
+            for order_id in order_ids:
+                print("🚀 DELIVERY WORKER intentando:", order_id)
+                result = process_scheduled_recipient_delivery(order_id)
+                print("📩 RESULT:", result)
+
+            sender_ids = list_pending_sender_notifications()
+
+            for order_id in sender_ids:
+                print("📤 SENDER WORKER intentando:", order_id)
+                order = get_order_by_id(order_id)
+                result = try_send_sender_sms(order)
+                print("📩 SENDER RESULT:", result)
+
+        except Exception as e:
+            log_error("delivery_worker_loop", e)
+
+        time.sleep(10)
 
 def list_pending_scheduled_deliveries():
     conn = db_conn()
@@ -6334,3 +6451,13 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     )
 
     return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+
+    # =========================================================
+# DELIVERY WORKER START (AL FINAL DEL MAIN)
+# =========================================================
+
+import threading
+
+if DELIVERY_WORKER_ENABLED:
+    print("🔥 DELIVERY WORKER STARTED 🔥")
+    threading.Thread(target=delivery_worker_loop, daemon=True).start()
