@@ -354,6 +354,8 @@ def init_db():
     add_column_if_missing("orders", "video_render_requested_at", "ALTER TABLE orders ADD COLUMN video_render_requested_at TEXT")
     add_column_if_missing("orders", "recipient_session_token", "ALTER TABLE orders ADD COLUMN recipient_session_token TEXT")
     add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
+    add_column_if_missing("orders", "reaction_attempts", "ALTER TABLE orders ADD COLUMN reaction_attempts INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "reaction_last_attempt_at", "ALTER TABLE orders ADD COLUMN reaction_last_attempt_at TEXT")
 init_db()
 
 # =========================================================
@@ -4312,6 +4314,8 @@ async def start_experience(recipient_token: str = Form(...)):
                 "redirect_url": f"/cobrar/{recipient_token}",
             })
 
+        attempts = int(order.get("reaction_attempts") or 0)
+
         update_order(
             order["id"],
             experience_started=1,
@@ -4319,6 +4323,8 @@ async def start_experience(recipient_token: str = Form(...)):
             delivered_to_recipient=1,
             reaction_upload_pending=0,
             reaction_upload_error=None,
+            reaction_attempts=attempts + 1,
+            reaction_last_attempt_at=now_iso(),
         )
 
         return JSONResponse({"ok": True})
@@ -5399,7 +5405,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         print("📦 content_type:", content_type)
         print("📦 size:", size)
 
-        if size == 0:
+        if size <= 0:
             raise HTTPException(status_code=400, detail="empty_video")
 
         if size > MAX_VIDEO_SIZE:
@@ -5414,7 +5420,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         if not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
             raise Exception("local_file_empty_after_write")
 
-        print("💾 Guardado local OK:", local_path)
+        print("💾 Reacción guardada local OK:", local_path)
 
     except HTTPException as e:
         update_order(
@@ -5448,11 +5454,11 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
                 content_type=safe_type,
             )
 
-            print("☁️ Subido a R2:", public_url)
+            print("☁️ Reacción subida a R2:", public_url)
 
     except Exception as e:
         log_error("r2_upload_failed", e)
-        print("⚠️ R2 FALLÓ pero seguimos con local")
+        print("⚠️ R2 FALLÓ, pero ETERNA sigue con archivo local")
 
     try:
         update_order(
@@ -5464,10 +5470,11 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             delivered_to_recipient=1,
             reaction_upload_pending=0,
             reaction_upload_error=None,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
         updated_order = maybe_mark_eterna_completed(order["id"])
-        print("✅ DB actualizada con reacción")
+        print("✅ ETERNA marcada con reacción segura")
 
     except Exception as e:
         log_error("update_order_reaction", e)
@@ -5480,23 +5487,21 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="db_update_failed")
 
     try:
-        process_gift_transfer_for_order(updated_order)
-        print("💸 intento payout OK")
-    except Exception as e:
-        log_error("payout_error", e)
-
-    try:
         sms_result = try_send_sender_sms(updated_order)
-        print("📩 MENSAJE REGALANTE RESULT:", sms_result)
+        print("📩 WHATSAPP REGALANTE:", sms_result)
     except Exception as e:
         log_error("try_send_sender_sms", e)
+
+    try:
+        payout_result = process_gift_transfer_for_order(updated_order)
+        print("💸 PAYOUT RESULT:", payout_result)
+    except Exception as e:
+        log_error("payout_error", e)
 
     return JSONResponse({
         "ok": True,
         "redirect": f"/finalizar-experiencia/{recipient_token}",
     })
-
-
 # =========================================================
 # MI VIDEO (POST EXPERIENCIA)
 # =========================================================
@@ -6307,12 +6312,19 @@ def finalizar_experiencia(request: Request, recipient_token: str):
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
-        maybe_mark_eterna_completed(order["id"])
+        updated_order = maybe_mark_eterna_completed(order["id"])
 
-        return RedirectResponse(
-            url=f"/cobrar/{recipient_token}",
-            status_code=303,
-        )
+        try:
+            try_send_sender_sms(updated_order)
+        except Exception as e:
+            log_error("finalizar_try_send_sender_sms", e)
+
+        try:
+            process_gift_transfer_for_order(updated_order)
+        except Exception as e:
+            log_error("finalizar_process_gift_transfer", e)
+
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     update_order(
         order["id"],
@@ -6321,7 +6333,4 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         reaction_upload_error=order.get("reaction_upload_error") or "missing_reaction_on_finalize",
     )
 
-    return RedirectResponse(
-        url=f"/experiencia/{recipient_token}",
-        status_code=303,
-    )
+    return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
