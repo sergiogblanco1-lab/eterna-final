@@ -1238,7 +1238,7 @@ def try_send_sender_sms(order: dict) -> dict:
     if bool(order.get("sender_sms_sent_at")):
         return {"ok": True, "reason": "already_sent"}
 
-    if attempts >= 3:
+        if attempts >= 3:
         return {"ok": False, "reason": "max_attempts_reached"}
 
     result = send_message_best_effort(
@@ -3581,7 +3581,7 @@ def list_pending_scheduled_deliveries():
             AND COALESCE(o.experience_video_url, '') <> ''
             AND COALESCE(o.recipient_token, '') <> ''
             AND COALESCE(r.phone, '') <> ''
-            AND COALESCE(o.recipient_sms_attempts, 0) < 3
+            AND 1 = 1
         ORDER BY o.created_at ASC
     """)
     rows = cur.fetchall()
@@ -3599,7 +3599,7 @@ def list_pending_sender_notifications():
             paid = 1
             AND COALESCE(sender_sms_sent_at, '') = ''
             AND COALESCE(reaction_uploaded, 0) = 1
-            AND COALESCE(sender_sms_attempts, 0) < 3
+            AND 1 = 1
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -4430,34 +4430,32 @@ def resumen(order_id: str):
     sender_code, sender_number = split_phone_for_form(order.get("sender_phone") or "")
     recipient_code, recipient_number = split_phone_for_form(order.get("recipient_phone") or "")
 
+    # =========================================================
+    # ESTADO UX (SIN BLOQUEOS NI BUCLES)
+    # =========================================================
+
     if delivery_sent_flag:
         status_line = "Tu ETERNA ya ha salido"
         sub_line = f"{recipient_name} ya tiene su mensaje."
         soft_line = "El momento ya está ocurriendo exactamente cuando debía ocurrir."
+
     elif video_ready and delivery_mode == "scheduled":
         status_line = "Tu ETERNA ya está guardada"
         sub_line = f"Todo quedará listo para llegar el {delivery_display}."
         soft_line = "No se enviará antes. Llegará exactamente cuando debe llegar."
+
     elif video_ready and delivery_mode == "instant":
         status_line = "Tu ETERNA está lista"
-        sub_line = "En cuanto quede procesada del todo, saldrá automáticamente."
-        soft_line = "No hace falta esperar una fecha concreta: se enviará en cuanto esté lista."
-    else:
-        if delivery_mode == "scheduled":
-            status_line = "Pago confirmado"
-            sub_line = "ETERNA ya se está preparando."
-            soft_line = (
-                f"Cuando todo esté listo, quedará guardada para llegar el {delivery_display}. "
-                "No se enviará antes."
-            )
-        else:
-            status_line = "Pago confirmado"
-            sub_line = "ETERNA ya se está preparando."
-            soft_line = (
-                "En cuanto el vídeo esté terminado de verdad, se enviará automáticamente."
-            )
+        sub_line = f"{recipient_name} recibirá su mensaje en breve."
+        soft_line = "Si no llega aún, puedes salir: ETERNA seguirá intentando entregarlo."
 
-    refresh = '<meta http-equiv="refresh" content="8">' if not delivery_sent_flag else ""
+    else:
+        status_line = "Pago confirmado"
+        sub_line = "ETERNA ya se está preparando."
+        soft_line = "Cuando el vídeo esté listo de verdad, todo continuará automáticamente."
+
+    # ❌ IMPORTANTE: eliminamos refresh automático (causaba bucle infinito)
+    refresh = ""
 
     preload_data = {
         "customer_name": order.get("sender_name") or "",
