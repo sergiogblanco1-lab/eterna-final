@@ -4458,8 +4458,12 @@ def experiencia(request: Request, recipient_token: str):
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
 
-    payoff_title = "Guardando este momento…"
-    payoff_text = "No cierres esta pantalla."
+    if gift_amount > 0:
+        payoff_title = "Esto no termina aquí."
+        payoff_text = "Este momento ha sido guardado."
+    else:
+        payoff_title = "Esto ya es tuyo."
+        payoff_text = "Y lo será para siempre."
 
     html_page = """
 <!DOCTYPE html>
@@ -4478,11 +4482,13 @@ html, body {
     overflow: hidden;
     font-family: Arial, sans-serif;
 }
+
 body {
     position: fixed;
     inset: 0;
     background: black;
 }
+
 .wrap {
     position: relative;
     width: 100vw;
@@ -4490,6 +4496,7 @@ body {
     overflow: hidden;
     background: black;
 }
+
 video {
     position: absolute;
     inset: 0;
@@ -4498,6 +4505,7 @@ video {
     object-fit: contain;
     background: black;
 }
+
 .overlay {
     position: absolute;
     inset: 0;
@@ -4511,14 +4519,17 @@ video {
     padding: 28px;
     text-align: center;
 }
+
 .overlay.hidden {
     display: none;
 }
+
 .overlay-card {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
 }
+
 .eyebrow {
     font-size: 12px;
     letter-spacing: 0.28em;
@@ -4526,6 +4537,7 @@ video {
     color: rgba(255,255,255,0.36);
     margin-bottom: 24px;
 }
+
 .title {
     font-size: 54px;
     line-height: 1.06;
@@ -4533,6 +4545,7 @@ video {
     margin: 0 0 16px 0;
     color: white;
 }
+
 .text {
     font-size: 24px;
     line-height: 1.7;
@@ -4540,6 +4553,7 @@ video {
     margin: 0 auto 14px auto;
     max-width: 520px;
 }
+
 .soft {
     font-size: 16px;
     line-height: 1.8;
@@ -4547,6 +4561,7 @@ video {
     margin: 0 auto 0 auto;
     max-width: 460px;
 }
+
 .btn {
     display: inline-block;
     min-width: 220px;
@@ -4559,10 +4574,12 @@ video {
     font-size: 17px;
     cursor: pointer;
 }
+
 .btn:disabled {
     opacity: 0.7;
     cursor: default;
 }
+
 .error-note {
     margin-top: 18px;
     font-size: 14px;
@@ -4573,9 +4590,11 @@ video {
     margin-right: auto;
     display: none;
 }
+
 .error-note.show {
     display: block;
 }
+
 .payoff {
     position: absolute;
     inset: 0;
@@ -4587,36 +4606,42 @@ video {
     padding: 28px;
     background:
         radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.98) 100%);
+        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
 }
+
 .payoff.show {
     display: flex;
 }
+
 .payoff-card {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
 }
+
 .payoff-title {
-    font-size: 42px;
-    line-height: 1.15;
+    font-size: 46px;
+    line-height: 1.12;
     font-weight: 700;
     margin: 0 0 18px 0;
     color: white;
 }
+
 .payoff-text {
-    font-size: 20px;
+    font-size: 22px;
     line-height: 1.7;
     color: rgba(255,255,255,0.82);
     margin: 0 auto;
     max-width: 520px;
 }
+
 .loader {
     margin-top: 28px;
     font-size: 15px;
     line-height: 1.7;
     color: rgba(255,255,255,0.48);
 }
+
 .retry-actions {
     margin-top: 24px;
     display: none;
@@ -4625,9 +4650,11 @@ video {
     margin-left: auto;
     margin-right: auto;
 }
+
 .retry-actions.show {
     display: grid;
 }
+
 .retry-btn {
     width: 100%;
     padding: 16px 22px;
@@ -4639,17 +4666,21 @@ video {
     font-size: 15px;
     cursor: pointer;
 }
+
 .retry-btn.secondary {
     background: rgba(255,255,255,0.10);
     color: white;
     border: 1px solid rgba(255,255,255,0.10);
 }
+
 .guide-step {
     display: none;
 }
+
 .guide-step.active {
     display: block;
 }
+
 .guide-legal {
     margin-top: 22px;
     font-size: 14px;
@@ -4659,25 +4690,34 @@ video {
     margin-left: auto;
     margin-right: auto;
 }
+
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
     }
+
     .text {
         font-size: 21px;
     }
+
     .payoff-title {
-        font-size: 34px;
+        font-size: 36px;
     }
+
     .payoff-text {
-        font-size: 18px;
+        font-size: 19px;
     }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-    <video id="video" playsinline webkit-playsinline preload="auto">
+    <video
+        id="video"
+        playsinline
+        webkit-playsinline
+        preload="auto"
+    >
         <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
@@ -4760,13 +4800,80 @@ video {
 </div>
 
 <script>
+(function () {
+    const ua = navigator.userAgent || "";
+
+    const isInAppBrowser =
+        ua.includes("FBAN") ||
+        ua.includes("FBAV") ||
+        ua.includes("Instagram") ||
+        ua.includes("WhatsApp");
+
+    if (!isInAppBrowser) return;
+
+    document.body.innerHTML = `
+        <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            background:
+                radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+                linear-gradient(180deg, #050505 0%, #000000 100%);
+            color:white;
+            text-align:center;
+            padding:24px;
+            font-family:Arial,sans-serif;
+        ">
+            <div style="max-width:520px;">
+                <div style="
+                    font-size:12px;
+                    letter-spacing:0.3em;
+                    text-transform:uppercase;
+                    opacity:.4;
+                    margin-bottom:20px;
+                ">
+                    ETERNA
+                </div>
+
+                <h1 style="
+                    font-size:36px;
+                    line-height:1.2;
+                    margin-bottom:18px;
+                    font-weight:700;
+                ">
+                    Este momento<br>merece ser vivido bien
+                </h1>
+
+                <p style="
+                    font-size:18px;
+                    line-height:1.7;
+                    opacity:.75;
+                ">
+                    Para poder guardar lo que está a punto de pasar,<br>
+                    abre este enlace en Safari o en tu navegador.
+                </p>
+
+                <div style="
+                    margin-top:34px;
+                    font-size:15px;
+                    opacity:.5;
+                    line-height:1.6;
+                ">
+                    Copia el enlace y ábrelo fuera de WhatsApp.
+                </div>
+            </div>
+        </div>
+    `;
+})();
+</script>
+
+<script>
 const startBtn = document.getElementById("startBtn");
 const overlay = document.getElementById("overlay");
 const video = document.getElementById("video");
 const payoff = document.getElementById("payoff");
 const payoffLoader = document.getElementById("payoffLoader");
-const payoffTitle = document.getElementById("payoffTitle");
-const payoffText = document.getElementById("payoffText");
 const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
@@ -4849,8 +4956,8 @@ function hideStartFailActions() {
 function buildFriendlyUploadMessage(errorCode) {
     const code = String(errorCode || "").toLowerCase();
 
-    if (code.includes("empty_video") || code.includes("empty_blob") || code.includes("blob_too_small")) {
-        return "No se ha podido guardar bien la grabación. Vamos a intentarlo de nuevo.";
+    if (code.includes("empty_video") || code.includes("empty_blob")) {
+        return "No se ha detectado una grabación válida. Vamos a intentarlo de nuevo sin salir de aquí.";
     }
 
     if (code.includes("video_too_large")) {
@@ -4858,14 +4965,14 @@ function buildFriendlyUploadMessage(errorCode) {
     }
 
     if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
-        return "Faltan permisos de cámara o micrófono. Actívalos y vuelve a intentarlo.";
+        return "No se ha podido grabar este momento porque faltan permisos de cámara o micrófono.";
     }
 
     if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
-        return "Ha fallado la conexión al guardar. Revisa internet e inténtalo otra vez.";
+        return "No se ha podido guardar este momento por un problema de conexión. Revisa internet e inténtalo de nuevo.";
     }
 
-    return "No se ha podido guardar este momento. Vamos a intentarlo otra vez.";
+    return "No se ha podido guardar este momento. Vamos a intentarlo otra vez sin salir de aquí.";
 }
 
 function detectRecordingFormat() {
@@ -4873,11 +4980,29 @@ function detectRecordingFormat() {
         throw new Error("media_recorder_not_supported");
     }
 
+    const ua = navigator.userAgent || "";
+    const isiPhone = /iPhone|iPad|iPod/i.test(ua);
+
+    if (isiPhone) {
+        const iphoneCandidates = [
+            { mimeType: "video/mp4", extension: "mp4" },
+            { mimeType: "", extension: "mp4" }
+        ];
+
+        for (const candidate of iphoneCandidates) {
+            try {
+                if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
+                    console.log("FORMAT:", candidate);
+                    return candidate;
+                }
+            } catch (_) {}
+        }
+    }
+
     const candidates = [
         { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
         { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
         { mimeType: "video/webm", extension: "webm" },
-        { mimeType: "video/mp4", extension: "mp4" },
         { mimeType: "", extension: "webm" }
     ];
 
@@ -4972,7 +5097,7 @@ function resetRecordingState() {
     clearStartError();
     hideRetryActions();
     hideStartFailActions();
-    showGuideStep(0);
+    showGuideStep(4);
 }
 
 async function tryStartRecordingStrict() {
@@ -5021,9 +5146,9 @@ async function tryStartRecordingStrict() {
             } catch (_) {}
         });
 
-        await new Promise(res => setTimeout(res, 700));
+        await new Promise(res => setTimeout(res, 800));
 
-        console.log("grabación iniciada");
+        console.log("grabacion iniciada");
         return true;
 
     } catch (recordingError) {
@@ -5045,30 +5170,14 @@ async function tryStartRecordingStrict() {
     }
 }
 
-async function finalizeExperienceFlow() {
-    if (finishing) return;
-    finishing = true;
-
-    payoff.classList.add("show");
-    payoffTitle.innerText = "Guardando este momento…";
-    payoffText.innerText = "No cierres esta pantalla.";
-    payoffLoader.innerText = "Preparando la grabación…";
-    hideRetryActions();
-
+async function stopRecordingSafely() {
     try {
-        if (finishTimeout) {
-            clearTimeout(finishTimeout);
-            finishTimeout = null;
-        }
-    } catch (_) {}
+        if (!mediaRecorder) return;
 
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
+        if (mediaRecorder.state === "recording") {
             try {
                 mediaRecorder.requestData();
             } catch (_) {}
-
-            await new Promise(res => setTimeout(res, 700));
 
             await new Promise((resolve) => {
                 let done = false;
@@ -5096,6 +5205,23 @@ async function finalizeExperienceFlow() {
     } catch (e) {
         console.error("recorder stop error", e);
     }
+}
+
+async function finalizeExperienceFlow() {
+    if (finishing) return;
+    finishing = true;
+
+    payoff.classList.add("show");
+    payoffLoader.innerText = "Guardando este momento…";
+
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
+
+    await stopRecordingSafely();
 
     try {
         if (stream) {
@@ -5105,7 +5231,7 @@ async function finalizeExperienceFlow() {
         console.error("stream stop error", e);
     }
 
-    await new Promise(res => setTimeout(res, 900));
+    await new Promise(res => setTimeout(res, 1200));
 
     let blob = null;
 
@@ -5121,15 +5247,15 @@ async function finalizeExperienceFlow() {
     }
 
     try {
-        if (!blob || blob.size <= 10000) {
-            throw new Error("blob_too_small");
+        if (!blob || blob.size < 10000) {
+            throw new Error("empty_blob");
         }
-
-        payoffLoader.innerText = "Subiendo la reacción…";
 
         const filename = "reaction." + recordingExtension;
         const formData = new FormData();
         formData.append("video", blob, filename);
+
+        payoffLoader.innerText = "Subiendo este momento…";
 
         const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
             method: "POST",
@@ -5142,25 +5268,19 @@ async function finalizeExperienceFlow() {
             throw new Error(uploadData.detail || "upload_reaction_failed");
         }
 
-        payoffTitle.innerText = "Ahora sí.";
-        payoffText.innerText = "Este momento ha sido guardado.";
-        payoffLoader.innerText = "Llevándote a tu regalo…";
-
-        setTimeout(() => {
-            window.location.replace("/finalizar-experiencia/" + recipientToken);
-        }, 900);
+        console.log("reaccion subida");
 
     } catch (e) {
         console.error("upload error", e);
 
-        payoffTitle.innerText = "No se ha guardado bien.";
-        payoffText.innerText = buildFriendlyUploadMessage(e?.message || e?.detail || "");
-        payoffLoader.innerText = "La reacción todavía no está guardada.";
-
+        payoffLoader.innerText = buildFriendlyUploadMessage(e?.message || "");
         showRetryActions();
+
         finishing = false;
         return;
     }
+
+    window.location.replace("/finalizar-experiencia/" + recipientToken);
 }
 
 function armFinishFallbacks() {
@@ -5241,7 +5361,7 @@ startBtn.addEventListener("click", async () => {
         video.load();
         await waitForVideoReady();
 
-        await new Promise(res => setTimeout(res, 800));
+        await new Promise(res => setTimeout(res, 700));
 
         overlay.classList.add("hidden");
         experienceStarted = true;
@@ -5259,12 +5379,7 @@ startBtn.addEventListener("click", async () => {
             startBtn.disabled = false;
             showStartFailActions();
 
-            try {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    try { mediaRecorder.requestData(); } catch (_) {}
-                    mediaRecorder.stop();
-                }
-            } catch (_) {}
+            await stopRecordingSafely();
 
             try {
                 if (stream) {
@@ -5277,6 +5392,7 @@ startBtn.addEventListener("click", async () => {
             recordedChunks = [];
             recordingMimeType = "";
             recordingExtension = "webm";
+
             return;
         }
 
@@ -5287,12 +5403,7 @@ startBtn.addEventListener("click", async () => {
         experienceStarted = false;
         payoff.classList.remove("show");
 
-        try {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                try { mediaRecorder.requestData(); } catch (_) {}
-                mediaRecorder.stop();
-            }
-        } catch (_) {}
+        await stopRecordingSafely();
 
         try {
             if (stream) {
@@ -5389,7 +5500,6 @@ showGuideStep(0);
 
     cookie_key = recipient_cookie_name(order["recipient_token"])
     session_value = (order.get("recipient_session_token") or "").strip()
-
     if session_value:
         response.set_cookie(
             key=cookie_key,
