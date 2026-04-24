@@ -922,6 +922,32 @@ def recipient_experience_url_from_order(order: dict) -> str:
     return f"{PUBLIC_BASE_URL}/pedido/{order['recipient_token']}"
 
 
+def reaction_is_safe(order: dict) -> bool:
+    return bool(order.get("reaction_uploaded")) and reaction_exists(order)
+
+
+def is_eterna_complete(order: dict) -> bool:
+    return original_video_ready(order) and reaction_is_safe(order)
+
+
+def maybe_mark_eterna_completed(order_id: str) -> dict:
+    order = get_order_by_id(order_id)
+
+    if original_video_ready(order) and reaction_is_safe(order):
+        update_order(
+            order["id"],
+            eterna_completed=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+        )
+    else:
+        update_order(order_id, eterna_completed=0)
+
+    return get_order_by_id(order_id)
+
+
 def build_recipient_message(order: dict) -> str:
     return (
         "ETERNA\n\n"
@@ -943,51 +969,6 @@ def twilio_enabled() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
 
 
-def send_sms(phone: str, message: str) -> dict:
-    to_phone = to_e164(phone)
-
-    print("📲 SEND_SMS START")
-    print("📲 PHONE RAW:", phone)
-    print("📲 PHONE E164:", to_phone)
-    print("📲 TWILIO FROM:", TWILIO_FROM_NUMBER)
-    print("📲 SMS ENABLED:", SMS_ENABLED)
-    print("📲 TWILIO CONFIGURED:", twilio_enabled())
-    print("📲 MESSAGE:", message)
-
-    if not to_phone:
-        print("❌ SEND_SMS invalid_phone")
-        return {"ok": False, "channel": "sms", "sid": None, "error": "invalid_phone"}
-
-    if not SMS_ENABLED:
-        print("🚫 SMS DESACTIVADO POR CONFIG")
-        return {"ok": False, "channel": "sms", "sid": None, "error": "sms_disabled_by_config"}
-
-    if not twilio_enabled():
-        print("❌ SEND_SMS twilio_not_configured")
-        return {"ok": False, "channel": "sms", "sid": None, "error": "twilio_not_configured"}
-
-    if not TWILIO_FROM_NUMBER:
-        print("❌ SEND_SMS missing_from_number")
-        return {"ok": False, "channel": "sms", "sid": None, "error": "missing_from_number"}
-
-    try:
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        sms = client.messages.create(
-            body=message,
-            from_=TWILIO_FROM_NUMBER,
-            to=to_phone,
-        )
-
-        print("✅ SEND_SMS ACCEPTED")
-        print("✅ TWILIO SID:", sms.sid)
-
-        return {"ok": True, "channel": "sms", "sid": sms.sid, "error": None}
-
-    except Exception as e:
-        print("❌ SEND_SMS EXCEPTION:", str(e))
-        return {"ok": False, "channel": "sms", "sid": None, "error": str(e)}
-
-
 def whatsapp_enabled() -> bool:
     return os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 
@@ -1004,69 +985,31 @@ def send_whatsapp(phone: str, message: str) -> dict:
     print("🟢 PHONE RAW:", phone)
     print("🟢 PHONE E164:", to_phone)
     print("🟢 WHATSAPP FROM:", wa_from)
-    print("🟢 WHATSAPP ENABLED:", whatsapp_enabled())
-    print("🟢 TWILIO CONFIGURED:", twilio_enabled())
-    print("🟢 MESSAGE:", message)
 
     if not to_phone:
-        print("❌ SEND_WHATSAPP invalid_phone")
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
 
     if not whatsapp_enabled():
-        print("🚫 WHATSAPP DESACTIVADO POR CONFIG")
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled_by_config"}
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
 
     if not twilio_enabled():
-        print("❌ SEND_WHATSAPP twilio_not_configured")
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
-
-    if not wa_from:
-        print("❌ SEND_WHATSAPP missing_whatsapp_from")
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_whatsapp_from"}
 
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-        wa = client.messages.create(
+        msg = client.messages.create(
             body=message,
             from_=wa_from,
             to=f"whatsapp:{to_phone}",
         )
 
-        print("✅ SEND_WHATSAPP ACCEPTED")
-        print("✅ TWILIO WHATSAPP SID:", wa.sid)
-
-        return {"ok": True, "channel": "whatsapp", "sid": wa.sid, "error": None}
+        print("✅ SEND_WHATSAPP ACCEPTED:", msg.sid)
+        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
 
     except Exception as e:
-        print("❌ SEND_WHATSAPP EXCEPTION:", str(e))
+        print("❌ SEND_WHATSAPP ERROR:", str(e))
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
-
-
-def send_delivery_message(phone: str, message: str) -> dict:
-    """
-    1) Intenta WhatsApp
-    2) Si falla, intenta SMS
-    """
-    wa_result = send_whatsapp(phone, message)
-
-    if wa_result.get("ok"):
-        return wa_result
-
-    print("⚠️ WHATSAPP FALLÓ, PROBANDO SMS...")
-    sms_result = send_sms(phone, message)
-
-    if sms_result.get("ok"):
-        return sms_result
-
-    return {
-        "ok": False,
-        "channel": sms_result.get("channel") or wa_result.get("channel"),
-        "sid": None,
-        "error": sms_result.get("error") or wa_result.get("error") or "delivery_failed",
-        "whatsapp_error": wa_result.get("error"),
-        "sms_error": sms_result.get("error"),
-    }
 
 
 def try_send_sender_sms(order: dict) -> dict:
@@ -1075,41 +1018,22 @@ def try_send_sender_sms(order: dict) -> dict:
     if not bool(order.get("paid")):
         return {"ok": False, "reason": "order_not_paid"}
 
-    if not bool(order.get("reaction_uploaded")):
-        return {"ok": False, "reason": "reaction_not_uploaded"}
-
-    if not reaction_exists(order):
-        return {"ok": False, "reason": "reaction_not_found"}
+    if not reaction_is_safe(order):
+        return {"ok": False, "reason": "reaction_not_safe"}
 
     attempts = int(order.get("sender_sms_attempts") or 0)
 
     if bool(order.get("sender_sms_sent_at")):
-        return {
-            "ok": True,
-            "reason": "already_sent",
-            "sid": order.get("sender_sms_sid"),
-            "sender_sms_sent_at": order.get("sender_sms_sent_at"),
-            "sender_sms_attempts": attempts,
-            "sender_sms_error": order.get("sender_sms_error"),
-        }
+        return {"ok": True, "reason": "already_sent"}
 
     if attempts >= 3:
-        return {
-            "ok": False,
-            "reason": "max_attempts_reached",
-            "sender_sms_sent_at": order.get("sender_sms_sent_at"),
-            "sender_sms_attempts": attempts,
-            "sender_sms_error": order.get("sender_sms_error"),
-        }
+        return {"ok": False, "reason": "max_attempts_reached"}
 
-    message = build_sender_ready_message(order)
-    result = send_delivery_message(order.get("sender_phone", ""), message)
-
-    attempts = attempts + 1
+    result = send_whatsapp(order.get("sender_phone", ""), build_sender_ready_message(order))
+    attempts += 1
 
     if result.get("ok"):
         sent_at = now_iso()
-
         update_order(
             order["id"],
             sender_sms_attempts=attempts,
@@ -1118,33 +1042,61 @@ def try_send_sender_sms(order: dict) -> dict:
             sender_sms_sent_at=sent_at,
             sender_notified=1,
         )
-
-        refreshed = get_order_by_id(order["id"])
-        return {
-            "ok": True,
-            "reason": "sent",
-            "channel": result.get("channel"),
-            "sid": refreshed.get("sender_sms_sid"),
-            "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
-            "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
-            "sender_sms_error": refreshed.get("sender_sms_error"),
-        }
+        return {"ok": True, "reason": "sent", "channel": "whatsapp", "sid": result.get("sid")}
 
     update_order(
         order["id"],
         sender_sms_attempts=attempts,
-        sender_sms_error=result.get("error") or "delivery_error",
+        sender_sms_error=result.get("error") or "whatsapp_error",
     )
 
-    refreshed = get_order_by_id(order["id"])
-    return {
-        "ok": False,
-        "reason": result.get("error") or "delivery_error",
-        "channel": result.get("channel"),
-        "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
-        "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
-        "sender_sms_error": refreshed.get("sender_sms_error"),
-    }
+    return {"ok": False, "reason": result.get("error") or "whatsapp_error"}
+
+
+def process_scheduled_recipient_delivery(order_id: str) -> dict:
+    order = get_order_by_id(order_id)
+
+    if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
+        return {"ok": True, "reason": "already_sent"}
+
+    attempts = int(order.get("recipient_sms_attempts") or 0)
+
+    if attempts >= 3:
+        return {"ok": False, "reason": "max_attempts_reached"}
+
+    if not bool(order.get("paid")):
+        return {"ok": False, "reason": "order_not_paid"}
+
+    if not original_video_ready(order):
+        return {"ok": False, "reason": "video_not_ready"}
+
+    if not delivery_is_unlocked(order):
+        return {"ok": False, "reason": "delivery_locked"}
+
+    result = send_whatsapp(order.get("recipient_phone", ""), build_recipient_message(order))
+    attempts += 1
+
+    if result.get("ok"):
+        sent_at = now_iso()
+        update_order(
+            order_id,
+            recipient_sms_attempts=attempts,
+            recipient_sms_error=None,
+            recipient_sms_sid=result.get("sid"),
+            recipient_sms_sent_at=sent_at,
+            delivery_sent=1,
+            delivery_sent_at=sent_at,
+            delivered_to_recipient=1,
+        )
+        return {"ok": True, "reason": "sent", "channel": "whatsapp", "sid": result.get("sid")}
+
+    update_order(
+        order_id,
+        recipient_sms_attempts=attempts,
+        recipient_sms_error=result.get("error") or "whatsapp_error",
+    )
+
+    return {"ok": False, "reason": result.get("error") or "whatsapp_error"}
 
 
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
@@ -1155,6 +1107,7 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     scheduled_fee = round(SCHEDULED_DELIVERY_FEE if delivery_mode == "scheduled" else 0.0, 2)
     total_fee = round(fixed_fee + variable_fee, 2)
     total_amount = round(BASE_PRICE + gift_amount + total_fee + scheduled_fee, 2)
+
     return {
         "gift_amount": gift_amount,
         "fixed_fee": fixed_fee,
@@ -1165,181 +1118,9 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     }
 
 
-def get_phrases_by_type(message_type: str):
-    phrase_templates = {
-        "cumpleanos": [
-            "Hoy no es un día cualquiera.",
-            "Es tu historia celebrándose.",
-            "Y lo mejor… aún está por venir.",
-        ],
-        "amor": [
-            "Si volviera a empezar,",
-            "te elegiría otra vez.",
-            "Siempre tú.",
-        ],
-        "familia": [
-            "Todo empieza contigo.",
-            "Todo vuelve a ti.",
-            "Gracias por tanto.",
-        ],
-        "superacion": [
-            "Nunca dejaste de intentarlo.",
-            "Y eso lo cambia todo.",
-            "Creemos en ti.",
-        ],
-        "esfuerzo": [
-            "Todo lo que has dado",
-            "no ha pasado desapercibido.",
-            "Y lo valoramos más de lo que imaginas.",
-        ],
-        "sorpresa": [
-            "Pensabas que hoy era un día normal…",
-            "Pero alguien ha estado pensando en ti.",
-            "Mucho más de lo que imaginas.",
-        ],
-    }
-    return phrase_templates.get(message_type, phrase_templates["sorpresa"])
-
-
-def send_admin_alert(message: str):
-    return
-
-
-def build_admin_eterna_completed_message(order: dict) -> str:
-    return ""
-
-
-def send_admin_eterna_completed(order: dict):
-    return
-
-
-def process_scheduled_recipient_delivery(order_id: str) -> dict:
-    order = get_order_by_id(order_id)
-
-    print("📦 PROCESS RECIPIENT DELIVERY START")
-    print("➡️ order_id:", order_id)
-
-    if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
-        return {
-            "ok": True,
-            "reason": "already_sent",
-            "delivery_sent": True,
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
-            "recipient_sms_error": order.get("recipient_sms_error"),
-        }
-
-    attempts = int(order.get("recipient_sms_attempts") or 0)
-
-    if attempts >= 3:
-        return {
-            "ok": False,
-            "reason": "max_attempts_reached",
-            "delivery_sent": False,
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
-        }
-
-    if not bool(order.get("paid")):
-        return {
-            "ok": False,
-            "reason": "order_not_paid",
-            "delivery_sent": False,
-        }
-
-    if not original_video_ready(order):
-        return {
-            "ok": False,
-            "reason": "original_video_not_ready",
-            "delivery_sent": False,
-        }
-
-    if not delivery_is_unlocked(order):
-        return {
-            "ok": False,
-            "reason": "scheduled_delivery_not_ready",
-            "delivery_sent": False,
-            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-        }
-
-    message = build_recipient_message(order)
-
-    phone_raw = order.get("recipient_phone", "")
-    phone_e164 = to_e164(phone_raw)
-
-    print("📱 PHONE RAW:", phone_raw)
-    print("📱 PHONE E164:", phone_e164)
-    print("📩 RECIPIENT MESSAGE:", message)
-
-    result = send_delivery_message(phone_raw, message)
-
-    print("📩 RECIPIENT DELIVERY RESULT:", result)
-
-    attempts = attempts + 1
-
-    delivery_ok = bool(result.get("ok"))
-    delivery_sid = (result.get("sid") or "").strip() or None
-    delivery_error = (result.get("error") or "").strip() or None
-
-    if delivery_ok:
-        sent_at = now_iso()
-
-        update_order(
-            order_id,
-            recipient_sms_attempts=attempts,
-            recipient_sms_error=None,
-            recipient_sms_sid=delivery_sid,
-            recipient_sms_sent_at=sent_at,
-            delivery_sent=1,
-            delivery_sent_at=sent_at,
-            delivered_to_recipient=1,
-        )
-
-        updated = get_order_by_id(order_id)
-
-        return {
-            "ok": True,
-            "reason": "sent",
-            "channel": result.get("channel"),
-            "delivery_sent": True,
-            "delivery_sent_at": updated.get("delivery_sent_at"),
-            "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
-            "recipient_sms_sid": updated.get("recipient_sms_sid"),
-            "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
-            "recipient_sms_error": updated.get("recipient_sms_error"),
-        }
-
-    final_error = delivery_error or "delivery_error"
-
-    update_order(
-        order_id,
-        recipient_sms_attempts=attempts,
-        recipient_sms_error=final_error,
-    )
-
-    updated = get_order_by_id(order_id)
-
-    return {
-        "ok": False,
-        "reason": final_error,
-        "channel": result.get("channel"),
-        "delivery_sent": bool(updated.get("delivery_sent")),
-        "delivery_sent_at": updated.get("delivery_sent_at"),
-        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
-        "recipient_sms_sid": updated.get("recipient_sms_sid"),
-        "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
-        "recipient_sms_error": updated.get("recipient_sms_error"),
-    }
-
-
 # =========================================================
 # HELPERS EXTRA
 # =========================================================
-
 def compute_cashout_status(order: dict) -> str:
     if bool(order.get("gift_refunded")):
         return "gift_refunded"
@@ -1350,6 +1131,34 @@ def compute_cashout_status(order: dict) -> str:
     if bool(order.get("connect_onboarding_completed")):
         return "ready_to_send"
     return "pending"
+
+    def reaction_is_safe(order: dict) -> bool:
+    return bool(order.get("reaction_uploaded")) and reaction_exists(order)
+
+
+def is_eterna_complete(order: dict) -> bool:
+    return original_video_ready(order) and reaction_is_safe(order)
+
+
+def maybe_mark_eterna_completed(order_id: str) -> dict:
+    order = get_order_by_id(order_id)
+
+    if is_eterna_complete(order):
+        update_order(
+            order["id"],
+            eterna_completed=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+        )
+    else:
+        update_order(
+            order_id,
+            eterna_completed=0,
+        )
+
+    return get_order_by_id(order_id)
 
 
 def try_acquire_transfer_lock(order_id: str) -> bool:
@@ -1673,8 +1482,6 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     order = get_order_by_id(order["id"])
     gift_amount = float(order.get("gift_amount") or 0)
 
-    
-
     if bool(order.get("gift_refunded")):
         return {"status": "gift_already_refunded"}
 
@@ -1701,8 +1508,16 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     if not bool(order.get("paid")):
         return {"status": "not_paid"}
 
-    if not bool(order.get("experience_completed")):
-        return {"status": "experience_not_completed"}
+    # 🔒 REGLA SAGRADA ETERNA:
+    # Sin reacción real guardada, no se libera dinero.
+    if not reaction_is_safe(order):
+        update_order(
+            order["id"],
+            transfer_in_progress=0,
+            cashout_completed=0,
+            transfer_completed=0,
+        )
+        return {"status": "reaction_not_safe"}
 
     if not bool(order.get("connect_onboarding_completed")):
         return {"status": "onboarding_not_ready"}
@@ -1725,13 +1540,16 @@ def process_gift_transfer_for_order(order: dict) -> dict:
 
     if not try_acquire_transfer_lock(order["id"]):
         refreshed = get_order_by_id(order["id"])
+
         if refreshed.get("stripe_transfer_id"):
             return {
                 "status": "already_transferred",
                 "transfer_id": refreshed.get("stripe_transfer_id"),
             }
+
         if bool(refreshed.get("gift_refunded")):
             return {"status": "gift_already_refunded"}
+
         return {"status": "transfer_in_progress"}
 
     try:
@@ -1753,11 +1571,22 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             cashout_completed=1,
             transfer_in_progress=0,
         )
-        return {"status": "ok", "transfer_id": transfer.id}
+
+        return {
+            "status": "ok",
+            "transfer_id": transfer.id,
+        }
 
     except Exception as e:
         log_error("Transfer error", e)
-        update_order(order["id"], transfer_in_progress=0)
+
+        update_order(
+            order["id"],
+            transfer_in_progress=0,
+            cashout_completed=0,
+            transfer_completed=0,
+        )
+
         return {
             "status": "error",
             "error": str(e),
@@ -4476,33 +4305,22 @@ async def start_experience(recipient_token: str = Form(...)):
         if not delivery_is_unlocked(order):
             raise HTTPException(status_code=403, detail="delivery_locked")
 
-        # =========================================================
-        # SI YA ESTÁ COMPLETADA, REDIRIGIMOS A COBRAR
-        # =========================================================
-        if bool(order.get("experience_completed")) and bool(order.get("reaction_uploaded")):
+        if reaction_is_safe(order):
             return JSONResponse({
                 "ok": True,
                 "redirect_url": f"/cobrar/{recipient_token}",
             })
 
-        # =========================================================
-        # SI YA TENÍA STARTED PERO NO HAY REACCIÓN,
-        # NO BLOQUEAMOS: DEJAMOS CONTINUAR
-        # =========================================================
-        if bool(order.get("experience_started")) and not bool(order.get("reaction_uploaded")):
-            return JSONResponse({
-                "ok": True
-            })
-
         update_order(
             order["id"],
             experience_started=1,
+            experience_completed=0,
             delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
         )
 
-        return JSONResponse({
-            "ok": True
-        })
+        return JSONResponse({"ok": True})
 
     except HTTPException:
         raise
@@ -4531,7 +4349,7 @@ def experiencia(request: Request, recipient_token: str):
     # =========================================================
     # SOLO SI YA ESTÁ COMPLETADA DE VERDAD, SACAMOS A COBRAR
     # =========================================================
-    if bool(order.get("experience_completed")) and bool(order.get("reaction_uploaded")):
+    if reaction_is_safe(order):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     temp_response = HTMLResponse("")
@@ -5565,51 +5383,54 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
-    content_type = (video.content_type or "").lower().strip()
-    print("📦 content_type:", content_type)
-
-    data = await video.read()
-    size = len(data)
-
-    print("📦 size:", size)
-
-    if size == 0:
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error="empty_video",
-        )
-        raise HTTPException(status_code=400, detail="empty_video")
-
-    if size > MAX_VIDEO_SIZE:
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error="video_too_large",
-        )
-        raise HTTPException(status_code=400, detail="video_too_large")
-
-    extension = detect_video_extension(video)
-    local_path = reaction_video_path(order["id"], extension)
-
     try:
         update_order(
             order["id"],
             reaction_upload_pending=1,
             reaction_upload_error=None,
+            experience_completed=0,
         )
+
+        content_type = (video.content_type or "").lower().strip()
+        data = await video.read()
+        size = len(data)
+
+        print("📦 content_type:", content_type)
+        print("📦 size:", size)
+
+        if size == 0:
+            raise HTTPException(status_code=400, detail="empty_video")
+
+        if size > MAX_VIDEO_SIZE:
+            raise HTTPException(status_code=400, detail="video_too_large")
+
+        extension = detect_video_extension(video)
+        local_path = reaction_video_path(order["id"], extension)
 
         with open(local_path, "wb") as f:
             f.write(data)
 
-        print("💾 Guardado local OK")
+        if not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
+            raise Exception("local_file_empty_after_write")
+
+        print("💾 Guardado local OK:", local_path)
+
+    except HTTPException as e:
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error=str(e.detail),
+            experience_completed=0,
+        )
+        raise
 
     except Exception as e:
-        log_error("save_local_reaction", e)
+        log_error("upload_reaction_save_error", e)
         update_order(
             order["id"],
             reaction_upload_pending=0,
             reaction_upload_error="local_save_failed",
+            experience_completed=0,
         )
         raise HTTPException(status_code=500, detail="local_save_failed")
 
@@ -5630,7 +5451,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     except Exception as e:
         log_error("r2_upload_failed", e)
-        print("⚠️ R2 FALLÓ pero seguimos")
+        print("⚠️ R2 FALLÓ pero seguimos con local")
 
     try:
         update_order(
@@ -5644,7 +5465,8 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_error=None,
         )
 
-        print("✅ DB actualizada")
+        updated_order = maybe_mark_eterna_completed(order["id"])
+        print("✅ DB actualizada con reacción")
 
     except Exception as e:
         log_error("update_order_reaction", e)
@@ -5652,15 +5474,9 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             order["id"],
             reaction_upload_pending=0,
             reaction_upload_error="db_update_failed",
+            experience_completed=0,
         )
         raise HTTPException(status_code=500, detail="db_update_failed")
-
-    try:
-        maybe_mark_eterna_completed(order["id"])
-    except Exception as e:
-        log_error("mark_eterna_completed", e)
-
-    updated_order = get_order_by_id(order["id"])
 
     try:
         process_gift_transfer_for_order(updated_order)
@@ -5670,7 +5486,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
     try:
         sms_result = try_send_sender_sms(updated_order)
-        print("📩 SMS REGALANTE RESULT:", sms_result)
+        print("📩 MENSAJE REGALANTE RESULT:", sms_result)
     except Exception as e:
         log_error("try_send_sender_sms", e)
 
@@ -5817,8 +5633,8 @@ def cobrar(request: Request, recipient_token: str):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_started")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+    if not reaction_is_safe(order):
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
     try:
         if order.get("stripe_connected_account_id"):
@@ -6009,8 +5825,8 @@ def connect_payout(request: Request, recipient_token: str):
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not bool(order.get("experience_started")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+    if not reaction_is_safe(order):
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
     try:
         refresh_connect_status(order)
@@ -6033,6 +5849,28 @@ def connect_payout(request: Request, recipient_token: str):
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
+
+    # 🔒 BLOQUEO: sin vídeo o sin reacción real → no abrir pack
+    if not original_video_ready(order) or not reaction_is_safe(order):
+        return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+</head>
+<body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
+    <div style="max-width:620px;">
+        <h1 style="font-size:38px;line-height:1.2;margin-bottom:18px;">Tu ETERNA aún no ha vuelto</h1>
+        <p style="font-size:19px;line-height:1.8;color:rgba(255,255,255,0.68);">
+            Cuando la emoción esté guardada de verdad,<br>
+            este pack se abrirá.
+        </p>
+    </div>
+</body>
+</html>
+        """)
 
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
@@ -6152,21 +5990,10 @@ def sender_pack(sender_token: str):
         }}
 
         if (reaction && mini) {{
-            reaction.addEventListener("loadedmetadata", function () {{
-                syncMini();
-            }});
-
-            reaction.addEventListener("play", function () {{
-                syncMini();
-            }});
-
-            reaction.addEventListener("seeking", function () {{
-                syncMini();
-            }});
-
-            reaction.addEventListener("timeupdate", function () {{
-                syncMini();
-            }});
+            reaction.addEventListener("loadedmetadata", syncMini);
+            reaction.addEventListener("play", syncMini);
+            reaction.addEventListener("seeking", syncMini);
+            reaction.addEventListener("timeupdate", syncMini);
 
             reaction.addEventListener("ended", function () {{
                 try {{
@@ -6187,20 +6014,13 @@ def sender_pack(sender_token: str):
 
         if (replay && reaction) {{
             replay.addEventListener("click", function () {{
-                try {{
-                    reaction.currentTime = 0;
-                }} catch (e) {{}}
-
+                try {{ reaction.currentTime = 0; }} catch (e) {{}}
                 if (mini) {{
-                    try {{
-                        mini.currentTime = 0;
-                    }} catch (e) {{}}
+                    try {{ mini.currentTime = 0; }} catch (e) {{}}
                 }}
-
                 if (shareWrap) {{
                     shareWrap.style.display = "none";
                 }}
-
                 reaction.play().catch(() => {{}});
             }});
         }}
@@ -6476,39 +6296,31 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    try:
-        # =========================================================
-        # SOLO CERRAMOS SI DE VERDAD HAY REACCIÓN
-        # =========================================================
-        if bool(order.get("reaction_uploaded")):
-            update_order(
-                order["id"],
-                experience_completed=1,
-                delivered_to_recipient=1,
-                gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-                reaction_upload_pending=0,
-                reaction_upload_error=None,
-            )
-
-            maybe_mark_eterna_completed(order["id"])
-            return RedirectResponse(
-                url=f"/cobrar/{recipient_token}",
-                status_code=303
-            )
-
-        # =========================================================
-        # SI NO HAY REACCIÓN, NO MATAMOS LA EXPERIENCIA:
-        # VOLVEMOS A /experiencia PARA PODER REINTENTAR
-        # =========================================================
+    if reaction_is_safe(order):
         update_order(
             order["id"],
-            experience_completed=0,
+            experience_completed=1,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
-    except Exception as e:
-        log_error("FINALIZAR EXPERIENCE ERROR", e)
+        maybe_mark_eterna_completed(order["id"])
+
+        return RedirectResponse(
+            url=f"/cobrar/{recipient_token}",
+            status_code=303,
+        )
+
+    update_order(
+        order["id"],
+        experience_completed=0,
+        reaction_upload_pending=0,
+        reaction_upload_error=order.get("reaction_upload_error") or "missing_reaction_on_finalize",
+    )
 
     return RedirectResponse(
         url=f"/experiencia/{recipient_token}",
-        status_code=303
+        status_code=303,
     )
