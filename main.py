@@ -7,7 +7,7 @@ print("🔥 DELIVERY WORKER REAL VERSION 🔥")
 print("🔥 GLOBAL PHONE READY VERSION 🔥")
 print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
-print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS RETRY VERSION 🔥")
+print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
 
 import html
 import json
@@ -54,6 +54,7 @@ templates = Jinja2Templates(directory="templates")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
+ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
@@ -92,6 +93,8 @@ TWILIO_FROM_NUMBER = (
     or os.getenv("TWILIO_PHONE_NUMBER", "").strip()
 )
 SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
+WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
+TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
@@ -354,16 +357,15 @@ def init_db():
     add_column_if_missing("orders", "video_render_requested_at", "ALTER TABLE orders ADD COLUMN video_render_requested_at TEXT")
     add_column_if_missing("orders", "recipient_session_token", "ALTER TABLE orders ADD COLUMN recipient_session_token TEXT")
     add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
-    add_column_if_missing("orders", "reaction_attempts", "ALTER TABLE orders ADD COLUMN reaction_attempts INTEGER NOT NULL DEFAULT 0")
-    add_column_if_missing("orders", "reaction_last_attempt_at", "ALTER TABLE orders ADD COLUMN reaction_last_attempt_at TEXT")
 init_db()
+
 
 # =========================================================
 # HELPERS BASE
 # =========================================================
 
 def now_dt() -> datetime:
-    return datetime.now(timezone.utc)    
+    return datetime.now(timezone.utc)
 
 
 def now_iso() -> str:
@@ -664,23 +666,18 @@ def get_photo_asset_path(order_id: str, slot_name: str) -> Optional[str]:
 
 def original_video_ready(order: dict) -> bool:
     url = (order.get("experience_video_url") or "").strip()
-
-    if not url:
-        return False
-
-    # IMPORTANTE:
-    # Si el callback del video engine ya guardó una URL,
-    # para ETERNA el vídeo se considera listo.
-    # No bloqueamos por HEAD porque algunos servidores/CDN fallan con HEAD.
-    return True
+    return bool(url)
 
 
 def reaction_exists(order: dict) -> bool:
     if order.get("reaction_video_public_url"):
         return True
-
     local_path = (order.get("reaction_video_local") or "").strip()
     return bool(local_path) and os.path.exists(local_path)
+
+
+def reaction_is_safe(order: dict) -> bool:
+    return bool(order.get("reaction_uploaded")) and reaction_exists(order)
 
 
 def scheduled_delivery_ready(order: dict) -> bool:
@@ -719,7 +716,7 @@ def delivery_is_unlocked(order: dict) -> bool:
 
 
 def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
-    if delivery_already_sent(order):
+    if order.get("delivery_sent"):
         return False, "delivery_already_sent"
 
     if not bool(order.get("paid")):
@@ -728,6 +725,9 @@ def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
     if not original_video_ready(order):
         return False, "original_video_not_ready"
 
+    if delivery_already_sent(order):
+        return False, "delivery_already_sent"
+
     if not scheduled_delivery_ready(order):
         return False, "scheduled_delivery_not_ready"
 
@@ -735,21 +735,22 @@ def can_send_recipient_delivery(order: dict) -> tuple[bool, str]:
 
 
 def is_eterna_complete(order: dict) -> bool:
-    return original_video_ready(order) and reaction_is_safe(order)
+    return (
+        original_video_ready(order)
+        and bool(order.get("reaction_uploaded"))
+        and reaction_exists(order)
+    )
 
 
 def maybe_mark_eterna_completed(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
-    if original_video_ready(order) and reaction_is_safe(order):
+    if is_eterna_complete(order):
         update_order(
-            order["id"],
-            eterna_completed=1,
-            experience_completed=1,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-        )
+    order["id"],
+    experience_started=1,
+    delivered_to_recipient=1,
+)
     else:
         update_order(order_id, eterna_completed=0)
 
@@ -925,49 +926,15 @@ def recipient_experience_url_from_order(order: dict) -> str:
     return f"{PUBLIC_BASE_URL}/pedido/{order['recipient_token']}"
 
 
-def reaction_is_safe(order: dict) -> bool:
-    return bool(order.get("reaction_uploaded")) and reaction_exists(order)
-
-
-def is_eterna_complete(order: dict) -> bool:
-    return original_video_ready(order) and reaction_is_safe(order)
-
-
-def maybe_mark_eterna_completed(order_id: str) -> dict:
-    order = get_order_by_id(order_id)
-
-    if original_video_ready(order) and reaction_is_safe(order):
-        update_order(
-            order["id"],
-            eterna_completed=1,
-            experience_completed=1,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-        )
-    else:
-        update_order(order_id, eterna_completed=0)
-
-    return get_order_by_id(order_id)
-
-
-# =========================================================
-# ✉️ MENSAJES ETERNA (RECIPIENT + SENDER)
-# =========================================================
-
 def build_recipient_message(order: dict) -> str:
     recipient_name = (order.get("recipient_name") or "").strip()
     url = (recipient_experience_url_from_order(order) or "").strip()
-
     greeting = f"{recipient_name}," if recipient_name else ""
-
     message = ""
-
     if greeting:
         message += f"Shhh…\n\n{greeting}\n\n"
     else:
         message += "Shhh…\n\n"
-
     message += (
         "Esto no es un vídeo.\n\n"
         "No es solo un momento.\n\n"
@@ -977,21 +944,16 @@ def build_recipient_message(order: dict) -> str:
         "Ábrelo cuando estés tranquilo:\n\n"
         f"{url}"
     )
-
     return message.strip()
 
 
 def build_sender_ready_message(order: dict) -> str:
     sender_name = (order.get("sender_name") or "").strip()
     url = (sender_pack_url_from_order(order) or "").strip()
-
     greeting = f"{sender_name}," if sender_name else ""
-
     message = ""
-
     if greeting:
         message += f"{greeting}\n\n"
-
     message += (
         "Ya ha pasado.\n\n"
         "Tu ETERNA ha vuelto.\n\n"
@@ -1000,228 +962,7 @@ def build_sender_ready_message(order: dict) -> str:
         "Ahora puedes verlo aquí:\n\n"
         f"{url}"
     )
-
     return message.strip()
-
-
-def twilio_enabled() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
-
-
-def whatsapp_enabled() -> bool:
-    return os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
-
-
-def whatsapp_from_number() -> str:
-    return (os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886") or "").strip()
-
-
-# =========================================================
-# 📲 WHATSAPP + SMS (ETERNA REAL DELIVERY SYSTEM)
-# =========================================================
-
-def whatsapp_enabled() -> bool:
-    return os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
-
-
-def whatsapp_from_number() -> str:
-    raw = (os.getenv("TWILIO_WHATSAPP_FROM", "") or "").strip()
-
-    if not raw:
-        return ""
-
-    if raw.startswith("whatsapp:"):
-        return raw
-
-    return f"whatsapp:{raw}"
-
-
-def send_whatsapp(phone: str, message: str) -> dict:
-    to_phone = to_e164(phone)
-    wa_from = whatsapp_from_number()
-
-    print("🟢 SEND_WHATSAPP START")
-    print("🟢 PHONE RAW:", phone)
-    print("🟢 PHONE E164:", to_phone)
-    print("🟢 WHATSAPP FROM:", wa_from)
-
-    if not to_phone:
-        return {
-            "ok": False,
-            "channel": "whatsapp",
-            "sid": None,
-            "error": "invalid_phone",
-        }
-
-    if not whatsapp_enabled():
-        return {
-            "ok": False,
-            "channel": "whatsapp",
-            "sid": None,
-            "error": "whatsapp_disabled",
-        }
-
-    if not wa_from:
-        return {
-            "ok": False,
-            "channel": "whatsapp",
-            "sid": None,
-            "error": "missing_twilio_whatsapp_from",
-        }
-
-    if not twilio_enabled():
-        return {
-            "ok": False,
-            "channel": "whatsapp",
-            "sid": None,
-            "error": "twilio_not_configured",
-        }
-
-    try:
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-
-        msg = client.messages.create(
-            body=message,
-            from_=wa_from,
-            to=f"whatsapp:{to_phone}",
-        )
-
-        print("✅ SEND_WHATSAPP ACCEPTED:", msg.sid)
-
-        return {
-            "ok": True,
-            "channel": "whatsapp",
-            "sid": msg.sid,
-            "error": None,
-        }
-
-    except Exception as e:
-        print("❌ SEND_WHATSAPP ERROR:", str(e))
-
-        return {
-            "ok": False,
-            "channel": "whatsapp",
-            "sid": None,
-            "error": str(e),
-        }
-
-
-def send_sms(phone: str, message: str) -> dict:
-    to_phone = to_e164(phone)
-    sms_from = (TWILIO_FROM_NUMBER or "").strip()
-
-    print("🔵 SEND_SMS START")
-    print("🔵 PHONE RAW:", phone)
-    print("🔵 PHONE E164:", to_phone)
-    print("🔵 SMS FROM:", sms_from)
-
-    if not to_phone:
-        return {
-            "ok": False,
-            "channel": "sms",
-            "sid": None,
-            "error": "invalid_phone",
-        }
-
-    if not SMS_ENABLED:
-        return {
-            "ok": False,
-            "channel": "sms",
-            "sid": None,
-            "error": "sms_disabled",
-        }
-
-    if not sms_from:
-        return {
-            "ok": False,
-            "channel": "sms",
-            "sid": None,
-            "error": "missing_twilio_from_number",
-        }
-
-    if not twilio_enabled():
-        return {
-            "ok": False,
-            "channel": "sms",
-            "sid": None,
-            "error": "twilio_not_configured",
-        }
-
-    try:
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-
-        msg = client.messages.create(
-            body=message,
-            from_=sms_from,
-            to=to_phone,
-        )
-
-        print("✅ SEND_SMS ACCEPTED:", msg.sid)
-
-        return {
-            "ok": True,
-            "channel": "sms",
-            "sid": msg.sid,
-            "error": None,
-        }
-
-    except Exception as e:
-        print("❌ SEND_SMS ERROR:", str(e))
-
-        return {
-            "ok": False,
-            "channel": "sms",
-            "sid": None,
-            "error": str(e),
-        }
-
-
-def send_message_best_effort(phone: str, message: str) -> dict:
-    """
-    ETERNA DELIVERY STRATEGY:
-
-    1. Intentar WhatsApp
-    2. Si falla → fallback a SMS
-    3. Nunca romper el flujo
-    """
-
-    print("🚀 SEND_MESSAGE_BEST_EFFORT")
-    print("📞 PHONE:", phone)
-
-    whatsapp_result = send_whatsapp(phone, message)
-
-    if whatsapp_result.get("ok"):
-        print("✅ ENTREGADO POR WHATSAPP")
-        return whatsapp_result
-
-    print("⚠️ WHATSAPP FALLÓ → intentando SMS")
-    print("⚠️ ERROR:", whatsapp_result.get("error"))
-
-    sms_result = send_sms(phone, message)
-
-    if sms_result.get("ok"):
-        print("✅ ENTREGADO POR SMS (fallback)")
-
-        sms_result["fallback_from"] = "whatsapp"
-        sms_result["whatsapp_error"] = whatsapp_result.get("error")
-
-        return sms_result
-
-    print("❌ ERROR TOTAL DE ENTREGA")
-
-    return {
-        "ok": False,
-        "channel": "none",
-        "sid": None,
-        "error": (
-            "whatsapp_error="
-            + str(whatsapp_result.get("error"))
-            + " | sms_error="
-            + str(sms_result.get("error"))
-        ),
-        "whatsapp_error": whatsapp_result.get("error"),
-        "sms_error": sms_result.get("error"),
-    }
 
 
 def try_send_sender_sms(order: dict) -> dict:
@@ -1230,25 +971,41 @@ def try_send_sender_sms(order: dict) -> dict:
     if not bool(order.get("paid")):
         return {"ok": False, "reason": "order_not_paid"}
 
-    if not reaction_is_safe(order):
-        return {"ok": False, "reason": "reaction_not_safe"}
+    if not bool(order.get("reaction_uploaded")):
+        return {"ok": False, "reason": "reaction_not_uploaded"}
+
+    if not reaction_exists(order):
+        return {"ok": False, "reason": "reaction_not_found"}
 
     attempts = int(order.get("sender_sms_attempts") or 0)
 
     if bool(order.get("sender_sms_sent_at")):
-        return {"ok": True, "reason": "already_sent"}
+        return {
+            "ok": True,
+            "reason": "already_sent",
+            "sid": order.get("sender_sms_sid"),
+            "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+            "sender_sms_attempts": attempts,
+            "sender_sms_error": order.get("sender_sms_error"),
+        }
 
-    
+    if False and attempts >= 3:
+        return {
+            "ok": False,
+            "reason": "max_attempts_reached",
+            "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+            "sender_sms_attempts": attempts,
+            "sender_sms_error": order.get("sender_sms_error"),
+        }
 
-    result = send_message_best_effort(
-        order.get("sender_phone", ""),
-        build_sender_ready_message(order),
-    )
+    message = build_sender_ready_message(order)
+    result = send_message_best_effort(order.get("sender_phone", ""), message)
 
-    attempts += 1
+    attempts = attempts + 1
 
     if result.get("ok"):
         sent_at = now_iso()
+
         update_order(
             order["id"],
             sender_sms_attempts=attempts,
@@ -1257,103 +1014,32 @@ def try_send_sender_sms(order: dict) -> dict:
             sender_sms_sent_at=sent_at,
             sender_notified=1,
         )
+
+        refreshed = get_order_by_id(order["id"])
         return {
             "ok": True,
             "reason": "sent",
-            "channel": result.get("channel"),
-            "sid": result.get("sid"),
+            "sid": refreshed.get("sender_sms_sid"),
+            "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
+            "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
+            "sender_sms_error": refreshed.get("sender_sms_error"),
         }
 
     update_order(
         order["id"],
         sender_sms_attempts=attempts,
-        sender_sms_error=result.get("error") or "message_error",
+        sender_sms_error=result.get("error") or "sms_error",
     )
 
-    return {"ok": False, "reason": result.get("error") or "message_error"}
-
-
-def process_scheduled_recipient_delivery(order_id: str) -> dict:
-    order = get_order_by_id(order_id)
-
-    print("📦 PROCESS RECIPIENT DELIVERY:", order_id)
-
-    if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
-        return {"ok": True, "reason": "already_sent"}
-
-    attempts = int(order.get("recipient_sms_attempts") or 0)
-
-
-    if not bool(order.get("paid")):
-        return {"ok": False, "reason": "order_not_paid"}
-
-    video_url = (order.get("experience_video_url") or "").strip()
-
-    if not video_url:
-        return {"ok": False, "reason": "video_url_missing"}
-
-    if not original_video_ready(order):
-        return {"ok": False, "reason": "video_not_ready"}
-
-    if not delivery_is_unlocked(order):
-        return {"ok": False, "reason": "delivery_locked"}
-
-    recipient_url = recipient_experience_url_from_order(order)
-
-    if not recipient_url:
-        return {"ok": False, "reason": "recipient_url_missing"}
-
-    message = build_recipient_message(order)
-
-    if not message or recipient_url not in message:
-        return {"ok": False, "reason": "message_without_url"}
-
-    print("📩 ENTREGA AUTORIZADA")
-    print("📩 recipient_url:", recipient_url)
-    print("📩 video_url:", video_url)
-
-    result = send_message_best_effort(
-        order.get("recipient_phone", ""),
-        message,
-    )
-
-    attempts += 1
-
-    if result.get("ok"):
-        sent_at = now_iso()
-
-        update_order(
-            order_id,
-            recipient_sms_attempts=attempts,
-            recipient_sms_error=None,
-            recipient_sms_sid=result.get("sid"),
-            recipient_sms_sent_at=sent_at,
-            delivery_sent=1,
-            delivery_sent_at=sent_at,
-            delivered_to_recipient=1,
-        )
-
-        return {
-            "ok": True,
-            "reason": "sent",
-            "channel": result.get("channel"),
-            "sid": result.get("sid"),
-            "recipient_url": recipient_url,
-            "video_url": video_url,
-        }
-
-    update_order(
-        order_id,
-        recipient_sms_attempts=attempts,
-        recipient_sms_error=result.get("error") or "message_error",
-    )
-
+    refreshed = get_order_by_id(order["id"])
     return {
         "ok": False,
-        "reason": result.get("error") or "message_error",
-        "recipient_url": recipient_url,
-        "video_url": video_url,
+        "reason": result.get("error") or "sms_error",
+        "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
+        "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
+        "sender_sms_error": refreshed.get("sender_sms_error"),
     }
+
 
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
@@ -1363,7 +1049,6 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     scheduled_fee = round(SCHEDULED_DELIVERY_FEE if delivery_mode == "scheduled" else 0.0, 2)
     total_fee = round(fixed_fee + variable_fee, 2)
     total_amount = round(BASE_PRICE + gift_amount + total_fee + scheduled_fee, 2)
-
     return {
         "gift_amount": gift_amount,
         "fixed_fee": fixed_fee,
@@ -1374,6 +1059,322 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     }
 
 
+def get_phrases_by_type(message_type: str):
+    phrase_templates = {
+        "cumpleanos": [
+            "Hoy no es un día cualquiera.",
+            "Es tu historia celebrándose.",
+            "Y lo mejor… aún está por venir.",
+        ],
+        "amor": [
+            "Si volviera a empezar,",
+            "te elegiría otra vez.",
+            "Siempre tú.",
+        ],
+        "familia": [
+            "Todo empieza contigo.",
+            "Todo vuelve a ti.",
+            "Gracias por tanto.",
+        ],
+        "superacion": [
+            "Nunca dejaste de intentarlo.",
+            "Y eso lo cambia todo.",
+            "Creemos en ti.",
+        ],
+        "esfuerzo": [
+            "Todo lo que has dado",
+            "no ha pasado desapercibido.",
+            "Y lo valoramos más de lo que imaginas.",
+        ],
+        "sorpresa": [
+            "Pensabas que hoy era un día normal…",
+            "Pero alguien ha estado pensando en ti.",
+            "Mucho más de lo que imaginas.",
+        ],
+    }
+    return phrase_templates.get(message_type, phrase_templates["sorpresa"])
+
+
+def twilio_enabled() -> bool:
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
+
+
+def send_sms(phone: str, message: str) -> dict:
+    to_phone = to_e164(phone)
+
+    if not to_phone:
+        return {"ok": False, "sid": None, "error": "invalid_phone"}
+
+    if not SMS_ENABLED:
+        print("🚫 SMS DESACTIVADO POR CONFIG")
+        print("🚫 Destino:", to_phone)
+        print("🚫 Mensaje:", message)
+        return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
+
+    if not twilio_enabled():
+        return {"ok": False, "sid": None, "error": "twilio_not_configured"}
+
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        sms = client.messages.create(
+            body=message,
+            from_=TWILIO_FROM_NUMBER,
+            to=to_phone,
+        )
+        return {"ok": True, "sid": sms.sid, "error": None}
+    except Exception as e:
+        return {"ok": False, "sid": None, "error": str(e)}
+
+
+def whatsapp_from_number() -> str:
+    raw = (TWILIO_WHATSAPP_FROM or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("whatsapp:"):
+        return raw
+    return f"whatsapp:{raw}"
+
+
+def send_whatsapp(phone: str, message: str) -> dict:
+    to_phone = to_e164(phone)
+    wa_from = whatsapp_from_number()
+    if not to_phone:
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
+    if not WHATSAPP_ENABLED:
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
+    if not wa_from:
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_twilio_whatsapp_from"}
+    if not twilio_enabled():
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        msg = client.messages.create(body=message, from_=wa_from, to=f"whatsapp:{to_phone}")
+        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
+    except Exception as e:
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
+
+
+def send_message_best_effort(phone: str, message: str) -> dict:
+    whatsapp_result = send_whatsapp(phone, message)
+    if whatsapp_result.get("ok"):
+        return whatsapp_result
+    sms_result = send_sms(phone, message)
+    if sms_result.get("ok"):
+        sms_result["fallback_from"] = "whatsapp"
+        sms_result["whatsapp_error"] = whatsapp_result.get("error")
+        return sms_result
+    return {
+        "ok": False,
+        "channel": "none",
+        "sid": None,
+        "error": "whatsapp_error=" + str(whatsapp_result.get("error")) + " | sms_error=" + str(sms_result.get("error")),
+        "whatsapp_error": whatsapp_result.get("error"),
+        "sms_error": sms_result.get("error"),
+    }
+
+def send_admin_alert(message: str):
+    try:
+        if not ADMIN_ALERT_PHONE:
+            return
+        send_sms(ADMIN_ALERT_PHONE, message)
+    except Exception as e:
+        log_error("admin_alert_sms", e)
+
+
+def build_admin_eterna_completed_message(order: dict) -> str:
+    sender = order.get("sender_name") or ""
+    recipient = order.get("recipient_name") or ""
+
+    ida = order.get("experience_video_url") or ""
+    vuelta = sender_pack_url_from_order(order)
+
+    return (
+        "✨ Tu ETERNA completada\n\n"
+        f"{sender} → {recipient}\n\n"
+        "IDA:\n"
+        f"{ida}\n\n"
+        "VUELTA:\n"
+        f"{vuelta}"
+    )
+
+
+def send_admin_eterna_completed(order: dict):
+    try:
+        msg = build_admin_eterna_completed_message(order)
+        send_admin_alert(msg)
+    except Exception as e:
+        log_error("admin_eterna_completed", e)
+
+def send_admin_alert(message: str):
+    try:
+        if not ADMIN_ALERT_PHONE:
+            return
+        send_sms(ADMIN_ALERT_PHONE, message)
+    except Exception as e:
+        log_error("admin_alert_sms", e)
+
+
+def build_admin_eterna_completed_message(order: dict) -> str:
+    sender = order.get("sender_name") or ""
+    recipient = order.get("recipient_name") or ""
+
+    ida = order.get("experience_video_url") or ""
+    vuelta = sender_pack_url_from_order(order)
+
+    return (
+        "✨ Tu ETERNA completada\n\n"
+        f"{sender} → {recipient}\n\n"
+        "IDA:\n"
+        f"{ida}\n\n"
+        "VUELTA:\n"
+        f"{vuelta}"
+    )
+
+
+def send_admin_eterna_completed(order: dict):
+    try:
+        msg = build_admin_eterna_completed_message(order)
+        send_admin_alert(msg)
+    except Exception as e:
+        log_error("admin_eterna_completed", e)
+
+def process_scheduled_recipient_delivery(order_id: str) -> dict:
+    order = get_order_by_id(order_id)
+
+    print("📦 PROCESS RECIPIENT DELIVERY START")
+    print("➡️ order_id:", order_id)
+
+    # =========================================================
+    # YA ENVIADO
+    # =========================================================
+    if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
+        return {
+            "ok": True,
+            "reason": "already_sent",
+            "delivery_sent": True,
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": order.get("recipient_sms_error"),
+        }
+
+    # =========================================================
+    # VALIDACIONES PREVIAS
+    # =========================================================
+    attempts = int(order.get("recipient_sms_attempts") or 0)
+
+    if False and attempts >= 3:
+        return {
+            "ok": False,
+            "reason": "max_attempts_reached",
+            "delivery_sent": False,
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": attempts,
+            "recipient_sms_error": order.get("recipient_sms_error"),
+        }
+
+    if not bool(order.get("paid")):
+        return {
+            "ok": False,
+            "reason": "order_not_paid",
+            "delivery_sent": False,
+        }
+
+    if not original_video_ready(order):
+        return {
+            "ok": False,
+            "reason": "original_video_not_ready",
+            "delivery_sent": False,
+        }
+
+    if not delivery_is_unlocked(order):
+        return {
+            "ok": False,
+            "reason": "scheduled_delivery_not_ready",
+            "delivery_sent": False,
+            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+        }
+
+    # =========================================================
+    # SMS
+    # =========================================================
+    message = build_recipient_message(order)
+    result = send_message_best_effort(order.get("recipient_phone", ""), message)
+
+    print("📩 RECIPIENT SMS RESULT:", result)
+
+    attempts = attempts + 1
+
+    sms_ok = bool(result.get("ok"))
+    sms_sid = (result.get("sid") or "").strip() or None
+    sms_error = (result.get("error") or "").strip() or None
+    sms_reason = (result.get("reason") or "").strip().lower()
+
+    # =========================================================
+    # ÉXITO REAL
+    # =========================================================
+    success = False
+
+    if sms_ok:
+        success = True
+    elif sms_reason in {"accepted", "queued", "sent"}:
+        success = True
+    elif sms_sid:
+        success = True
+
+    if success:
+        sent_at = now_iso()
+
+        update_order(
+            order_id,
+            recipient_sms_attempts=attempts,
+            recipient_sms_error=None,
+            recipient_sms_sid=sms_sid,
+            recipient_sms_sent_at=sent_at,
+            delivery_sent=1,
+            delivery_sent_at=sent_at,
+            delivered_to_recipient=1,
+        )
+
+        updated = get_order_by_id(order_id)
+
+        return {
+            "ok": True,
+            "reason": "sent",
+            "delivery_sent": True,
+            "delivery_sent_at": updated.get("delivery_sent_at"),
+            "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+            "recipient_sms_sid": updated.get("recipient_sms_sid"),
+            "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
+            "recipient_sms_error": updated.get("recipient_sms_error"),
+        }
+
+    # =========================================================
+    # FALLO REAL
+    # =========================================================
+    final_error = sms_error or sms_reason or "sms_error"
+
+    update_order(
+        order_id,
+        recipient_sms_attempts=attempts,
+        recipient_sms_error=final_error,
+    )
+
+    updated = get_order_by_id(order_id)
+
+    return {
+        "ok": False,
+        "reason": final_error,
+        "delivery_sent": bool(updated.get("delivery_sent")),
+        "delivery_sent_at": updated.get("delivery_sent_at"),
+        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+        "recipient_sms_sid": updated.get("recipient_sms_sid"),
+        "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
+        "recipient_sms_error": updated.get("recipient_sms_error"),
+    }
+    
 # =========================================================
 # HELPERS EXTRA
 # =========================================================
@@ -1381,16 +1382,12 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
 def compute_cashout_status(order: dict) -> str:
     if bool(order.get("gift_refunded")):
         return "gift_refunded"
-
     if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
         return "completed"
-
     if bool(order.get("transfer_in_progress")):
         return "processing"
-
     if bool(order.get("connect_onboarding_completed")):
         return "ready_to_send"
-
     return "pending"
 
 
@@ -1471,40 +1468,22 @@ def get_recipient_cookie_value(request: Request, recipient_token: str) -> str:
 
 def has_valid_recipient_session(order: dict, request: Request) -> bool:
     cookie_key = recipient_cookie_name(order["recipient_token"])
-
     expected = (order.get("recipient_session_token") or "").strip()
     got = (request.cookies.get(cookie_key) or "").strip()
-
     experience_started = bool(order.get("experience_started"))
     experience_completed = bool(order.get("experience_completed"))
     reaction_uploaded = bool(order.get("reaction_uploaded"))
-
-    # =========================================================
-    # SI NUNCA HA EMPEZADO, NO BLOQUEAMOS
-    # =========================================================
     if not experience_started:
         return True
-
-    # =========================================================
-    # SI YA ESTÁ COMPLETADA O YA HAY REACCIÓN,
-    # MANTENEMOS EL CONTROL DE SESIÓN NORMAL
-    # =========================================================
     if experience_completed or reaction_uploaded:
         if not expected:
             return True
-
         try:
             if got and secrets.compare_digest(expected, got):
                 return True
         except Exception:
             pass
-
         return False
-
-    # =========================================================
-    # SI ESTÁ EMPEZADA PERO NO COMPLETADA Y SIN REACCIÓN,
-    # DEJAMOS REENTRAR PARA NO MATAR LA EXPERIENCIA
-    # =========================================================
     return True
 
 
@@ -1512,63 +1491,22 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
     cookie_key = recipient_cookie_name(order["recipient_token"])
     expected = (order.get("recipient_session_token") or "").strip()
     got = (request.cookies.get(cookie_key) or "").strip()
-
-    experience_started = bool(order.get("experience_started"))
     experience_completed = bool(order.get("experience_completed"))
     reaction_uploaded = bool(order.get("reaction_uploaded"))
-
-    # =========================================================
-    # SI YA HAY COOKIE VÁLIDA, PERFECTO
-    # =========================================================
     if expected and got:
         try:
             if secrets.compare_digest(expected, got):
                 return True
         except Exception:
             pass
-
-    # =========================================================
-    # SI NO EXISTE SESIÓN, LA CREAMOS
-    # =========================================================
     if not expected:
         new_session = new_token()
-
-        update_order(
-            order["id"],
-            recipient_session_token=new_session,
-            recipient_session_claimed_at=now_iso(),
-        )
-
-        response.set_cookie(
-            key=cookie_key,
-            value=new_session,
-            max_age=60 * 60 * 24 * 365 * 5,
-            httponly=True,
-            secure=COOKIE_SECURE,
-            samesite="lax",
-            path="/",
-        )
+        update_order(order["id"], recipient_session_token=new_session, recipient_session_claimed_at=now_iso())
+        response.set_cookie(key=cookie_key, value=new_session, max_age=60 * 60 * 24 * 365 * 5, httponly=True, secure=COOKIE_SECURE, samesite="lax", path="/")
         return True
-
-    # =========================================================
-    # SI EXISTE SESIÓN PERO TODAVÍA NO HAY EXPERIENCIA CERRADA,
-    # VOLVEMOS A PONER LA COOKIE Y DEJAMOS PASAR
-    # =========================================================
     if not experience_completed and not reaction_uploaded:
-        response.set_cookie(
-            key=cookie_key,
-            value=expected,
-            max_age=60 * 60 * 24 * 365 * 5,
-            httponly=True,
-            secure=COOKIE_SECURE,
-            samesite="lax",
-            path="/",
-        )
+        response.set_cookie(key=cookie_key, value=expected, max_age=60 * 60 * 24 * 365 * 5, httponly=True, secure=COOKIE_SECURE, samesite="lax", path="/")
         return True
-
-    # =========================================================
-    # SI YA ESTÁ CERRADA, EXIGIMOS SESIÓN CORRECTA
-    # =========================================================
     return False
 
 
@@ -1715,6 +1653,8 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     order = get_order_by_id(order["id"])
     gift_amount = float(order.get("gift_amount") or 0)
 
+    
+
     if bool(order.get("gift_refunded")):
         return {"status": "gift_already_refunded"}
 
@@ -1741,8 +1681,8 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     if not bool(order.get("paid")):
         return {"status": "not_paid"}
 
-    if not reaction_is_safe(order):
-        return {"status": "reaction_not_safe"}
+    if not bool(order.get("experience_completed")):
+        return {"status": "experience_not_completed"}
 
     if not bool(order.get("connect_onboarding_completed")):
         return {"status": "onboarding_not_ready"}
@@ -1765,16 +1705,13 @@ def process_gift_transfer_for_order(order: dict) -> dict:
 
     if not try_acquire_transfer_lock(order["id"]):
         refreshed = get_order_by_id(order["id"])
-
         if refreshed.get("stripe_transfer_id"):
             return {
                 "status": "already_transferred",
                 "transfer_id": refreshed.get("stripe_transfer_id"),
             }
-
         if bool(refreshed.get("gift_refunded")):
             return {"status": "gift_already_refunded"}
-
         return {"status": "transfer_in_progress"}
 
     try:
@@ -1796,21 +1733,17 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             cashout_completed=1,
             transfer_in_progress=0,
         )
-
-        return {
-            "status": "ok",
-            "transfer_id": transfer.id,
-        }
+        return {"status": "ok", "transfer_id": transfer.id}
 
     except Exception as e:
         log_error("Transfer error", e)
         update_order(order["id"], transfer_in_progress=0)
-
         return {
             "status": "error",
             "error": str(e),
             "retry": True,
         }
+
 
 # =========================================================
 # LEGAL
@@ -1878,100 +1811,8 @@ p { opacity:0.85; }
 
 
 @app.get("/privacidad", response_class=HTMLResponse)
-def privacidad():
-    return HTMLResponse("""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacidad — Tu ETERNA</title>
-<style>
-body {
-    margin:0;
-    background:#000;
-    color:#fff;
-    font-family:Arial,sans-serif;
-    padding:24px;
-    line-height:1.7;
-}
-h1 { font-size:28px; margin-bottom:20px; }
-h2 { font-size:18px; margin-top:28px; }
-p { opacity:0.85; }
-</style>
-</head>
-<body>
-
-<h1>Política de privacidad — Tu ETERNA</h1>
-
-<h2>1. Responsable</h2>
-<p>Tu ETERNA es responsable del tratamiento de los datos proporcionados.</p>
-
-<h2>2. Datos recogidos</h2>
-<p>Nombre, teléfono, fotos, frases y vídeo de reacción.</p>
-
-<h2>3. Finalidad</h2>
-<p>Crear la experiencia emocional y entregar el contenido al usuario correspondiente.</p>
-
-<h2>4. Grabación</h2>
-<p>Al iniciar la experiencia, el usuario acepta la grabación de su reacción.</p>
-
-<h2>5. Uso del contenido</h2>
-<p>El contenido es privado y solo se comparte con quien crea la experiencia.</p>
-
-<h2>6. Conservación</h2>
-<p>Los datos se almacenan durante el tiempo necesario para prestar el servicio.</p>
-
-<h2>7. Derechos</h2>
-<p>El usuario puede solicitar acceso, rectificación o eliminación.</p>
-
-<h2>8. Seguridad</h2>
-<p>Se aplican medidas para proteger la información.</p>
-
-<h2>9. Aceptación</h2>
-<p>El uso del servicio implica la aceptación de esta política.</p>
-
-</body>
-</html>
-""")
-
-def get_phrases_by_type(message_type: str) -> tuple[str, str, str]:
-    message_type = (message_type or "").strip().lower()
-
-    phrases = {
-        "cumpleanos": (
-            "Hoy no es un día más.",
-            "Hay recuerdos que merecen volver.",
-            "Y personas que merecen sentirse eternas.",
-        ),
-        "amor": (
-            "Hay cosas que no siempre se dicen.",
-            "Pero se sienten todos los días.",
-            "Esto es una forma de volver a decírtelo.",
-        ),
-        "familia": (
-            "Hay personas que son casa.",
-            "Aunque pase el tiempo.",
-            "Siempre vuelven al corazón.",
-        ),
-        "superacion": (
-            "Mira todo lo que has superado.",
-            "Aunque a veces no lo veas.",
-            "Eres mucho más fuerte de lo que crees.",
-        ),
-        "esfuerzo": (
-            "Nadie ve todo lo que cuesta.",
-            "Pero yo sí lo veo.",
-            "Y quería que lo sintieras.",
-        ),
-        "sorpresa": (
-            "No esperabas esto.",
-            "Pero alguien pensó en ti.",
-            "Y quiso que este momento fuera solo tuyo.",
-        ),
-    }
-
-    return phrases.get(message_type, phrases["sorpresa"])
+def privacidad(request: Request):
+    return templates.TemplateResponse("privacidad.html", {"request": request})
 
 
 async def create_order_and_redirect(
@@ -3553,11 +3394,9 @@ async def crear_post(
             photo6,
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         print("🔥 ERROR EN /crear:", str(e))
-        raise HTTPException(status_code=500, detail=f"Error creando el pedido: {e}")
+        raise HTTPException(status_code=500, detail="Error creando el pedido")
 
 
 # =========================================================
@@ -3568,18 +3407,14 @@ def list_pending_scheduled_deliveries():
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
-        SELECT o.id
-        FROM orders o
-        JOIN recipients r ON r.id = o.recipient_id
+        SELECT id
+        FROM orders
         WHERE
-            COALESCE(o.paid, 0) = 1
-            AND COALESCE(o.delivery_sent, 0) = 0
-            AND COALESCE(o.recipient_sms_sent_at, '') = ''
-            AND COALESCE(o.experience_video_url, '') <> ''
-            AND COALESCE(o.recipient_token, '') <> ''
-            AND COALESCE(r.phone, '') <> ''
-            AND 1 = 1
-        ORDER BY o.created_at ASC
+            paid = 1
+            AND COALESCE(delivery_sent, 0) = 0
+            AND COALESCE(experience_video_url, '') <> ''
+            AND COALESCE(recipient_sms_attempts, 0) < 3
+        ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
     conn.close()
@@ -3603,7 +3438,6 @@ def list_pending_sender_notifications():
     conn.close()
     return [r["id"] for r in rows]
 
-
 def list_pending_payout_orders():
     conn = db_conn()
     cur = conn.cursor()
@@ -3624,7 +3458,6 @@ def list_pending_payout_orders():
     rows = cur.fetchall()
     conn.close()
     return [r["id"] for r in rows]
-
 
 def process_all_due_scheduled_deliveries() -> list[dict]:
     results = []
@@ -3663,7 +3496,6 @@ def process_all_due_sender_notifications() -> list[dict]:
                 "result": {"ok": False, "reason": str(e)},
             })
     return results
-
 
 def process_all_due_payouts() -> list[dict]:
     results = []
@@ -3710,7 +3542,6 @@ def process_all_due_payouts() -> list[dict]:
 
     return results
 
-
 def delivery_worker_loop():
     print("🚀 DELIVERY WORKER STARTED")
     while True:
@@ -3745,13 +3576,8 @@ def ensure_delivery_worker_started():
         print("✅ DELIVERY WORKER THREAD LANZADO")
 
 
-# =========================================================
-# STARTUP
-# =========================================================
-
 @app.on_event("startup")
 def startup_event():
-    init_db()
     ensure_delivery_worker_started()
 
 
@@ -3925,7 +3751,7 @@ h1 {
     if original_video_ready(order) and delivery_is_unlocked(order):
         return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
-    refresh = '<meta http-equiv="refresh" content="8">' if not (original_video_ready(order) and delivery_is_unlocked(order)) else ""
+    refresh = '<meta http-equiv="refresh" content="8">' if not original_video_ready(order) else ""
 
     html_page = f"""
 <!DOCTYPE html>
@@ -4014,7 +3840,7 @@ h1 {{
         <div class="soft">
             Cuando esté listo, entrarás aquí para vivirlo de verdad.
         </div>
-<div style="
+        <div style="
         margin-top:22px;
         font-size:14px;
         line-height:1.7;
@@ -4023,9 +3849,8 @@ h1 {{
         margin-left:auto;
         margin-right:auto;
 ">
-        Al continuar, aceptas que lo que ocurra durante este momento
-        pueda ser grabado, guardado y enviado únicamente
-        a la persona que creó este ETERNA.
+        Al continuar, aceptas que este momento sea guardado
+        y compartido únicamente con quien lo creó.
     </div>
         <div class="actions">
             <a class="btn" href="/pedido/{safe_attr(recipient_token)}">Entrar</a>
@@ -4255,13 +4080,8 @@ async def stripe_webhook(request: Request):
 async def internal_video_ready(request: Request):
     incoming_secret = (request.headers.get("X-Video-Engine-Secret") or "").strip()
 
-    print("🎬 CALLBACK VIDEO READY START")
-    print("🎬 incoming_secret_present:", bool(incoming_secret))
-    print("🎬 expected_secret_present:", bool(VIDEO_READY_CALLBACK_SECRET))
-
     if VIDEO_READY_CALLBACK_SECRET:
         if incoming_secret != VIDEO_READY_CALLBACK_SECRET:
-            print("❌ CALLBACK SECRET INVALID")
             return JSONResponse(
                 status_code=403,
                 content={"status": "error", "reason": "invalid_secret"},
@@ -4269,8 +4089,7 @@ async def internal_video_ready(request: Request):
 
     try:
         data = await request.json()
-    except Exception as e:
-        log_error("internal_video_ready_invalid_json", e)
+    except Exception:
         return JSONResponse(
             status_code=400,
             content={"status": "error", "reason": "invalid_json"},
@@ -4284,7 +4103,6 @@ async def internal_video_ready(request: Request):
     print("🎬 video_url:", video_url)
 
     if not order_id or not video_url:
-        print("❌ CALLBACK missing_data")
         return JSONResponse(
             status_code=400,
             content={"status": "error", "reason": "missing_data"},
@@ -4293,18 +4111,7 @@ async def internal_video_ready(request: Request):
     try:
         order = get_order_by_id(order_id)
 
-        print("📦 ORDER FOUND:", order["id"])
-        print("📦 paid:", bool(order.get("paid")))
-        print("📦 existing_video:", bool((order.get("experience_video_url") or "").strip()))
-        print("📦 delivery_mode:", order.get("delivery_mode"))
-        print("📦 scheduled_delivery_at:", order.get("scheduled_delivery_at"))
-        print("📦 delivery_sent:", bool(order.get("delivery_sent")))
-        print("📦 recipient_sms_sent_at:", order.get("recipient_sms_sent_at"))
-        print("📦 recipient_sms_attempts:", int(order.get("recipient_sms_attempts") or 0))
-        print("📦 recipient_phone:", order.get("recipient_phone"))
-
         if not bool(order.get("paid")):
-            print("❌ CALLBACK order_not_paid")
             return JSONResponse(
                 status_code=400,
                 content={"status": "error", "reason": "order_not_paid"},
@@ -4313,7 +4120,7 @@ async def internal_video_ready(request: Request):
         existing_video = (order.get("experience_video_url") or "").strip()
 
         if existing_video:
-            print("⚠️ CALLBACK duplicado ignorado")
+            print("⚠️ Callback duplicado ignorado")
             return JSONResponse({
                 "status": "ok",
                 "reason": "video_already_saved",
@@ -4321,18 +4128,13 @@ async def internal_video_ready(request: Request):
                 "video_url": existing_video,
                 "recipient_url": recipient_experience_url_from_order(order),
                 "sender_url": sender_pack_url_from_order(order),
-                "delivery_sent": bool(order.get("delivery_sent")),
-                "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
             })
 
         update_order(
             order_id,
             experience_video_url=video_url,
             video_render_requested=0,
-            video_render_requested_at=None,
         )
-
-        print("✅ VIDEO URL GUARDADA EN ORDER")
 
         if not asset_exists(order_id, "rendered_video", video_url):
             insert_asset(
@@ -4341,13 +4143,11 @@ async def internal_video_ready(request: Request):
                 file_url=video_url,
                 storage_provider="video_engine",
             )
-            print("✅ ASSET rendered_video INSERTADO")
-        else:
-            print("ℹ️ ASSET rendered_video YA EXISTÍA")
 
         order = get_order_by_id(order_id)
 
-        print("🔥 CALLBACK VIDEO READY OK 🔥")
+        print("🔥 CALLBACK VIDEO READY 🔥")
+        print("🎬 VIDEO GENERADO")
         print("➡️ Recipient experience:", recipient_experience_url_from_order(order))
         print("➡️ Sender pack:", sender_pack_url_from_order(order))
         print("🕒 delivery_mode:", order.get("delivery_mode"))
@@ -4355,41 +4155,22 @@ async def internal_video_ready(request: Request):
         print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
         print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
         print("📦 delivery_sent:", bool(order.get("delivery_sent")))
-        print("📦 recipient_sms_sent_at:", order.get("recipient_sms_sent_at"))
-        print("📦 recipient_sms_attempts:", int(order.get("recipient_sms_attempts") or 0))
 
-        can_send, reason = can_send_recipient_delivery(order)
-        print("📩 can_send_recipient_delivery:", can_send, reason)
-
+        # SOLO AQUÍ intentamos enviar al regalado,
+        # porque aquí ya sabemos que el vídeo real existe.
         delivery_result = process_scheduled_recipient_delivery(order_id)
-        print("📩 RESULTADO ENTREGA CALLBACK:", delivery_result)
-
-        updated = get_order_by_id(order_id)
-
-        print("📦 ESTADO FINAL CALLBACK")
-        print("📦 delivery_sent:", bool(updated.get("delivery_sent")))
-        print("📦 delivery_sent_at:", updated.get("delivery_sent_at"))
-        print("📦 recipient_sms_sent_at:", updated.get("recipient_sms_sent_at"))
-        print("📦 recipient_sms_sid:", updated.get("recipient_sms_sid"))
-        print("📦 recipient_sms_attempts:", int(updated.get("recipient_sms_attempts") or 0))
-        print("📦 recipient_sms_error:", updated.get("recipient_sms_error"))
+        print("📩 Resultado entrega programada callback:", delivery_result)
 
         return JSONResponse({
             "status": "ok",
             "order_id": order_id,
             "video_url": video_url,
-            "recipient_url": recipient_experience_url_from_order(updated),
-            "sender_url": sender_pack_url_from_order(updated),
-            "delivery_mode": updated.get("delivery_mode"),
-            "scheduled_delivery_at": updated.get("scheduled_delivery_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(updated),
+            "recipient_url": recipient_experience_url_from_order(order),
+            "sender_url": sender_pack_url_from_order(order),
+            "delivery_mode": order.get("delivery_mode"),
+            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
             "delivery_result": delivery_result,
-            "delivery_sent": bool(updated.get("delivery_sent")),
-            "delivery_sent_at": updated.get("delivery_sent_at"),
-            "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
-            "recipient_sms_sid": updated.get("recipient_sms_sid"),
-            "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
-            "recipient_sms_error": updated.get("recipient_sms_error"),
         })
 
     except Exception as e:
@@ -4427,31 +4208,33 @@ def resumen(order_id: str):
     sender_code, sender_number = split_phone_for_form(order.get("sender_phone") or "")
     recipient_code, recipient_number = split_phone_for_form(order.get("recipient_phone") or "")
 
-    # =========================================================
-    # ESTADO UX (SIN BLOQUEOS NI BUCLES)
-    # =========================================================
-
     if delivery_sent_flag:
         status_line = "Tu ETERNA ya ha salido"
         sub_line = f"{recipient_name} ya tiene su mensaje."
         soft_line = "El momento ya está ocurriendo exactamente cuando debía ocurrir."
-
     elif video_ready and delivery_mode == "scheduled":
         status_line = "Tu ETERNA ya está guardada"
         sub_line = f"Todo quedará listo para llegar el {delivery_display}."
         soft_line = "No se enviará antes. Llegará exactamente cuando debe llegar."
-
     elif video_ready and delivery_mode == "instant":
         status_line = "Tu ETERNA está lista"
-        sub_line = f"{recipient_name} recibirá su mensaje en breve."
-        soft_line = "Si no llega aún, puedes salir: ETERNA seguirá intentando entregarlo."
-
+        sub_line = "En cuanto quede procesada del todo, saldrá automáticamente."
+        soft_line = "No hace falta esperar una fecha concreta: se enviará en cuanto esté lista."
     else:
-        status_line = "Pago confirmado"
-        sub_line = "ETERNA ya se está preparando."
-        soft_line = "Cuando el vídeo esté listo de verdad, todo continuará automáticamente."
+        if delivery_mode == "scheduled":
+            status_line = "Pago confirmado"
+            sub_line = "ETERNA ya se está preparando."
+            soft_line = (
+                f"Cuando todo esté listo, quedará guardada para llegar el {delivery_display}. "
+                "No se enviará antes."
+            )
+        else:
+            status_line = "Pago confirmado"
+            sub_line = "ETERNA ya se está preparando."
+            soft_line = (
+                "En cuanto el vídeo esté terminado de verdad, se enviará automáticamente."
+            )
 
-    # ❌ IMPORTANTE: eliminamos refresh automático (causaba bucle infinito)
     refresh = ""
 
     preload_data = {
@@ -4551,9 +4334,8 @@ def resumen(order_id: str):
     </html>
     """)
 
-
 # =========================================================
-# START EXPERIENCE (BLINDADO)
+# START EXPERIENCE (FIX CRÍTICO)
 # =========================================================
 
 @app.post("/start-experience")
@@ -4572,36 +4354,23 @@ async def start_experience(recipient_token: str = Form(...)):
         if not delivery_is_unlocked(order):
             raise HTTPException(status_code=403, detail="delivery_locked")
 
-        if reaction_is_safe(order):
-            return JSONResponse({
-                "ok": True,
-                "redirect_url": f"/cobrar/{recipient_token}",
-            })
-
-        attempts = int(order.get("reaction_attempts") or 0)
-
         update_order(
             order["id"],
-            experience_started=1,
-            experience_completed=0,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-            reaction_attempts=attempts + 1,
-            reaction_last_attempt_at=now_iso(),
+            experience_started=1
         )
 
-        return JSONResponse({"ok": True})
+        return JSONResponse({
+            "ok": True
+        })
 
-    except HTTPException:
-        raise
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
 
 
+
 # =========================================================
-# EXPERIENCE (VERSIÓN ESTABLE LIMPIA + FINAL BLINDADO)
+# EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
@@ -4617,14 +4386,11 @@ def experiencia(request: Request, recipient_token: str):
     if not delivery_is_unlocked(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if reaction_is_safe(order):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    temp_response = HTMLResponse("")
-    if not attach_recipient_session_if_needed(order, request, temp_response):
+    if not has_valid_recipient_session(order, request):
         return render_viral_block_page()
 
-    order = get_order_by_recipient_token_or_404(recipient_token)
+    if bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
@@ -4713,7 +4479,7 @@ video {
     font-size: 54px;
     line-height: 1.06;
     font-weight: 700;
-    margin: 0 0 16px 0;
+    margin: 0 0 22px 0;
     color: white;
 }
 
@@ -4844,24 +4610,6 @@ video {
     border: 1px solid rgba(255,255,255,0.10);
 }
 
-.guide-step {
-    display: none;
-}
-
-.guide-step.active {
-    display: block;
-}
-
-.guide-legal {
-    margin-top: 22px;
-    font-size: 14px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.55);
-    max-width: 420px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4883,71 +4631,46 @@ video {
 </head>
 <body>
 <div class="wrap">
-    <video id="video" playsinline webkit-playsinline preload="auto">
+    <video
+    id="video"
+    playsinline
+    webkit-playsinline
+    preload="auto"
+    style="
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.15);
+        transform-origin: center;
+        background: black;
+    "
+>
         <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
     <div class="overlay" id="overlay">
         <div class="overlay-card">
+            <div class="eyebrow">ETERNA</div>
 
-            <div class="guide-step active" id="guideStep1">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Shhh…</h1>
-                <div class="text">Esto merece ser escuchado bien.</div>
-                <div class="soft">Si puedes, usa auriculares o sube el volumen.</div>
-                <button class="btn" id="guideBtn1" style="margin-top:28px;">Tengo sonido</button>
+            <h1 class="title">Shhh…</h1>
+
+            <div class="text">
+                Esto no es un vídeo.<br>
+                Es un momento.
             </div>
 
-            <div class="guide-step" id="guideStep2">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Un momento solo para ti</h1>
-                <div class="text">Busca un lugar tranquilo.</div>
-                <div class="soft">Sin ruido. Sin interrupciones.</div>
-                <button class="btn" id="guideBtn2" style="margin-top:28px;">Estoy en un sitio tranquilo</button>
+            <div class="soft">
+                No pienses.<br>
+                Solo deja que ocurra.
             </div>
 
-            <div class="guide-step" id="guideStep3">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Colócalo frente a ti</h1>
-                <div class="text">Un poco más lejos… así es mejor.</div>
-                <div class="soft">Queremos verte bien durante este momento.</div>
-                <button class="btn" id="guideBtn3" style="margin-top:28px;">Ya está colocado</button>
-            </div>
+            <button class="btn" id="startBtn" style="margin-top:28px;">
+                Estoy listo
+            </button>
 
-            <div class="guide-step" id="guideStep4">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Cuida la luz</h1>
-                <div class="text">Evita tener la luz detrás.</div>
-                <div class="soft">Si puedes, quédate donde tu cara se vea bien.</div>
-                <button class="btn" id="guideBtn4" style="margin-top:28px;">Se me ve bien</button>
-            </div>
-
-            <div class="guide-step" id="guideStep5">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Ahora sí</h1>
-                <div class="text">
-                    Esto no es un vídeo.<br>
-                    Es un momento que está a punto de ocurrir.
-                </div>
-                <div class="soft">Esto solo pasa una vez.</div>
-
-                <div class="guide-legal">
-                    Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
-                    y que lo que ocurra en ella pueda volver a quien la creó.
-                </div>
-
-                <button class="btn" id="startBtn" style="margin-top:28px;">
-                    Lo acepto. Estoy listo
-                </button>
-
-                <div class="error-note" id="errorNote"></div>
-
-                <div class="retry-actions" id="startFailActions" style="margin-top:18px;">
-                    <button class="retry-btn" id="retryStartBtn">Intentarlo otra vez</button>
-                    <button class="retry-btn secondary" id="backFromStartBtn">Volver al inicio</button>
-                </div>
-            </div>
-
+            <div class="error-note" id="errorNote"></div>
         </div>
     </div>
 
@@ -4975,20 +4698,8 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
-const startFailActions = document.getElementById("startFailActions");
-const retryStartBtn = document.getElementById("retryStartBtn");
-const backFromStartBtn = document.getElementById("backFromStartBtn");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
-const guideSteps = [
-    document.getElementById("guideStep1"),
-    document.getElementById("guideStep2"),
-    document.getElementById("guideStep3"),
-    document.getElementById("guideStep4"),
-    document.getElementById("guideStep5")
-];
-
-let currentGuideStep = 0;
 let stream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -4997,25 +4708,6 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
-
-function showGuideStep(index) {
-    currentGuideStep = index;
-    guideSteps.forEach((step, i) => {
-        if (!step) return;
-        if (i === index) step.classList.add("active");
-        else step.classList.remove("active");
-    });
-}
-
-function nextGuideStep() {
-    const next = currentGuideStep + 1;
-    if (next < guideSteps.length) showGuideStep(next);
-}
-
-document.getElementById("guideBtn1")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn2")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn3")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn4")?.addEventListener("click", () => nextGuideStep());
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -5030,26 +4722,22 @@ function clearStartError() {
 }
 
 function showRetryActions() {
-    if (retryActions) retryActions.classList.add("show");
+    if (retryActions) {
+        retryActions.classList.add("show");
+    }
 }
 
 function hideRetryActions() {
-    if (retryActions) retryActions.classList.remove("show");
-}
-
-function showStartFailActions() {
-    if (startFailActions) startFailActions.classList.add("show");
-}
-
-function hideStartFailActions() {
-    if (startFailActions) startFailActions.classList.remove("show");
+    if (retryActions) {
+        retryActions.classList.remove("show");
+    }
 }
 
 function buildFriendlyUploadMessage(errorCode) {
     const code = String(errorCode || "").toLowerCase();
 
-    if (code.includes("empty_video") || code.includes("empty_blob") || code.includes("small_blob")) {
-        return "No se ha detectado una grabación válida. Vamos a intentarlo otra vez.";
+    if (code.includes("empty_video")) {
+        return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
     }
 
     if (code.includes("video_too_large")) {
@@ -5057,51 +4745,57 @@ function buildFriendlyUploadMessage(errorCode) {
     }
 
     if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
-        return "No se ha podido grabar este momento porque faltan permisos de cámara o micrófono.";
+        return "No se ha podido grabar la reacción porque faltan permisos de cámara o micrófono.";
     }
 
-    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch") || code.includes("upload")) {
-        return "No se ha podido guardar este momento por un problema de conexión. Revisa internet e inténtalo de nuevo.";
+    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
+        return "No se ha podido subir la reacción por un problema de conexión. Revisa internet e inténtalo de nuevo.";
     }
 
     return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
 }
 
-function detectRecordingFormat() {
-    if (typeof MediaRecorder === "undefined") {
-        throw new Error("media_recorder_not_supported");
-    }
+function resetRecordingState() {
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
 
-    const ua = navigator.userAgent || "";
-    const isiPhone = /iPhone|iPad|iPod/i.test(ua);
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+        }
+    } catch (_) {}
 
-    const iphoneCandidates = [
-        { mimeType: "video/mp4", extension: "mp4" },
-        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
-        { mimeType: "video/webm", extension: "webm" },
-        { mimeType: "", extension: "mp4" }
-    ];
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (_) {}
 
-    const normalCandidates = [
-        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
-        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
-        { mimeType: "video/webm", extension: "webm" },
-        { mimeType: "video/mp4", extension: "mp4" },
-        { mimeType: "", extension: "webm" }
-    ];
+    stream = null;
+    mediaRecorder = null;
+    recordedChunks = [];
+    recordingMimeType = "";
+    recordingExtension = "webm";
+    finishing = false;
+    experienceStarted = false;
 
-    const candidates = isiPhone ? iphoneCandidates : normalCandidates;
+    try {
+        video.pause();
+    } catch (_) {}
 
-    for (const candidate of candidates) {
-        try {
-            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                console.log("🎥 FORMAT:", candidate);
-                return candidate;
-            }
-        } catch (_) {}
-    }
+    try {
+        video.currentTime = 0;
+    } catch (_) {}
 
-    return { mimeType: "", extension: "webm" };
+    overlay.classList.remove("hidden");
+    payoff.classList.remove("show");
+    startBtn.disabled = false;
+    clearStartError();
+    hideRetryActions();
 }
 
 function waitForVideoReady() {
@@ -5134,10 +4828,12 @@ function waitForVideoReady() {
                 video.duration > 0 &&
                 video.readyState >= 1;
 
-            if (readyNow) done();
+            if (readyNow) {
+                done();
+            }
         };
 
-        const timeoutId = setTimeout(done, 5000);
+        const timeoutId = setTimeout(done, 4000);
 
         video.addEventListener("loadedmetadata", onReady);
         video.addEventListener("loadeddata", onReady);
@@ -5145,87 +4841,31 @@ function waitForVideoReady() {
     });
 }
 
-async function stopRecordingSafely() {
-    try {
-        if (!mediaRecorder) return;
+function detectRecordingFormat() {
+    const candidates = [
+        { mimeType: "video/mp4", extension: "mp4" },
+        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
+        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
+        { mimeType: "video/webm", extension: "webm" }
+    ];
 
-        if (mediaRecorder.state === "recording") {
-            try { mediaRecorder.requestData(); } catch (_) {}
-
-            await new Promise((resolve) => {
-                let done = false;
-
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    clearTimeout(timeoutId);
-                    resolve();
-                };
-
-                const timeoutId = setTimeout(finish, 4500);
-
-                try {
-                    mediaRecorder.addEventListener("stop", finish, { once: true });
-                } catch (_) {}
-
-                try {
-                    mediaRecorder.stop();
-                } catch (_) {
-                    finish();
-                }
-            });
-        }
-    } catch (e) {
-        console.error("recorder stop error", e);
+    if (typeof MediaRecorder === "undefined") {
+        throw new Error("media_recorder_not_supported");
     }
-}
 
-function stopStreamSafely() {
-    try {
-        if (stream) stream.getTracks().forEach((t) => t.stop());
-    } catch (e) {
-        console.error("stream stop error", e);
+    for (const candidate of candidates) {
+        try {
+            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
+                return candidate;
+            }
+        } catch (_) {}
     }
-}
 
-async function resetRecordingState() {
-    try {
-        if (finishTimeout) {
-            clearTimeout(finishTimeout);
-            finishTimeout = null;
-        }
-    } catch (_) {}
-
-    await stopRecordingSafely();
-    stopStreamSafely();
-
-    stream = null;
-    mediaRecorder = null;
-    recordedChunks = [];
-    recordingMimeType = "";
-    recordingExtension = "webm";
-    finishing = false;
-    experienceStarted = false;
-
-    try { video.pause(); } catch (_) {}
-    try { video.currentTime = 0; } catch (_) {}
-
-    overlay.classList.remove("hidden");
-    payoff.classList.remove("show");
-    startBtn.disabled = false;
-
-    clearStartError();
-    hideRetryActions();
-    hideStartFailActions();
-    showGuideStep(4);
+    return { mimeType: "", extension: "webm" };
 }
 
 async function tryStartRecordingStrict() {
     try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error("camera_not_supported");
-        }
-
         stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
@@ -5243,7 +4883,6 @@ async function tryStartRecordingStrict() {
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
                 recordedChunks.push(e.data);
-                console.log("chunk:", e.data.size);
             }
         };
 
@@ -5255,9 +4894,12 @@ async function tryStartRecordingStrict() {
 
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
-                if (mediaRecorder && mediaRecorder.state === "recording") resolve();
-                else reject(new Error("recorder_not_running"));
-            }, 1200);
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    resolve();
+                } else {
+                    reject(new Error("recorder_not_running"));
+                }
+            }, 700);
 
             try {
                 mediaRecorder.addEventListener("start", () => {
@@ -5267,15 +4909,17 @@ async function tryStartRecordingStrict() {
             } catch (_) {}
         });
 
-        await new Promise(res => setTimeout(res, 900));
-
         console.log("🎥 grabación iniciada");
         return true;
 
     } catch (recordingError) {
         console.error("recording init error", recordingError);
 
-        stopStreamSafely();
+        try {
+            if (stream) {
+                stream.getTracks().forEach((t) => t.stop());
+            }
+        } catch (_) {}
 
         stream = null;
         mediaRecorder = null;
@@ -5301,66 +4945,93 @@ async function finalizeExperienceFlow() {
         }
     } catch (_) {}
 
-    await stopRecordingSafely();
-    stopStreamSafely();
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            try {
+                mediaRecorder.requestData();
+            } catch (_) {}
 
-    await new Promise(res => setTimeout(res, 1400));
+            await new Promise((resolve) => {
+                let done = false;
 
-    let blob = null;
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+
+                const timeoutId = setTimeout(finish, 2500);
+
+                mediaRecorder.addEventListener("stop", finish, { once: true });
+
+                try {
+                    mediaRecorder.stop();
+                } catch (_) {
+                    finish();
+                }
+            });
+        }
+    } catch (e) {
+        console.error("recorder stop error", e);
+    }
 
     try {
-        const safeType =
-            recordingMimeType ||
-            (recordingExtension === "mp4" ? "video/mp4" : "video/webm");
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (e) {
+        console.error("stream stop error", e);
+    }
 
-        blob = new Blob(recordedChunks, { type: safeType });
+    let blob = null;
+    try {
+        blob = new Blob(recordedChunks, {
+            type: recordingMimeType || "video/webm"
+        });
 
         console.log("chunks:", recordedChunks.length);
         console.log("blob size:", blob.size);
-        console.log("blob type:", safeType);
     } catch (e) {
         console.error("blob error", e);
     }
 
     try {
-        if (!blob || blob.size <= 0) throw new Error("empty_blob");
-        if (blob.size < 5000) throw new Error("small_blob");
+        if (blob && blob.size > 0) {
+            const filename = "reaction." + recordingExtension;
+            const formData = new FormData();
+            formData.append("video", blob, filename);
 
-        const filename = "reaction." + recordingExtension;
-        const formData = new FormData();
-        formData.append("video", blob, filename);
+            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
+                method: "POST",
+                body: formData
+            });
 
-        payoffLoader.innerText = "Subiendo este momento…";
+            const uploadData = await uploadResponse.json().catch(() => ({}));
 
-        const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
-            method: "POST",
-            body: formData
-        });
+            if (!uploadResponse.ok) {
+                throw new Error(uploadData.detail || "upload_reaction_failed");
+            }
 
-        const uploadData = await uploadResponse.json().catch(() => ({}));
-
-        if (!uploadResponse.ok) {
-            throw new Error(uploadData.detail || "upload_reaction_failed");
+            console.log("✅ reacción subida");
+        } else {
+            throw new Error("empty_blob");
         }
-
-        console.log("✅ reacción subida");
-
     } catch (e) {
         console.error("upload error", e);
 
-        payoffLoader.innerText = buildFriendlyUploadMessage(e?.message || e?.detail || "");
+        let humanMessage = buildFriendlyUploadMessage(
+            e?.message || e?.detail || ""
+        );
+
+        payoffLoader.innerText = humanMessage;
         showRetryActions();
 
         finishing = false;
-        experienceStarted = false;
         return;
     }
 
-    payoffLoader.innerText = "Todo ha salido bien.";
-
-    setTimeout(() => {
-        window.location.replace("/finalizar-experiencia/" + recipientToken);
-    }, 800);
+    window.location.replace("/finalizar-experiencia/" + recipientToken);
 }
 
 function armFinishFallbacks() {
@@ -5371,7 +5042,7 @@ function armFinishFallbacks() {
     let fallbackMs = 120000;
 
     if (Number.isFinite(video.duration) && video.duration > 0) {
-        fallbackMs = Math.max(30000, Math.floor(video.duration * 1000) + 5000);
+        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 2500);
     }
 
     finishTimeout = setTimeout(() => {
@@ -5401,19 +5072,21 @@ startBtn.addEventListener("click", async () => {
 
     startBtn.disabled = true;
     clearStartError();
-    hideStartFailActions();
-    hideRetryActions();
 
     try {
-        try { video.pause(); } catch (_) {}
-        try { video.currentTime = 0; } catch (_) {}
+        try {
+            video.pause();
+        } catch (_) {}
+
+        try {
+            video.currentTime = 0;
+        } catch (_) {}
 
         const recordingStarted = await tryStartRecordingStrict();
 
         if (!recordingStarted) {
             showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
             startBtn.disabled = false;
-            showStartFailActions();
             return;
         }
 
@@ -5426,9 +5099,13 @@ startBtn.addEventListener("click", async () => {
         });
 
         let data = {};
-        try { data = await response.json(); } catch (_) {}
+        try {
+            data = await response.json();
+        } catch (_) {}
 
-        if (!response.ok) throw new Error(data.detail || "start_experience_error");
+        if (!response.ok) {
+            throw new Error(data.detail || "start_experience_error");
+        }
 
         if (data.redirect_url) {
             window.location.replace(data.redirect_url);
@@ -5437,7 +5114,6 @@ startBtn.addEventListener("click", async () => {
 
         video.load();
         await waitForVideoReady();
-        await new Promise(res => setTimeout(res, 700));
 
         overlay.classList.add("hidden");
         experienceStarted = true;
@@ -5449,21 +5125,28 @@ startBtn.addEventListener("click", async () => {
         } catch (e) {
             console.error("video play error", e);
 
-            await stopRecordingSafely();
-            stopStreamSafely();
+            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
+            experienceStarted = false;
+            overlay.classList.remove("hidden");
+            startBtn.disabled = false;
+
+            try {
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    mediaRecorder.stop();
+                }
+            } catch (_) {}
+
+            try {
+                if (stream) {
+                    stream.getTracks().forEach((t) => t.stop());
+                }
+            } catch (_) {}
 
             stream = null;
             mediaRecorder = null;
             recordedChunks = [];
             recordingMimeType = "";
             recordingExtension = "webm";
-            experienceStarted = false;
-
-            overlay.classList.remove("hidden");
-            startBtn.disabled = false;
-
-            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
-            showStartFailActions();
 
             return;
         }
@@ -5471,8 +5154,21 @@ startBtn.addEventListener("click", async () => {
     } catch (e) {
         console.error("experience start error", e);
 
-        await stopRecordingSafely();
-        stopStreamSafely();
+        startBtn.disabled = false;
+        experienceStarted = false;
+        payoff.classList.remove("show");
+
+        try {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
+        } catch (_) {}
+
+        try {
+            if (stream) {
+                stream.getTracks().forEach((t) => t.stop());
+            }
+        } catch (_) {}
 
         stream = null;
         mediaRecorder = null;
@@ -5480,18 +5176,16 @@ startBtn.addEventListener("click", async () => {
         recordingMimeType = "";
         recordingExtension = "webm";
 
-        startBtn.disabled = false;
-        experienceStarted = false;
-        payoff.classList.remove("show");
-
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
-        showStartFailActions();
     }
 });
 
 document.addEventListener("visibilitychange", async () => {
     if (!experienceStarted || finishing) return;
-    if (document.visibilityState === "visible") await safeResumePlayback();
+
+    if (document.visibilityState === "visible") {
+        await safeResumePlayback();
+    }
 });
 
 window.addEventListener("focus", async () => {
@@ -5501,21 +5195,27 @@ window.addEventListener("focus", async () => {
 
 window.addEventListener("pagehide", () => {
     if (!experienceStarted || finishing) return;
+
     try {
-        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.requestData();
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.requestData();
+        }
     } catch (_) {}
 });
 
 window.addEventListener("beforeunload", () => {
     if (!experienceStarted || finishing) return;
+
     try {
-        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.requestData();
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.requestData();
+        }
     } catch (_) {}
 });
 
 if (retryExperienceBtn) {
-    retryExperienceBtn.addEventListener("click", async () => {
-        await resetRecordingState();
+    retryExperienceBtn.addEventListener("click", () => {
+        resetRecordingState();
         clearStartError();
     });
 }
@@ -5525,26 +5225,7 @@ if (backToStartBtn) {
         window.location.replace("/pedido/" + recipientToken);
     });
 }
-
-if (retryStartBtn) {
-    retryStartBtn.addEventListener("click", async () => {
-        await resetRecordingState();
-        clearStartError();
-        hideStartFailActions();
-        startBtn.disabled = false;
-        showGuideStep(4);
-    });
-}
-
-if (backFromStartBtn) {
-    backFromStartBtn.addEventListener("click", () => {
-        window.location.replace("/pedido/" + recipientToken);
-    });
-}
-
-showGuideStep(0);
 </script>
-
 </body>
 </html>
     """
@@ -5555,27 +5236,11 @@ showGuideStep(0);
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
-    response = HTMLResponse(html_page)
-
-    cookie_key = recipient_cookie_name(order["recipient_token"])
-    session_value = (order.get("recipient_session_token") or "").strip()
-
-    if session_value:
-        response.set_cookie(
-            key=cookie_key,
-            value=session_value,
-            max_age=60 * 60 * 24 * 365 * 5,
-            httponly=True,
-            secure=COOKIE_SECURE,
-            samesite="lax",
-            path="/",
-        )
-
-    return response
+    return HTMLResponse(html_page)
 
 
 # =========================================================
-# UPLOAD REACTION (RESPUESTA RÁPIDA + FINAL BLINDADO)
+# UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
 # =========================================================
 
 @app.post("/upload-reaction/{recipient_token}")
@@ -5585,162 +5250,136 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     print("🎥 UPLOAD REACTION START")
     print("➡️ order_id:", order["id"])
 
+    # =========================================================
+    # VALIDACIONES
+    # =========================================================
+
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="not_paid")
 
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
+    # =========================================================
+    # READ VIDEO
+    # =========================================================
+
+    content_type = (video.content_type or "").lower().strip()
+    print("📦 content_type:", content_type)
+
+    data = await video.read()
+    size = len(data)
+
+    print("📦 size:", size)
+
+    if size == 0:
+        raise HTTPException(status_code=400, detail="empty_video")
+
+    if size > MAX_VIDEO_SIZE:
+        raise HTTPException(status_code=400, detail="video_too_large")
+
+    # =========================================================
+    # SAVE LOCAL
+    # =========================================================
+
+    extension = detect_video_extension(video)
+    local_path = reaction_video_path(order["id"], extension)
+
     try:
-        update_order(
-            order["id"],
-            reaction_upload_pending=1,
-            reaction_upload_error=None,
-            experience_completed=0,
-        )
-
-        content_type = (video.content_type or "").lower().strip()
-        data = await video.read()
-        size = len(data)
-
-        print("📦 content_type:", content_type)
-        print("📦 size:", size)
-
-        if size <= 0:
-            raise HTTPException(status_code=400, detail="empty_video")
-
-        if size > MAX_VIDEO_SIZE:
-            raise HTTPException(status_code=400, detail="video_too_large")
-
-        extension = detect_video_extension(video)
-        local_path = reaction_video_path(order["id"], extension)
-
         with open(local_path, "wb") as f:
             f.write(data)
 
-        if not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
-            raise Exception("local_file_empty_after_write")
+        print("💾 Guardado local OK")
 
-        print("💾 Reacción guardada local OK:", local_path)
+    except Exception as e:
+        log_error("save_local_reaction", e)
+        raise HTTPException(status_code=500, detail="local_save_failed")
 
+    # =========================================================
+    # SUBIDA A R2 (NO BLOQUEANTE)
+    # =========================================================
+
+    public_url = None
+
+    try:
+        if r2_enabled():
+            remote_name = f"reactions/{order['id']}.{extension}"
+
+            safe_type = content_type or ("video/mp4" if extension == "mp4" else "video/webm")
+
+            public_url = upload_video_to_r2(
+                local_path,
+                remote_name,
+                content_type=safe_type,
+            )
+
+            print("☁️ Subido a R2:", public_url)
+
+    except Exception as e:
+        # ⚠️ NO romper flujo si falla R2
+        log_error("r2_upload_failed", e)
+        print("⚠️ R2 FALLÓ pero seguimos")
+
+    # =========================================================
+    # UPDATE DB (CRÍTICO)
+    # =========================================================
+
+    try:
         update_order(
             order["id"],
             reaction_video_local=local_path,
-            reaction_video_public_url=None,
+            reaction_video_public_url=public_url,
             reaction_uploaded=1,
             experience_completed=1,
             delivered_to_recipient=1,
             reaction_upload_pending=0,
             reaction_upload_error=None,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
+        print("✅ DB actualizada")
+
+    except Exception as e:
+        log_error("update_order_reaction", e)
+        raise HTTPException(status_code=500, detail="db_update_failed")
+
+    # =========================================================
+    # POST PROCESOS (NO BLOQUEANTES)
+    # =========================================================
+
+    try:
         updated_order = maybe_mark_eterna_completed(order["id"])
-
-        print("✅ DB ACTUALIZADA: reacción segura")
-        print("✅ reaction_is_safe:", reaction_is_safe(updated_order))
-
-        return JSONResponse({
-            "ok": True,
-            "redirect": f"/finalizar-experiencia/{recipient_token}",
-        })
-
-    except HTTPException as e:
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error=str(e.detail),
-            experience_completed=0,
-        )
-        raise
-
     except Exception as e:
-        log_error("upload_reaction_save_error", e)
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error="local_save_failed",
-            experience_completed=0,
-        )
-        raise HTTPException(status_code=500, detail="local_save_failed")
+        log_error("mark_eterna_completed", e)
+        updated_order = get_order_by_id(order["id"])
 
+    # 💸 INTENTO DE PAGO (NO BLOQUEA)
+    try:
+        process_gift_transfer_for_order(updated_order)
+        print("💸 intento payout OK")
+    except Exception as e:
+        log_error("payout_error", e)
 
-# =========================================================
-# FINALIZAR EXPERIENCIA (SMS + COBRO + R2 SIN BLOQUEAR)
-# =========================================================
-
-@app.get("/finalizar-experiencia/{recipient_token}")
-def finalizar_experiencia(request: Request, recipient_token: str):
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
-
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
-    if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not reaction_is_safe(order):
-        update_order(
-            order["id"],
-            experience_completed=0,
-            reaction_upload_pending=0,
-            reaction_upload_error=order.get("reaction_upload_error") or "missing_reaction_on_finalize",
-        )
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
-
-    update_order(
-        order["id"],
-        experience_completed=1,
-        delivered_to_recipient=1,
-        reaction_upload_pending=0,
-        reaction_upload_error=None,
-        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-    )
-
-    updated_order = maybe_mark_eterna_completed(order["id"])
+    # 📩 SMS REGALANTE (NO BLOQUEA)
+    try:
+        sms_result = try_send_sender_sms(get_order_by_id(order["id"]))
+        print("📩 SMS REGALANTE RESULT:", sms_result)
+    except Exception as e:
+        log_error("try_send_sender_sms", e)
 
     try:
-        if r2_enabled() and not (updated_order.get("reaction_video_public_url") or "").strip():
-            local_path = (updated_order.get("reaction_video_local") or "").strip()
-
-            if local_path and os.path.exists(local_path):
-                ext = "mp4" if local_path.lower().endswith(".mp4") else "webm"
-                remote_name = f"reactions/{updated_order['id']}.{ext}"
-                safe_type = "video/mp4" if ext == "mp4" else "video/webm"
-
-                public_url = upload_video_to_r2(
-                    local_path,
-                    remote_name,
-                    content_type=safe_type,
-                )
-
-                if public_url:
-                    update_order(
-                        updated_order["id"],
-                        reaction_video_public_url=public_url,
-                    )
-                    updated_order = get_order_by_id(updated_order["id"])
-                    print("☁️ Reacción subida a R2:", public_url)
-
+        send_admin_eterna_completed(get_order_by_id(order["id"]))
+        print("📲 ADMIN SMS ENVIADO")
     except Exception as e:
-        log_error("finalizar_r2_upload_failed", e)
-        print("⚠️ R2 FALLÓ, pero ETERNA sigue con archivo local")
+        log_error("admin_sms_error", e)
 
-    try:
-        sms_result = try_send_sender_sms(updated_order)
-        print("📩 WHATSAPP REGALANTE:", sms_result)
-    except Exception as e:
-        log_error("finalizar_try_send_sender_sms", e)
+    # =========================================================
+    # RESPUESTA SIEMPRE OK (CLAVE)
+    # =========================================================
 
-    try:
-        payout_result = process_gift_transfer_for_order(updated_order)
-        print("💸 PAYOUT RESULT:", payout_result)
-    except Exception as e:
-        log_error("finalizar_process_gift_transfer", e)
-
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+    return JSONResponse({
+        "ok": True,
+        "redirect": f"/finalizar-experiencia/{recipient_token}",
+    })
 
 
 # =========================================================
@@ -6097,28 +5736,6 @@ def connect_payout(request: Request, recipient_token: str):
 def sender_pack(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
 
-    # 🔒 BLOQUEO: sin vídeo o sin reacción real → no abrir pack
-    if not original_video_ready(order) or not reaction_is_safe(order):
-        return HTMLResponse("""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
-</head>
-<body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
-    <div style="max-width:620px;">
-        <h1 style="font-size:38px;line-height:1.2;margin-bottom:18px;">Tu ETERNA aún no ha vuelto</h1>
-        <p style="font-size:19px;line-height:1.8;color:rgba(255,255,255,0.68);">
-            Cuando la emoción esté guardada de verdad,<br>
-            este pack se abrirá.
-        </p>
-    </div>
-</body>
-</html>
-        """)
-
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
 
@@ -6128,9 +5745,6 @@ def sender_pack(sender_token: str):
             reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
 
     sender_status = "Tu ETERNA ha vuelto."
-
-    reaction_type = guess_media_type_from_url(reaction_url) if reaction_url else "video/mp4"
-    original_type = guess_media_type_from_url(original_video_url) if original_video_url else "video/mp4"
 
     body_content = f"""
     <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
@@ -6145,6 +5759,7 @@ def sender_pack(sender_token: str):
 
         <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
 
+            <!-- VIDEO REACCIÓN -->
             <video
                 id="eterna-reaction-player"
                 playsinline
@@ -6153,9 +5768,10 @@ def sender_pack(sender_token: str):
                 preload="metadata"
                 style="width:100%;display:block;background:black;"
             >
-                <source src="{safe_attr(reaction_url)}" type="{safe_attr(reaction_type)}">
+                <source src="{reaction_url}" type="video/mp4">
             </video>
 
+            <!-- VIDEO ORIGINAL MINI -->
             <video
                 id="eterna-mini-original"
                 muted
@@ -6172,7 +5788,7 @@ def sender_pack(sender_token: str):
                     background:black;
                 "
             >
-                <source src="{safe_attr(original_video_url)}" type="{safe_attr(original_type)}">
+                <source src="{original_video_url}" type="video/mp4">
             </video>
 
         </div>
@@ -6192,7 +5808,7 @@ def sender_pack(sender_token: str):
         <div id="eterna-share-wrap" style="display:none;margin-top:22px;">
 
             <a
-                href="{safe_attr(reaction_url)}"
+                href="{reaction_url}"
                 download
                 style="display:block;width:100%;border-radius:999px;padding:20px;font-size:20px;font-weight:700;background:#fff;color:#000;text-decoration:none;">
                 Descargar su reacción
@@ -6237,10 +5853,21 @@ def sender_pack(sender_token: str):
         }}
 
         if (reaction && mini) {{
-            reaction.addEventListener("loadedmetadata", syncMini);
-            reaction.addEventListener("play", syncMini);
-            reaction.addEventListener("seeking", syncMini);
-            reaction.addEventListener("timeupdate", syncMini);
+            reaction.addEventListener("loadedmetadata", function () {{
+                syncMini();
+            }});
+
+            reaction.addEventListener("play", function () {{
+                syncMini();
+            }});
+
+            reaction.addEventListener("seeking", function () {{
+                syncMini();
+            }});
+
+            reaction.addEventListener("timeupdate", function () {{
+                syncMini();
+            }});
 
             reaction.addEventListener("ended", function () {{
                 try {{
@@ -6261,13 +5888,20 @@ def sender_pack(sender_token: str):
 
         if (replay && reaction) {{
             replay.addEventListener("click", function () {{
-                try {{ reaction.currentTime = 0; }} catch (e) {{}}
+                try {{
+                    reaction.currentTime = 0;
+                }} catch (e) {{}}
+
                 if (mini) {{
-                    try {{ mini.currentTime = 0; }} catch (e) {{}}
+                    try {{
+                        mini.currentTime = 0;
+                    }} catch (e) {{}}
                 }}
+
                 if (shareWrap) {{
                     shareWrap.style.display = "none";
                 }}
+
                 reaction.play().catch(() => {{}});
             }});
         }}
@@ -6275,7 +5909,7 @@ def sender_pack(sender_token: str):
         if (shareBtn) {{
             shareBtn.addEventListener("click", async function () {{
 
-                const url = "{safe_attr(reaction_url)}";
+                const url = "{reaction_url}";
 
                 if (navigator.share) {{
                     try {{
@@ -6425,6 +6059,17 @@ def admin_retry_recipient_message(order_id: str, request: Request):
             "delivery_sent_at": order.get("delivery_sent_at"),
         }
 
+    if False and attempts >= 3:
+        return {
+            "ok": False,
+            "reason": "max_attempts_reached",
+            "order_id": order_id,
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": attempts,
+            "recipient_sms_error": order.get("recipient_sms_error"),
+            "delivery_sent": bool(order.get("delivery_sent")),
+            "delivery_sent_at": order.get("delivery_sent_at"),
+        }
 
     result = process_scheduled_recipient_delivery(order_id)
     result["order_id"] = order_id
@@ -6486,19 +6131,51 @@ def admin_process_all_due_deliveries(token: str = ""):
     })
 
 
+# =========================================================
+# FINALIZAR EXPERIENCIA (DEFINITIVO)
+# =========================================================
+
+@app.get("/finalizar-experiencia/{recipient_token}")
+def finalizar_experiencia(request: Request, recipient_token: str):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
+
+    if not has_valid_recipient_session(order, request):
+        return render_viral_block_page()
+
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    try:
+        update_order(
+            order["id"],
+            experience_completed=1,
+            delivered_to_recipient=1,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+
+        maybe_mark_eterna_completed(order["id"])
+
+    except Exception as e:
+        log_error("FINALIZAR EXPERIENCE ERROR", e)
+
+    return RedirectResponse(
+        url=f"/cobrar/{recipient_token}",
+        status_code=303
+    )
 @app.get("/admin/reset-recipient-session/{order_id}")
 def admin_reset_recipient_session(order_id: str, token: str = ""):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
+
+    order = get_order_by_id(order_id)
 
     update_order(
         order_id,
         recipient_session_token=None,
         recipient_session_claimed_at=None,
         experience_started=0,
-        experience_completed=0,
-        reaction_upload_pending=0,
-        reaction_upload_error=None,
     )
 
     refreshed = get_order_by_id(order_id)
@@ -6509,10 +6186,27 @@ def admin_reset_recipient_session(order_id: str, token: str = ""):
         "recipient_token": refreshed.get("recipient_token"),
         "experience_started": bool(refreshed.get("experience_started")),
         "experience_completed": bool(refreshed.get("experience_completed")),
-        "reaction_uploaded": bool(refreshed.get("reaction_uploaded")),
         "recipient_session_token": refreshed.get("recipient_session_token"),
         "recipient_session_claimed_at": refreshed.get("recipient_session_claimed_at"),
         "recipient_url": recipient_experience_url_from_order(refreshed),
     })
 
+# =========================================================
+# MAIN
+# =========================================================
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 10000))
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port
+    )
