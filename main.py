@@ -5923,35 +5923,35 @@ h1 {{
     display: block;
     background: #000;
     transform: scale(1);
-    transition: transform 8s ease-out, filter 1s ease;
+    transition: transform 9s ease-out, filter 1.1s ease;
 }}
 
 .main-video.zooming {{
-    transform: scale(1.05);
+    transform: scale(1.045);
 }}
 
 .main-video.ended {{
-    filter: brightness(0.85);
+    filter: brightness(0.84);
 }}
 
 .mini-original {{
     position: absolute;
     right: 14px;
     bottom: 14px;
-    width: 30%;
-    max-width: 150px;
-    border-radius: 18px;
+    width: 22%;
+    max-width: 105px;
+    border-radius: 16px;
     background: #000;
     opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.7s ease, transform 0.7s ease;
+    transform: translateY(8px) scale(0.98);
+    transition: opacity 0.75s ease, transform 0.75s ease;
     border: 1px solid rgba(255,255,255,0.18);
     box-shadow: 0 18px 40px rgba(0,0,0,0.45);
 }}
 
 .mini-original.show {{
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }}
 
 .sound-note {{
@@ -6079,14 +6079,21 @@ h1 {{
     }}
 
     .mini-original {{
-        width: 34%;
-        max-width: 130px;
+        width: 20%;
+        max-width: 88px;
+        right: 10px;
+        bottom: 10px;
+        border-radius: 13px;
     }}
 }}
 </style>
 </head>
 
 <body class="locked">
+
+<audio id="eternaPiano" preload="auto" loop>
+    <source src="/static/eterna_piano.mp3" type="audio/mpeg">
+</audio>
 
 <div class="intro-overlay" id="introOverlay">
     <div class="intro-card">
@@ -6131,6 +6138,7 @@ h1 {{
         <video
             id="eternaMiniOriginal"
             class="mini-original"
+            muted
             playsinline
             webkit-playsinline
             preload="metadata"
@@ -6140,7 +6148,7 @@ h1 {{
     </div>
 
     <div class="sound-note">
-        La reacción es el sonido principal. El vídeo original suena suave por debajo.
+        El sonido principal es su reacción. El piano acompaña suave por debajo.
     </div>
 
     <div class="after-text">
@@ -6191,165 +6199,160 @@ h1 {{
 
     const reaction = document.getElementById("eternaReactionPlayer");
     const mini = document.getElementById("eternaMiniOriginal");
+    const piano = document.getElementById("eternaPiano");
     const replay = document.getElementById("eternaReplayAll");
     const shareWrap = document.getElementById("eternaShareWrap");
     const shareBtn = document.getElementById("eternaShareReaction");
 
-    const ORIGINAL_VOLUME = 0.18;
-    let fadeInterval = null;
-    let miniDelayTimer = null;
+    const PIANO_VOLUME = 0.115;
+    let miniShowTimer = null;
+    let pianoFadeTimer = null;
 
-    function stopFade() {{
-        if (fadeInterval) {{
-            clearInterval(fadeInterval);
-            fadeInterval = null;
+    function clearTimers() {{
+        if (miniShowTimer) {{
+            clearTimeout(miniShowTimer);
+            miniShowTimer = null;
+        }}
+        if (pianoFadeTimer) {{
+            clearInterval(pianoFadeTimer);
+            pianoFadeTimer = null;
         }}
     }}
 
-    function prepareMiniAudio() {{
+    function prepareMiniSilent() {{
         if (!mini) return;
-
         try {{
-            mini.muted = false;
+            mini.muted = true;
             mini.volume = 0;
         }} catch (e) {{}}
     }}
 
-    function fadeInMini() {{
-        if (!mini) return;
+    function preparePiano() {{
+        if (!piano) return;
+        try {{
+            piano.volume = 0;
+        }} catch (e) {{}}
+    }}
 
-        stopFade();
-
-        let vol = 0;
-        const target = ORIGINAL_VOLUME;
-
-        fadeInterval = setInterval(() => {{
-            try {{
-                vol += 0.02;
-
-                if (vol >= target) {{
-                    mini.volume = target;
-                    stopFade();
+    function fadePianoTo(target) {{
+        if (!piano) return;
+        try {{
+            if (pianoFadeTimer) clearInterval(pianoFadeTimer);
+            let current = piano.volume || 0;
+            pianoFadeTimer = setInterval(function () {{
+                if (!piano) return;
+                current += 0.01;
+                if (current >= target) {{
+                    piano.volume = target;
+                    clearInterval(pianoFadeTimer);
+                    pianoFadeTimer = null;
                 }} else {{
-                    mini.volume = vol;
+                    piano.volume = current;
                 }}
-            }} catch (e) {{
-                stopFade();
+            }}, 90);
+        }} catch (e) {{}}
+    }}
+
+    function playPiano() {{
+        if (!piano) return;
+        try {{
+            preparePiano();
+            piano.currentTime = 0;
+            piano.play().then(function () {{
+                fadePianoTo(PIANO_VOLUME);
+            }}).catch(function () {{}});
+        }} catch (e) {{}}
+    }}
+
+    function pausePiano() {{
+        if (!piano) return;
+        try {{
+            if (pianoFadeTimer) {{
+                clearInterval(pianoFadeTimer);
+                pianoFadeTimer = null;
             }}
-        }}, 60);
+            piano.pause();
+            piano.volume = 0;
+        }} catch (e) {{}}
     }}
 
     function syncMini() {{
         if (!reaction || !mini) return;
-
         try {{
             const reactionTime = reaction.currentTime || 0;
             const miniTime = mini.currentTime || 0;
             const diff = Math.abs(miniTime - reactionTime);
-
             if (diff > 0.35) {{
                 mini.currentTime = reactionTime;
             }}
         }} catch (e) {{}}
     }}
 
-    function showMini() {{
+    function showMiniDelayed() {{
         if (!mini) return;
-
-        mini.classList.add("show");
-        prepareMiniAudio();
+        if (miniShowTimer) clearTimeout(miniShowTimer);
+        miniShowTimer = setTimeout(function () {{
+            try {{
+                prepareMiniSilent();
+                mini.classList.add("show");
+                syncMini();
+                mini.play().catch(function () {{}});
+            }} catch (e) {{}}
+        }}, 850);
     }}
 
     function hideMini() {{
         if (!mini) return;
-
         try {{
             mini.pause();
-        }} catch (e) {{}}
-
-        mini.classList.remove("show");
-        stopFade();
-    }}
-
-    function startMiniDelayed() {{
-        if (!mini || !reaction) return;
-
-        if (miniDelayTimer) {{
-            clearTimeout(miniDelayTimer);
-            miniDelayTimer = null;
-        }}
-
-        miniDelayTimer = setTimeout(() => {{
-            showMini();
-            syncMini();
-
-            try {{
-                prepareMiniAudio();
-                mini.play().then(() => {{
-                    fadeInMini();
-                }}).catch(() => {{}});
-            }} catch (e) {{}}
-        }}, 800);
-    }}
-
-    function playBoth() {{
-        if (!reaction) return;
-
-        syncMini();
-
-        try {{
-            reaction.volume = 1.0;
-        }} catch (e) {{}}
-
-        try {{
-            reaction.classList.remove("ended");
-            reaction.classList.add("zooming");
-        }} catch (e) {{}}
-
-        try {{
-            reaction.play().catch(() => {{}});
-        }} catch (e) {{}}
-
-        startMiniDelayed();
-    }}
-
-    function pauseMini() {{
-        if (!mini) return;
-
-        try {{
-            mini.pause();
+            mini.classList.remove("show");
         }} catch (e) {{}}
     }}
 
     function resetPack() {{
+        clearTimers();
+
         try {{
             reaction.pause();
-        }} catch (e) {{}}
-
-        try {{
             reaction.currentTime = 0;
-        }} catch (e) {{}}
-
-        try {{
             reaction.classList.remove("ended");
             reaction.classList.remove("zooming");
+            reaction.volume = 1.0;
         }} catch (e) {{}}
 
         if (mini) {{
             try {{
                 mini.pause();
                 mini.currentTime = 0;
+                mini.classList.remove("show");
+                prepareMiniSilent();
             }} catch (e) {{}}
-
-            mini.classList.remove("show");
-            prepareMiniAudio();
         }}
 
         if (shareWrap) {{
             shareWrap.classList.remove("show");
         }}
 
+        pausePiano();
         syncMini();
+    }}
+
+    function playPack() {{
+        if (!reaction) return;
+
+        try {{
+            reaction.classList.add("zooming");
+            reaction.volume = 1.0;
+        }} catch (e) {{}}
+
+        prepareMiniSilent();
+        syncMini();
+        showMiniDelayed();
+        playPiano();
+
+        try {{
+            reaction.play().catch(function () {{}});
+        }} catch (e) {{}}
     }}
 
     if (startPackBtn) {{
@@ -6358,18 +6361,14 @@ h1 {{
                 introOverlay.classList.add("hidden");
             }}
 
+            document.body.classList.remove("locked");
+
             try {{
-                document.body.classList.remove("locked");
+                if (navigator.vibrate) navigator.vibrate(50);
             }} catch (e) {{}}
 
-            if (navigator.vibrate) {{
-                try {{
-                    navigator.vibrate(50);
-                }} catch (e) {{}}
-            }}
-
             resetPack();
-            playBoth();
+            playPack();
         }});
     }}
 
@@ -6377,25 +6376,29 @@ h1 {{
         reaction.addEventListener("loadedmetadata", syncMini);
 
         reaction.addEventListener("play", function () {{
-            startMiniDelayed();
-
-            try {{
-                reaction.classList.add("zooming");
-            }} catch (e) {{}}
+            reaction.classList.add("zooming");
+            prepareMiniSilent();
+            syncMini();
+            showMiniDelayed();
+            playPiano();
         }});
 
         reaction.addEventListener("pause", function () {{
-            pauseMini();
+            if (!reaction.ended) {{
+                hideMini();
+                pausePiano();
+            }}
         }});
 
         reaction.addEventListener("seeking", syncMini);
         reaction.addEventListener("timeupdate", syncMini);
 
         reaction.addEventListener("ended", function () {{
+            clearTimers();
             hideMini();
+            pausePiano();
 
             try {{
-                reaction.pause();
                 reaction.classList.add("ended");
                 reaction.classList.remove("zooming");
             }} catch (e) {{}}
@@ -6406,12 +6409,7 @@ h1 {{
         }});
     }} else if (reaction) {{
         reaction.addEventListener("ended", function () {{
-            try {{
-                reaction.pause();
-                reaction.classList.add("ended");
-                reaction.classList.remove("zooming");
-            }} catch (e) {{}}
-
+            pausePiano();
             if (shareWrap) {{
                 shareWrap.classList.add("show");
             }}
@@ -6421,7 +6419,7 @@ h1 {{
     if (replay && reaction) {{
         replay.addEventListener("click", function () {{
             resetPack();
-            playBoth();
+            playPack();
         }});
     }}
 
@@ -6449,14 +6447,14 @@ h1 {{
         }});
     }}
 
-    prepareMiniAudio();
+    prepareMiniSilent();
+    preparePiano();
 }})();
 </script>
 
 </body>
 </html>
     """)
-
 
 # =========================================================
 # VIDEO / FILE ROUTES
