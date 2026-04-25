@@ -5814,6 +5814,28 @@ def connect_payout(request: Request, recipient_token: str):
 def sender_pack(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
 
+    # 🔒 BLOQUEO: sin vídeo o sin reacción real → no abrir pack
+    if not original_video_ready(order) or not reaction_is_safe(order):
+        return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+</head>
+<body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;">
+    <div style="max-width:620px;">
+        <h1 style="font-size:38px;line-height:1.2;margin-bottom:18px;">Tu ETERNA aún no ha vuelto</h1>
+        <p style="font-size:19px;line-height:1.8;color:rgba(255,255,255,0.68);">
+            Cuando la emoción esté guardada de verdad,<br>
+            este pack se abrirá.
+        </p>
+    </div>
+</body>
+</html>
+        """)
+
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
 
@@ -5822,216 +5844,617 @@ def sender_pack(sender_token: str):
         if local_path and os.path.exists(local_path):
             reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
 
-    sender_status = "Tu ETERNA ha vuelto."
-
-    body_content = f"""
-    <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
-
-        <h1 style="font-size:46px;font-weight:800;margin-bottom:18px;">
-            {sender_status}
-        </h1>
-
-        <p style="font-size:22px;opacity:.9;margin-bottom:30px;">
-            Lo que diste… ha encontrado el camino de vuelta.
-        </p>
-
-        <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
-
-            <!-- VIDEO REACCIÓN -->
-            <video
-                id="eterna-reaction-player"
-                playsinline
-                webkit-playsinline
-                controls
-                preload="metadata"
-                style="width:100%;display:block;background:black;"
-            >
-                <source src="{reaction_url}" type="video/mp4">
-            </video>
-
-            <!-- VIDEO ORIGINAL MINI -->
-            <video
-                id="eterna-mini-original"
-                muted
-                playsinline
-                webkit-playsinline
-                preload="metadata"
-                style="
-                    position:absolute;
-                    right:14px;
-                    bottom:14px;
-                    width:30%;
-                    max-width:140px;
-                    border-radius:16px;
-                    background:black;
-                "
-            >
-                <source src="{original_video_url}" type="video/mp4">
-            </video>
-
-        </div>
-
-        <div style="margin-top:14px;font-size:15px;opacity:.55;">
-            Aquí vuelve lo que provocaste.
-        </div>
-
-        <div style="margin-top:34px;">
-            <button
-                id="eterna-replay-all"
-                style="width:100%;border:none;border-radius:999px;padding:22px;font-size:22px;font-weight:700;background:#f3f3f3;color:#000;">
-                Volver a sentirlo
-            </button>
-        </div>
-
-        <div id="eterna-share-wrap" style="display:none;margin-top:22px;">
-
-            <a
-                href="{reaction_url}"
-                download
-                style="display:block;width:100%;border-radius:999px;padding:20px;font-size:20px;font-weight:700;background:#fff;color:#000;text-decoration:none;">
-                Descargar su reacción
-            </a>
-
-            <button
-                id="eterna-share-reaction"
-                style="margin-top:12px;width:100%;border:none;border-radius:999px;padding:18px;font-size:18px;font-weight:700;background:#111;color:#fff;">
-                Compartir su reacción
-            </button>
-
-            <div style="margin-top:14px;font-size:14px;color:rgba(255,255,255,0.5);">
-                Comparte solo la emoción.<br>
-                El vídeo original se queda aquí para no romper la magia de ETERNA.
-            </div>
-
-        </div>
-
-    </div>
-
-    <script>
-    (function () {{
-
-        const reaction = document.getElementById("eterna-reaction-player");
-        const mini = document.getElementById("eterna-mini-original");
-        const replay = document.getElementById("eterna-replay-all");
-        const shareWrap = document.getElementById("eterna-share-wrap");
-        const shareBtn = document.getElementById("eterna-share-reaction");
-
-        function syncMini() {{
-            if (!reaction || !mini) return;
-
-            try {{
-                const reactionTime = reaction.currentTime || 0;
-                const miniTime = mini.currentTime || 0;
-                const diff = Math.abs(miniTime - reactionTime);
-
-                if (diff > 0.20) {{
-                    mini.currentTime = reactionTime;
-                }}
-            }} catch (e) {{}}
-        }}
-
-        if (reaction && mini) {{
-            reaction.addEventListener("loadedmetadata", function () {{
-                syncMini();
-            }});
-
-            reaction.addEventListener("play", function () {{
-                syncMini();
-            }});
-
-            reaction.addEventListener("seeking", function () {{
-                syncMini();
-            }});
-
-            reaction.addEventListener("timeupdate", function () {{
-                syncMini();
-            }});
-
-            reaction.addEventListener("ended", function () {{
-                try {{
-                    mini.currentTime = reaction.duration || mini.currentTime || 0;
-                }} catch (e) {{}}
-
-                if (shareWrap) {{
-                    shareWrap.style.display = "block";
-                }}
-            }});
-        }} else if (reaction) {{
-            reaction.addEventListener("ended", function () {{
-                if (shareWrap) {{
-                    shareWrap.style.display = "block";
-                }}
-            }});
-        }}
-
-        if (replay && reaction) {{
-            replay.addEventListener("click", function () {{
-                try {{
-                    reaction.currentTime = 0;
-                }} catch (e) {{}}
-
-                if (mini) {{
-                    try {{
-                        mini.currentTime = 0;
-                    }} catch (e) {{}}
-                }}
-
-                if (shareWrap) {{
-                    shareWrap.style.display = "none";
-                }}
-
-                reaction.play().catch(() => {{}});
-            }});
-        }}
-
-        if (shareBtn) {{
-            shareBtn.addEventListener("click", async function () {{
-
-                const url = "{reaction_url}";
-
-                if (navigator.share) {{
-                    try {{
-                        await navigator.share({{
-                            title: "ETERNA",
-                            text: "Esto es lo que provoca ETERNA.",
-                            url: url
-                        }});
-                        return;
-                    }} catch (e) {{}}
-                }}
-
-                try {{
-                    await navigator.clipboard.writeText(url);
-                    alert("Link copiado");
-                }} catch (e) {{
-                    alert(url);
-                }}
-
-            }});
-        }}
-
-    }})();
-    </script>
-    """
+    reaction_type = guess_media_type_from_url(reaction_url) if reaction_url else "video/mp4"
+    original_type = guess_media_type_from_url(original_video_url) if original_video_url else "video/mp4"
 
     return HTMLResponse(f"""
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>ETERNA</title>
-        <style>
-            body {{
-                margin:0;
-                background:#000;
-                color:#fff;
-                font-family:sans-serif;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+
+<style>
+html, body {{
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}}
+
+body {{
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 34%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+}}
+
+body.locked {{
+    overflow: hidden;
+}}
+
+.wrap {{
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 34px 18px 80px;
+    box-sizing: border-box;
+    text-align: center;
+}}
+
+.brand {{
+    margin-top: 10px;
+    margin-bottom: 24px;
+    font-size: 12px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.34);
+}}
+
+h1 {{
+    margin: 0;
+    font-size: 46px;
+    line-height: 1.12;
+    font-weight: 800;
+}}
+
+.lead {{
+    margin: 18px auto 30px;
+    max-width: 640px;
+    font-size: 21px;
+    line-height: 1.75;
+    color: rgba(255,255,255,0.78);
+}}
+
+.player-shell {{
+    position: relative;
+    width: 100%;
+    border-radius: 30px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.08);
+}}
+
+.main-video {{
+    width: 100%;
+    display: block;
+    background: #000;
+    transform: scale(1);
+    transition: transform 8s ease-out, filter 1s ease;
+}}
+
+.main-video.zooming {{
+    transform: scale(1.05);
+}}
+
+.main-video.ended {{
+    filter: brightness(0.85);
+}}
+
+.mini-original {{
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    width: 30%;
+    max-width: 150px;
+    border-radius: 18px;
+    background: #000;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+}}
+
+.mini-original.show {{
+    opacity: 1;
+    transform: translateY(0);
+}}
+
+.sound-note {{
+    margin-top: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.42);
+}}
+
+.after-text {{
+    margin-top: 16px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.50);
+}}
+
+.actions {{
+    display: grid;
+    gap: 12px;
+    max-width: 460px;
+    margin: 30px auto 0;
+}}
+
+.btn {{
+    width: 100%;
+    display: block;
+    border: none;
+    border-radius: 999px;
+    padding: 18px 22px;
+    font-size: 17px;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+}}
+
+.btn.primary {{
+    background: #fff;
+    color: #000;
+}}
+
+.btn.secondary {{
+    background: rgba(255,255,255,0.10);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.12);
+}}
+
+.share-wrap {{
+    display: none;
+    margin-top: 28px;
+}}
+
+.share-wrap.show {{
+    display: block;
+}}
+
+.final-line {{
+    margin: 28px auto 0;
+    max-width: 560px;
+    font-size: 21px;
+    line-height: 1.65;
+    color: rgba(255,255,255,0.82);
+}}
+
+.small-note {{
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.46);
+}}
+
+.intro-overlay {{
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 34%),
+        linear-gradient(180deg, #070707 0%, #000000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 28px;
+    box-sizing: border-box;
+}}
+
+.intro-card {{
+    width: 100%;
+    max-width: 620px;
+}}
+
+.intro-title {{
+    font-size: 48px;
+    line-height: 1.12;
+    font-weight: 800;
+    margin: 0 0 22px;
+}}
+
+.intro-copy {{
+    font-size: 22px;
+    line-height: 1.75;
+    color: rgba(255,255,255,0.78);
+    margin-bottom: 34px;
+}}
+
+.hidden {{
+    display: none !important;
+}}
+
+@media (max-width: 720px) {{
+    h1 {{
+        font-size: 37px;
+    }}
+
+    .lead {{
+        font-size: 19px;
+    }}
+
+    .intro-title {{
+        font-size: 38px;
+    }}
+
+    .intro-copy {{
+        font-size: 20px;
+    }}
+
+    .mini-original {{
+        width: 34%;
+        max-width: 130px;
+    }}
+}}
+</style>
+</head>
+
+<body class="locked">
+
+<div class="intro-overlay" id="introOverlay">
+    <div class="intro-card">
+        <div class="brand">ETERNA</div>
+
+        <h1 class="intro-title">Prepárate.</h1>
+
+        <div class="intro-copy">
+            Esto ya ha pasado.<br>
+            Y no se puede repetir.<br><br>
+            Ahora vas a ver lo que provocaste.
+        </div>
+
+        <button class="btn primary" id="startPackBtn">
+            Ver lo que provocaste
+        </button>
+    </div>
+</div>
+
+<div class="wrap">
+    <div class="brand">ETERNA</div>
+
+    <h1>Esto es lo que has provocado.</h1>
+
+    <div class="lead">
+        Lo que diste…<br>
+        ha encontrado el camino de vuelta.
+    </div>
+
+    <div class="player-shell">
+        <video
+            id="eternaReactionPlayer"
+            class="main-video"
+            playsinline
+            webkit-playsinline
+            controls
+            preload="metadata"
+        >
+            <source src="{safe_attr(reaction_url)}" type="{safe_attr(reaction_type)}">
+        </video>
+
+        <video
+            id="eternaMiniOriginal"
+            class="mini-original"
+            playsinline
+            webkit-playsinline
+            preload="metadata"
+        >
+            <source src="{safe_attr(original_video_url)}" type="{safe_attr(original_type)}">
+        </video>
+    </div>
+
+    <div class="sound-note">
+        La reacción es el sonido principal. El vídeo original suena suave por debajo.
+    </div>
+
+    <div class="after-text">
+        Mira cada detalle. Ahí está lo que volvió.
+    </div>
+
+    <div class="actions">
+        <button class="btn primary" id="eternaReplayAll">
+            Volver a verlo desde el principio
+        </button>
+
+        <a class="btn secondary" href="/crear">
+            Crear una nueva ETERNA
+        </a>
+    </div>
+
+    <div class="share-wrap" id="eternaShareWrap">
+        <div class="final-line">
+            Esto ya ha pasado.<br>
+            Y ya forma parte de alguien.
+        </div>
+
+        <div class="actions">
+            <a
+                class="btn primary"
+                href="{safe_attr(reaction_url)}"
+                download
+            >
+                Guardar este momento
+            </a>
+
+            <button class="btn secondary" id="eternaShareReaction">
+                Compartir lo que has provocado
+            </button>
+        </div>
+
+        <div class="small-note">
+            Comparte solo la emoción.<br>
+            El vídeo original se queda aquí para no romper la magia de ETERNA.
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {{
+    const introOverlay = document.getElementById("introOverlay");
+    const startPackBtn = document.getElementById("startPackBtn");
+
+    const reaction = document.getElementById("eternaReactionPlayer");
+    const mini = document.getElementById("eternaMiniOriginal");
+    const replay = document.getElementById("eternaReplayAll");
+    const shareWrap = document.getElementById("eternaShareWrap");
+    const shareBtn = document.getElementById("eternaShareReaction");
+
+    const ORIGINAL_VOLUME = 0.18;
+    let fadeInterval = null;
+    let miniDelayTimer = null;
+
+    function stopFade() {{
+        if (fadeInterval) {{
+            clearInterval(fadeInterval);
+            fadeInterval = null;
+        }}
+    }}
+
+    function prepareMiniAudio() {{
+        if (!mini) return;
+
+        try {{
+            mini.muted = false;
+            mini.volume = 0;
+        }} catch (e) {{}}
+    }}
+
+    function fadeInMini() {{
+        if (!mini) return;
+
+        stopFade();
+
+        let vol = 0;
+        const target = ORIGINAL_VOLUME;
+
+        fadeInterval = setInterval(() => {{
+            try {{
+                vol += 0.02;
+
+                if (vol >= target) {{
+                    mini.volume = target;
+                    stopFade();
+                }} else {{
+                    mini.volume = vol;
+                }}
+            }} catch (e) {{
+                stopFade();
             }}
-        </style>
-    </head>
-    <body>
-        {body_content}
-    </body>
-    </html>
+        }}, 60);
+    }}
+
+    function syncMini() {{
+        if (!reaction || !mini) return;
+
+        try {{
+            const reactionTime = reaction.currentTime || 0;
+            const miniTime = mini.currentTime || 0;
+            const diff = Math.abs(miniTime - reactionTime);
+
+            if (diff > 0.35) {{
+                mini.currentTime = reactionTime;
+            }}
+        }} catch (e) {{}}
+    }}
+
+    function showMini() {{
+        if (!mini) return;
+
+        mini.classList.add("show");
+        prepareMiniAudio();
+    }}
+
+    function hideMini() {{
+        if (!mini) return;
+
+        try {{
+            mini.pause();
+        }} catch (e) {{}}
+
+        mini.classList.remove("show");
+        stopFade();
+    }}
+
+    function startMiniDelayed() {{
+        if (!mini || !reaction) return;
+
+        if (miniDelayTimer) {{
+            clearTimeout(miniDelayTimer);
+            miniDelayTimer = null;
+        }}
+
+        miniDelayTimer = setTimeout(() => {{
+            showMini();
+            syncMini();
+
+            try {{
+                prepareMiniAudio();
+                mini.play().then(() => {{
+                    fadeInMini();
+                }}).catch(() => {{}});
+            }} catch (e) {{}}
+        }}, 800);
+    }}
+
+    function playBoth() {{
+        if (!reaction) return;
+
+        syncMini();
+
+        try {{
+            reaction.volume = 1.0;
+        }} catch (e) {{}}
+
+        try {{
+            reaction.classList.remove("ended");
+            reaction.classList.add("zooming");
+        }} catch (e) {{}}
+
+        try {{
+            reaction.play().catch(() => {{}});
+        }} catch (e) {{}}
+
+        startMiniDelayed();
+    }}
+
+    function pauseMini() {{
+        if (!mini) return;
+
+        try {{
+            mini.pause();
+        }} catch (e) {{}}
+    }}
+
+    function resetPack() {{
+        try {{
+            reaction.pause();
+        }} catch (e) {{}}
+
+        try {{
+            reaction.currentTime = 0;
+        }} catch (e) {{}}
+
+        try {{
+            reaction.classList.remove("ended");
+            reaction.classList.remove("zooming");
+        }} catch (e) {{}}
+
+        if (mini) {{
+            try {{
+                mini.pause();
+                mini.currentTime = 0;
+            }} catch (e) {{}}
+
+            mini.classList.remove("show");
+            prepareMiniAudio();
+        }}
+
+        if (shareWrap) {{
+            shareWrap.classList.remove("show");
+        }}
+
+        syncMini();
+    }}
+
+    if (startPackBtn) {{
+        startPackBtn.addEventListener("click", function () {{
+            if (introOverlay) {{
+                introOverlay.classList.add("hidden");
+            }}
+
+            try {{
+                document.body.classList.remove("locked");
+            }} catch (e) {{}}
+
+            if (navigator.vibrate) {{
+                try {{
+                    navigator.vibrate(50);
+                }} catch (e) {{}}
+            }}
+
+            resetPack();
+            playBoth();
+        }});
+    }}
+
+    if (reaction && mini) {{
+        reaction.addEventListener("loadedmetadata", syncMini);
+
+        reaction.addEventListener("play", function () {{
+            startMiniDelayed();
+
+            try {{
+                reaction.classList.add("zooming");
+            }} catch (e) {{}}
+        }});
+
+        reaction.addEventListener("pause", function () {{
+            pauseMini();
+        }});
+
+        reaction.addEventListener("seeking", syncMini);
+        reaction.addEventListener("timeupdate", syncMini);
+
+        reaction.addEventListener("ended", function () {{
+            hideMini();
+
+            try {{
+                reaction.pause();
+                reaction.classList.add("ended");
+                reaction.classList.remove("zooming");
+            }} catch (e) {{}}
+
+            if (shareWrap) {{
+                shareWrap.classList.add("show");
+            }}
+        }});
+    }} else if (reaction) {{
+        reaction.addEventListener("ended", function () {{
+            try {{
+                reaction.pause();
+                reaction.classList.add("ended");
+                reaction.classList.remove("zooming");
+            }} catch (e) {{}}
+
+            if (shareWrap) {{
+                shareWrap.classList.add("show");
+            }}
+        }});
+    }}
+
+    if (replay && reaction) {{
+        replay.addEventListener("click", function () {{
+            resetPack();
+            playBoth();
+        }});
+    }}
+
+    if (shareBtn) {{
+        shareBtn.addEventListener("click", async function () {{
+            const url = "{safe_attr(reaction_url)}";
+
+            if (navigator.share) {{
+                try {{
+                    await navigator.share({{
+                        title: "ETERNA",
+                        text: "Esto es lo que provoca ETERNA.",
+                        url: url
+                    }});
+                    return;
+                }} catch (e) {{}}
+            }}
+
+            try {{
+                await navigator.clipboard.writeText(url);
+                alert("Link copiado");
+            }} catch (e) {{
+                alert(url);
+            }}
+        }});
+    }}
+
+    prepareMiniAudio();
+}})();
+</script>
+
+</body>
+</html>
     """)
 
 
