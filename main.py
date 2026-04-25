@@ -5250,85 +5250,47 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     print("🎥 UPLOAD REACTION START")
     print("➡️ order_id:", order["id"])
 
-    # =========================================================
-    # VALIDACIONES
-    # =========================================================
-
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="not_paid")
 
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
-    # =========================================================
-    # READ VIDEO
-    # =========================================================
-
-    content_type = (video.content_type or "").lower().strip()
-    print("📦 content_type:", content_type)
-
-    data = await video.read()
-    size = len(data)
-
-    print("📦 size:", size)
-
-    if size == 0:
-        raise HTTPException(status_code=400, detail="empty_video")
-
-    if size > MAX_VIDEO_SIZE:
-        raise HTTPException(status_code=400, detail="video_too_large")
-
-    # =========================================================
-    # SAVE LOCAL
-    # =========================================================
-
-    extension = detect_video_extension(video)
-    local_path = reaction_video_path(order["id"], extension)
-
-    try:
-        with open(local_path, "wb") as f:
-            f.write(data)
-
-        print("💾 Guardado local OK")
-
-    except Exception as e:
-        log_error("save_local_reaction", e)
-        raise HTTPException(status_code=500, detail="local_save_failed")
-
-    # =========================================================
-    # SUBIDA A R2 (NO BLOQUEANTE)
-    # =========================================================
-
-    public_url = None
-
-    try:
-        if r2_enabled():
-            remote_name = f"reactions/{order['id']}.{extension}"
-
-            safe_type = content_type or ("video/mp4" if extension == "mp4" else "video/webm")
-
-            public_url = upload_video_to_r2(
-                local_path,
-                remote_name,
-                content_type=safe_type,
-            )
-
-            print("☁️ Subido a R2:", public_url)
-
-    except Exception as e:
-        # ⚠️ NO romper flujo si falla R2
-        log_error("r2_upload_failed", e)
-        print("⚠️ R2 FALLÓ pero seguimos")
-
-    # =========================================================
-    # UPDATE DB (CRÍTICO)
-    # =========================================================
-
     try:
         update_order(
             order["id"],
+            reaction_upload_pending=1,
+            reaction_upload_error=None,
+            experience_completed=0,
+        )
+
+        data = await video.read()
+        size = len(data)
+
+        print("📦 size:", size)
+
+        if size <= 0:
+            raise HTTPException(status_code=400, detail="empty_video")
+
+        if size > MAX_VIDEO_SIZE:
+            raise HTTPException(status_code=400, detail="video_too_large")
+
+        extension = detect_video_extension(video)
+        local_path = reaction_video_path(order["id"], extension)
+
+        with open(local_path, "wb") as f:
+            f.write(data)
+
+        if not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
+            raise Exception("local_file_empty_after_write")
+
+        print("💾 Reacción guardada local OK:", local_path)
+
+        # 🔥 MARCAMOS COMO COMPLETO
+        update_order(
+            order["id"],
             reaction_video_local=local_path,
-            reaction_video_public_url=public_url,
+            reaction_video_public_url=None,
             reaction_uploaded=1,
             experience_completed=1,
             delivered_to_recipient=1,
@@ -5336,50 +5298,57 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_error=None,
         )
 
-        print("✅ DB actualizada")
-
-    except Exception as e:
-        log_error("update_order_reaction", e)
-        raise HTTPException(status_code=500, detail="db_update_failed")
-
-    # =========================================================
-    # POST PROCESOS (NO BLOQUEANTES)
-    # =========================================================
-
-    try:
         updated_order = maybe_mark_eterna_completed(order["id"])
+
+        print("✅ DB ACTUALIZADA: reacción segura")
+
+        # =========================================================
+        # 🔥 🔥 🔥 ENVÍO AL REGALANTE (BLINDADO AQUÍ) 🔥 🔥 🔥
+        # =========================================================
+        try:
+            print("📩 INTENTANDO ENVÍO AL REGALANTE DESDE UPLOAD")
+
+            result = try_send_sender_sms(updated_order)
+
+            print("📩 RESULTADO ENVÍO REGALANTE:", result)
+
+        except Exception as e:
+            log_error("upload_try_send_sender_sms", e)
+
+        # =========================================================
+        # 🔥 OPCIONAL: LANZAR PAGO TAMBIÉN AQUÍ (SI QUIERES ULTRA ROBUSTO)
+        # =========================================================
+        try:
+            payout_result = process_gift_transfer_for_order(updated_order)
+            print("💸 PAYOUT DESDE UPLOAD:", payout_result)
+        except Exception as e:
+            log_error("upload_payout", e)
+
+        return JSONResponse({
+            "ok": True,
+            "redirect": f"/finalizar-experiencia/{recipient_token}",
+        })
+
+    except HTTPException as e:
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error=str(e.detail),
+            experience_completed=0,
+        )
+        raise
+
     except Exception as e:
-        log_error("mark_eterna_completed", e)
-        updated_order = get_order_by_id(order["id"])
+        log_error("upload_reaction_save_error", e)
 
-    # 💸 INTENTO DE PAGO (NO BLOQUEA)
-    try:
-        process_gift_transfer_for_order(updated_order)
-        print("💸 intento payout OK")
-    except Exception as e:
-        log_error("payout_error", e)
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error="local_save_failed",
+            experience_completed=0,
+        )
 
-    # 📩 SMS REGALANTE (NO BLOQUEA)
-    try:
-        sms_result = try_send_sender_sms(get_order_by_id(order["id"]))
-        print("📩 SMS REGALANTE RESULT:", sms_result)
-    except Exception as e:
-        log_error("try_send_sender_sms", e)
-
-    try:
-        send_admin_eterna_completed(get_order_by_id(order["id"]))
-        print("📲 ADMIN SMS ENVIADO")
-    except Exception as e:
-        log_error("admin_sms_error", e)
-
-    # =========================================================
-    # RESPUESTA SIEMPRE OK (CLAVE)
-    # =========================================================
-
-    return JSONResponse({
-        "ok": True,
-        "redirect": f"/finalizar-experiencia/{recipient_token}",
-    })
+        raise HTTPException(status_code=500, detail="local_save_failed")
 
 
 # =========================================================
