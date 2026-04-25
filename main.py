@@ -95,6 +95,13 @@ TWILIO_FROM_NUMBER = (
 SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
+# Template aprobado en Twilio Content Template Builder.
+# Debe ser el SID HX... del template con una variable {{1}} para el link.
+TWILIO_WHATSAPP_TEMPLATE_SID = (
+    os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID", "").strip()
+    or os.getenv("WHATSAPP_TEMPLATE_SID", "").strip()
+    or os.getenv("TWILIO_CONTENT_SID", "").strip()
+)
 ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
@@ -999,7 +1006,12 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     message = build_sender_ready_message(order)
-    result = send_message_best_effort(order.get("sender_phone", ""), message)
+    sender_pack_url = sender_pack_url_from_order(order)
+    result = send_message_best_effort(
+        order.get("sender_phone", ""),
+        message,
+        sender_pack_url,
+    )
 
     attempts = attempts + 1
 
@@ -1099,20 +1111,24 @@ def twilio_enabled() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
 
 
+def twilio_auth_ready() -> bool:
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
+
+
 def send_sms(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
 
     if not to_phone:
-        return {"ok": False, "sid": None, "error": "invalid_phone"}
+        return {"ok": False, "channel": "sms", "sid": None, "error": "invalid_phone"}
 
     if not SMS_ENABLED:
         print("🚫 SMS DESACTIVADO POR CONFIG")
         print("🚫 Destino:", to_phone)
         print("🚫 Mensaje:", message)
-        return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
+        return {"ok": False, "channel": "sms", "sid": None, "error": "sms_disabled_by_config"}
 
     if not twilio_enabled():
-        return {"ok": False, "sid": None, "error": "twilio_not_configured"}
+        return {"ok": False, "channel": "sms", "sid": None, "error": "twilio_sms_not_configured"}
 
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
@@ -1121,9 +1137,9 @@ def send_sms(phone: str, message: str) -> dict:
             from_=TWILIO_FROM_NUMBER,
             to=to_phone,
         )
-        return {"ok": True, "sid": sms.sid, "error": None}
+        return {"ok": True, "channel": "sms", "sid": sms.sid, "error": None}
     except Exception as e:
-        return {"ok": False, "sid": None, "error": str(e)}
+        return {"ok": False, "channel": "sms", "sid": None, "error": str(e)}
 
 
 def whatsapp_from_number() -> str:
@@ -1135,34 +1151,54 @@ def whatsapp_from_number() -> str:
     return f"whatsapp:{raw}"
 
 
-def send_whatsapp(phone: str, message: str) -> dict:
+def send_whatsapp(phone: str, message: str, link_url: str = None) -> dict:
+    """
+    Envío WhatsApp blindado para ETERNA.
+    Para iniciar conversación por WhatsApp Business usamos SOLO template aprobado.
+    Si falta template o link, devolvemos error controlado para caer a SMS.
+    """
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
+    template_sid = (TWILIO_WHATSAPP_TEMPLATE_SID or "").strip()
+    link_url = (link_url or "").strip()
+
     if not to_phone:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
     if not WHATSAPP_ENABLED:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
     if not wa_from:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_twilio_whatsapp_from"}
-    if not twilio_enabled():
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
+    if not twilio_auth_ready():
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_auth_not_configured"}
+    if not template_sid:
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_whatsapp_template_sid"}
+    if not link_url:
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_whatsapp_template_link"}
+
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        msg = client.messages.create(body=message, from_=wa_from, to=f"whatsapp:{to_phone}")
+        msg = client.messages.create(
+            from_=wa_from,
+            to=f"whatsapp:{to_phone}",
+            content_sid=template_sid,
+            content_variables=json.dumps({"1": link_url}),
+        )
         return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
     except Exception as e:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
 
 
-def send_message_best_effort(phone: str, message: str) -> dict:
-    whatsapp_result = send_whatsapp(phone, message)
+def send_message_best_effort(phone: str, message: str, link_url: str = None) -> dict:
+    whatsapp_result = send_whatsapp(phone, message, link_url)
     if whatsapp_result.get("ok"):
         return whatsapp_result
+
     sms_result = send_sms(phone, message)
     if sms_result.get("ok"):
         sms_result["fallback_from"] = "whatsapp"
         sms_result["whatsapp_error"] = whatsapp_result.get("error")
         return sms_result
+
     return {
         "ok": False,
         "channel": "none",
@@ -1301,9 +1337,14 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     # SMS
     # =========================================================
     message = build_recipient_message(order)
-    result = send_message_best_effort(order.get("recipient_phone", ""), message)
+    experience_url = recipient_experience_url_from_order(order)
+    result = send_message_best_effort(
+        order.get("recipient_phone", ""),
+        message,
+        experience_url,
+    )
 
-    print("📩 RECIPIENT SMS RESULT:", result)
+    print("📩 RECIPIENT DELIVERY RESULT:", result)
 
     attempts = attempts + 1
 
