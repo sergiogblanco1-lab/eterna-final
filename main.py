@@ -4610,6 +4610,24 @@ video {
     border: 1px solid rgba(255,255,255,0.10);
 }
 
+.guide-step {
+    display: none;
+}
+
+.guide-step.active {
+    display: block;
+}
+
+.guide-legal {
+    margin-top: 22px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.55);
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4652,25 +4670,76 @@ video {
 
     <div class="overlay" id="overlay">
         <div class="overlay-card">
-            <div class="eyebrow">ETERNA</div>
 
-            <h1 class="title">Shhh…</h1>
-
-            <div class="text">
-                Esto no es un vídeo.<br>
-                Es un momento.
+            <div class="guide-step active" id="guideStep1">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Shhh…</h1>
+                <div class="text">Esto no es un vídeo.</div>
+                <div class="soft">Es un momento que alguien ha preparado para ti.</div>
+                <button class="btn" id="guideBtn1" style="margin-top:28px;">Continuar</button>
             </div>
 
-            <div class="soft">
-                No pienses.<br>
-                Solo deja que ocurra.
+            <div class="guide-step" id="guideStep2">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Escúchalo bien</h1>
+                <div class="text">Si puedes… usa auriculares.</div>
+                <div class="soft">O sube el volumen. Esto merece escucharse con calma.</div>
+                <button class="btn" id="guideBtn2" style="margin-top:28px;">Tengo sonido</button>
             </div>
 
-            <button class="btn" id="startBtn" style="margin-top:28px;">
-                Estoy listo
-            </button>
+            <div class="guide-step" id="guideStep3">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Busca un momento tranquilo</h1>
+                <div class="text">Sin ruido. Sin interrupciones.</div>
+                <div class="soft">Este momento es solo para ti.</div>
+                <button class="btn" id="guideBtn3" style="margin-top:28px;">Ya estoy</button>
+            </div>
 
-            <div class="error-note" id="errorNote"></div>
+            <div class="guide-step" id="guideStep4">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Coloca el móvil</h1>
+                <div class="text">Déjalo frente a ti.</div>
+                <div class="soft">Queremos verte bien cuando ocurra.</div>
+                <button class="btn" id="guideBtn4" style="margin-top:28px;">Listo</button>
+            </div>
+
+            <div class="guide-step" id="guideStep5">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Un poco más lejos</h1>
+                <div class="text">Aléjalo un poco…</div>
+                <div class="soft">Así tu reacción se guardará mejor.</div>
+                <button class="btn" id="guideBtn5" style="margin-top:28px;">Perfecto</button>
+            </div>
+
+            <div class="guide-step" id="guideStep6">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Cuida la luz</h1>
+                <div class="text">Evita tener la luz detrás.</div>
+                <div class="soft">Si puedes, quédate donde tu cara se vea bien.</div>
+                <button class="btn" id="guideBtn6" style="margin-top:28px;">Se me ve bien</button>
+            </div>
+
+            <div class="guide-step" id="guideStep7">
+                <div class="eyebrow">ETERNA</div>
+                <h1 class="title">Ahora sí</h1>
+                <div class="text">
+                    Esto solo pasa una vez.<br>
+                    No toques el móvil hasta que termine.
+                </div>
+                <div class="soft">Deja que ocurra.</div>
+
+                <div class="guide-legal">
+                    Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
+                    y que lo que ocurra en ella pueda volver únicamente a quien la creó.
+                </div>
+
+                <button class="btn" id="startBtn" style="margin-top:28px;">
+                    Estoy listo
+                </button>
+
+                <div class="error-note" id="errorNote"></div>
+            </div>
+
         </div>
     </div>
 
@@ -4708,6 +4777,36 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+let currentGuideStep = 0;
+
+const guideSteps = [
+    document.getElementById("guideStep1"),
+    document.getElementById("guideStep2"),
+    document.getElementById("guideStep3"),
+    document.getElementById("guideStep4"),
+    document.getElementById("guideStep5"),
+    document.getElementById("guideStep6"),
+    document.getElementById("guideStep7")
+];
+
+function showGuideStep(index) {
+    currentGuideStep = index;
+    guideSteps.forEach((step, i) => {
+        if (!step) return;
+        if (i === index) {
+            step.classList.add("active");
+        } else {
+            step.classList.remove("active");
+        }
+    });
+}
+
+function nextGuideStep() {
+    const next = currentGuideStep + 1;
+    if (next < guideSteps.length) {
+        showGuideStep(next);
+    }
+}
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -4796,6 +4895,7 @@ function resetRecordingState() {
     startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
+    showGuideStep(6);
 }
 
 function waitForVideoReady() {
@@ -5067,6 +5167,13 @@ async function safeResumePlayback() {
     }
 }
 
+document.getElementById("guideBtn1")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn2")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn3")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn4")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn5")?.addEventListener("click", () => nextGuideStep());
+document.getElementById("guideBtn6")?.addEventListener("click", () => nextGuideStep());
+
 startBtn.addEventListener("click", async () => {
     if (experienceStarted) return;
 
@@ -5225,6 +5332,8 @@ if (backToStartBtn) {
         window.location.replace("/pedido/" + recipientToken);
     });
 }
+
+showGuideStep(0);
 </script>
 </body>
 </html>
