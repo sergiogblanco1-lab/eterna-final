@@ -95,13 +95,6 @@ TWILIO_FROM_NUMBER = (
 SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
-# Template aprobado en Twilio Content Template Builder.
-# Debe ser el SID HX... del template con una variable {{1}} para el link.
-TWILIO_WHATSAPP_TEMPLATE_SID = (
-    os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID", "").strip()
-    or os.getenv("WHATSAPP_TEMPLATE_SID", "").strip()
-    or os.getenv("TWILIO_CONTENT_SID", "").strip()
-)
 ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
@@ -754,15 +747,20 @@ def maybe_mark_eterna_completed(order_id: str) -> dict:
 
     if is_eterna_complete(order):
         update_order(
-    order["id"],
-    experience_started=1,
-    delivered_to_recipient=1,
-)
+            order["id"],
+            eterna_completed=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+        )
     else:
-        update_order(order_id, eterna_completed=0)
+        update_order(
+            order_id,
+            eterna_completed=0,
+        )
 
     return get_order_by_id(order_id)
-
 
 def video_engine_headers() -> dict:
     headers = {"Content-Type": "application/json"}
@@ -936,23 +934,30 @@ def recipient_experience_url_from_order(order: dict) -> str:
 def build_recipient_message(order: dict) -> str:
     recipient_name = (order.get("recipient_name") or "").strip()
     url = (recipient_experience_url_from_order(order) or "").strip()
+
     greeting = f"{recipient_name}," if recipient_name else ""
     message = ""
+
     if greeting:
         message += f"Shhh…\n\n{greeting}\n\n"
     else:
         message += "Shhh…\n\n"
+
     message += (
-        "Esto no es un vídeo.\n\n"
-        "No es solo un momento.\n\n"
-        "Es algo que alguien ha creado para ti.\n\n"
-        "Pero hay algo más…\n\n"
+        "Alguien ha dejado algo preparado para ti.\n\n"
+        "No lo abras deprisa.\n\n"
+        "No es un vídeo cualquiera.\n"
+        "No es solo un recuerdo.\n\n"
+        "Es un momento creado para que lo vivas de verdad.\n\n"
         "Dentro hay algo que también es tuyo.\n\n"
-        "Ábrelo cuando estés tranquilo:\n\n"
+        "Busca un lugar tranquilo.\n"
+        "Activa el sonido.\n"
+        "Y cuando estés listo…\n\n"
+        "Ábrelo.\n\n"
         f"{url}"
     )
-    return message.strip()
 
+    return message.strip()
 
 def build_sender_ready_message(order: dict) -> str:
     sender_name = (order.get("sender_name") or "").strip()
@@ -996,7 +1001,7 @@ def try_send_sender_sms(order: dict) -> dict:
             "sender_sms_error": order.get("sender_sms_error"),
         }
 
-    if False and attempts >= 3:
+    if attempts >= 3:
         return {
             "ok": False,
             "reason": "max_attempts_reached",
@@ -1006,12 +1011,7 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     message = build_sender_ready_message(order)
-    sender_pack_url = sender_pack_url_from_order(order)
-    result = send_message_best_effort(
-        order.get("sender_phone", ""),
-        message,
-        sender_pack_url,
-    )
+    result = send_message_best_effort(order.get("sender_phone", ""), message)
 
     attempts = attempts + 1
 
@@ -1111,24 +1111,20 @@ def twilio_enabled() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
 
 
-def twilio_auth_ready() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
-
-
 def send_sms(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
 
     if not to_phone:
-        return {"ok": False, "channel": "sms", "sid": None, "error": "invalid_phone"}
+        return {"ok": False, "sid": None, "error": "invalid_phone"}
 
     if not SMS_ENABLED:
         print("🚫 SMS DESACTIVADO POR CONFIG")
         print("🚫 Destino:", to_phone)
         print("🚫 Mensaje:", message)
-        return {"ok": False, "channel": "sms", "sid": None, "error": "sms_disabled_by_config"}
+        return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
 
     if not twilio_enabled():
-        return {"ok": False, "channel": "sms", "sid": None, "error": "twilio_sms_not_configured"}
+        return {"ok": False, "sid": None, "error": "twilio_not_configured"}
 
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
@@ -1137,9 +1133,9 @@ def send_sms(phone: str, message: str) -> dict:
             from_=TWILIO_FROM_NUMBER,
             to=to_phone,
         )
-        return {"ok": True, "channel": "sms", "sid": sms.sid, "error": None}
+        return {"ok": True, "sid": sms.sid, "error": None}
     except Exception as e:
-        return {"ok": False, "channel": "sms", "sid": None, "error": str(e)}
+        return {"ok": False, "sid": None, "error": str(e)}
 
 
 def whatsapp_from_number() -> str:
@@ -1151,54 +1147,34 @@ def whatsapp_from_number() -> str:
     return f"whatsapp:{raw}"
 
 
-def send_whatsapp(phone: str, message: str, link_url: str = None) -> dict:
-    """
-    Envío WhatsApp blindado para ETERNA.
-    Para iniciar conversación por WhatsApp Business usamos SOLO template aprobado.
-    Si falta template o link, devolvemos error controlado para caer a SMS.
-    """
+def send_whatsapp(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
-    template_sid = (TWILIO_WHATSAPP_TEMPLATE_SID or "").strip()
-    link_url = (link_url or "").strip()
-
     if not to_phone:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
     if not WHATSAPP_ENABLED:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
     if not wa_from:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_twilio_whatsapp_from"}
-    if not twilio_auth_ready():
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_auth_not_configured"}
-    if not template_sid:
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_whatsapp_template_sid"}
-    if not link_url:
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_whatsapp_template_link"}
-
+    if not twilio_enabled():
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        msg = client.messages.create(
-            from_=wa_from,
-            to=f"whatsapp:{to_phone}",
-            content_sid=template_sid,
-            content_variables=json.dumps({"1": link_url}),
-        )
+        msg = client.messages.create(body=message, from_=wa_from, to=f"whatsapp:{to_phone}")
         return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
     except Exception as e:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
 
 
-def send_message_best_effort(phone: str, message: str, link_url: str = None) -> dict:
-    whatsapp_result = send_whatsapp(phone, message, link_url)
+def send_message_best_effort(phone: str, message: str) -> dict:
+    whatsapp_result = send_whatsapp(phone, message)
     if whatsapp_result.get("ok"):
         return whatsapp_result
-
     sms_result = send_sms(phone, message)
     if sms_result.get("ok"):
         sms_result["fallback_from"] = "whatsapp"
         sms_result["whatsapp_error"] = whatsapp_result.get("error")
         return sms_result
-
     return {
         "ok": False,
         "channel": "none",
@@ -1299,7 +1275,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     # =========================================================
     attempts = int(order.get("recipient_sms_attempts") or 0)
 
-    if False and attempts >= 3:
+    if attempts >= 3:
         return {
             "ok": False,
             "reason": "max_attempts_reached",
@@ -1337,14 +1313,9 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     # SMS
     # =========================================================
     message = build_recipient_message(order)
-    experience_url = recipient_experience_url_from_order(order)
-    result = send_message_best_effort(
-        order.get("recipient_phone", ""),
-        message,
-        experience_url,
-    )
+    result = send_message_best_effort(order.get("recipient_phone", ""), message)
 
-    print("📩 RECIPIENT DELIVERY RESULT:", result)
+    print("📩 RECIPIENT SMS RESULT:", result)
 
     attempts = attempts + 1
 
@@ -1694,8 +1665,6 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     order = get_order_by_id(order["id"])
     gift_amount = float(order.get("gift_amount") or 0)
 
-    
-
     if bool(order.get("gift_refunded")):
         return {"status": "gift_already_refunded"}
 
@@ -1722,8 +1691,16 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     if not bool(order.get("paid")):
         return {"status": "not_paid"}
 
-    if not bool(order.get("experience_completed")):
-        return {"status": "experience_not_completed"}
+    # 🔒 REGLA SAGRADA ETERNA:
+    # Sin reacción real guardada, no se libera dinero.
+    if not reaction_is_safe(order):
+        update_order(
+            order["id"],
+            transfer_in_progress=0,
+            cashout_completed=0,
+            transfer_completed=0,
+        )
+        return {"status": "reaction_not_safe"}
 
     if not bool(order.get("connect_onboarding_completed")):
         return {"status": "onboarding_not_ready"}
@@ -1778,13 +1755,17 @@ def process_gift_transfer_for_order(order: dict) -> dict:
 
     except Exception as e:
         log_error("Transfer error", e)
-        update_order(order["id"], transfer_in_progress=0)
+        update_order(
+            order["id"],
+            transfer_in_progress=0,
+            cashout_completed=0,
+            transfer_completed=0,
+        )
         return {
             "status": "error",
             "error": str(e),
             "retry": True,
         }
-
 
 # =========================================================
 # LEGAL
@@ -4651,24 +4632,6 @@ video {
     border: 1px solid rgba(255,255,255,0.10);
 }
 
-.guide-step {
-    display: none;
-}
-
-.guide-step.active {
-    display: block;
-}
-
-.guide-legal {
-    margin-top: 22px;
-    font-size: 14px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.55);
-    max-width: 420px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4711,76 +4674,25 @@ video {
 
     <div class="overlay" id="overlay">
         <div class="overlay-card">
+            <div class="eyebrow">ETERNA</div>
 
-            <div class="guide-step active" id="guideStep1">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Shhh…</h1>
-                <div class="text">Esto no es un vídeo.</div>
-                <div class="soft">Es un momento que alguien ha preparado para ti.</div>
-                <button class="btn" id="guideBtn1" style="margin-top:28px;">Continuar</button>
+            <h1 class="title">Shhh…</h1>
+
+            <div class="text">
+                Esto no es un vídeo.<br>
+                Es un momento.
             </div>
 
-            <div class="guide-step" id="guideStep2">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Escúchalo bien</h1>
-                <div class="text">Si puedes… usa auriculares.</div>
-                <div class="soft">O sube el volumen. Esto merece escucharse con calma.</div>
-                <button class="btn" id="guideBtn2" style="margin-top:28px;">Tengo sonido</button>
+            <div class="soft">
+                No pienses.<br>
+                Solo deja que ocurra.
             </div>
 
-            <div class="guide-step" id="guideStep3">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Busca un momento tranquilo</h1>
-                <div class="text">Sin ruido. Sin interrupciones.</div>
-                <div class="soft">Este momento es solo para ti.</div>
-                <button class="btn" id="guideBtn3" style="margin-top:28px;">Ya estoy</button>
-            </div>
+            <button class="btn" id="startBtn" style="margin-top:28px;">
+                Estoy listo
+            </button>
 
-            <div class="guide-step" id="guideStep4">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Coloca el móvil</h1>
-                <div class="text">Déjalo frente a ti.</div>
-                <div class="soft">Queremos verte bien cuando ocurra.</div>
-                <button class="btn" id="guideBtn4" style="margin-top:28px;">Listo</button>
-            </div>
-
-            <div class="guide-step" id="guideStep5">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Un poco más lejos</h1>
-                <div class="text">Aléjalo un poco…</div>
-                <div class="soft">Así tu reacción se guardará mejor.</div>
-                <button class="btn" id="guideBtn5" style="margin-top:28px;">Perfecto</button>
-            </div>
-
-            <div class="guide-step" id="guideStep6">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Cuida la luz</h1>
-                <div class="text">Evita tener la luz detrás.</div>
-                <div class="soft">Si puedes, quédate donde tu cara se vea bien.</div>
-                <button class="btn" id="guideBtn6" style="margin-top:28px;">Se me ve bien</button>
-            </div>
-
-            <div class="guide-step" id="guideStep7">
-                <div class="eyebrow">ETERNA</div>
-                <h1 class="title">Ahora sí</h1>
-                <div class="text">
-                    Esto solo pasa una vez.<br>
-                    No toques el móvil hasta que termine.
-                </div>
-                <div class="soft">Deja que ocurra.</div>
-
-                <div class="guide-legal">
-                    Al continuar, aceptas las condiciones necesarias para vivir esta experiencia
-                    y que lo que ocurra en ella pueda volver únicamente a quien la creó.
-                </div>
-
-                <button class="btn" id="startBtn" style="margin-top:28px;">
-                    Estoy listo
-                </button>
-
-                <div class="error-note" id="errorNote"></div>
-            </div>
-
+            <div class="error-note" id="errorNote"></div>
         </div>
     </div>
 
@@ -4818,36 +4730,6 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
-let currentGuideStep = 0;
-
-const guideSteps = [
-    document.getElementById("guideStep1"),
-    document.getElementById("guideStep2"),
-    document.getElementById("guideStep3"),
-    document.getElementById("guideStep4"),
-    document.getElementById("guideStep5"),
-    document.getElementById("guideStep6"),
-    document.getElementById("guideStep7")
-];
-
-function showGuideStep(index) {
-    currentGuideStep = index;
-    guideSteps.forEach((step, i) => {
-        if (!step) return;
-        if (i === index) {
-            step.classList.add("active");
-        } else {
-            step.classList.remove("active");
-        }
-    });
-}
-
-function nextGuideStep() {
-    const next = currentGuideStep + 1;
-    if (next < guideSteps.length) {
-        showGuideStep(next);
-    }
-}
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -4936,7 +4818,6 @@ function resetRecordingState() {
     startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
-    showGuideStep(6);
 }
 
 function waitForVideoReady() {
@@ -5208,13 +5089,6 @@ async function safeResumePlayback() {
     }
 }
 
-document.getElementById("guideBtn1")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn2")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn3")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn4")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn5")?.addEventListener("click", () => nextGuideStep());
-document.getElementById("guideBtn6")?.addEventListener("click", () => nextGuideStep());
-
 startBtn.addEventListener("click", async () => {
     if (experienceStarted) return;
 
@@ -5373,8 +5247,6 @@ if (backToStartBtn) {
         window.location.replace("/pedido/" + recipientToken);
     });
 }
-
-showGuideStep(0);
 </script>
 </body>
 </html>
@@ -5406,6 +5278,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
+    content_type = (video.content_type or "").lower().strip()
+    extension = detect_video_extension(video)
+    local_path = reaction_video_path(order["id"], extension)
+
     try:
         update_order(
             order["id"],
@@ -5417,88 +5293,119 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         data = await video.read()
         size = len(data)
 
-        print("📦 size:", size)
+        print("📦 reaction_content_type:", content_type)
+        print("📦 reaction_size:", size)
 
         if size <= 0:
+            update_order(
+                order["id"],
+                reaction_upload_pending=0,
+                reaction_upload_error="empty_video",
+                experience_completed=0,
+            )
             raise HTTPException(status_code=400, detail="empty_video")
 
         if size > MAX_VIDEO_SIZE:
+            update_order(
+                order["id"],
+                reaction_upload_pending=0,
+                reaction_upload_error="video_too_large",
+                experience_completed=0,
+            )
             raise HTTPException(status_code=400, detail="video_too_large")
-
-        extension = detect_video_extension(video)
-        local_path = reaction_video_path(order["id"], extension)
 
         with open(local_path, "wb") as f:
             f.write(data)
 
         if not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
-            raise Exception("local_file_empty_after_write")
+            update_order(
+                order["id"],
+                reaction_upload_pending=0,
+                reaction_upload_error="local_file_empty_after_write",
+                experience_completed=0,
+            )
+            raise HTTPException(status_code=500, detail="local_save_failed")
 
         print("💾 Reacción guardada local OK:", local_path)
 
-        # 🔥 MARCAMOS COMO COMPLETO
-        update_order(
-            order["id"],
-            reaction_video_local=local_path,
-            reaction_video_public_url=None,
-            reaction_uploaded=1,
-            experience_completed=1,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=None,
-        )
-
-        updated_order = maybe_mark_eterna_completed(order["id"])
-
-        print("✅ DB ACTUALIZADA: reacción segura")
-
-        # =========================================================
-        # 🔥 🔥 🔥 ENVÍO AL REGALANTE (BLINDADO AQUÍ) 🔥 🔥 🔥
-        # =========================================================
-        try:
-            print("📩 INTENTANDO ENVÍO AL REGALANTE DESDE UPLOAD")
-
-            result = try_send_sender_sms(updated_order)
-
-            print("📩 RESULTADO ENVÍO REGALANTE:", result)
-
-        except Exception as e:
-            log_error("upload_try_send_sender_sms", e)
-
-        # =========================================================
-        # 🔥 OPCIONAL: LANZAR PAGO TAMBIÉN AQUÍ (SI QUIERES ULTRA ROBUSTO)
-        # =========================================================
-        try:
-            payout_result = process_gift_transfer_for_order(updated_order)
-            print("💸 PAYOUT DESDE UPLOAD:", payout_result)
-        except Exception as e:
-            log_error("upload_payout", e)
-
-        return JSONResponse({
-            "ok": True,
-            "redirect": f"/finalizar-experiencia/{recipient_token}",
-        })
-
-    except HTTPException as e:
-        update_order(
-            order["id"],
-            reaction_upload_pending=0,
-            reaction_upload_error=str(e.detail),
-            experience_completed=0,
-        )
+    except HTTPException:
         raise
 
     except Exception as e:
         log_error("upload_reaction_save_error", e)
-
         update_order(
             order["id"],
             reaction_upload_pending=0,
             reaction_upload_error="local_save_failed",
             experience_completed=0,
         )
-
         raise HTTPException(status_code=500, detail="local_save_failed")
+
+    public_url = None
+
+    try:
+        if r2_enabled():
+            remote_name = f"reactions/{order['id']}.{extension}"
+            safe_type = content_type or ("video/mp4" if extension == "mp4" else "video/webm")
+            public_url = upload_video_to_r2(
+                local_path,
+                remote_name,
+                content_type=safe_type,
+            )
+            print("☁️ Reacción subida a R2:", public_url)
+
+    except Exception as e:
+        # R2 NO puede romper ETERNA: si está guardado local, seguimos.
+        log_error("r2_upload_failed_but_local_ok", e)
+        public_url = None
+
+    try:
+        update_order(
+            order["id"],
+            reaction_video_local=local_path,
+            reaction_video_public_url=public_url,
+            reaction_uploaded=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+
+        updated_order = maybe_mark_eterna_completed(order["id"])
+        print("✅ DB ACTUALIZADA: reacción segura")
+
+    except Exception as e:
+        log_error("update_order_reaction", e)
+        update_order(
+            order["id"],
+            reaction_upload_pending=0,
+            reaction_upload_error="db_update_failed",
+            experience_completed=0,
+        )
+        raise HTTPException(status_code=500, detail="db_update_failed")
+
+    try:
+        payout_result = process_gift_transfer_for_order(updated_order)
+        print("💸 PAYOUT DESDE UPLOAD:", payout_result)
+    except Exception as e:
+        log_error("upload_payout", e)
+
+    try:
+        sms_result = try_send_sender_sms(updated_order)
+        print("📩 MENSAJE REGALANTE DESDE UPLOAD:", sms_result)
+    except Exception as e:
+        log_error("upload_try_send_sender_sms", e)
+
+    try:
+        send_admin_eterna_completed(updated_order)
+    except Exception as e:
+        log_error("upload_admin_completed", e)
+
+    return JSONResponse({
+        "ok": True,
+        "redirect": f"/finalizar-experiencia/{recipient_token}",
+    })
 
 
 # =========================================================
@@ -5855,8 +5762,8 @@ def connect_payout(request: Request, recipient_token: str):
 def sender_pack(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
 
-    # 🔒 BLOQUEO: sin vídeo o sin reacción real → no abrir pack
     if not original_video_ready(order) or not reaction_is_safe(order):
+        print("⚠️ SENDER PACK BLOQUEADO: falta vídeo o reacción", order.get("id"))
         return HTMLResponse("""
 <!DOCTYPE html>
 <html lang="es">
@@ -5877,6 +5784,7 @@ def sender_pack(sender_token: str):
 </html>
         """)
 
+
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
 
@@ -5885,617 +5793,216 @@ def sender_pack(sender_token: str):
         if local_path and os.path.exists(local_path):
             reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
 
-    reaction_type = guess_media_type_from_url(reaction_url) if reaction_url else "video/mp4"
-    original_type = guess_media_type_from_url(original_video_url) if original_video_url else "video/mp4"
+    sender_status = "Tu ETERNA ha vuelto."
 
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
+    body_content = f"""
+    <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
 
-<style>
-html, body {{
-    margin: 0;
-    padding: 0;
-    background: #000;
-    color: #fff;
-    font-family: Arial, sans-serif;
-}}
+        <h1 style="font-size:46px;font-weight:800;margin-bottom:18px;">
+            {sender_status}
+        </h1>
 
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 34%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-}}
+        <p style="font-size:22px;opacity:.9;margin-bottom:30px;">
+            Lo que diste… ha encontrado el camino de vuelta.
+        </p>
 
-body.locked {{
-    overflow: hidden;
-}}
+        <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
 
-.wrap {{
-    width: 100%;
-    max-width: 820px;
-    margin: 0 auto;
-    padding: 34px 18px 80px;
-    box-sizing: border-box;
-    text-align: center;
-}}
-
-.brand {{
-    margin-top: 10px;
-    margin-bottom: 24px;
-    font-size: 12px;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.34);
-}}
-
-h1 {{
-    margin: 0;
-    font-size: 46px;
-    line-height: 1.12;
-    font-weight: 800;
-}}
-
-.lead {{
-    margin: 18px auto 30px;
-    max-width: 640px;
-    font-size: 21px;
-    line-height: 1.75;
-    color: rgba(255,255,255,0.78);
-}}
-
-.player-shell {{
-    position: relative;
-    width: 100%;
-    border-radius: 30px;
-    overflow: hidden;
-    background: #000;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.55);
-    border: 1px solid rgba(255,255,255,0.08);
-}}
-
-.main-video {{
-    width: 100%;
-    display: block;
-    background: #000;
-    transform: scale(1);
-    transition: transform 8s ease-out, filter 1s ease;
-}}
-
-.main-video.zooming {{
-    transform: scale(1.05);
-}}
-
-.main-video.ended {{
-    filter: brightness(0.85);
-}}
-
-.mini-original {{
-    position: absolute;
-    right: 14px;
-    bottom: 14px;
-    width: 30%;
-    max-width: 150px;
-    border-radius: 18px;
-    background: #000;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.7s ease, transform 0.7s ease;
-    border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-}}
-
-.mini-original.show {{
-    opacity: 1;
-    transform: translateY(0);
-}}
-
-.sound-note {{
-    margin-top: 12px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.42);
-}}
-
-.after-text {{
-    margin-top: 16px;
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.50);
-}}
-
-.actions {{
-    display: grid;
-    gap: 12px;
-    max-width: 460px;
-    margin: 30px auto 0;
-}}
-
-.btn {{
-    width: 100%;
-    display: block;
-    border: none;
-    border-radius: 999px;
-    padding: 18px 22px;
-    font-size: 17px;
-    font-weight: 800;
-    text-decoration: none;
-    cursor: pointer;
-    box-sizing: border-box;
-}}
-
-.btn.primary {{
-    background: #fff;
-    color: #000;
-}}
-
-.btn.secondary {{
-    background: rgba(255,255,255,0.10);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.12);
-}}
-
-.share-wrap {{
-    display: none;
-    margin-top: 28px;
-}}
-
-.share-wrap.show {{
-    display: block;
-}}
-
-.final-line {{
-    margin: 28px auto 0;
-    max-width: 560px;
-    font-size: 21px;
-    line-height: 1.65;
-    color: rgba(255,255,255,0.82);
-}}
-
-.small-note {{
-    margin-top: 14px;
-    font-size: 14px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.46);
-}}
-
-.intro-overlay {{
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 34%),
-        linear-gradient(180deg, #070707 0%, #000000 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 28px;
-    box-sizing: border-box;
-}}
-
-.intro-card {{
-    width: 100%;
-    max-width: 620px;
-}}
-
-.intro-title {{
-    font-size: 48px;
-    line-height: 1.12;
-    font-weight: 800;
-    margin: 0 0 22px;
-}}
-
-.intro-copy {{
-    font-size: 22px;
-    line-height: 1.75;
-    color: rgba(255,255,255,0.78);
-    margin-bottom: 34px;
-}}
-
-.hidden {{
-    display: none !important;
-}}
-
-@media (max-width: 720px) {{
-    h1 {{
-        font-size: 37px;
-    }}
-
-    .lead {{
-        font-size: 19px;
-    }}
-
-    .intro-title {{
-        font-size: 38px;
-    }}
-
-    .intro-copy {{
-        font-size: 20px;
-    }}
-
-    .mini-original {{
-        width: 34%;
-        max-width: 130px;
-    }}
-}}
-</style>
-</head>
-
-<body class="locked">
-
-<div class="intro-overlay" id="introOverlay">
-    <div class="intro-card">
-        <div class="brand">ETERNA</div>
-
-        <h1 class="intro-title">Prepárate.</h1>
-
-        <div class="intro-copy">
-            Esto ya ha pasado.<br>
-            Y no se puede repetir.<br><br>
-            Ahora vas a ver lo que provocaste.
-        </div>
-
-        <button class="btn primary" id="startPackBtn">
-            Ver lo que provocaste
-        </button>
-    </div>
-</div>
-
-<div class="wrap">
-    <div class="brand">ETERNA</div>
-
-    <h1>Esto es lo que has provocado.</h1>
-
-    <div class="lead">
-        Lo que diste…<br>
-        ha encontrado el camino de vuelta.
-    </div>
-
-    <div class="player-shell">
-        <video
-            id="eternaReactionPlayer"
-            class="main-video"
-            playsinline
-            webkit-playsinline
-            controls
-            preload="metadata"
-        >
-            <source src="{safe_attr(reaction_url)}" type="{safe_attr(reaction_type)}">
-        </video>
-
-        <video
-            id="eternaMiniOriginal"
-            class="mini-original"
-            playsinline
-            webkit-playsinline
-            preload="metadata"
-        >
-            <source src="{safe_attr(original_video_url)}" type="{safe_attr(original_type)}">
-        </video>
-    </div>
-
-    <div class="sound-note">
-        La reacción es el sonido principal. El vídeo original suena suave por debajo.
-    </div>
-
-    <div class="after-text">
-        Mira cada detalle. Ahí está lo que volvió.
-    </div>
-
-    <div class="actions">
-        <button class="btn primary" id="eternaReplayAll">
-            Volver a verlo desde el principio
-        </button>
-
-        <a class="btn secondary" href="/crear">
-            Crear una nueva ETERNA
-        </a>
-    </div>
-
-    <div class="share-wrap" id="eternaShareWrap">
-        <div class="final-line">
-            Esto ya ha pasado.<br>
-            Y ya forma parte de alguien.
-        </div>
-
-        <div class="actions">
-            <a
-                class="btn primary"
-                href="{safe_attr(reaction_url)}"
-                download
+            <!-- VIDEO REACCIÓN -->
+            <video
+                id="eterna-reaction-player"
+                playsinline
+                webkit-playsinline
+                controls
+                preload="metadata"
+                style="width:100%;display:block;background:black;"
             >
-                Guardar este momento
-            </a>
+                <source src="{reaction_url}" type="video/mp4">
+            </video>
 
-            <button class="btn secondary" id="eternaShareReaction">
-                Compartir lo que has provocado
+            <!-- VIDEO ORIGINAL MINI -->
+            <video
+                id="eterna-mini-original"
+                muted
+                playsinline
+                webkit-playsinline
+                preload="metadata"
+                style="
+                    position:absolute;
+                    right:14px;
+                    bottom:14px;
+                    width:30%;
+                    max-width:140px;
+                    border-radius:16px;
+                    background:black;
+                "
+            >
+                <source src="{original_video_url}" type="video/mp4">
+            </video>
+
+        </div>
+
+        <div style="margin-top:14px;font-size:15px;opacity:.55;">
+            Aquí vuelve lo que provocaste.
+        </div>
+
+        <div style="margin-top:34px;">
+            <button
+                id="eterna-replay-all"
+                style="width:100%;border:none;border-radius:999px;padding:22px;font-size:22px;font-weight:700;background:#f3f3f3;color:#000;">
+                Volver a sentirlo
             </button>
         </div>
 
-        <div class="small-note">
-            Comparte solo la emoción.<br>
-            El vídeo original se queda aquí para no romper la magia de ETERNA.
+        <div id="eterna-share-wrap" style="display:none;margin-top:22px;">
+
+            <a
+                href="{reaction_url}"
+                download
+                style="display:block;width:100%;border-radius:999px;padding:20px;font-size:20px;font-weight:700;background:#fff;color:#000;text-decoration:none;">
+                Descargar su reacción
+            </a>
+
+            <button
+                id="eterna-share-reaction"
+                style="margin-top:12px;width:100%;border:none;border-radius:999px;padding:18px;font-size:18px;font-weight:700;background:#111;color:#fff;">
+                Compartir su reacción
+            </button>
+
+            <div style="margin-top:14px;font-size:14px;color:rgba(255,255,255,0.5);">
+                Comparte solo la emoción.<br>
+                El vídeo original se queda aquí para no romper la magia de ETERNA.
+            </div>
+
         </div>
+
     </div>
-</div>
 
-<script>
-(function () {{
-    const introOverlay = document.getElementById("introOverlay");
-    const startPackBtn = document.getElementById("startPackBtn");
+    <script>
+    (function () {{
 
-    const reaction = document.getElementById("eternaReactionPlayer");
-    const mini = document.getElementById("eternaMiniOriginal");
-    const replay = document.getElementById("eternaReplayAll");
-    const shareWrap = document.getElementById("eternaShareWrap");
-    const shareBtn = document.getElementById("eternaShareReaction");
+        const reaction = document.getElementById("eterna-reaction-player");
+        const mini = document.getElementById("eterna-mini-original");
+        const replay = document.getElementById("eterna-replay-all");
+        const shareWrap = document.getElementById("eterna-share-wrap");
+        const shareBtn = document.getElementById("eterna-share-reaction");
 
-    const ORIGINAL_VOLUME = 0.18;
-    let fadeInterval = null;
-    let miniDelayTimer = null;
+        function syncMini() {{
+            if (!reaction || !mini) return;
 
-    function stopFade() {{
-        if (fadeInterval) {{
-            clearInterval(fadeInterval);
-            fadeInterval = null;
-        }}
-    }}
-
-    function prepareMiniAudio() {{
-        if (!mini) return;
-
-        try {{
-            mini.muted = false;
-            mini.volume = 0;
-        }} catch (e) {{}}
-    }}
-
-    function fadeInMini() {{
-        if (!mini) return;
-
-        stopFade();
-
-        let vol = 0;
-        const target = ORIGINAL_VOLUME;
-
-        fadeInterval = setInterval(() => {{
             try {{
-                vol += 0.02;
+                const reactionTime = reaction.currentTime || 0;
+                const miniTime = mini.currentTime || 0;
+                const diff = Math.abs(miniTime - reactionTime);
 
-                if (vol >= target) {{
-                    mini.volume = target;
-                    stopFade();
-                }} else {{
-                    mini.volume = vol;
+                if (diff > 0.20) {{
+                    mini.currentTime = reactionTime;
                 }}
-            }} catch (e) {{
-                stopFade();
-            }}
-        }}, 60);
-    }}
-
-    function syncMini() {{
-        if (!reaction || !mini) return;
-
-        try {{
-            const reactionTime = reaction.currentTime || 0;
-            const miniTime = mini.currentTime || 0;
-            const diff = Math.abs(miniTime - reactionTime);
-
-            if (diff > 0.35) {{
-                mini.currentTime = reactionTime;
-            }}
-        }} catch (e) {{}}
-    }}
-
-    function showMini() {{
-        if (!mini) return;
-
-        mini.classList.add("show");
-        prepareMiniAudio();
-    }}
-
-    function hideMini() {{
-        if (!mini) return;
-
-        try {{
-            mini.pause();
-        }} catch (e) {{}}
-
-        mini.classList.remove("show");
-        stopFade();
-    }}
-
-    function startMiniDelayed() {{
-        if (!mini || !reaction) return;
-
-        if (miniDelayTimer) {{
-            clearTimeout(miniDelayTimer);
-            miniDelayTimer = null;
+            }} catch (e) {{}}
         }}
 
-        miniDelayTimer = setTimeout(() => {{
-            showMini();
-            syncMini();
+        if (reaction && mini) {{
+            reaction.addEventListener("loadedmetadata", function () {{
+                syncMini();
+            }});
 
-            try {{
-                prepareMiniAudio();
-                mini.play().then(() => {{
-                    fadeInMini();
-                }}).catch(() => {{}});
-            }} catch (e) {{}}
-        }}, 800);
-    }}
+            reaction.addEventListener("play", function () {{
+                syncMini();
+            }});
 
-    function playBoth() {{
-        if (!reaction) return;
+            reaction.addEventListener("seeking", function () {{
+                syncMini();
+            }});
 
-        syncMini();
+            reaction.addEventListener("timeupdate", function () {{
+                syncMini();
+            }});
 
-        try {{
-            reaction.volume = 1.0;
-        }} catch (e) {{}}
-
-        try {{
-            reaction.classList.remove("ended");
-            reaction.classList.add("zooming");
-        }} catch (e) {{}}
-
-        try {{
-            reaction.play().catch(() => {{}});
-        }} catch (e) {{}}
-
-        startMiniDelayed();
-    }}
-
-    function pauseMini() {{
-        if (!mini) return;
-
-        try {{
-            mini.pause();
-        }} catch (e) {{}}
-    }}
-
-    function resetPack() {{
-        try {{
-            reaction.pause();
-        }} catch (e) {{}}
-
-        try {{
-            reaction.currentTime = 0;
-        }} catch (e) {{}}
-
-        try {{
-            reaction.classList.remove("ended");
-            reaction.classList.remove("zooming");
-        }} catch (e) {{}}
-
-        if (mini) {{
-            try {{
-                mini.pause();
-                mini.currentTime = 0;
-            }} catch (e) {{}}
-
-            mini.classList.remove("show");
-            prepareMiniAudio();
-        }}
-
-        if (shareWrap) {{
-            shareWrap.classList.remove("show");
-        }}
-
-        syncMini();
-    }}
-
-    if (startPackBtn) {{
-        startPackBtn.addEventListener("click", function () {{
-            if (introOverlay) {{
-                introOverlay.classList.add("hidden");
-            }}
-
-            try {{
-                document.body.classList.remove("locked");
-            }} catch (e) {{}}
-
-            if (navigator.vibrate) {{
+            reaction.addEventListener("ended", function () {{
                 try {{
-                    navigator.vibrate(50);
+                    mini.currentTime = reaction.duration || mini.currentTime || 0;
                 }} catch (e) {{}}
-            }}
 
-            resetPack();
-            playBoth();
-        }});
-    }}
+                if (shareWrap) {{
+                    shareWrap.style.display = "block";
+                }}
+            }});
+        }} else if (reaction) {{
+            reaction.addEventListener("ended", function () {{
+                if (shareWrap) {{
+                    shareWrap.style.display = "block";
+                }}
+            }});
+        }}
 
-    if (reaction && mini) {{
-        reaction.addEventListener("loadedmetadata", syncMini);
-
-        reaction.addEventListener("play", function () {{
-            startMiniDelayed();
-
-            try {{
-                reaction.classList.add("zooming");
-            }} catch (e) {{}}
-        }});
-
-        reaction.addEventListener("pause", function () {{
-            pauseMini();
-        }});
-
-        reaction.addEventListener("seeking", syncMini);
-        reaction.addEventListener("timeupdate", syncMini);
-
-        reaction.addEventListener("ended", function () {{
-            hideMini();
-
-            try {{
-                reaction.pause();
-                reaction.classList.add("ended");
-                reaction.classList.remove("zooming");
-            }} catch (e) {{}}
-
-            if (shareWrap) {{
-                shareWrap.classList.add("show");
-            }}
-        }});
-    }} else if (reaction) {{
-        reaction.addEventListener("ended", function () {{
-            try {{
-                reaction.pause();
-                reaction.classList.add("ended");
-                reaction.classList.remove("zooming");
-            }} catch (e) {{}}
-
-            if (shareWrap) {{
-                shareWrap.classList.add("show");
-            }}
-        }});
-    }}
-
-    if (replay && reaction) {{
-        replay.addEventListener("click", function () {{
-            resetPack();
-            playBoth();
-        }});
-    }}
-
-    if (shareBtn) {{
-        shareBtn.addEventListener("click", async function () {{
-            const url = "{safe_attr(reaction_url)}";
-
-            if (navigator.share) {{
+        if (replay && reaction) {{
+            replay.addEventListener("click", function () {{
                 try {{
-                    await navigator.share({{
-                        title: "ETERNA",
-                        text: "Esto es lo que provoca ETERNA.",
-                        url: url
-                    }});
-                    return;
+                    reaction.currentTime = 0;
                 }} catch (e) {{}}
+
+                if (mini) {{
+                    try {{
+                        mini.currentTime = 0;
+                    }} catch (e) {{}}
+                }}
+
+                if (shareWrap) {{
+                    shareWrap.style.display = "none";
+                }}
+
+                reaction.play().catch(() => {{}});
+            }});
+        }}
+
+        if (shareBtn) {{
+            shareBtn.addEventListener("click", async function () {{
+
+                const url = "{reaction_url}";
+
+                if (navigator.share) {{
+                    try {{
+                        await navigator.share({{
+                            title: "ETERNA",
+                            text: "Esto es lo que provoca ETERNA.",
+                            url: url
+                        }});
+                        return;
+                    }} catch (e) {{}}
+                }}
+
+                try {{
+                    await navigator.clipboard.writeText(url);
+                    alert("Link copiado");
+                }} catch (e) {{
+                    alert(url);
+                }}
+
+            }});
+        }}
+
+    }})();
+    </script>
+    """
+
+    return HTMLResponse(f"""
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>ETERNA</title>
+        <style>
+            body {{
+                margin:0;
+                background:#000;
+                color:#fff;
+                font-family:sans-serif;
             }}
-
-            try {{
-                await navigator.clipboard.writeText(url);
-                alert("Link copiado");
-            }} catch (e) {{
-                alert(url);
-            }}
-        }});
-    }}
-
-    prepareMiniAudio();
-}})();
-</script>
-
-</body>
-</html>
+        </style>
+    </head>
+    <body>
+        {body_content}
+    </body>
+    </html>
     """)
 
 
@@ -6601,7 +6108,7 @@ def admin_retry_recipient_message(order_id: str, request: Request):
             "delivery_sent_at": order.get("delivery_sent_at"),
         }
 
-    if False and attempts >= 3:
+    if attempts >= 3:
         return {
             "ok": False,
             "reason": "max_attempts_reached",
