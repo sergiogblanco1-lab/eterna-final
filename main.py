@@ -95,6 +95,13 @@ TWILIO_FROM_NUMBER = (
 SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
+
+# WhatsApp templates de Twilio Content.
+# Si están vacíos o no empiezan por HX, el sistema NO rompe:
+# intenta WhatsApp libre si procede y SIEMPRE cae a SMS si WhatsApp falla.
+TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT = os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT", "").strip()
+TWILIO_WHATSAPP_TEMPLATE_SID_SENDER = os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID_SENDER", "").strip()
+
 ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
 
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
@@ -145,19 +152,91 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 
 
 # =========================================================
-# LOG
+# LOG — MODO NIÑO PARA RENDER
 # =========================================================
 
+def explain_error(error) -> str:
+    text = str(error or "").lower()
+
+    if "authenticate" in text or "401" in text:
+        return (
+            "Twilio no te deja enviar. Revisa TWILIO_ACCOUNT_SID y TWILIO_AUTH_TOKEN. "
+            "También puede ser que el token sea de otra cuenta o que falte redeploy."
+        )
+    if "not found" in text or "404" in text:
+        return "Algo no existe: ruta, pedido, foto, vídeo, reacción o enlace antiguo."
+    if "forbidden" in text or "403" in text:
+        return "Acceso bloqueado: token/secreto incorrecto o alguien intentando abrir algo privado."
+    if "invalid_phone" in text:
+        return "Teléfono mal formado. Debe tener prefijo, por ejemplo +34674713885."
+    if "twilio_not_configured" in text:
+        return "Twilio no está configurado. Falta SID, TOKEN o número FROM."
+    if "whatsapp_disabled" in text:
+        return "WhatsApp está apagado por WHATSAPP_ENABLED=0. SMS debería seguir funcionando."
+    if "sms_disabled" in text:
+        return "SMS está apagado por SMS_ENABLED=0."
+    if "missing_twilio_whatsapp_from" in text:
+        return "Falta TWILIO_WHATSAPP_FROM. Si no hay WhatsApp, SMS debe actuar como respaldo."
+    if "template" in text or "content_sid" in text or "63016" in text:
+        return "WhatsApp necesita plantilla aprobada. Revisa el Content SID HX... o deja SMS como fallback."
+    if "video_too_large" in text:
+        return "La reacción pesa demasiado. El móvil grabó un archivo muy grande."
+    if "empty_video" in text or "empty_blob" in text:
+        return "La reacción llegó vacía. El móvil/Safari no grabó o cortó la grabación."
+    if "local_save_failed" in text:
+        return "No se pudo guardar el archivo en Render. Revisa disco/ruta/permisos."
+    if "video_engine" in text:
+        return "El motor de vídeo falló o no respondió. Revisa eterna-video-engine y VIDEO_ENGINE_URL."
+    if "stripe" in text:
+        return "Stripe ha fallado. Revisa claves, webhook o estado del pago."
+
+    return "Fallo no clasificado. Lee el error técnico y mándamelo tal cual."
+
+
+def log_box(title: str, status: str, details: dict | None = None):
+    print("\n" + "🟨" * 30)
+    print(f"🧒 ETERNA RENDER LOG — {title}")
+    print("🟨" * 30)
+    print(f"📌 ESTADO: {status}")
+
+    if details:
+        print("📦 DATOS:")
+        for key, value in details.items():
+            print(f"   👉 {key}: {value}")
+
+    print("🟨" * 30 + "\n")
+
+
 def log_info(label: str, value=None):
-    if value is None:
-        print(f"[INFO] {label}")
-    else:
-        print(f"[INFO] {label}: {value}")
+    log_box(
+        title=label,
+        status="TODO BIEN",
+        details={"info": value} if value is not None else None,
+    )
 
 
 def log_error(label: str, error: Exception):
-    print(f"[ERROR] {label}: {error}")
+    log_box(
+        title=label,
+        status="HA FALLADO ALGO",
+        details={
+            "explicacion_facil": explain_error(error),
+            "error_tecnico": str(error),
+        },
+    )
     traceback.print_exc()
+
+
+def log_warning(label: str, message: str, **details):
+    payload = {"aviso": message}
+    payload.update(details or {})
+    log_box(title=label, status="AVISO CONTROLADO", details=payload)
+
+
+def log_success(label: str, message: str, **details):
+    payload = {"mensaje": message}
+    payload.update(details or {})
+    log_box(title=label, status="OK", details=payload)
 
 
 # =========================================================
@@ -1011,7 +1090,15 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     message = build_sender_ready_message(order)
-    result = send_message_best_effort(order.get("sender_phone", ""), message)
+    result = send_message_best_effort(
+        order.get("sender_phone", ""),
+        message,
+        template_sid=TWILIO_WHATSAPP_TEMPLATE_SID_SENDER,
+        template_variables={
+            "1": (order.get("sender_name") or "").strip() or "",
+            "2": sender_pack_url_from_order(order),
+        },
+    )
 
     attempts = attempts + 1
 
@@ -1147,34 +1234,93 @@ def whatsapp_from_number() -> str:
     return f"whatsapp:{raw}"
 
 
-def send_whatsapp(phone: str, message: str) -> dict:
+def valid_template_sid(value: str) -> bool:
+    raw = (value or "").strip()
+    return raw.startswith("HX") and len(raw) > 10
+
+
+def twilio_client_or_none():
+    if not Client:
+        return None
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
+        return None
+    try:
+        return Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+    except Exception as e:
+        log_error("TWILIO CLIENT", e)
+        return None
+
+
+def send_whatsapp(phone: str, message: str, template_sid: str = "", template_variables: dict | None = None) -> dict:
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
+
     if not to_phone:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
+
     if not WHATSAPP_ENABLED:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
+
     if not wa_from:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_twilio_whatsapp_from"}
-    if not twilio_enabled():
+
+    client = twilio_client_or_none()
+    if not client:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
+
     try:
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        msg = client.messages.create(body=message, from_=wa_from, to=f"whatsapp:{to_phone}")
+        kwargs = {
+            "from_": wa_from,
+            "to": f"whatsapp:{to_phone}",
+        }
+
+        if valid_template_sid(template_sid):
+            kwargs["content_sid"] = template_sid.strip()
+            kwargs["content_variables"] = json.dumps(template_variables or {})
+        else:
+            kwargs["body"] = message
+
+        msg = client.messages.create(**kwargs)
+        log_success("WHATSAPP", "Mensaje enviado por WhatsApp", sid=msg.sid, to=to_phone)
         return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
+
     except Exception as e:
+        log_error("WHATSAPP", e)
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
 
 
-def send_message_best_effort(phone: str, message: str) -> dict:
-    whatsapp_result = send_whatsapp(phone, message)
+def send_message_best_effort(phone: str, message: str, template_sid: str = "", template_variables: dict | None = None) -> dict:
+    # WhatsApp nunca puede romper ETERNA: si falla, SMS debe intentarse siempre.
+    whatsapp_result = send_whatsapp(
+        phone=phone,
+        message=message,
+        template_sid=template_sid,
+        template_variables=template_variables,
+    )
+
     if whatsapp_result.get("ok"):
         return whatsapp_result
+
+    log_warning(
+        "MENSAJERÍA",
+        "WhatsApp falló o está desactivado. Intentando SMS como respaldo.",
+        whatsapp_error=whatsapp_result.get("error"),
+    )
+
     sms_result = send_sms(phone, message)
+
     if sms_result.get("ok"):
+        sms_result["channel"] = "sms"
         sms_result["fallback_from"] = "whatsapp"
         sms_result["whatsapp_error"] = whatsapp_result.get("error")
+        log_success("SMS", "Mensaje enviado por SMS", sid=sms_result.get("sid"), to=to_e164(phone))
         return sms_result
+
+    log_error(
+        "MENSAJERÍA",
+        Exception("whatsapp_error=" + str(whatsapp_result.get("error")) + " | sms_error=" + str(sms_result.get("error"))),
+    )
+
     return {
         "ok": False,
         "channel": "none",
@@ -1183,6 +1329,14 @@ def send_message_best_effort(phone: str, message: str) -> dict:
         "whatsapp_error": whatsapp_result.get("error"),
         "sms_error": sms_result.get("error"),
     }
+
+
+def build_recipient_template_variables(order: dict) -> dict:
+    return {
+        "1": (order.get("recipient_name") or "").strip() or "alguien especial",
+        "2": recipient_experience_url_from_order(order),
+    }
+
 
 def send_admin_alert(message: str):
     try:
@@ -1313,7 +1467,12 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     # SMS
     # =========================================================
     message = build_recipient_message(order)
-    result = send_message_best_effort(order.get("recipient_phone", ""), message)
+    result = send_message_best_effort(
+        order.get("recipient_phone", ""),
+        message,
+        template_sid=TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT,
+        template_variables=build_recipient_template_variables(order),
+    )
 
     print("📩 RECIPIENT SMS RESULT:", result)
 
@@ -3600,6 +3759,14 @@ def ensure_delivery_worker_started():
 
 @app.on_event("startup")
 def startup_event():
+    log_info("CONFIG MENSAJERÍA", {
+        "SMS_ENABLED": SMS_ENABLED,
+        "WHATSAPP_ENABLED": WHATSAPP_ENABLED,
+        "TWILIO_FROM_NUMBER_present": bool(TWILIO_FROM_NUMBER),
+        "TWILIO_WHATSAPP_FROM_present": bool(TWILIO_WHATSAPP_FROM),
+        "RECIPIENT_TEMPLATE_valid": valid_template_sid(TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT),
+        "PUBLIC_BASE_URL": PUBLIC_BASE_URL,
+    })
     ensure_delivery_worker_started()
 
 
