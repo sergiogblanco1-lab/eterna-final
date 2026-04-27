@@ -6200,6 +6200,213 @@ def admin_reset_recipient_session(order_id: str, token: str = ""):
         "recipient_url": recipient_experience_url_from_order(refreshed),
     })
 
+
+# =========================================================
+# ADMIN — SMS / WHATSAPP DIAGNÓSTICO Y TEST REAL
+# =========================================================
+
+def messaging_config_status() -> dict:
+    return {
+        "sms_enabled": SMS_ENABLED,
+        "whatsapp_enabled": WHATSAPP_ENABLED,
+        "twilio_library_loaded": bool(Client),
+        "twilio_account_sid_configured": bool(TWILIO_ACCOUNT_SID),
+        "twilio_auth_token_configured": bool(TWILIO_AUTH_TOKEN),
+        "twilio_sms_from_configured": bool(TWILIO_FROM_NUMBER),
+        "twilio_whatsapp_from_configured": bool(TWILIO_WHATSAPP_FROM),
+        "twilio_sms_ready": bool(Client and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and SMS_ENABLED),
+        "twilio_whatsapp_ready": bool(Client and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM and WHATSAPP_ENABLED),
+        "best_effort_ready": bool(
+            Client
+            and TWILIO_ACCOUNT_SID
+            and TWILIO_AUTH_TOKEN
+            and (
+                (TWILIO_WHATSAPP_FROM and WHATSAPP_ENABLED)
+                or (TWILIO_FROM_NUMBER and SMS_ENABLED)
+            )
+        ),
+    }
+
+
+@app.get("/admin/messaging-status")
+def admin_messaging_status(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    return JSONResponse({
+        "ok": True,
+        "public_base_url": PUBLIC_BASE_URL,
+        "messaging": messaging_config_status(),
+        "notes": {
+            "sms": "Requiere TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER y SMS_ENABLED=1.",
+            "whatsapp": "Requiere TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM y WHATSAPP_ENABLED=1.",
+            "fallback": "send_message_best_effort intenta WhatsApp primero y, si falla, SMS.",
+        },
+    })
+
+
+@app.get("/admin/test-message")
+def admin_test_message(
+    token: str = "",
+    phone: str = "",
+    channel: str = "best_effort",
+    send: int = 0,
+    message: str = "",
+):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    phone = (phone or "").strip()
+    channel = (channel or "best_effort").strip().lower()
+    message = (message or "").strip()
+
+    if channel not in {"best_effort", "sms", "whatsapp"}:
+        raise HTTPException(status_code=400, detail="channel debe ser best_effort, sms o whatsapp")
+
+    to_phone = to_e164(phone)
+    config = messaging_config_status()
+
+    if not to_phone:
+        return JSONResponse({
+            "ok": False,
+            "sent": False,
+            "reason": "invalid_phone",
+            "input_phone": phone,
+            "normalized_phone": to_phone,
+            "channel": channel,
+            "messaging": config,
+        })
+
+    if not message:
+        message = (
+            "Shhh…\n\n"
+            "Esto es una prueba real de ETERNA.\n\n"
+            "Si recibes este mensaje, el canal de entrega está vivo."
+        )
+
+    if not bool(send):
+        return JSONResponse({
+            "ok": True,
+            "sent": False,
+            "dry_run": True,
+            "reason": "dry_run_no_send",
+            "input_phone": phone,
+            "normalized_phone": to_phone,
+            "channel": channel,
+            "message_preview": message,
+            "messaging": config,
+            "how_to_send": "Añade &send=1 para enviar de verdad.",
+        })
+
+    print("📨 ADMIN TEST MESSAGE")
+    print("➡️ channel:", channel)
+    print("➡️ to:", to_phone)
+    print("➡️ message:", message)
+
+    if channel == "sms":
+        result = send_sms(to_phone, message)
+    elif channel == "whatsapp":
+        result = send_whatsapp(to_phone, message)
+    else:
+        result = send_message_best_effort(to_phone, message)
+
+    print("📨 ADMIN TEST MESSAGE RESULT:", result)
+
+    return JSONResponse({
+        "ok": bool(result.get("ok")),
+        "sent": bool(result.get("ok")),
+        "channel_requested": channel,
+        "channel_used": result.get("channel") or ("sms" if channel == "sms" else channel),
+        "sid": result.get("sid"),
+        "error": result.get("error"),
+        "whatsapp_error": result.get("whatsapp_error"),
+        "sms_error": result.get("sms_error"),
+        "input_phone": phone,
+        "normalized_phone": to_phone,
+        "messaging": config,
+    })
+
+
+@app.get("/admin/test-order-message/{order_id}")
+def admin_test_order_message(
+    order_id: str,
+    token: str = "",
+    target: str = "recipient",
+    channel: str = "best_effort",
+    send: int = 0,
+):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    order = get_order_by_id(order_id)
+    target = (target or "recipient").strip().lower()
+    channel = (channel or "best_effort").strip().lower()
+
+    if target not in {"recipient", "sender"}:
+        raise HTTPException(status_code=400, detail="target debe ser recipient o sender")
+
+    if channel not in {"best_effort", "sms", "whatsapp"}:
+        raise HTTPException(status_code=400, detail="channel debe ser best_effort, sms o whatsapp")
+
+    if target == "recipient":
+        phone = order.get("recipient_phone", "")
+        message = build_recipient_message(order)
+    else:
+        phone = order.get("sender_phone", "")
+        message = build_sender_ready_message(order)
+
+    to_phone = to_e164(phone)
+    config = messaging_config_status()
+
+    if not bool(send):
+        return JSONResponse({
+            "ok": True,
+            "sent": False,
+            "dry_run": True,
+            "reason": "dry_run_no_send",
+            "order_id": order_id,
+            "target": target,
+            "channel": channel,
+            "input_phone": phone,
+            "normalized_phone": to_phone,
+            "message_preview": message,
+            "order_flags": {
+                "paid": bool(order.get("paid")),
+                "video_ready": original_video_ready(order),
+                "delivery_unlocked": delivery_is_unlocked(order),
+                "delivery_sent": bool(order.get("delivery_sent")),
+                "reaction_uploaded": bool(order.get("reaction_uploaded")),
+                "reaction_exists": reaction_exists(order),
+                "experience_completed": bool(order.get("experience_completed")),
+            },
+            "messaging": config,
+            "how_to_send": "Añade &send=1 para enviar de verdad.",
+        })
+
+    if channel == "sms":
+        result = send_sms(phone, message)
+    elif channel == "whatsapp":
+        result = send_whatsapp(phone, message)
+    else:
+        result = send_message_best_effort(phone, message)
+
+    return JSONResponse({
+        "ok": bool(result.get("ok")),
+        "sent": bool(result.get("ok")),
+        "order_id": order_id,
+        "target": target,
+        "channel_requested": channel,
+        "channel_used": result.get("channel") or ("sms" if channel == "sms" else channel),
+        "sid": result.get("sid"),
+        "error": result.get("error"),
+        "whatsapp_error": result.get("whatsapp_error"),
+        "sms_error": result.get("sms_error"),
+        "input_phone": phone,
+        "normalized_phone": to_phone,
+        "messaging": config,
+    })
+
+
 # =========================================================
 # MAIN
 # =========================================================
@@ -6219,6 +6426,7 @@ def health_full():
         "r2_configured": r2_enabled(),
         "video_engine_configured": bool(VIDEO_ENGINE_URL),
         "video_engine_ok": False,
+        "messaging": messaging_config_status(),
         "public_base_url": PUBLIC_BASE_URL,
         "timestamp": now_iso(),
     }
