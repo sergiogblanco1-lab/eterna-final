@@ -4495,6 +4495,14 @@ video {
     max-width: 460px;
 }
 
+.ritual-legal {
+    display: block;
+    margin-top: 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.36);
+}
+
 .btn {
     display: inline-block;
     min-width: 220px;
@@ -4650,20 +4658,24 @@ video {
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
 
-            <h1 class="title">Shhh…</h1>
+            <h1 class="title" id="ritualTitle">Shhh…</h1>
 
-            <div class="text">
+            <div class="text" id="ritualText">
                 Esto no es un vídeo.<br>
                 Es un momento.
             </div>
 
-            <div class="soft">
+            <div class="soft" id="ritualSoft">
                 No pienses.<br>
                 Solo deja que ocurra.
             </div>
 
-            <button class="btn" id="startBtn" style="margin-top:28px;">
-                Estoy listo
+            <button class="btn" id="ritualNextBtn" style="margin-top:28px;">
+                Continuar
+            </button>
+
+            <button class="btn" id="startBtn" style="margin-top:28px; display:none;">
+                Empezar
             </button>
 
             <div class="error-note" id="errorNote"></div>
@@ -4694,6 +4706,10 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
+const ritualTitle = document.getElementById("ritualTitle");
+const ritualText = document.getElementById("ritualText");
+const ritualSoft = document.getElementById("ritualSoft");
+const ritualNextBtn = document.getElementById("ritualNextBtn");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
 let stream = null;
@@ -4704,6 +4720,140 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+
+
+let ritualStep = 0;
+
+const ritualSteps = [
+    {
+        title: "Shhh…",
+        text: "Esto no es un vídeo.<br>Es un momento.",
+        soft: "No pienses.<br>Solo deja que ocurra.",
+        button: "Continuar"
+    },
+    {
+        title: "Sonido",
+        text: "Si puedes…<br>escúchalo con sonido.",
+        soft: "Mejor con auriculares.",
+        button: "Continuar"
+    },
+    {
+        title: "Antes de abrirlo",
+        text: "Busca un momento tranquilo.",
+        soft: "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
+        button: "Ya está"
+    },
+    {
+        title: "Colócate",
+        text: "Pon el teléfono frente a ti.",
+        soft: "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
+        button: "Listo"
+    },
+    {
+        title: "Luz",
+        text: "Deja que haya algo de luz frente a ti.",
+        soft: "Lo justo para poder verte.",
+        button: "Perfecto"
+    },
+    {
+        title: "Presencia",
+        text: "No hagas nada especial.",
+        soft: "Solo míralo.<br>Este momento es tuyo.",
+        button: "Continuar"
+    },
+    {
+        title: "Una última cosa",
+        text: "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
+        soft: "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
+        button: "Aceptar y continuar"
+    },
+    {
+        title: "Cuando estés listo…",
+        text: "Pulsa empezar.",
+        soft: "Y déjate llevar.",
+        button: "Empezar",
+        final: true
+    }
+];
+
+function renderRitualStep() {
+    const step = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
+
+    ritualTitle.innerHTML = step.title;
+    ritualText.innerHTML = step.text;
+    ritualSoft.innerHTML = step.soft || "";
+
+    if (step.final) {
+        ritualNextBtn.style.display = "none";
+        startBtn.style.display = "inline-block";
+        startBtn.innerText = step.button || "Empezar";
+        startBtn.disabled = false;
+    } else {
+        startBtn.style.display = "none";
+        ritualNextBtn.style.display = "inline-block";
+        ritualNextBtn.innerText = step.button || "Continuar";
+    }
+}
+
+async function prepareCameraAndMicrophoneBeforeStart() {
+    clearStartError();
+
+    try {
+        if (stream) {
+            const activeTracks = stream.getTracks().filter((t) => t.readyState === "live");
+            const hasVideo = activeTracks.some((t) => t.kind === "video");
+            const hasAudio = activeTracks.some((t) => t.kind === "audio");
+
+            if (hasVideo && hasAudio) {
+                return true;
+            }
+
+            try {
+                stream.getTracks().forEach((t) => t.stop());
+            } catch (_) {}
+
+            stream = null;
+        }
+
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        });
+
+        return true;
+    } catch (e) {
+        console.error("camera microphone permission error", e);
+        showStartError("Necesitamos activar cámara y micrófono para continuar con esta experiencia.");
+        return false;
+    }
+}
+
+if (ritualNextBtn) {
+    ritualNextBtn.addEventListener("click", async () => {
+        clearStartError();
+
+        const current = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
+
+        if (current && current.button === "Aceptar y continuar") {
+            ritualNextBtn.disabled = true;
+            ritualNextBtn.innerText = "Preparando…";
+
+            const prepared = await prepareCameraAndMicrophoneBeforeStart();
+
+            ritualNextBtn.disabled = false;
+            ritualNextBtn.innerText = current.button || "Aceptar y continuar";
+
+            if (!prepared) {
+                return;
+            }
+        }
+
+        ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
+        renderRitualStep();
+    });
+}
+
+renderRitualStep();
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -4789,6 +4939,8 @@ function resetRecordingState() {
 
     overlay.classList.remove("hidden");
     payoff.classList.remove("show");
+    ritualStep = 0;
+    renderRitualStep();
     startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
@@ -4862,10 +5014,11 @@ function detectRecordingFormat() {
 
 async function tryStartRecordingStrict() {
     try {
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-        });
+        const prepared = await prepareCameraAndMicrophoneBeforeStart();
+
+        if (!prepared || !stream) {
+            throw new Error("camera_microphone_not_ready");
+        }
 
         const format = detectRecordingFormat();
         recordingMimeType = format.mimeType;
