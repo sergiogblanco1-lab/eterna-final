@@ -8,6 +8,7 @@ print("🔥 GLOBAL PHONE READY VERSION 🔥")
 print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
+print("🔥 MARKET READY: LIGHT HEALTH + TRANSFER START LOCK + PERSISTENT REACTIONS 🔥")
 
 import html
 import json
@@ -54,7 +55,7 @@ templates = Jinja2Templates(directory="templates")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
-ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
+ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "").strip()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
@@ -96,14 +97,6 @@ SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
-# WhatsApp templates de Twilio Content.
-# Si están vacíos o no empiezan por HX, el sistema NO rompe:
-# intenta WhatsApp libre si procede y SIEMPRE cae a SMS si WhatsApp falla.
-TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT = os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT", "").strip()
-TWILIO_WHATSAPP_TEMPLATE_SID_SENDER = os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID_SENDER", "").strip()
-
-ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "+34674713885").strip()
-
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
     "video/webm",
@@ -122,6 +115,22 @@ STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
 
 PHOTO_FOLDER = Path("uploads")
 PHOTO_FOLDER.mkdir(parents=True, exist_ok=True)
+
+# =========================================================
+# STORAGE PERSISTENTE PARA REACCIONES
+# =========================================================
+# En Render, el disco persistente suele estar montado en /data.
+# Las reacciones son el corazón de ETERNA: nunca deben depender de /tmp
+# ni de un directorio efímero si R2 falla o Render reinicia.
+PERSISTENT_DATA_FOLDER = Path(os.getenv("ETERNA_PERSISTENT_DATA_DIR", "/data"))
+try:
+    PERSISTENT_DATA_FOLDER.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print("⚠️ No se pudo crear /data; fallback a ./data:", e)
+    PERSISTENT_DATA_FOLDER = DATA_FOLDER
+
+REACTIONS_DIR = PERSISTENT_DATA_FOLDER / "reactions"
+REACTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 DB_PATH = DATA_FOLDER / "eterna.db"
 
@@ -151,6 +160,7 @@ if STRIPE_SECRET_KEY:
 app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 
 
+
 # =========================================================
 # LOG — MODO NIÑO PARA RENDER
 # =========================================================
@@ -160,43 +170,44 @@ def explain_error(error) -> str:
 
     if "authenticate" in text or "401" in text:
         return (
-            "Twilio no te deja enviar. Revisa TWILIO_ACCOUNT_SID y TWILIO_AUTH_TOKEN. "
-            "También puede ser que el token sea de otra cuenta o que falte redeploy."
+            "Twilio no te deja enviar. Puede ser saldo/cuenta suspendida, "
+            "TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN incorrectos, o Render sin redeploy."
         )
-    if "not found" in text or "404" in text:
-        return "Algo no existe: ruta, pedido, foto, vídeo, reacción o enlace antiguo."
-    if "forbidden" in text or "403" in text:
-        return "Acceso bloqueado: token/secreto incorrecto o alguien intentando abrir algo privado."
-    if "invalid_phone" in text:
-        return "Teléfono mal formado. Debe tener prefijo, por ejemplo +34674713885."
-    if "twilio_not_configured" in text:
-        return "Twilio no está configurado. Falta SID, TOKEN o número FROM."
-    if "whatsapp_disabled" in text:
-        return "WhatsApp está apagado por WHATSAPP_ENABLED=0. SMS debería seguir funcionando."
-    if "sms_disabled" in text:
-        return "SMS está apagado por SMS_ENABLED=0."
-    if "missing_twilio_whatsapp_from" in text:
-        return "Falta TWILIO_WHATSAPP_FROM. Si no hay WhatsApp, SMS debe actuar como respaldo."
-    if "template" in text or "content_sid" in text or "63016" in text:
-        return "WhatsApp necesita plantilla aprobada. Revisa el Content SID HX... o deja SMS como fallback."
-    if "video_too_large" in text:
-        return "La reacción pesa demasiado. El móvil grabó un archivo muy grande."
-    if "empty_video" in text or "empty_blob" in text:
-        return "La reacción llegó vacía. El móvil/Safari no grabó o cortó la grabación."
-    if "local_save_failed" in text:
-        return "No se pudo guardar el archivo en Render. Revisa disco/ruta/permisos."
-    if "video_engine" in text:
-        return "El motor de vídeo falló o no respondió. Revisa eterna-video-engine y VIDEO_ENGINE_URL."
-    if "stripe" in text:
-        return "Stripe ha fallado. Revisa claves, webhook o estado del pago."
 
-    return "Fallo no clasificado. Lee el error técnico y mándamelo tal cual."
+    if "whatsapp_disabled" in text:
+        return "WhatsApp está apagado por configuración. Esto es correcto si estás en modo test."
+
+    if "sms_disabled" in text or "sms_disabled_by_config" in text:
+        return "SMS está apagado por configuración. Esto es correcto si estás en modo test sin coste."
+
+    if "invalid_phone" in text:
+        return "El teléfono no es válido. Revisa prefijo y número."
+
+    if "video_too_large" in text:
+        return "La reacción pesa demasiado."
+
+    if "empty_video" in text or "empty_blob" in text:
+        return "La reacción llegó vacía. El móvil no grabó o cortó la grabación."
+
+    if "local_save_failed" in text:
+        return "No se pudo guardar el archivo de reacción en Render."
+
+    if "video_engine" in text:
+        return "El motor de vídeo falló o no respondió. Revisa eterna-video-engine."
+
+    if "stripe" in text:
+        return "Stripe falló. Revisa claves, webhook o estado del pago."
+
+    if "404" in text or "not found" in text:
+        return "Algo no existe: pedido, token, archivo, vídeo o ruta."
+
+    return "Fallo no clasificado. Mira el error técnico y pásamelo."
 
 
 def log_box(title: str, status: str, details: dict | None = None):
-    print("\n" + "🟨" * 30)
+    print("\n" + "🟨" * 32)
     print(f"🧒 ETERNA RENDER LOG — {title}")
-    print("🟨" * 30)
+    print("🟨" * 32)
     print(f"📌 ESTADO: {status}")
 
     if details:
@@ -204,13 +215,21 @@ def log_box(title: str, status: str, details: dict | None = None):
         for key, value in details.items():
             print(f"   👉 {key}: {value}")
 
-    print("🟨" * 30 + "\n")
+    print("🟨" * 32 + "\n")
 
 
 def log_info(label: str, value=None):
     log_box(
         title=label,
         status="TODO BIEN",
+        details={"info": value} if value is not None else None,
+    )
+
+
+def log_warn(label: str, value=None):
+    log_box(
+        title=label,
+        status="AVISO / CONTROLADO",
         details={"info": value} if value is not None else None,
     )
 
@@ -227,17 +246,20 @@ def log_error(label: str, error: Exception):
     traceback.print_exc()
 
 
-def log_warning(label: str, message: str, **details):
-    payload = {"aviso": message}
-    payload.update(details or {})
-    log_box(title=label, status="AVISO CONTROLADO", details=payload)
-
-
-def log_success(label: str, message: str, **details):
-    payload = {"mensaje": message}
-    payload.update(details or {})
-    log_box(title=label, status="OK", details=payload)
-
+def log_manual_links(order: dict, reason: str = "modo test manual"):
+    try:
+        log_box(
+            title="LINKS MANUALES",
+            status="ÚSALOS PARA PROBAR SIN SMS/WHATSAPP",
+            details={
+                "motivo": reason,
+                "order_id": order.get("id"),
+                "link_destinatario": recipient_experience_url_from_order(order),
+                "link_sender_pack": sender_pack_url_from_order(order),
+            },
+        )
+    except Exception as e:
+        log_error("log_manual_links", e)
 
 # =========================================================
 # DB
@@ -323,6 +345,7 @@ def init_db():
         cashout_completed INTEGER NOT NULL DEFAULT 0,
         transfer_completed INTEGER NOT NULL DEFAULT 0,
         transfer_in_progress INTEGER NOT NULL DEFAULT 0,
+        transfer_started_at INTEGER,
         sender_notified INTEGER NOT NULL DEFAULT 0,
 
         experience_started INTEGER NOT NULL DEFAULT 0,
@@ -412,6 +435,7 @@ def init_db():
     add_column_if_missing("orders", "stripe_payment_intent_id", "ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT")
     add_column_if_missing("orders", "stripe_connected_account_id", "ALTER TABLE orders ADD COLUMN stripe_connected_account_id TEXT")
     add_column_if_missing("orders", "stripe_transfer_id", "ALTER TABLE orders ADD COLUMN stripe_transfer_id TEXT")
+    add_column_if_missing("orders", "transfer_started_at", "ALTER TABLE orders ADD COLUMN transfer_started_at INTEGER")
     add_column_if_missing("orders", "stripe_gift_refund_id", "ALTER TABLE orders ADD COLUMN stripe_gift_refund_id TEXT")
     add_column_if_missing("orders", "gift_refund_deadline_at", "ALTER TABLE orders ADD COLUMN gift_refund_deadline_at TEXT")
     add_column_if_missing("orders", "gift_refunded", "ALTER TABLE orders ADD COLUMN gift_refunded INTEGER NOT NULL DEFAULT 0")
@@ -636,7 +660,11 @@ def reaction_video_path(order_id: str, extension: str = "webm") -> str:
     extension = (extension or "webm").lower().strip()
     if extension not in {"webm", "mp4"}:
         extension = "webm"
-    return str(VIDEO_FOLDER / f"reaction_{order_id}.{extension}")
+
+    # Lanzamiento mercado: la reacción se guarda en disco persistente.
+    # Si R2 falla, ETERNA sigue teniendo una copia local recuperable.
+    REACTIONS_DIR.mkdir(parents=True, exist_ok=True)
+    return str(REACTIONS_DIR / f"reaction_{order_id}.{extension}")
 
 
 def guess_media_type_from_path(path: str) -> str:
@@ -749,14 +777,65 @@ def original_video_ready(order: dict) -> bool:
 
 
 def reaction_exists(order: dict) -> bool:
-    if order.get("reaction_video_public_url"):
+    """
+    Comprueba si existe una reacción real.
+
+    Regla ETERNA:
+    - R2 / URL pública suma, pero NO puede ser obligatorio.
+    - Si el archivo local existe y pesa más de 0, la emoción está salvada.
+    """
+    if (order.get("reaction_video_public_url") or "").strip():
         return True
+
     local_path = (order.get("reaction_video_local") or "").strip()
-    return bool(local_path) and os.path.exists(local_path)
+    return bool(local_path) and os.path.exists(local_path) and os.path.getsize(local_path) > 0
 
 
 def reaction_is_safe(order: dict) -> bool:
+    """
+    La reacción es segura cuando está marcada como subida y existe físicamente.
+    Esto evita dar por finalizada una ETERNA sin vídeo real de reacción.
+    """
     return bool(order.get("reaction_uploaded")) and reaction_exists(order)
+
+
+def force_complete_if_reaction_saved(order: dict, source: str = "unknown") -> dict:
+    """
+    Blindaje final del flujo.
+
+    Si la reacción existe localmente o en R2, ETERNA debe quedar cerrada:
+    - experience_completed = 1
+    - reaction_uploaded = 1
+    - delivered_to_recipient = 1
+    - pending/error limpios
+
+    Esto evita el limbo móvil: reacción guardada, pero pantalla atrapada
+    antes de cobros por sesión, redirección o timing.
+    """
+    order = get_order_by_id(order["id"])
+
+    if not reaction_exists(order):
+        return order
+
+    try:
+        update_order(
+            order["id"],
+            reaction_uploaded=1,
+            experience_completed=1,
+            delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        )
+        order = maybe_mark_eterna_completed(order["id"])
+        log_info("FORCE COMPLETE IF REACTION SAVED", {
+            "order_id": order.get("id"),
+            "source": source,
+        })
+    except Exception as e:
+        log_error("force_complete_if_reaction_saved", e)
+
+    return get_order_by_id(order["id"])
 
 
 def scheduled_delivery_ready(order: dict) -> bool:
@@ -1090,15 +1169,7 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     message = build_sender_ready_message(order)
-    result = send_message_best_effort(
-        order.get("sender_phone", ""),
-        message,
-        template_sid=TWILIO_WHATSAPP_TEMPLATE_SID_SENDER,
-        template_variables={
-            "1": (order.get("sender_name") or "").strip() or "",
-            "2": sender_pack_url_from_order(order),
-        },
-    )
+    result = send_message_best_effort(order.get("sender_phone", ""), message)
 
     attempts = attempts + 1
 
@@ -1234,93 +1305,34 @@ def whatsapp_from_number() -> str:
     return f"whatsapp:{raw}"
 
 
-def valid_template_sid(value: str) -> bool:
-    raw = (value or "").strip()
-    return raw.startswith("HX") and len(raw) > 10
-
-
-def twilio_client_or_none():
-    if not Client:
-        return None
-    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
-        return None
-    try:
-        return Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-    except Exception as e:
-        log_error("TWILIO CLIENT", e)
-        return None
-
-
-def send_whatsapp(phone: str, message: str, template_sid: str = "", template_variables: dict | None = None) -> dict:
+def send_whatsapp(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
-
     if not to_phone:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "invalid_phone"}
-
     if not WHATSAPP_ENABLED:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
-
     if not wa_from:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_twilio_whatsapp_from"}
-
-    client = twilio_client_or_none()
-    if not client:
+    if not twilio_enabled():
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
-
     try:
-        kwargs = {
-            "from_": wa_from,
-            "to": f"whatsapp:{to_phone}",
-        }
-
-        if valid_template_sid(template_sid):
-            kwargs["content_sid"] = template_sid.strip()
-            kwargs["content_variables"] = json.dumps(template_variables or {})
-        else:
-            kwargs["body"] = message
-
-        msg = client.messages.create(**kwargs)
-        log_success("WHATSAPP", "Mensaje enviado por WhatsApp", sid=msg.sid, to=to_phone)
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        msg = client.messages.create(body=message, from_=wa_from, to=f"whatsapp:{to_phone}")
         return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
-
     except Exception as e:
-        log_error("WHATSAPP", e)
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
 
 
-def send_message_best_effort(phone: str, message: str, template_sid: str = "", template_variables: dict | None = None) -> dict:
-    # WhatsApp nunca puede romper ETERNA: si falla, SMS debe intentarse siempre.
-    whatsapp_result = send_whatsapp(
-        phone=phone,
-        message=message,
-        template_sid=template_sid,
-        template_variables=template_variables,
-    )
-
+def send_message_best_effort(phone: str, message: str) -> dict:
+    whatsapp_result = send_whatsapp(phone, message)
     if whatsapp_result.get("ok"):
         return whatsapp_result
-
-    log_warning(
-        "MENSAJERÍA",
-        "WhatsApp falló o está desactivado. Intentando SMS como respaldo.",
-        whatsapp_error=whatsapp_result.get("error"),
-    )
-
     sms_result = send_sms(phone, message)
-
     if sms_result.get("ok"):
-        sms_result["channel"] = "sms"
         sms_result["fallback_from"] = "whatsapp"
         sms_result["whatsapp_error"] = whatsapp_result.get("error")
-        log_success("SMS", "Mensaje enviado por SMS", sid=sms_result.get("sid"), to=to_e164(phone))
         return sms_result
-
-    log_error(
-        "MENSAJERÍA",
-        Exception("whatsapp_error=" + str(whatsapp_result.get("error")) + " | sms_error=" + str(sms_result.get("error"))),
-    )
-
     return {
         "ok": False,
         "channel": "none",
@@ -1330,14 +1342,6 @@ def send_message_best_effort(phone: str, message: str, template_sid: str = "", t
         "sms_error": sms_result.get("error"),
     }
 
-
-def build_recipient_template_variables(order: dict) -> dict:
-    return {
-        "1": (order.get("recipient_name") or "").strip() or "alguien especial",
-        "2": recipient_experience_url_from_order(order),
-    }
-
-
 def send_admin_alert(message: str):
     try:
         if not ADMIN_ALERT_PHONE:
@@ -1371,48 +1375,18 @@ def send_admin_eterna_completed(order: dict):
     except Exception as e:
         log_error("admin_eterna_completed", e)
 
-def send_admin_alert(message: str):
-    try:
-        if not ADMIN_ALERT_PHONE:
-            return
-        send_sms(ADMIN_ALERT_PHONE, message)
-    except Exception as e:
-        log_error("admin_alert_sms", e)
-
-
-def build_admin_eterna_completed_message(order: dict) -> str:
-    sender = order.get("sender_name") or ""
-    recipient = order.get("recipient_name") or ""
-
-    ida = order.get("experience_video_url") or ""
-    vuelta = sender_pack_url_from_order(order)
-
-    return (
-        "✨ Tu ETERNA completada\n\n"
-        f"{sender} → {recipient}\n\n"
-        "IDA:\n"
-        f"{ida}\n\n"
-        "VUELTA:\n"
-        f"{vuelta}"
-    )
-
-
-def send_admin_eterna_completed(order: dict):
-    try:
-        msg = build_admin_eterna_completed_message(order)
-        send_admin_alert(msg)
-    except Exception as e:
-        log_error("admin_eterna_completed", e)
 
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
-    print("📦 PROCESS RECIPIENT DELIVERY START")
-    print("➡️ order_id:", order_id)
+    log_info("ENTREGA DESTINATARIO", {
+        "order_id": order_id,
+        "delivery_sent": bool(order.get("delivery_sent")),
+        "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+        "sms_enabled": SMS_ENABLED,
+        "whatsapp_enabled": WHATSAPP_ENABLED,
+    })
 
-    # =========================================================
-    # YA ENVIADO
-    # =========================================================
     if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
         return {
             "ok": True,
@@ -1424,35 +1398,11 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    # =========================================================
-    # VALIDACIONES PREVIAS
-    # =========================================================
-    attempts = int(order.get("recipient_sms_attempts") or 0)
-
-    if attempts >= 3:
-        return {
-            "ok": False,
-            "reason": "max_attempts_reached",
-            "delivery_sent": False,
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
-        }
-
     if not bool(order.get("paid")):
-        return {
-            "ok": False,
-            "reason": "order_not_paid",
-            "delivery_sent": False,
-        }
+        return {"ok": False, "reason": "order_not_paid", "delivery_sent": False}
 
     if not original_video_ready(order):
-        return {
-            "ok": False,
-            "reason": "original_video_not_ready",
-            "delivery_sent": False,
-        }
+        return {"ok": False, "reason": "original_video_not_ready", "delivery_sent": False}
 
     if not delivery_is_unlocked(order):
         return {
@@ -1464,17 +1414,42 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         }
 
     # =========================================================
-    # SMS
+    # MODO TEST MANUAL — SIN COSTE Y SIN BUCLES
     # =========================================================
-    message = build_recipient_message(order)
-    result = send_message_best_effort(
-        order.get("recipient_phone", ""),
-        message,
-        template_sid=TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT,
-        template_variables=build_recipient_template_variables(order),
-    )
+    if not SMS_ENABLED and not WHATSAPP_ENABLED:
+        log_warn("MENSAJERÍA APAGADA", "No se intenta enviar. Usa los links manuales.")
+        log_manual_links(order, reason="SMS_ENABLED=0 y WHATSAPP_ENABLED=0")
+        return {
+            "ok": False,
+            "reason": "messaging_disabled_manual_test",
+            "delivery_sent": False,
+            "recipient_url": recipient_experience_url_from_order(order),
+            "sender_url": sender_pack_url_from_order(order),
+        }
 
-    print("📩 RECIPIENT SMS RESULT:", result)
+    attempts = int(order.get("recipient_sms_attempts") or 0)
+
+    if attempts >= 3:
+        log_warn("ENTREGA DESTINATARIO", {
+            "reason": "max_attempts_reached",
+            "order_id": order_id,
+            "link_destinatario": recipient_experience_url_from_order(order),
+        })
+        return {
+            "ok": False,
+            "reason": "max_attempts_reached",
+            "delivery_sent": False,
+            "delivery_sent_at": order.get("delivery_sent_at"),
+            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_attempts": attempts,
+            "recipient_sms_error": order.get("recipient_sms_error"),
+            "recipient_url": recipient_experience_url_from_order(order),
+        }
+
+    message = build_recipient_message(order)
+    result = send_message_best_effort(order.get("recipient_phone", ""), message)
+
+    print("📩 RECIPIENT MESSAGE RESULT:", result)
 
     attempts = attempts + 1
 
@@ -1483,11 +1458,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     sms_error = (result.get("error") or "").strip() or None
     sms_reason = (result.get("reason") or "").strip().lower()
 
-    # =========================================================
-    # ÉXITO REAL
-    # =========================================================
     success = False
-
     if sms_ok:
         success = True
     elif sms_reason in {"accepted", "queued", "sent"}:
@@ -1511,6 +1482,12 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
 
         updated = get_order_by_id(order_id)
 
+        log_info("MENSAJE DESTINATARIO ENVIADO", {
+            "order_id": order_id,
+            "sid": updated.get("recipient_sms_sid"),
+            "attempts": int(updated.get("recipient_sms_attempts") or 0),
+        })
+
         return {
             "ok": True,
             "reason": "sent",
@@ -1522,9 +1499,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": updated.get("recipient_sms_error"),
         }
 
-    # =========================================================
-    # FALLO REAL
-    # =========================================================
     final_error = sms_error or sms_reason or "sms_error"
 
     update_order(
@@ -1535,6 +1509,13 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
 
     updated = get_order_by_id(order_id)
 
+    log_warn("MENSAJE DESTINATARIO NO ENVIADO", {
+        "order_id": order_id,
+        "reason": final_error,
+        "attempts": int(updated.get("recipient_sms_attempts") or 0),
+        "link_destinatario": recipient_experience_url_from_order(updated),
+    })
+
     return {
         "ok": False,
         "reason": final_error,
@@ -1544,8 +1525,10 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         "recipient_sms_sid": updated.get("recipient_sms_sid"),
         "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
         "recipient_sms_error": updated.get("recipient_sms_error"),
+        "recipient_url": recipient_experience_url_from_order(updated),
+        "sender_url": sender_pack_url_from_order(updated),
     }
-    
+
 # =========================================================
 # HELPERS EXTRA
 # =========================================================
@@ -1565,16 +1548,18 @@ def compute_cashout_status(order: dict) -> str:
 def try_acquire_transfer_lock(order_id: str) -> bool:
     conn = db_conn()
     cur = conn.cursor()
+    started_at = int(time.time())
     cur.execute(
         """
         UPDATE orders
         SET transfer_in_progress = 1,
+            transfer_started_at = ?,
             updated_at = ?
         WHERE id = ?
           AND COALESCE(transfer_in_progress, 0) = 0
           AND COALESCE(transfer_completed, 0) = 0
         """,
-        (now_iso(), order_id),
+        (started_at, now_iso(), order_id),
     )
     conn.commit()
     acquired = cur.rowcount == 1
@@ -1583,7 +1568,53 @@ def try_acquire_transfer_lock(order_id: str) -> bool:
 
 
 def release_transfer_lock(order_id: str):
-    update_order(order_id, transfer_in_progress=0)
+    update_order(order_id, transfer_in_progress=0, transfer_started_at=None)
+
+
+def transfer_lock_is_stale(order: dict, minutes: int = 30) -> bool:
+    """
+    Recupera payouts que se quedaron en transfer_in_progress=1 por reinicio
+    de Render, corte de red o excepción a mitad del proceso.
+
+    Versión mercado: usa transfer_started_at como reloj real del lock.
+    updated_at puede moverse por SMS, R2, admin o cualquier otra actualización,
+    así que no debe decidir si un payout está atascado.
+    """
+    if not bool(order.get("transfer_in_progress")):
+        return False
+    if bool(order.get("transfer_completed")) or (order.get("stripe_transfer_id") or "").strip():
+        return False
+
+    started_at = order.get("transfer_started_at")
+    try:
+        if started_at:
+            return (time.time() - int(started_at)) > (minutes * 60)
+    except Exception:
+        return True
+
+    # Compatibilidad con pedidos antiguos sin transfer_started_at.
+    updated_at = parse_iso_dt(order.get("updated_at") or "")
+    if not updated_at:
+        return True
+
+    return (now_dt() - updated_at) > timedelta(minutes=minutes)
+
+
+def recover_stale_transfer_lock(order: dict, source: str = "unknown") -> dict:
+    """
+    Si un payout quedó marcado como en progreso demasiado tiempo, limpia el lock
+    para permitir un nuevo intento seguro. No toca transferencias ya completadas.
+    """
+    if transfer_lock_is_stale(order):
+        log_warn("TRANSFER LOCK STALE RECOVERED", {
+            "order_id": order.get("id"),
+            "source": source,
+            "transfer_started_at": order.get("transfer_started_at"),
+            "updated_at": order.get("updated_at"),
+        })
+        update_order(order["id"], transfer_in_progress=0, transfer_started_at=None)
+        return get_order_by_id(order["id"])
+    return order
 
 
 def try_start_experience(order_id: str) -> str:
@@ -1822,6 +1853,7 @@ def refresh_connect_status(order: dict) -> bool:
 
 def process_gift_transfer_for_order(order: dict) -> dict:
     order = get_order_by_id(order["id"])
+    order = recover_stale_transfer_lock(order, source="process_gift_transfer_for_order")
     gift_amount = float(order.get("gift_amount") or 0)
 
     if bool(order.get("gift_refunded")):
@@ -1833,6 +1865,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_completed=1,
             cashout_completed=1,
             transfer_in_progress=0,
+            transfer_started_at=None,
             connect_onboarding_completed=1,
         )
         return {"status": "no_gift"}
@@ -1843,6 +1876,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_completed=1,
             cashout_completed=1,
             transfer_in_progress=0,
+            transfer_started_at=None,
             connect_onboarding_completed=1,
         )
         return {"status": "stripe_disabled_test_mode"}
@@ -1856,6 +1890,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
         update_order(
             order["id"],
             transfer_in_progress=0,
+            transfer_started_at=None,
             cashout_completed=0,
             transfer_completed=0,
         )
@@ -1870,6 +1905,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_completed=1,
             cashout_completed=1,
             transfer_in_progress=0,
+            transfer_started_at=None,
         )
         return {
             "status": "already_transferred",
@@ -1909,6 +1945,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_completed=1,
             cashout_completed=1,
             transfer_in_progress=0,
+            transfer_started_at=None,
         )
         return {"status": "ok", "transfer_id": transfer.id}
 
@@ -1917,6 +1954,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
         update_order(
             order["id"],
             transfer_in_progress=0,
+            transfer_started_at=None,
             cashout_completed=0,
             transfer_completed=0,
         )
@@ -3580,11 +3618,19 @@ async def crear_post(
         raise HTTPException(status_code=500, detail="Error creando el pedido")
 
 
+
 # =========================================================
-# DELIVERY WORKER
+# DELIVERY WORKER — LIMPIO / SIN BUCLES
 # =========================================================
 
+def messaging_enabled() -> bool:
+    return bool(SMS_ENABLED or WHATSAPP_ENABLED)
+
+
 def list_pending_scheduled_deliveries():
+    if not messaging_enabled():
+        return []
+
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -3603,6 +3649,9 @@ def list_pending_scheduled_deliveries():
 
 
 def list_pending_sender_notifications():
+    if not messaging_enabled():
+        return []
+
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -3612,12 +3661,13 @@ def list_pending_sender_notifications():
             paid = 1
             AND COALESCE(sender_sms_sent_at, '') = ''
             AND COALESCE(reaction_uploaded, 0) = 1
-            AND 1 = 1
+            AND COALESCE(sender_sms_attempts, 0) < 3
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
     conn.close()
     return [r["id"] for r in rows]
+
 
 def list_pending_payout_orders():
     conn = db_conn()
@@ -3640,43 +3690,50 @@ def list_pending_payout_orders():
     conn.close()
     return [r["id"] for r in rows]
 
+
 def process_all_due_scheduled_deliveries() -> list[dict]:
     results = []
+
+    if not messaging_enabled():
+        log_warn("WORKER ENTREGA", "Mensajería apagada: no se intenta enviar al destinatario.")
+        return results
+
     for order_id in list_pending_scheduled_deliveries():
         try:
             result = process_scheduled_recipient_delivery(order_id)
             print("📦 Worker delivery:", order_id, result)
-            results.append({
-                "order_id": order_id,
-                "result": result,
-            })
+            results.append({"order_id": order_id, "result": result})
         except Exception as e:
             log_error("delivery_worker_process", e)
-            results.append({
-                "order_id": order_id,
-                "result": {"ok": False, "reason": str(e)},
-            })
+            results.append({"order_id": order_id, "result": {"ok": False, "reason": str(e)}})
+
     return results
 
 
 def process_all_due_sender_notifications() -> list[dict]:
     results = []
+
+    if not messaging_enabled():
+        log_warn("WORKER SENDER", "Mensajería apagada: no se intenta avisar al regalante.")
+        return results
+
     for order_id in list_pending_sender_notifications():
         try:
             order = maybe_mark_eterna_completed(order_id)
+
+            if not reaction_is_safe(order):
+                results.append({"order_id": order_id, "result": {"ok": False, "reason": "reaction_not_safe"}})
+                continue
+
             result = try_send_sender_sms(order)
             print("📩 Worker sender sms:", order_id, result)
-            results.append({
-                "order_id": order_id,
-                "result": result,
-            })
+            results.append({"order_id": order_id, "result": result})
         except Exception as e:
             log_error("sender_worker_process", e)
-            results.append({
-                "order_id": order_id,
-                "result": {"ok": False, "reason": str(e)},
-            })
+            results.append({"order_id": order_id, "result": {"ok": False, "reason": str(e)}})
+
     return results
+
 
 def process_all_due_payouts() -> list[dict]:
     results = []
@@ -3684,6 +3741,10 @@ def process_all_due_payouts() -> list[dict]:
     for order_id in list_pending_payout_orders():
         try:
             order = get_order_by_id(order_id)
+
+            if not reaction_is_safe(order):
+                results.append({"order_id": order_id, "result": {"status": "reaction_not_safe", "retry": True}})
+                continue
 
             try:
                 if order.get("stripe_connected_account_id"):
@@ -3693,43 +3754,32 @@ def process_all_due_payouts() -> list[dict]:
                 log_error("payout_worker_refresh_connect_status", e)
 
             if not bool(order.get("connect_onboarding_completed")):
-                results.append({
-                    "order_id": order_id,
-                    "result": {
-                        "status": "onboarding_not_ready",
-                        "retry": True,
-                    },
-                })
+                results.append({"order_id": order_id, "result": {"status": "onboarding_not_ready", "retry": True}})
                 continue
 
             result = process_gift_transfer_for_order(order)
             print("💸 Worker payout:", order_id, result)
-
-            results.append({
-                "order_id": order_id,
-                "result": result,
-            })
+            results.append({"order_id": order_id, "result": result})
 
         except Exception as e:
             log_error("payout_worker_process", e)
-            results.append({
-                "order_id": order_id,
-                "result": {
-                    "status": "error",
-                    "error": str(e),
-                    "retry": True,
-                },
-            })
+            results.append({"order_id": order_id, "result": {"status": "error", "error": str(e), "retry": True}})
 
     return results
+
 
 def delivery_worker_loop():
     print("🚀 DELIVERY WORKER STARTED")
     while True:
         try:
-            process_all_due_scheduled_deliveries()
-            process_all_due_sender_notifications()
+            if messaging_enabled():
+                process_all_due_scheduled_deliveries()
+                process_all_due_sender_notifications()
+            else:
+                log_warn("WORKER", "SMS/WhatsApp apagados: modo test manual sin coste.")
+
             process_all_due_payouts()
+
         except Exception as e:
             log_error("delivery_worker_loop", e)
 
@@ -3759,16 +3809,15 @@ def ensure_delivery_worker_started():
 
 @app.on_event("startup")
 def startup_event():
-    log_info("CONFIG MENSAJERÍA", {
+    log_info("SYSTEM START", {
+        "PUBLIC_BASE_URL": PUBLIC_BASE_URL,
+        "VIDEO_ENGINE_URL": VIDEO_ENGINE_URL,
         "SMS_ENABLED": SMS_ENABLED,
         "WHATSAPP_ENABLED": WHATSAPP_ENABLED,
-        "TWILIO_FROM_NUMBER_present": bool(TWILIO_FROM_NUMBER),
-        "TWILIO_WHATSAPP_FROM_present": bool(TWILIO_WHATSAPP_FROM),
-        "RECIPIENT_TEMPLATE_valid": valid_template_sid(TWILIO_WHATSAPP_TEMPLATE_SID_RECIPIENT),
-        "PUBLIC_BASE_URL": PUBLIC_BASE_URL,
+        "TWILIO_CONFIGURED": twilio_enabled(),
+        "R2_ENABLED": r2_enabled(),
     })
     ensure_delivery_worker_started()
-
 
 # =========================================================
 # PEDIDO / ENTRADA REGALADO (BLINDADO)
@@ -4309,7 +4358,16 @@ async def internal_video_ready(request: Request):
         existing_video = (order.get("experience_video_url") or "").strip()
 
         if existing_video:
-            print("⚠️ Callback duplicado ignorado")
+            if existing_video != video_url:
+                log_warn("CALLBACK VIDEO READY DUPLICADO URL DISTINTA", {
+                    "order_id": order_id,
+                    "existing_video_url": existing_video,
+                    "incoming_video_url": video_url,
+                    "decision": "se mantiene la primera URL guardada",
+                })
+            else:
+                print("⚠️ Callback duplicado ignorado")
+
             return JSONResponse({
                 "status": "ok",
                 "reason": "video_already_saved",
@@ -4344,6 +4402,7 @@ async def internal_video_ready(request: Request):
         print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
         print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
         print("📦 delivery_sent:", bool(order.get("delivery_sent")))
+        log_manual_links(order, reason="video_ready_callback")
 
         # SOLO AQUÍ intentamos enviar al regalado,
         # porque aquí ya sabemos que el vídeo real existe.
@@ -4543,6 +4602,15 @@ async def start_experience(recipient_token: str = Form(...)):
         if not delivery_is_unlocked(order):
             raise HTTPException(status_code=403, detail="delivery_locked")
 
+        order = force_complete_if_reaction_saved(order, source="start_experience")
+
+        if reaction_is_safe(order):
+            return JSONResponse({
+                "ok": True,
+                "already_completed": True,
+                "redirect": f"/cobrar/{recipient_token}",
+            })
+
         update_order(
             order["id"],
             experience_started=1
@@ -4551,6 +4619,9 @@ async def start_experience(recipient_token: str = Form(...)):
         return JSONResponse({
             "ok": True
         })
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
@@ -5203,6 +5274,10 @@ async function finalizeExperienceFlow() {
             }
 
             console.log("✅ reacción subida");
+
+            const nextUrl = uploadData.redirect || ("/cobrar/" + recipientToken);
+            window.location.replace(nextUrl);
+            return;
         } else {
             throw new Error("empty_blob");
         }
@@ -5220,7 +5295,7 @@ async function finalizeExperienceFlow() {
         return;
     }
 
-    window.location.replace("/finalizar-experiencia/" + recipientToken);
+    window.location.replace("/cobrar/" + recipientToken);
 }
 
 function armFinishFallbacks() {
@@ -5445,6 +5520,17 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     if not original_video_ready(order):
         raise HTTPException(status_code=403, detail="video_not_ready")
 
+    # Blindaje lanzamiento: si el móvil reintenta la subida después de que
+    # la emoción ya se guardase, no sobrescribimos archivos ni relanzamos
+    # cobros/SMS. Cerramos estado y mandamos directo a cobros.
+    order = force_complete_if_reaction_saved(order, source="upload_reaction_precheck")
+    if reaction_is_safe(order):
+        return JSONResponse({
+            "ok": True,
+            "already_completed": True,
+            "redirect": f"/cobrar/{recipient_token}",
+        })
+
     content_type = (video.content_type or "").lower().strip()
     extension = detect_video_extension(video)
     local_path = reaction_video_path(order["id"], extension)
@@ -5493,7 +5579,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             )
             raise HTTPException(status_code=500, detail="local_save_failed")
 
+        saved_size = os.path.getsize(local_path)
         print("💾 Reacción guardada local OK:", local_path)
+        print("💾 reaction_local_size:", saved_size)
+        print("💾 reaction_extension:", extension)
 
     except HTTPException:
         raise
@@ -5520,10 +5609,12 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
                 content_type=safe_type,
             )
             print("☁️ Reacción subida a R2:", public_url)
+            print("☁️ reaction_r2_status: ok")
 
     except Exception as e:
         # R2 NO puede romper ETERNA: si está guardado local, seguimos.
         log_error("r2_upload_failed_but_local_ok", e)
+        print("☁️ reaction_r2_status: failed_but_local_ok")
         public_url = None
 
     try:
@@ -5569,10 +5660,64 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     except Exception as e:
         log_error("upload_admin_completed", e)
 
+    print("➡️ UPLOAD REACTION REDIRECT:", f"/cobrar/{recipient_token}")
+
     return JSONResponse({
         "ok": True,
-        "redirect": f"/finalizar-experiencia/{recipient_token}",
+        "redirect": f"/cobrar/{recipient_token}",
     })
+
+
+
+def retry_reaction_r2_for_order(order: dict) -> dict:
+    """
+    Reintento manual/admin de subida de reacción a R2.
+    No cambia el estado emocional: si ya está completada localmente, sigue completada.
+    """
+    order = get_order_by_id(order["id"])
+
+    if (order.get("reaction_video_public_url") or "").strip():
+        return {
+            "ok": True,
+            "status": "already_has_public_url",
+            "public_url": order.get("reaction_video_public_url"),
+        }
+
+    local_path = (order.get("reaction_video_local") or "").strip()
+    if not local_path or not os.path.exists(local_path) or os.path.getsize(local_path) <= 0:
+        return {"ok": False, "status": "missing_local_reaction"}
+
+    if not r2_enabled():
+        return {"ok": False, "status": "r2_not_configured"}
+
+    extension = Path(local_path).suffix.lower().replace(".", "") or "webm"
+    if extension not in {"webm", "mp4"}:
+        extension = "webm"
+
+    remote_name = f"reactions/{order['id']}.{extension}"
+    content_type = guess_media_type_from_path(local_path)
+    public_url = upload_video_to_r2(local_path, remote_name, content_type=content_type)
+
+    update_order(
+        order["id"],
+        reaction_video_public_url=public_url,
+        reaction_upload_error=None,
+        reaction_upload_pending=0,
+    )
+
+    log_info("R2 RETRY OK", {
+        "order_id": order.get("id"),
+        "public_url": public_url,
+        "local_path": local_path,
+    })
+
+    return {
+        "ok": True,
+        "status": "uploaded",
+        "public_url": public_url,
+        "local_path": local_path,
+        "size": os.path.getsize(local_path),
+    }
 
 
 # =========================================================
@@ -5583,8 +5728,13 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 def mi_video(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
+    # Lanzamiento total: si la experiencia ya terminó o la reacción existe,
+    # permitimos ver el vídeo aunque Safari/Chrome haya perdido la cookie.
+    # El bloqueo viral solo protege experiencias no completadas.
+    order = force_complete_if_reaction_saved(order, source="mi_video")
+    if not (bool(order.get("experience_completed")) or reaction_is_safe(order)):
+        if not has_valid_recipient_session(order, request):
+            return render_viral_block_page()
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -5703,16 +5853,19 @@ h1 {{
 def cobrar(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
+    # Recuperación anti-limbo: si el archivo de reacción existe, cerramos ETERNA
+    # aunque el móvil haya perdido sesión/cookie o la redirección anterior fallase.
+    order = force_complete_if_reaction_saved(order, source="cobrar")
+
     if not reaction_is_safe(order):
+        if not has_valid_recipient_session(order, request):
+            return render_viral_block_page()
         return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
     try:
@@ -5767,9 +5920,13 @@ def cobrar(request: Request, recipient_token: str):
                 <a href="{safe_attr(connect_url)}" class="btn primary" style="margin-top:22px;">Recibir mi regalo</a>
             '''
         else:
-            cta_html = '''
-                <div style="margin-top:22px;color:rgba(255,255,255,0.55);font-size:15px;line-height:1.8;">
-                    No hemos podido preparar el cobro todavía. Recarga esta pantalla en unos segundos.
+            cta_html = f'''
+                <div style="margin-top:22px;color:rgba(255,255,255,0.68);font-size:15px;line-height:1.8;">
+                    Tu emoción está guardada. Si el cobro no se abre aún, no se ha perdido nada.
+                </div>
+                <div class="actions" style="margin-top:16px;">
+                    <a class="btn primary" href="/cobrar/{safe_attr(recipient_token)}">Intentar recibir mi regalo</a>
+                    <a class="btn secondary" href="/recibir-regalo/{safe_attr(recipient_token)}">Abrir pantalla de cobro</a>
                 </div>
             '''
 
@@ -5895,8 +6052,11 @@ def connect_return(recipient_token: str):
 def connect_payout(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
+    # Si la reacción ya está guardada, el cobro no debe depender de cookie.
+    order = force_complete_if_reaction_saved(order, source="connect_payout")
+    if not reaction_is_safe(order):
+        if not has_valid_recipient_session(order, request):
+            return render_viral_block_page()
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -6351,27 +6511,57 @@ def admin_process_all_due_deliveries(token: str = ""):
 # FINALIZAR EXPERIENCIA (DEFINITIVO)
 # =========================================================
 
+
 @app.get("/finalizar-experiencia/{recipient_token}")
 def finalizar_experiencia(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
 
-    if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
-
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    if not original_video_ready(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+
+    # Si la reacción ya está salvada, no dejamos que una cookie/sesión perdida
+    # bloquee la salida hacia cobros.
+    order = force_complete_if_reaction_saved(order, source="finalizar_experiencia")
+
+    if not reaction_is_safe(order):
+        if not has_valid_recipient_session(order, request):
+            return render_viral_block_page()
+
+        log_warn("FINALIZAR EXPERIENCIA", {
+            "order_id": order.get("id"),
+            "motivo": "falta reacción real",
+            "accion": "volver a experiencia para reintentar",
+        })
+
+        update_order(
+            order["id"],
+            experience_completed=0,
+            reaction_upload_pending=0,
+            reaction_upload_error=order.get("reaction_upload_error") or "missing_reaction_on_finalize",
+        )
+
+        return RedirectResponse(
+            url=f"/experiencia/{recipient_token}",
+            status_code=303,
+        )
 
     try:
         update_order(
             order["id"],
             experience_completed=1,
             delivered_to_recipient=1,
+            reaction_upload_pending=0,
+            reaction_upload_error=None,
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
         )
 
         maybe_mark_eterna_completed(order["id"])
+        log_info("ETERNA COMPLETA", {"order_id": order["id"]})
 
     except Exception as e:
         log_error("FINALIZAR EXPERIENCE ERROR", e)
@@ -6380,6 +6570,50 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         url=f"/cobrar/{recipient_token}",
         status_code=303
     )
+@app.get("/admin/retry-reaction-r2/{order_id}")
+def admin_retry_reaction_r2(order_id: str, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    order = get_order_by_id(order_id)
+
+    try:
+        result = retry_reaction_r2_for_order(order)
+    except Exception as e:
+        log_error("admin_retry_reaction_r2", e)
+        result = {"ok": False, "status": "error", "error": str(e)}
+
+    refreshed = get_order_by_id(order_id)
+    result.update({
+        "order_id": order_id,
+        "reaction_uploaded": bool(refreshed.get("reaction_uploaded")),
+        "experience_completed": bool(refreshed.get("experience_completed")),
+        "reaction_video_public_url": refreshed.get("reaction_video_public_url"),
+        "sender_url": sender_pack_url_from_order(refreshed),
+    })
+    return JSONResponse(result)
+
+
+@app.get("/admin/recover-payout-lock/{order_id}")
+def admin_recover_payout_lock(order_id: str, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    order = get_order_by_id(order_id)
+    before = bool(order.get("transfer_in_progress"))
+    recovered = recover_stale_transfer_lock(order, source="admin_recover_payout_lock")
+
+    return JSONResponse({
+        "ok": True,
+        "order_id": order_id,
+        "was_in_progress": before,
+        "is_in_progress": bool(recovered.get("transfer_in_progress")),
+        "transfer_completed": bool(recovered.get("transfer_completed")),
+        "stripe_transfer_id": recovered.get("stripe_transfer_id"),
+        "cashout_status": compute_cashout_status(recovered),
+    })
+
+
 @app.get("/admin/reset-recipient-session/{order_id}")
 def admin_reset_recipient_session(order_id: str, token: str = ""):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
@@ -6411,9 +6645,88 @@ def admin_reset_recipient_session(order_id: str, token: str = ""):
 # MAIN
 # =========================================================
 
+def check_db_health() -> dict:
+    try:
+        conn = db_conn()
+        conn.execute("SELECT 1")
+        conn.close()
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def check_video_engine_health(timeout_seconds: int = 2) -> dict:
+    if not VIDEO_ENGINE_URL:
+        return {"configured": False, "reachable": False}
+    try:
+        response = requests.get(f"{VIDEO_ENGINE_URL}/health", timeout=timeout_seconds)
+        return {
+            "configured": True,
+            "reachable": response.status_code < 500,
+            "status_code": response.status_code,
+        }
+    except Exception as e:
+        return {"configured": True, "reachable": False, "error": str(e)}
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    # Health ligero para Render: no despierta el video engine ni depende de Twilio/R2.
+    # Debe responder rápido para no provocar reinicios falsos.
+    return {
+        "status": "ok",
+        "app": "eterna-final",
+        "time": now_iso(),
+    }
+
+
+@app.get("/health/full")
+def health_full():
+    # Health completo para revisión manual/admin.
+    db = check_db_health()
+    video_engine = check_video_engine_health(timeout_seconds=2)
+
+    stripe_configured = bool(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET)
+    twilio_configured = bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
+    r2_configured = r2_enabled()
+
+    critical_ok = bool(db.get("ok")) and bool(PUBLIC_BASE_URL)
+
+    return {
+        "status": "ok" if critical_ok else "degraded",
+        "app": "eterna-final",
+        "time": now_iso(),
+        "database": db,
+        "stripe": {
+            "configured": stripe_configured,
+            "secret_key_present": bool(STRIPE_SECRET_KEY),
+            "webhook_secret_present": bool(STRIPE_WEBHOOK_SECRET),
+        },
+        "twilio": {
+            "configured": twilio_configured,
+            "sms_enabled": SMS_ENABLED,
+            "whatsapp_enabled": WHATSAPP_ENABLED,
+            "from_present": bool(TWILIO_FROM_NUMBER),
+            "client_available": bool(Client),
+        },
+        "r2": {
+            "configured": r2_configured,
+            "bucket_present": bool(R2_BUCKET),
+            "endpoint_present": bool(R2_ENDPOINT),
+            "public_url_present": bool(R2_PUBLIC_URL),
+        },
+        "video_engine": video_engine,
+        "storage": {
+            "persistent_data_folder": str(PERSISTENT_DATA_FOLDER),
+            "reactions_dir": str(REACTIONS_DIR),
+            "reactions_dir_exists": REACTIONS_DIR.exists(),
+        },
+        "public_base_url": PUBLIC_BASE_URL,
+        "worker": {
+            "enabled": DELIVERY_WORKER_ENABLED,
+            "interval_seconds": DELIVERY_WORKER_INTERVAL_SECONDS,
+        },
+    }
 
 
 if __name__ == "__main__":
