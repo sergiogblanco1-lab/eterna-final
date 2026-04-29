@@ -1834,6 +1834,7 @@ async def create_order_and_redirect(
     photo4: UploadFile,
     photo5: UploadFile,
     photo6: UploadFile,
+    responsible_use_accepted: str = "",
 ):
     customer_name = (customer_name or "").strip()
     customer_email = (customer_email or "").strip()
@@ -1866,6 +1867,13 @@ async def create_order_and_redirect(
 
     if not message_type:
         raise HTTPException(status_code=400, detail="Debes elegir una emoción")
+
+    responsible_use_accepted = (responsible_use_accepted or "").strip().lower()
+    if responsible_use_accepted not in {"1", "true", "yes", "on", "accepted"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Debes aceptar el uso responsable de ETERNA antes de continuar",
+        )
 
     if phrase_mode == "auto":
         phrase_1, phrase_2, phrase_3 = get_phrases_by_type(message_type)
@@ -2013,6 +2021,21 @@ async def create_order_and_redirect(
         )
 
         conn.commit()
+
+        log_info("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        log_info("🧾 NUEVA ETERNA CREADA")
+        log_info("👤 Esta ETERNA está creada por", f"{customer_name} | {customer_email or 'sin email'} | {sender_phone_e164}")
+        log_info("🎯 Va dirigida a", f"{recipient_name} | {recipient_phone_e164}")
+        log_info("💸 Total", f"{fees['total_amount']}€")
+        log_info("🎁 Dinero regalo", f"{fees['gift_amount']}€")
+        log_info("🕒 Entrega", "programada" if delivery_mode == "scheduled" else "inmediata")
+        if scheduled_delivery_at:
+            log_info("📅 Fecha entrega", scheduled_delivery_at)
+        log_info("✅ Uso responsable aceptado", "sí")
+        log_info("🆔 Order ID", order_id)
+        log_info("🔗 Link destinatario", f"{PUBLIC_BASE_URL}/pedido/{recipient_token}")
+        log_info("🔗 Link regalante", f"{PUBLIC_BASE_URL}/sender/{sender_token}")
+        log_info("━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
     except Exception:
         conn.rollback()
@@ -2843,6 +2866,31 @@ def render_create_form() -> str:
 
                         <div class="error-box" id="errorBox"></div>
 
+                        <label style="
+                            display:flex;
+                            gap:12px;
+                            align-items:flex-start;
+                            margin-top:18px;
+                            padding:16px;
+                            border-radius:18px;
+                            background:rgba(255,255,255,0.055);
+                            border:1px solid rgba(255,255,255,0.10);
+                            color:rgba(255,255,255,0.78);
+                            font-size:13px;
+                            line-height:1.65;
+                        ">
+                            <input
+                                type="checkbox"
+                                name="responsible_use_accepted"
+                                value="1"
+                                required
+                                style="margin-top:4px; width:18px; height:18px; flex:0 0 auto;"
+                            >
+                            <span>
+                                Acepto crear esta ETERNA de forma responsable. Entiendo que, si la persona destinataria vive la experiencia, podré recibir un recuerdo privado de ese momento. Me comprometo a tratar ese contenido con respeto, a no utilizarlo de forma ofensiva, invasiva o pública, y a compartirlo solo de manera responsable.
+                            </span>
+                        </label>
+
                         <div style="margin-top:14px;font-size:13px;line-height:1.7;color:rgba(255,255,255,0.58);text-align:center;">
                             Al continuar, aceptas las
                             <a href="/condiciones" target="_blank" style="color:white;text-decoration:underline;">condiciones</a>
@@ -3363,6 +3411,7 @@ async def crear_post(
     photo4: UploadFile = File(...),
     photo5: UploadFile = File(...),
     photo6: UploadFile = File(...),
+    responsible_use_accepted: str = Form(""),
 ):
     try:
         return await create_order_and_redirect(
@@ -3388,6 +3437,7 @@ async def crear_post(
             photo4,
             photo5,
             photo6,
+            responsible_use_accepted,
         )
 
     except Exception as e:
@@ -3587,8 +3637,14 @@ def pedido(request: Request, recipient_token: str):
 
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
+        log_info("🚪 DESTINATARIO HA ABIERTO ETERNA")
+        log_info("🆔 Order ID", order.get("id"))
+        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+        log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
+        log_info("🎥 Vídeo listo", "sí" if original_video_ready(order) else "no")
     except Exception:
         order = None
+        log_info("🚪 ENTRADA ETERNA CON TOKEN INVÁLIDO", recipient_token)
 
     # =========================================================
     # TOKEN INVÁLIDO O PEDIDO NO ENCONTRADO
@@ -4016,6 +4072,11 @@ async def stripe_webhook(request: Request):
 
     try:
         order = get_order_by_id(order_id)
+        log_info("💳 PAGO RECIBIDO EN STRIPE")
+        log_info("🆔 Order ID", order_id)
+        log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
+        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+        log_info("🎬 Estado", "voy a preparar el vídeo")
     except Exception:
         raise HTTPException(status_code=404, detail="order_not_found")
 
@@ -4131,6 +4192,12 @@ async def internal_video_ready(request: Request):
             experience_video_url=video_url,
             video_render_requested=0,
         )
+
+        log_info("✅ VÍDEO LISTO")
+        log_info("🆔 Order ID", order_id)
+        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+        log_info("🔗 Link experiencia", recipient_experience_url_from_order(order))
+        log_info("🔗 Link regalante", sender_pack_url_from_order(order))
 
         if not asset_exists(order_id, "rendered_video", video_url):
             insert_asset(
@@ -4340,6 +4407,9 @@ async def start_experience(recipient_token: str = Form(...)):
         order = get_order_by_recipient_token_or_404(recipient_token)
 
         print("🎬 START EXPERIENCE:", order["id"])
+        log_info("▶️ HA PULSADO EMPEZAR")
+        log_info("🆔 Order ID", order["id"])
+        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
 
         if not bool(order.get("paid")):
             raise HTTPException(status_code=403, detail="not_paid")
@@ -4720,6 +4790,48 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+let savingProgressTimer = null;
+
+function setSavingMessage(text) {
+    try {
+        payoffLoader.innerText = text;
+    } catch (_) {}
+}
+
+function startSavingProgress() {
+    const messages = [
+        "62% guardando emoción…\nNo cierres esta pantalla.",
+        "78% casi listo…\nNo cierres esta pantalla.",
+        "91% no te vayas todavía…\nEsto solo pasa una vez.",
+        "96% terminando de guardar…"
+    ];
+
+    let i = 0;
+    setSavingMessage(messages[0]);
+
+    try {
+        if (savingProgressTimer) clearInterval(savingProgressTimer);
+        savingProgressTimer = setInterval(() => {
+            i = Math.min(i + 1, messages.length - 1);
+            setSavingMessage(messages[i]);
+        }, 1200);
+    } catch (_) {}
+}
+
+function stopSavingProgress() {
+    try {
+        if (savingProgressTimer) clearInterval(savingProgressTimer);
+    } catch (_) {}
+    savingProgressTimer = null;
+    setSavingMessage("100% listo.\nTu momento se ha guardado.");
+}
+
+function showPostVideoHold() {
+    try {
+        payoff.classList.add("show");
+        setSavingMessage("Quédate un segundo más…\nNo te vayas todavía.");
+    } catch (_) {}
+}
 
 
 let ritualStep = 0;
@@ -5085,7 +5197,7 @@ async function finalizeExperienceFlow() {
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
+    startSavingProgress();
 
     try {
         if (finishTimeout) {
@@ -5162,6 +5274,7 @@ async function finalizeExperienceFlow() {
                 throw new Error(uploadData.detail || "upload_reaction_failed");
             }
 
+            stopSavingProgress();
             console.log("✅ reacción subida");
         } else {
             throw new Error("empty_blob");
@@ -5173,6 +5286,8 @@ async function finalizeExperienceFlow() {
             e?.message || e?.detail || ""
         );
 
+        try { if (savingProgressTimer) clearInterval(savingProgressTimer); } catch (_) {}
+        savingProgressTimer = null;
         payoffLoader.innerText = humanMessage;
         showRetryActions();
 
@@ -5180,18 +5295,23 @@ async function finalizeExperienceFlow() {
         return;
     }
 
-    window.location.replace("/finalizar-experiencia/" + recipientToken);
+    setTimeout(() => {
+        window.location.replace("/finalizar-experiencia/" + recipientToken);
+    }, 900);
 }
 
 function armFinishFallbacks() {
     video.addEventListener("ended", () => {
-        finalizeExperienceFlow();
+        showPostVideoHold();
+        setTimeout(() => {
+            finalizeExperienceFlow();
+        }, 8000);
     }, { once: true });
 
     let fallbackMs = 120000;
 
     if (Number.isFinite(video.duration) && video.duration > 0) {
-        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 2500);
+        fallbackMs = Math.max(23000, Math.floor(video.duration * 1000) + 11000);
     }
 
     finishTimeout = setTimeout(() => {
@@ -5400,6 +5520,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
     print("➡️ order_id:", order["id"])
     print("➡️ content_type:", video.content_type)
     print("➡️ filename:", video.filename)
+    log_info("❤️ RECIBIENDO REACCIÓN")
+    log_info("🆔 Order ID", order["id"])
+    log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+    log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
 
     if not bool(order.get("paid")):
         raise HTTPException(status_code=403, detail="not_paid")
@@ -5471,6 +5595,12 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         updated_order = maybe_mark_eterna_completed(order["id"])
 
         print("✅ DB ACTUALIZADA: reacción segura")
+        log_info("✅ REACCIÓN GUARDADA Y ETERNA COMPLETADA")
+        log_info("🆔 Order ID", order["id"])
+        log_info("💾 Reacción local", local_path)
+        log_info("☁️ Reacción R2", public_url or "no subida a R2, pero guardada localmente")
+        log_info("🎁 Pack regalante", sender_pack_url_from_order(updated_order))
+        log_info("💸 Siguiente paso", f"/cobrar/{recipient_token}")
 
         try:
             print("📩 INTENTANDO ENVÍO AL REGALANTE DESDE UPLOAD")
@@ -5637,6 +5767,10 @@ h1 {{
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
 def cobrar(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
+    log_info("💸 DESTINATARIO ENTRA EN COBROS")
+    log_info("🆔 Order ID", order.get("id"))
+    log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+    log_info("🎁 Regalo", f"{order.get('gift_amount') or 0}€")
 
     if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
         return render_viral_block_page()
@@ -5864,6 +5998,10 @@ def connect_payout(request: Request, recipient_token: str):
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
+    log_info("🎁 REGALANTE HA ABIERTO EL PACK")
+    log_info("🆔 Order ID", order.get("id"))
+    log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
+    log_info("❤️ Reacción disponible", "sí" if reaction_is_safe(order) else "no")
 
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
