@@ -4861,7 +4861,7 @@ video {
                 __RITUAL_BUTTON__
             </a>
 
-            <button type="button" class="btn" id="startBtn" onclick="window.eternaStartExperience && window.eternaStartExperience();" style="margin-top:28px; display:__START_DISPLAY__;">
+            <button type="button" class="btn" id="startBtn" style="margin-top:28px; display:__START_DISPLAY__;">
                 Empezar
             </button>
 
@@ -4906,6 +4906,7 @@ let finishing = false;
 let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
+let experienceStarting = false;
 let finishTimeout = null;
 let savingProgressTimer = null;
 
@@ -5110,21 +5111,6 @@ async function eternaNextRitual() {
 
 window.eternaNextRitual = eternaNextRitual;
 
-
-if (ritualNextBtn) {
-    ritualNextBtn.addEventListener("click", async (event) => {
-        try {
-            const current = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
-            if (current && current.button === "Aceptar y continuar") {
-                event.preventDefault();
-                await eternaNextRitual();
-            }
-        } catch (e) {
-            console.error("ritual accept click error", e);
-        }
-    });
-}
-
 // Importante: los pasos del ritual avanzan por URL real del servidor.
 // Así el botón Continuar nunca se queda muerto aunque falle JavaScript.
 // La cámara y el micrófono se piden únicamente al pulsar Empezar.
@@ -5203,6 +5189,7 @@ function resetRecordingState() {
     recordingExtension = "webm";
     finishing = false;
     experienceStarted = false;
+    experienceStarting = false;
 
     try {
         video.pause();
@@ -5287,25 +5274,12 @@ function detectRecordingFormat() {
     return { mimeType: "", extension: "webm" };
 }
 
-function hasLiveCameraAndMicrophone() {
-    try {
-        if (!stream) return false;
-        const activeTracks = stream.getTracks().filter((t) => t.readyState === "live");
-        const hasVideo = activeTracks.some((t) => t.kind === "video");
-        const hasAudio = activeTracks.some((t) => t.kind === "audio");
-        return hasVideo && hasAudio;
-    } catch (_) {
-        return false;
-    }
-}
-
 async function tryStartRecordingStrict() {
     try {
-        if (!hasLiveCameraAndMicrophone()) {
-            const prepared = await prepareCameraAndMicrophoneBeforeStart();
-            if (!prepared || !stream) {
-                throw new Error("camera_microphone_not_ready");
-            }
+        const prepared = await prepareCameraAndMicrophoneBeforeStart();
+
+        if (!prepared || !stream) {
+            throw new Error("camera_microphone_not_ready");
         }
 
         const format = detectRecordingFormat();
@@ -5329,9 +5303,22 @@ async function tryStartRecordingStrict() {
 
         mediaRecorder.start(1000);
 
-        if (!mediaRecorder || mediaRecorder.state === "inactive") {
-            throw new Error("recorder_not_running");
-        }
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    resolve();
+                } else {
+                    reject(new Error("recorder_not_running"));
+                }
+            }, 700);
+
+            try {
+                mediaRecorder.addEventListener("start", () => {
+                    clearTimeout(timer);
+                    resolve();
+                }, { once: true });
+            } catch (_) {}
+        });
 
         console.log("🎥 grabación iniciada");
         return true;
@@ -5500,79 +5487,70 @@ async function safeResumePlayback() {
 }
 
 async function eternaStartExperience() {
-    if (experienceStarted || startingExperience) return;
-    startingExperience = true;
+    if (experienceStarted || experienceStarting) return;
+    experienceStarting = true;
     console.log("🎭 ETERNA: usuario ha pulsado Empezar");
 
     startBtn.disabled = true;
     clearStartError();
 
     try {
-        try { video.pause(); } catch (_) {}
-        try { video.currentTime = 0; } catch (_) {}
+        try {
+            video.pause();
+        } catch (_) {}
 
-        /*
-        CLAVE DEFINITIVA:
-        En el click real de Empezar, el vídeo arranca PRIMERO.
-        No esperamos ni a cámara, ni a grabación, ni a backend, ni a canplay.
-        La cámara ya debería venir preparada del paso anterior; si no lo está,
-        intentamos arrancar la grabación justo después del play sin bloquear el vídeo.
-        */
-        try { video.load(); } catch (_) {}
-        try { video.currentTime = 0; } catch (_) {}
+        try {
+            video.currentTime = 0;
+        } catch (_) {}
 
-        overlay.classList.add("hidden");
-        experienceStarted = true;
-        startingExperience = false;
-        armFinishFallbacks();
+        const recordingStarted = await tryStartRecordingStrict();
+
+        if (!recordingStarted) {
+            showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
+            experienceStarting = false;
+            startBtn.disabled = false;
+            return;
+        }
 
         const formData = new FormData();
         formData.append("recipient_token", recipientToken);
-        fetch("/start-experience", {
+
+        const response = await fetch("/start-experience", {
             method: "POST",
             body: formData
-        })
-        .then(async (response) => {
-            let data = {};
-            try { data = await response.json(); } catch (_) {}
-            if (data && data.redirect_url) {
-                window.location.replace(data.redirect_url);
-                return;
-            }
-            if (!response.ok) {
-                console.error("start-experience backend error", data.detail || response.status);
-            }
-        })
-        .catch((e) => console.error("start-experience fetch error", e));
+        });
+
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (_) {}
+
+        if (!response.ok) {
+            throw new Error(data.detail || "start_experience_error");
+        }
+
+        if (data.redirect_url) {
+            window.location.replace(data.redirect_url);
+            return;
+        }
+
+        video.load();
+        await waitForVideoReady();
+
+        overlay.classList.add("hidden");
+        experienceStarted = true;
+        experienceStarting = false;
+
+        armFinishFallbacks();
 
         try {
-            console.log("▶️ intentando reproducir vídeo");
             await video.play();
-            console.log("✅ vídeo reproduciéndose");
-
-            tryStartRecordingStrict().then((recordingStarted) => {
-                if (!recordingStarted) {
-                    console.error("recording could not start after video play");
-                    try { video.pause(); } catch (_) {}
-                    experienceStarted = false;
-                    overlay.classList.remove("hidden");
-                    startBtn.disabled = false;
-                    showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
-                }
-            }).catch((recordingError) => {
-                console.error("recording start after play error", recordingError);
-                try { video.pause(); } catch (_) {}
-                experienceStarted = false;
-                overlay.classList.remove("hidden");
-                startBtn.disabled = false;
-                showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
-            });
         } catch (e) {
             console.error("video play error", e);
 
             showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
             experienceStarted = false;
-            startingExperience = false;
+            experienceStarting = false;
             overlay.classList.remove("hidden");
             startBtn.disabled = false;
 
@@ -5593,6 +5571,7 @@ async function eternaStartExperience() {
             recordedChunks = [];
             recordingMimeType = "";
             recordingExtension = "webm";
+
             return;
         }
 
@@ -5601,7 +5580,7 @@ async function eternaStartExperience() {
 
         startBtn.disabled = false;
         experienceStarted = false;
-        startingExperience = false;
+        experienceStarting = false;
         payoff.classList.remove("show");
 
         try {
@@ -5625,7 +5604,6 @@ async function eternaStartExperience() {
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
     }
 }
-
 
 window.eternaStartExperience = eternaStartExperience;
 
