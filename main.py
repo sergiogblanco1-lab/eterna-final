@@ -17,6 +17,7 @@ import secrets
 import sqlite3
 import traceback
 import uuid
+import hashlib
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -160,6 +161,54 @@ def log_info(label: str, value=None):
 def log_error(label: str, error: Exception):
     print(f"[ERROR] {label}: {error}")
     traceback.print_exc()
+
+
+def mask_email(email: str) -> str:
+    email = str(email or "").strip()
+    if "@" not in email:
+        return email or "sin email"
+    name, domain = email.split("@", 1)
+    masked = (name[:3] if len(name) > 3 else name[:1]) + "***"
+    return f"{masked}@{domain}"
+
+
+def mask_phone(phone: str) -> str:
+    phone = str(phone or "").strip()
+    if len(phone) <= 6:
+        return phone or "sin teléfono"
+    return phone[:5] + "****" + phone[-2:]
+
+
+def log_human(title: str, *lines):
+    print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"🎬 {title}")
+    for line in lines:
+        if line is not None and str(line).strip():
+            print(str(line))
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+
+def safe_slug(value: str, fallback: str = "persona") -> str:
+    raw = str(value or "").strip().lower()
+    for a, b in {"á":"a","é":"e","í":"i","ó":"o","ú":"u","ü":"u","ñ":"n"}.items():
+        raw = raw.replace(a, b)
+    out = []
+    for ch in raw:
+        if ch.isalnum():
+            out.append(ch)
+        elif ch in {" ", "-", "_"}:
+            out.append("_")
+    slug = "".join(out).strip("_")
+    while "__" in slug:
+        slug = slug.replace("__", "_")
+    return slug[:60] or fallback
+
+
+def r2_order_key(order: dict, kind: str, filename: str) -> str:
+    order_id = str(order.get("id") or "unknown")
+    recipient = safe_slug(order.get("recipient_name") or "destinatario", "destinatario")
+    sender = safe_slug(order.get("sender_name") or "regalante", "regalante")
+    return f"orders/{order_id}/{recipient}_{sender}/{kind}/{filename}"
 
 
 # =========================================================
@@ -610,6 +659,43 @@ def upload_video_to_r2(local_path: str, remote_name: str, content_type: str = "v
     return f"{R2_PUBLIC_URL}/{remote_name}"
 
 
+def upload_bytes_to_r2(data: bytes, remote_name: str, content_type: str = "application/octet-stream") -> Optional[str]:
+    client = get_r2_client()
+    if not client:
+        return None
+    client.put_object(Bucket=R2_BUCKET, Key=remote_name, Body=data, ContentType=content_type)
+    return f"{R2_PUBLIC_URL}/{remote_name}"
+
+
+def preserve_remote_video_to_r2(order: dict, video_url: str, kind: str = "original") -> Optional[str]:
+    if not r2_enabled():
+        log_human("ARCHIVO PERMANENTE R2", "ℹ️ R2 no está configurado. Uso la URL actual del vídeo.")
+        return None
+
+    url = (video_url or "").strip()
+    if not url:
+        return None
+
+    try:
+        log_human("GUARDANDO VÍDEO EN R2", f"🆔 Pedido: {order.get('id')}", f"🎞️ Tipo: {kind}")
+        response = requests.get(url, timeout=120)
+        response.raise_for_status()
+        content_type = response.headers.get("content-type") or guess_media_type_from_url(url)
+        ext = "mp4" if "mp4" in content_type or url.split("?")[0].lower().endswith(".mp4") else "webm"
+        digest = hashlib.sha256(response.content).hexdigest()[:16]
+        filename = f"{kind}_{digest}.{ext}"
+        key = r2_order_key(order, kind, filename)
+        public_url = upload_bytes_to_r2(response.content, key, content_type=content_type)
+        if public_url:
+            insert_asset(order.get("id"), f"{kind}_r2", public_url, "r2")
+            log_human("VÍDEO GUARDADO EN R2", "✅ Archivo permanente creado", f"🔗 {public_url}")
+        return public_url
+    except Exception as e:
+        log_error(f"preserve_{kind}_to_r2", e)
+        log_human("AVISO R2", "⚠️ No he podido copiar el vídeo a R2.", "✅ La experiencia sigue con la URL original.")
+        return None
+
+
 def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider: str):
     conn = db_conn()
     cur = conn.cursor()
@@ -790,6 +876,7 @@ def trigger_video_engine(order_id: str, phrases: list[str]) -> dict:
         "phrases": phrases,
     }
 
+    log_human("PREPARANDO VÍDEO", f"🆔 Pedido: {order_id}", "🎬 Enviando fotos y frases al motor de vídeo")
     print("🚀 Enviando al video engine...")
     print("🚀 VIDEO_ENGINE_URL:", VIDEO_ENGINE_URL)
     print("🚀 payload:", payload)
@@ -1116,9 +1203,9 @@ def send_sms(phone: str, message: str) -> dict:
         return {"ok": False, "sid": None, "error": "invalid_phone"}
 
     if not SMS_ENABLED:
+        log_human("SMS APAGADO", f"📱 Destino: {mask_phone(to_phone)}", "ℹ️ No envío nada porque SMS_ENABLED=0")
         print("🚫 SMS DESACTIVADO POR CONFIG")
         print("🚫 Destino:", to_phone)
-        print("🚫 Mensaje:", message)
         return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
 
     if not twilio_enabled():
@@ -1218,6 +1305,7 @@ def send_admin_eterna_completed(order: dict):
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
+    log_human("ENTREGA AL DESTINATARIO", f"🆔 Pedido: {order_id}", "📩 Voy a preparar el envío del enlace")
     print("📦 PROCESS RECIPIENT DELIVERY START")
     print("➡️ order_id:", order_id)
 
@@ -1783,11 +1871,12 @@ p { opacity:0.85; }
 <h2>3. Consentimiento y grabación</h2>
 <p>Al acceder y continuar en la experiencia, el destinatario acepta que su reacción podrá ser captada mediante cámara y/o micrófono y compartida únicamente con la persona que creó la experiencia.</p>
 
-<h2>4. Uso de imagen</h2>
-<p>El contenido generado es privado y no será utilizado públicamente sin consentimiento adicional.</p>
+<h2>4. Uso de imagen y contenido recibido por el regalante</h2>
+<p>La persona que crea una ETERNA entiende que puede recibir un recuerdo privado de la experiencia, incluyendo imagen, voz o reacción de la persona destinataria, siempre dentro del funcionamiento del servicio.</p>
+<p>Ese contenido debe ser tratado de forma privada, respetuosa y responsable. No debe difundirse públicamente, usarse de forma ofensiva, humillante, invasiva, comercial o fuera del contexto emocional para el que fue creado, salvo consentimiento adicional de la persona afectada.</p>
 
-<h2>5. Responsabilidad del usuario</h2>
-<p>El usuario garantiza que dispone de derechos sobre el contenido subido.</p>
+<h2>5. Responsabilidad del usuario creador</h2>
+<p>El usuario creador garantiza que dispone de derechos o autorización suficiente sobre las fotografías, frases y datos que introduce, y se compromete a no crear experiencias con fines de acoso, presión, manipulación, burla, exposición pública o cualquier uso contrario a la dignidad de la persona destinataria.</p>
 
 <h2>6. Datos personales</h2>
 <p>Los datos se utilizan únicamente para prestar el servicio.</p>
@@ -2022,20 +2111,21 @@ async def create_order_and_redirect(
 
         conn.commit()
 
-        log_info("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        log_info("🧾 NUEVA ETERNA CREADA")
-        log_info("👤 Esta ETERNA está creada por", f"{customer_name} | {customer_email or 'sin email'} | {sender_phone_e164}")
-        log_info("🎯 Va dirigida a", f"{recipient_name} | {recipient_phone_e164}")
-        log_info("💸 Total", f"{fees['total_amount']}€")
-        log_info("🎁 Dinero regalo", f"{fees['gift_amount']}€")
-        log_info("🕒 Entrega", "programada" if delivery_mode == "scheduled" else "inmediata")
-        if scheduled_delivery_at:
-            log_info("📅 Fecha entrega", scheduled_delivery_at)
-        log_info("✅ Uso responsable aceptado", "sí")
-        log_info("🆔 Order ID", order_id)
+        log_human(
+            "NUEVA ETERNA CREADA",
+            f"👤 La crea: {customer_name}",
+            f"📩 Email: {mask_email(customer_email)}",
+            f"📱 Teléfono: {mask_phone(sender_phone_e164)}",
+            f"🎯 Va para: {recipient_name}",
+            f"📱 Teléfono destinatario: {mask_phone(recipient_phone_e164)}",
+            f"💸 Total: {fees['total_amount']}€",
+            f"🎁 Dinero regalo: {fees['gift_amount']}€",
+            f"🕒 Entrega: {'programada' if delivery_mode == 'scheduled' else 'inmediata'}",
+            f"🆔 Pedido: {order_id}",
+            "✅ Uso responsable aceptado"
+        )
         log_info("🔗 Link destinatario", f"{PUBLIC_BASE_URL}/pedido/{recipient_token}")
         log_info("🔗 Link regalante", f"{PUBLIC_BASE_URL}/sender/{sender_token}")
-        log_info("━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
     except Exception:
         conn.rollback()
@@ -4201,12 +4291,18 @@ async def internal_video_ready(request: Request):
                 "sender_url": sender_pack_url_from_order(order),
             })
 
+        permanent_video_url = preserve_remote_video_to_r2(order, video_url, kind="original")
+        final_video_url = permanent_video_url or video_url
+
         update_order(
             order_id,
-            experience_video_url=video_url,
+            experience_video_url=final_video_url,
             video_render_requested=0,
         )
 
+        video_url = final_video_url
+
+        log_human("VÍDEO LISTO", f"🆔 Pedido: {order_id}", "✅ El vídeo ya está preparado", f"🔗 Link experiencia: {recipient_experience_url_from_order(order)}")
         log_info("✅ VÍDEO LISTO")
         log_info("🆔 Order ID", order_id)
         log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
@@ -4420,6 +4516,7 @@ async def start_experience(recipient_token: str = Form(...)):
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
 
+        log_human("EXPERIENCIA INICIADA", f"🎭 {order.get('recipient_name')} ha pulsado Empezar", f"🆔 Pedido: {order.get('id')}")
         print("🎬 START EXPERIENCE:", order["id"])
         log_info("▶️ HA PULSADO EMPEZAR")
         log_info("🆔 Order ID", order["id"])
@@ -4454,7 +4551,7 @@ async def start_experience(recipient_token: str = Form(...)):
 # =========================================================
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
-def experiencia(request: Request, recipient_token: str):
+def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
@@ -4474,6 +4571,13 @@ def experiencia(request: Request, recipient_token: str):
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
+
+    try:
+        ritual_step = int(ritual_step or 0)
+    except Exception:
+        ritual_step = 0
+    ritual_step = max(0, min(ritual_step, 7))
+    next_ritual_step = min(ritual_step + 1, 7)
 
     if gift_amount > 0:
         payoff_title = "Esto no termina aquí."
@@ -4742,23 +4846,22 @@ video {
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
 
-            <h1 class="title" id="ritualTitle">Shhh…</h1>
+            <h1 class="title" id="ritualTitle">__RITUAL_TITLE__</h1>
 
-            <div class="text" id="ritualText">
-                Esto no es un vídeo.<br>
-                Es un momento.
-            </div>
+            <div class="text" id="ritualText">__RITUAL_TEXT__</div>
 
-            <div class="soft" id="ritualSoft">
-                No pienses.<br>
-                Solo deja que ocurra.
-            </div>
+            <div class="soft" id="ritualSoft">__RITUAL_SOFT__</div>
 
-            <button type="button" class="btn" id="ritualNextBtn" onclick="window.eternaNextRitual && window.eternaNextRitual();" style="margin-top:28px;">
-                Continuar
-            </button>
+            <a
+                class="btn"
+                id="ritualNextBtn"
+                href="__RITUAL_NEXT_URL__"
+                style="margin-top:28px; display:__RITUAL_NEXT_DISPLAY__;"
+            >
+                __RITUAL_BUTTON__
+            </a>
 
-            <button type="button" class="btn" id="startBtn" onclick="window.eternaStartExperience && window.eternaStartExperience();" style="margin-top:28px; display:none;">
+            <button type="button" class="btn" id="startBtn" onclick="window.eternaStartExperience && window.eternaStartExperience();" style="margin-top:28px; display:__START_DISPLAY__;">
                 Empezar
             </button>
 
@@ -4864,7 +4967,7 @@ function showPostVideoHold() {
 }
 
 
-let ritualStep = 0;
+let ritualStep = __RITUAL_STEP__;
 
 const ritualSteps = [
     {
@@ -4934,6 +5037,9 @@ function renderRitualStep() {
         startBtn.style.display = "none";
         ritualNextBtn.style.display = "inline-block";
         ritualNextBtn.innerText = step.button || "Continuar";
+        try {
+            ritualNextBtn.href = "/experiencia/" + recipientToken + "?ritual_step=" + Math.min(ritualStep + 1, ritualSteps.length - 1);
+        } catch (_) {}
     }
 }
 
@@ -5004,13 +5110,9 @@ async function eternaNextRitual() {
 
 window.eternaNextRitual = eternaNextRitual;
 
-if (ritualNextBtn) {
-    ritualNextBtn.addEventListener("click", (event) => {
-        try { event.preventDefault(); } catch (_) {}
-        eternaNextRitual();
-    });
-}
-
+// Importante: los pasos del ritual avanzan por URL real del servidor.
+// Así el botón Continuar nunca se queda muerto aunque falle JavaScript.
+// La cámara y el micrófono se piden únicamente al pulsar Empezar.
 renderRitualStep();
 
 function showStartError(message) {
@@ -5384,6 +5486,7 @@ async function safeResumePlayback() {
 
 async function eternaStartExperience() {
     if (experienceStarted) return;
+    console.log("🎭 ETERNA: usuario ha pulsado Empezar");
 
     startBtn.disabled = true;
     clearStartError();
@@ -5554,9 +5657,78 @@ if (backToStartBtn) {
 </html>
     """
 
+    ritual_steps_server = [
+        {
+            "title": "Shhh…",
+            "text": "Esto no es un vídeo.<br>Es un momento.",
+            "soft": "No pienses.<br>Solo deja que ocurra.",
+            "button": "Continuar",
+            "final": False,
+        },
+        {
+            "title": "Sonido",
+            "text": "Si puedes…<br>escúchalo con sonido.",
+            "soft": "Mejor con auriculares.",
+            "button": "Continuar",
+            "final": False,
+        },
+        {
+            "title": "Antes de abrirlo",
+            "text": "Busca un momento tranquilo.",
+            "soft": "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
+            "button": "Ya está",
+            "final": False,
+        },
+        {
+            "title": "Colócate",
+            "text": "Pon el teléfono frente a ti.",
+            "soft": "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
+            "button": "Listo",
+            "final": False,
+        },
+        {
+            "title": "Luz",
+            "text": "Deja que haya algo de luz frente a ti.",
+            "soft": "Lo justo para poder verte.",
+            "button": "Perfecto",
+            "final": False,
+        },
+        {
+            "title": "Presencia",
+            "text": "No hagas nada especial.",
+            "soft": "Solo míralo.<br>Este momento es tuyo.",
+            "button": "Continuar",
+            "final": False,
+        },
+        {
+            "title": "Una última cosa",
+            "text": "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
+            "soft": "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
+            "button": "Aceptar y continuar",
+            "final": False,
+        },
+        {
+            "title": "Cuando estés listo…",
+            "text": "Pulsa empezar.",
+            "soft": "Y déjate llevar.",
+            "button": "Empezar",
+            "final": True,
+        },
+    ]
+
+    ritual_current = ritual_steps_server[min(ritual_step, len(ritual_steps_server) - 1)]
+
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
+    html_page = html_page.replace("__RITUAL_STEP__", str(ritual_step))
+    html_page = html_page.replace("__RITUAL_TITLE__", safe_text(ritual_current["title"]))
+    html_page = html_page.replace("__RITUAL_TEXT__", ritual_current["text"])
+    html_page = html_page.replace("__RITUAL_SOFT__", ritual_current["soft"])
+    html_page = html_page.replace("__RITUAL_BUTTON__", safe_text(ritual_current["button"]))
+    html_page = html_page.replace("__RITUAL_NEXT_URL__", safe_attr(f"/experiencia/{recipient_token}?ritual_step={next_ritual_step}"))
+    html_page = html_page.replace("__RITUAL_NEXT_DISPLAY__", "none" if ritual_current.get("final") else "inline-block")
+    html_page = html_page.replace("__START_DISPLAY__", "inline-block" if ritual_current.get("final") else "none")
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
@@ -5602,6 +5774,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         size = len(data)
 
         print("📦 reaction_size:", size)
+        log_human("REACCIÓN RECIBIDA", "❤️ Está llegando la emoción", f"📦 Tamaño: {round(size / (1024 * 1024), 2)} MB", f"🆔 Pedido: {order['id']}")
 
         if size <= 0:
             raise HTTPException(status_code=400, detail="empty_video")
@@ -5621,12 +5794,13 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
         print("💾 Reacción guardada local OK:", local_path)
         print("💾 reaction_saved_size:", saved_size)
+        log_human("EMOCIÓN GUARDADA EN SERVIDOR", "💾 Guardada localmente", f"📦 Tamaño: {round(saved_size / (1024 * 1024), 2)} MB")
 
         public_url = None
         r2_error = None
         try:
             content_type = guess_media_type_from_path(local_path)
-            remote_name = f"reactions/{order['id']}.{extension}"
+            remote_name = r2_order_key(order, "reaction", f"reaction.{extension}")
             public_url = upload_video_to_r2(local_path, remote_name, content_type=content_type)
             print("☁️ R2 reaction upload:", public_url or "r2_disabled")
         except Exception as e:
@@ -5650,6 +5824,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         updated_order = maybe_mark_eterna_completed(order["id"])
 
         print("✅ DB ACTUALIZADA: reacción segura")
+        log_human("ETERNA COMPLETADA", "✅ La emoción se ha guardado", f"🎁 Pack listo para {order.get('sender_name')}", "💸 Siguiente paso: cobros")
         log_info("✅ REACCIÓN GUARDADA Y ETERNA COMPLETADA")
         log_info("🆔 Order ID", order["id"])
         log_info("💾 Reacción local", local_path)
@@ -6053,6 +6228,7 @@ def connect_payout(request: Request, recipient_token: str):
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
+    log_human("REGALANTE HA ABIERTO EL PACK", "🎁 El creador ha abierto el recuerdo", f"🆔 Pedido: {order.get('id')}")
     log_info("🎁 REGALANTE HA ABIERTO EL PACK")
     log_info("🆔 Order ID", order.get("id"))
     log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
