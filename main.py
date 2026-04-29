@@ -4754,11 +4754,11 @@ video {
                 Solo deja que ocurra.
             </div>
 
-            <button class="btn" id="ritualNextBtn" style="margin-top:28px;">
+            <button type="button" class="btn" id="ritualNextBtn" onclick="window.eternaNextRitual && window.eternaNextRitual();" style="margin-top:28px;">
                 Continuar
             </button>
 
-            <button class="btn" id="startBtn" style="margin-top:28px; display:none;">
+            <button type="button" class="btn" id="startBtn" onclick="window.eternaStartExperience && window.eternaStartExperience();" style="margin-top:28px; display:none;">
                 Empezar
             </button>
 
@@ -4773,8 +4773,8 @@ video {
             <div class="loader" id="payoffLoader">Guardando este momento…</div>
 
             <div class="retry-actions" id="retryActions">
-                <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
-                <button class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
+                <button type="button" class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
+                <button type="button" class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
             </div>
         </div>
     </div>
@@ -4805,6 +4805,22 @@ let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
 let savingProgressTimer = null;
+
+window.addEventListener("error", function(event) {
+    try {
+        console.error("ETERNA JS error:", event.message, event.error);
+        if (errorNote && !experienceStarted) {
+            errorNote.textContent = "Ha ocurrido algo al preparar la experiencia. Pulsa continuar otra vez.";
+            errorNote.classList.add("show");
+        }
+    } catch (_) {}
+});
+
+window.addEventListener("unhandledrejection", function(event) {
+    try {
+        console.error("ETERNA promise error:", event.reason);
+    } catch (_) {}
+});
 
 function setSavingMessage(text) {
     try {
@@ -4954,8 +4970,8 @@ async function prepareCameraAndMicrophoneBeforeStart() {
     }
 }
 
-if (ritualNextBtn) {
-    ritualNextBtn.addEventListener("click", async () => {
+async function eternaNextRitual() {
+    try {
         clearStartError();
 
         const current = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
@@ -4976,6 +4992,22 @@ if (ritualNextBtn) {
 
         ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
         renderRitualStep();
+    } catch (e) {
+        console.error("ritual step error", e);
+        showStartError("No hemos podido avanzar. Pulsa de nuevo en continuar.");
+        try {
+            ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
+            renderRitualStep();
+        } catch (_) {}
+    }
+}
+
+window.eternaNextRitual = eternaNextRitual;
+
+if (ritualNextBtn) {
+    ritualNextBtn.addEventListener("click", (event) => {
+        try { event.preventDefault(); } catch (_) {}
+        eternaNextRitual();
     });
 }
 
@@ -5350,7 +5382,7 @@ async function safeResumePlayback() {
     }
 }
 
-startBtn.addEventListener("click", async () => {
+async function eternaStartExperience() {
     if (experienceStarted) return;
 
     startBtn.disabled = true;
@@ -5461,7 +5493,16 @@ startBtn.addEventListener("click", async () => {
 
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
     }
-});
+}
+
+window.eternaStartExperience = eternaStartExperience;
+
+if (startBtn) {
+    startBtn.addEventListener("click", (event) => {
+        try { event.preventDefault(); } catch (_) {}
+        eternaStartExperience();
+    });
+}
 
 document.addEventListener("visibilitychange", async () => {
     if (!experienceStarted || finishing) return;
