@@ -2881,6 +2881,7 @@ def render_create_form() -> str:
                         ">
                             <input
                                 type="checkbox"
+                                id="responsible_use_accepted"
                                 name="responsible_use_accepted"
                                 value="1"
                                 required
@@ -3272,6 +3273,13 @@ document.addEventListener("DOMContentLoaded", function () {{
             return false;
         }}
 
+        const responsibleUse = document.getElementById("responsible_use_accepted");
+        if (responsibleUse && !responsibleUse.checked) {{
+            showError("Antes de continuar debes aceptar el uso responsable de ETERNA.");
+            try {{ responsibleUse.focus(); }} catch (e) {{}}
+            return false;
+        }}
+
         if (!form.checkValidity()) {{
             showError("Revisa los campos. Falta información.");
             return false;
@@ -3412,6 +3420,7 @@ async def crear_post(
     photo5: UploadFile = File(...),
     photo6: UploadFile = File(...),
     responsible_use_accepted: str = Form(""),
+    responsible_use: str = Form(""),
 ):
     try:
         return await create_order_and_redirect(
@@ -3437,11 +3446,16 @@ async def crear_post(
             photo4,
             photo5,
             photo6,
-            responsible_use_accepted,
+            responsible_use_accepted or responsible_use,
         )
+
+    except HTTPException as e:
+        print("🔥 ERROR CONTROLADO EN /crear:", e.detail)
+        raise e
 
     except Exception as e:
         print("🔥 ERROR EN /crear:", str(e))
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error creando el pedido")
 
 
