@@ -4649,6 +4649,8 @@ video {
         linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
     padding: 28px;
     text-align: center;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .overlay.hidden {
@@ -4659,6 +4661,7 @@ video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
+    padding: 18px 0 28px 0;
 }
 
 .eyebrow {
@@ -4709,6 +4712,68 @@ video {
 .btn:disabled {
     opacity: 0.7;
     cursor: default;
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,0.10);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.12);
+    text-decoration: none;
+}
+
+.guide-actions {
+    margin-top: 18px;
+    display: grid;
+    gap: 12px;
+    width: 100%;
+}
+
+.guide-actions .btn {
+    width: 100%;
+}
+
+.guide-consent {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 13px 14px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.70);
+    font-size: 12px;
+    line-height: 1.55;
+    text-align: left;
+}
+
+.guide-consent input {
+    margin-top: 2px;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.upload-progress {
+    display: none;
+    width: 100%;
+    max-width: 360px;
+    height: 10px;
+    margin: 18px auto 0 auto;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.12);
+}
+
+.upload-progress.show {
+    display: block;
+}
+
+.upload-progress-bar {
+    width: 0%;
+    height: 100%;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.92);
+    transition: width 0.25s ease;
 }
 
 .error-note {
@@ -4896,12 +4961,46 @@ video {
 }
 
 @media (max-width: 720px) {
+    .overlay {
+        align-items: flex-start;
+        padding: 18px 16px 28px 16px;
+    }
+
     .title {
-        font-size: 42px;
+        font-size: 38px;
+        margin-bottom: 16px;
     }
 
     .text {
-        font-size: 21px;
+        font-size: 19px;
+    }
+
+    .soft {
+        font-size: 15px;
+    }
+
+    .guide-box {
+        margin-top: 18px;
+        padding: 15px 14px 14px 14px;
+        border-radius: 22px;
+    }
+
+    .guide-frame {
+        width: 70px;
+        height: 96px;
+        margin-bottom: 12px;
+    }
+
+    .guide-list {
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .btn {
+        min-width: 0;
+        width: 100%;
+        padding: 16px 20px;
+        font-size: 16px;
     }
 
     .payoff-title {
@@ -4968,9 +5067,20 @@ video {
                 </div>
             </div>
 
-            <button class="btn" id="startBtn" style="margin-top:24px;">
-                He colocado el móvil. Empezar
-            </button>
+            <div class="guide-actions">
+                <label class="guide-consent" for="guideConsent">
+                    <input type="checkbox" id="guideConsent">
+                    <span>Acepto vivir esta experiencia de forma voluntaria y permitir cámara y micrófono para que este momento pueda guardarse y devolverse a quien lo creó.</span>
+                </label>
+
+                <button class="btn" id="startBtn" type="button">
+                    Estoy listo. Empezar
+                </button>
+
+                <a class="btn btn-secondary" id="notReadyBtn" href="/pedido/__RECIPIENT_TOKEN__">
+                    Ahora no, volveré luego
+                </a>
+            </div>
 
             <div class="error-note" id="errorNote"></div>
         </div>
@@ -4981,6 +5091,9 @@ video {
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
             <div class="loader" id="payoffLoader">Guardando este momento…</div>
+            <div class="upload-progress" id="uploadProgress" aria-hidden="true">
+                <div class="upload-progress-bar" id="uploadProgressBar"></div>
+            </div>
 
             <div class="retry-actions" id="retryActions">
                 <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
@@ -5000,6 +5113,9 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
+const guideConsent = document.getElementById("guideConsent");
+const uploadProgress = document.getElementById("uploadProgress");
+const uploadProgressBar = document.getElementById("uploadProgressBar");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
 let stream = null;
@@ -5021,6 +5137,81 @@ function clearStartError() {
     if (!errorNote) return;
     errorNote.textContent = "";
     errorNote.classList.remove("show");
+}
+
+function setUploadProgress(percent, message) {
+    const safePercent = Math.max(0, Math.min(100, Math.round(percent || 0)));
+
+    if (uploadProgress) {
+        uploadProgress.classList.add("show");
+    }
+
+    if (uploadProgressBar) {
+        uploadProgressBar.style.width = safePercent + "%";
+    }
+
+    if (payoffLoader) {
+        payoffLoader.innerText = message || ("Guardando este momento… " + safePercent + "%");
+    }
+}
+
+function hideUploadProgress() {
+    if (uploadProgress) {
+        uploadProgress.classList.remove("show");
+    }
+    if (uploadProgressBar) {
+        uploadProgressBar.style.width = "0%";
+    }
+}
+
+function uploadReactionWithProgress(formData) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/upload-reaction/" + recipientToken, true);
+        xhr.responseType = "text";
+        xhr.timeout = 180000;
+
+        xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) {
+                setUploadProgress(35, "Guardando este momento…\nNo cierres esta pantalla.");
+                return;
+            }
+
+            const percent = Math.min(96, Math.max(3, Math.round((event.loaded / event.total) * 100)));
+
+            if (percent < 35) {
+                setUploadProgress(percent, "Guardando este momento… " + percent + "%\nNo cierres esta pantalla.");
+            } else if (percent < 75) {
+                setUploadProgress(percent, "Subiendo la emoción… " + percent + "%\nNo cierres esta pantalla.");
+            } else {
+                setUploadProgress(percent, "Casi listo… " + percent + "%\nQuédate un segundo más.");
+            }
+        };
+
+        xhr.onload = () => {
+            let data = {};
+            try {
+                data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            } catch (_) {
+                data = {};
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                setUploadProgress(100, "100% recibido.\nPreparando la vuelta…");
+                resolve(data);
+                return;
+            }
+
+            reject(new Error(data.detail || data.reason || ("upload_reaction_failed_" + xhr.status)));
+        };
+
+        xhr.onerror = () => reject(new Error("network_upload_error"));
+        xhr.ontimeout = () => reject(new Error("upload_timeout"));
+        xhr.onabort = () => reject(new Error("upload_aborted"));
+
+        setUploadProgress(3, "Preparando este momento…\nNo cierres esta pantalla.");
+        xhr.send(formData);
+    });
 }
 
 function showRetryActions() {
@@ -5098,6 +5289,7 @@ function resetRecordingState() {
     startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
+    hideUploadProgress();
 }
 
 function waitForVideoReady() {
@@ -5272,7 +5464,7 @@ async function finalizeExperienceFlow() {
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
+    setUploadProgress(2, "Preparando este momento…\nNo cierres esta pantalla.");
 
     try {
         if (finishTimeout) {
@@ -5338,18 +5530,9 @@ async function finalizeExperienceFlow() {
             const formData = new FormData();
             formData.append("video", blob, filename);
 
-            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
-                method: "POST",
-                body: formData
-            });
-
-            const uploadData = await uploadResponse.json().catch(() => ({}));
-
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.detail || "upload_reaction_failed");
-            }
-
-            console.log("✅ reacción subida");
+            const uploadData = await uploadReactionWithProgress(formData);
+            setUploadProgress(100, "100% listo.\nTu momento se ha guardado.");
+            console.log("✅ reacción subida", uploadData);
         } else {
             throw new Error("empty_blob");
         }
@@ -5360,7 +5543,9 @@ async function finalizeExperienceFlow() {
             e?.message || e?.detail || ""
         );
 
-        payoffLoader.innerText = humanMessage;
+        if (payoffLoader) {
+            payoffLoader.innerText = humanMessage;
+        }
         showRetryActions();
 
         finishing = false;
@@ -5405,6 +5590,12 @@ async function safeResumePlayback() {
 
 startBtn.addEventListener("click", async () => {
     if (experienceStarted) return;
+
+    if (guideConsent && !guideConsent.checked) {
+        showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
+        try { guideConsent.focus(); } catch (_) {}
+        return;
+    }
 
     startBtn.disabled = true;
     clearStartError();
@@ -5633,6 +5824,8 @@ video {
         linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
     padding: 28px;
     text-align: center;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .overlay.hidden {
@@ -5643,6 +5836,7 @@ video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
+    padding: 18px 0 28px 0;
 }
 
 .eyebrow {
@@ -5701,6 +5895,68 @@ video {
 .btn:disabled {
     opacity: 0.7;
     cursor: default;
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,0.10);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.12);
+    text-decoration: none;
+}
+
+.guide-actions {
+    margin-top: 18px;
+    display: grid;
+    gap: 12px;
+    width: 100%;
+}
+
+.guide-actions .btn {
+    width: 100%;
+}
+
+.guide-consent {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 13px 14px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.70);
+    font-size: 12px;
+    line-height: 1.55;
+    text-align: left;
+}
+
+.guide-consent input {
+    margin-top: 2px;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.upload-progress {
+    display: none;
+    width: 100%;
+    max-width: 360px;
+    height: 10px;
+    margin: 18px auto 0 auto;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.12);
+}
+
+.upload-progress.show {
+    display: block;
+}
+
+.upload-progress-bar {
+    width: 0%;
+    height: 100%;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.92);
+    transition: width 0.25s ease;
 }
 
 .error-note {
@@ -5797,12 +6053,46 @@ video {
 }
 
 @media (max-width: 720px) {
+    .overlay {
+        align-items: flex-start;
+        padding: 18px 16px 28px 16px;
+    }
+
     .title {
-        font-size: 42px;
+        font-size: 38px;
+        margin-bottom: 16px;
     }
 
     .text {
-        font-size: 21px;
+        font-size: 19px;
+    }
+
+    .soft {
+        font-size: 15px;
+    }
+
+    .guide-box {
+        margin-top: 18px;
+        padding: 15px 14px 14px 14px;
+        border-radius: 22px;
+    }
+
+    .guide-frame {
+        width: 70px;
+        height: 96px;
+        margin-bottom: 12px;
+    }
+
+    .guide-list {
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .btn {
+        min-width: 0;
+        width: 100%;
+        padding: 16px 20px;
+        font-size: 16px;
     }
 
     .payoff-title {
@@ -5868,6 +6158,9 @@ video {
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
             <div class="loader" id="payoffLoader">Guardando este momento…</div>
+            <div class="upload-progress" id="uploadProgress" aria-hidden="true">
+                <div class="upload-progress-bar" id="uploadProgressBar"></div>
+            </div>
 
             <div class="retry-actions" id="retryActions">
                 <button type="button" class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
@@ -6131,6 +6424,81 @@ function clearStartError() {
     errorNote.classList.remove("show");
 }
 
+function setUploadProgress(percent, message) {
+    const safePercent = Math.max(0, Math.min(100, Math.round(percent || 0)));
+
+    if (uploadProgress) {
+        uploadProgress.classList.add("show");
+    }
+
+    if (uploadProgressBar) {
+        uploadProgressBar.style.width = safePercent + "%";
+    }
+
+    if (payoffLoader) {
+        payoffLoader.innerText = message || ("Guardando este momento… " + safePercent + "%");
+    }
+}
+
+function hideUploadProgress() {
+    if (uploadProgress) {
+        uploadProgress.classList.remove("show");
+    }
+    if (uploadProgressBar) {
+        uploadProgressBar.style.width = "0%";
+    }
+}
+
+function uploadReactionWithProgress(formData) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/upload-reaction/" + recipientToken, true);
+        xhr.responseType = "text";
+        xhr.timeout = 180000;
+
+        xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) {
+                setUploadProgress(35, "Guardando este momento…\nNo cierres esta pantalla.");
+                return;
+            }
+
+            const percent = Math.min(96, Math.max(3, Math.round((event.loaded / event.total) * 100)));
+
+            if (percent < 35) {
+                setUploadProgress(percent, "Guardando este momento… " + percent + "%\nNo cierres esta pantalla.");
+            } else if (percent < 75) {
+                setUploadProgress(percent, "Subiendo la emoción… " + percent + "%\nNo cierres esta pantalla.");
+            } else {
+                setUploadProgress(percent, "Casi listo… " + percent + "%\nQuédate un segundo más.");
+            }
+        };
+
+        xhr.onload = () => {
+            let data = {};
+            try {
+                data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            } catch (_) {
+                data = {};
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                setUploadProgress(100, "100% recibido.\nPreparando la vuelta…");
+                resolve(data);
+                return;
+            }
+
+            reject(new Error(data.detail || data.reason || ("upload_reaction_failed_" + xhr.status)));
+        };
+
+        xhr.onerror = () => reject(new Error("network_upload_error"));
+        xhr.ontimeout = () => reject(new Error("upload_timeout"));
+        xhr.onabort = () => reject(new Error("upload_aborted"));
+
+        setUploadProgress(3, "Preparando este momento…\nNo cierres esta pantalla.");
+        xhr.send(formData);
+    });
+}
+
 function showRetryActions() {
     if (retryActions) {
         retryActions.classList.add("show");
@@ -6209,6 +6577,7 @@ function resetRecordingState() {
     startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
+    hideUploadProgress();
 }
 
 function waitForVideoReady() {
@@ -6466,7 +6835,9 @@ async function finalizeExperienceFlow() {
 
         try { if (savingProgressTimer) clearInterval(savingProgressTimer); } catch (_) {}
         savingProgressTimer = null;
-        payoffLoader.innerText = humanMessage;
+        if (payoffLoader) {
+            payoffLoader.innerText = humanMessage;
+        }
         showRetryActions();
 
         finishing = false;
@@ -6518,6 +6889,12 @@ async function eternaStartExperience() {
     if (experienceStarted || experienceStarting) return;
     experienceStarting = true;
     console.log("🎭 ETERNA: usuario ha pulsado Empezar");
+
+    if (guideConsent && !guideConsent.checked) {
+        showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
+        try { guideConsent.focus(); } catch (_) {}
+        return;
+    }
 
     startBtn.disabled = true;
     clearStartError();
