@@ -1193,7 +1193,7 @@ def get_phrases_by_type(message_type: str):
 
 
 def twilio_enabled() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
 
 
 def send_sms(phone: str, message: str) -> dict:
@@ -1207,9 +1207,6 @@ def send_sms(phone: str, message: str) -> dict:
         print("🚫 SMS DESACTIVADO POR CONFIG")
         print("🚫 Destino:", to_phone)
         return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
-
-    if not TWILIO_FROM_NUMBER:
-        return {"ok": False, "sid": None, "error": "missing_twilio_sms_from"}
 
     if not twilio_enabled():
         return {"ok": False, "sid": None, "error": "twilio_not_configured"}
@@ -1952,7 +1949,7 @@ async def create_order_and_redirect(
         raise HTTPException(status_code=400, detail="Modo de entrega no válido")
 
     if not customer_name:
-        raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
+        raise HTTPException(status_code=400, detail="Tu nombre y apellidos es obligatorio")
 
     if not recipient_name:
         raise HTTPException(status_code=400, detail="El nombre del destinatario es obligatorio")
@@ -4543,9 +4540,6 @@ async def start_experience(recipient_token: str = Form(...)):
             "ok": True
         })
 
-    except HTTPException:
-        raise
-
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
@@ -4577,7 +4571,6 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
-    sender_name = safe_text(order.get("sender_name") or "Alguien")
 
     try:
         ritual_step = int(ritual_step or 0)
@@ -4643,13 +4636,16 @@ video {
     inset: 0;
     z-index: 30;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     background:
         radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
         linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
-    padding: 28px;
+    padding: 34px 28px 54px 28px;
     text-align: center;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
 }
 
 .overlay.hidden {
@@ -4660,6 +4656,35 @@ video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
+    padding: 8px 0 22px 0;
+}
+
+.sender-name {
+    font-size: 28px;
+    line-height: 1.22;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 24px 0;
+}
+
+.guide {
+    margin: 24px auto 0 auto;
+    max-width: 460px;
+    padding: 18px 18px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.guide-line {
+    font-size: 15px;
+    line-height: 1.55;
+    color: rgba(255,255,255,0.68);
+    margin: 0 0 8px 0;
+}
+
+.guide-line:last-child {
+    margin-bottom: 0;
 }
 
 .eyebrow {
@@ -4676,22 +4701,6 @@ video {
     font-weight: 700;
     margin: 0 0 22px 0;
     color: white;
-}
-
-.sender-name {
-    font-size: 34px;
-    line-height: 1.25;
-    font-weight: 700;
-    color: white;
-    margin: 0 0 28px 0;
-}
-
-.consent-copy {
-    margin: 24px auto 0 auto;
-    max-width: 520px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.48);
 }
 
 .text {
@@ -4822,16 +4831,38 @@ video {
 }
 
 @media (max-width: 720px) {
-    .title {
-        font-size: 42px;
-    }
-
-    .text {
-        font-size: 21px;
+    .overlay {
+        padding: 24px 24px 46px 24px;
     }
 
     .sender-name {
-        font-size: 28px;
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    .title {
+        font-size: 40px;
+        margin-bottom: 18px;
+    }
+
+    .text {
+        font-size: 19px;
+        line-height: 1.55;
+    }
+
+    .guide {
+        margin-top: 20px;
+        padding: 16px;
+    }
+
+    .soft {
+        font-size: 14px;
+        line-height: 1.65;
+    }
+
+    .btn {
+        padding: 17px 24px;
+        font-size: 16px;
     }
 
     .payoff-title {
@@ -4879,21 +4910,23 @@ video {
             <div class="text">
                 Esto no es un vídeo.<br>
                 No es solo un recuerdo.<br><br>
-                Es algo que alguien ha creado para ti.
+                Es un momento que alguien ha preparado para ti.
             </div>
 
-            <div class="soft">
-                Busca un lugar tranquilo.<br>
-                Apoya el teléfono.<br>
-                Activa el sonido.<br><br>
-                No tengas prisa.
+            <div class="guide">
+                <p class="guide-line">Busca un lugar tranquilo.</p>
+                <p class="guide-line">Apoya el teléfono. No lo sujetes con la mano.</p>
+                <p class="guide-line">Coloca tu cara dentro del encuadre, con algo de aire arriba.</p>
+                <p class="guide-line">Activa el sonido. Mejor con auriculares.</p>
             </div>
 
-            <div class="consent-copy">
-                Al pulsar “Estoy listo”, aceptas vivir esta experiencia de forma voluntaria y permites el uso temporal de cámara y micrófono para guardar este momento y devolverlo a quien lo creó.
+            <div class="soft" style="margin-top:24px;">
+                Al pulsar “Estoy listo”, aceptas vivir esta experiencia de forma voluntaria
+                y permites el uso temporal de cámara y micrófono para guardar este momento
+                y devolverlo a quien lo creó.
             </div>
 
-            <button type="button" class="btn" id="startBtn" style="margin-top:28px;">
+            <button class="btn" id="startBtn" style="margin-top:26px;">
                 Estoy listo. Empezar
             </button>
 
@@ -5091,47 +5124,11 @@ function detectRecordingFormat() {
     return { mimeType: "", extension: "webm" };
 }
 
-function buildRecorderOptions(mimeType) {
-    const options = {
-        videoBitsPerSecond: 900000,
-        audioBitsPerSecond: 64000
-    };
-
-    if (mimeType) {
-        options.mimeType = mimeType;
-    }
-
-    return options;
-}
-
-function createLightMediaRecorder(stream, mimeType) {
-    try {
-        return new MediaRecorder(stream, buildRecorderOptions(mimeType));
-    } catch (e) {
-        console.warn("light recorder options fallback", e);
-        if (mimeType) {
-            try {
-                return new MediaRecorder(stream, { mimeType: mimeType });
-            } catch (_) {}
-        }
-        return new MediaRecorder(stream);
-    }
-}
-
 async function tryStartRecordingStrict() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: "user",
-                width: { ideal: 540, max: 720 },
-                height: { ideal: 960, max: 1280 },
-                frameRate: { ideal: 20, max: 24 }
-            },
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true
-            }
+            video: true,
+            audio: true
         });
 
         const format = detectRecordingFormat();
@@ -5139,7 +5136,9 @@ async function tryStartRecordingStrict() {
         recordingExtension = format.extension;
         recordedChunks = [];
 
-        mediaRecorder = createLightMediaRecorder(stream, recordingMimeType);
+        mediaRecorder = recordingMimeType
+            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
+            : new MediaRecorder(stream);
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
@@ -5494,13 +5493,1172 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-    html_page = html_page.replace("__SENDER_NAME__", sender_name)
+    html_page = html_page.replace("__SENDER_NAME__", safe_text(order.get("sender_name") or "Alguien"))
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
-    response = HTMLResponse(html_page)
-    attach_recipient_session_if_needed(order, request, response)
-    return response
+    return HTMLResponse(html_page)
+
+
+
+
+    # BLOQUE NUEVO ORIGINAL CONSERVADO COMO BACKUP (NO SE EJECUTA)
+    html_page = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    position: fixed;
+    inset: 0;
+    background: black;
+}
+
+.wrap {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: black;
+}
+
+video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: black;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
+        linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
+    padding: 28px;
+    text-align: center;
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.overlay-card {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.36);
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 54px;
+    line-height: 1.06;
+    font-weight: 700;
+    margin: 0 0 22px 0;
+    color: white;
+}
+
+.text {
+    font-size: 24px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.86);
+    margin: 0 auto 14px auto;
+    max-width: 520px;
+}
+
+.soft {
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.46);
+    margin: 0 auto 0 auto;
+    max-width: 460px;
+}
+
+.ritual-legal {
+    display: block;
+    margin-top: 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.36);
+}
+
+.btn {
+    display: inline-block;
+    min-width: 220px;
+    padding: 18px 26px;
+    border-radius: 999px;
+    border: 0;
+    background: white;
+    color: black;
+    font-weight: 700;
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.btn:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.error-note {
+    margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.62);
+    max-width: 460px;
+    margin-left: auto;
+    margin-right: auto;
+    display: none;
+}
+
+.error-note.show {
+    display: block;
+}
+
+.payoff {
+    position: absolute;
+    inset: 0;
+    z-index: 35;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 28px;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
+        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
+}
+
+.payoff.show {
+    display: flex;
+}
+
+.payoff-card {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.payoff-title {
+    font-size: 46px;
+    line-height: 1.12;
+    font-weight: 700;
+    margin: 0 0 18px 0;
+    color: white;
+}
+
+.payoff-text {
+    font-size: 22px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.82);
+    margin: 0 auto;
+    max-width: 520px;
+}
+
+.loader {
+    margin-top: 28px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.48);
+}
+
+.retry-actions {
+    margin-top: 24px;
+    display: none;
+    gap: 12px;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.retry-actions.show {
+    display: grid;
+}
+
+.retry-btn {
+    width: 100%;
+    padding: 16px 22px;
+    border-radius: 999px;
+    border: 0;
+    background: white;
+    color: black;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.retry-btn.secondary {
+    background: rgba(255,255,255,0.10);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.10);
+}
+
+@media (max-width: 720px) {
+    .title {
+        font-size: 42px;
+    }
+
+    .text {
+        font-size: 21px;
+    }
+
+    .payoff-title {
+        font-size: 36px;
+    }
+
+    .payoff-text {
+        font-size: 19px;
+    }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <video
+    id="video"
+    playsinline
+    webkit-playsinline
+    preload="auto"
+    style="
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.15);
+        transform-origin: center;
+        background: black;
+    "
+>
+        <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
+    </video>
+
+    <div class="overlay" id="overlay">
+        <div class="overlay-card">
+            <div class="eyebrow">ETERNA</div>
+
+            <h1 class="title" id="ritualTitle">__RITUAL_TITLE__</h1>
+
+            <div class="text" id="ritualText">__RITUAL_TEXT__</div>
+
+            <div class="soft" id="ritualSoft">__RITUAL_SOFT__</div>
+
+            <a
+                class="btn"
+                id="ritualNextBtn"
+                href="__RITUAL_NEXT_URL__"
+                style="margin-top:28px; display:__RITUAL_NEXT_DISPLAY__;"
+            >
+                __RITUAL_BUTTON__
+            </a>
+
+            <button type="button" class="btn" id="startBtn" style="margin-top:28px; display:__START_DISPLAY__;">
+                Empezar
+            </button>
+
+            <div class="error-note" id="errorNote"></div>
+        </div>
+    </div>
+
+    <div class="payoff" id="payoff">
+        <div class="payoff-card">
+            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
+            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
+            <div class="loader" id="payoffLoader">Guardando este momento…</div>
+
+            <div class="retry-actions" id="retryActions">
+                <button type="button" class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
+                <button type="button" class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const startBtn = document.getElementById("startBtn");
+const overlay = document.getElementById("overlay");
+const video = document.getElementById("video");
+const payoff = document.getElementById("payoff");
+const payoffLoader = document.getElementById("payoffLoader");
+const retryActions = document.getElementById("retryActions");
+const retryExperienceBtn = document.getElementById("retryExperienceBtn");
+const backToStartBtn = document.getElementById("backToStartBtn");
+const errorNote = document.getElementById("errorNote");
+const ritualTitle = document.getElementById("ritualTitle");
+const ritualText = document.getElementById("ritualText");
+const ritualSoft = document.getElementById("ritualSoft");
+const ritualNextBtn = document.getElementById("ritualNextBtn");
+const recipientToken = "__RECIPIENT_TOKEN__";
+
+let stream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let finishing = false;
+let recordingMimeType = "";
+let recordingExtension = "webm";
+let experienceStarted = false;
+let experienceStarting = false;
+let finishTimeout = null;
+let savingProgressTimer = null;
+
+window.addEventListener("error", function(event) {
+    try {
+        console.error("ETERNA JS error:", event.message, event.error);
+        if (errorNote && !experienceStarted) {
+            errorNote.textContent = "Ha ocurrido algo al preparar la experiencia. Pulsa continuar otra vez.";
+            errorNote.classList.add("show");
+        }
+    } catch (_) {}
+});
+
+window.addEventListener("unhandledrejection", function(event) {
+    try {
+        console.error("ETERNA promise error:", event.reason);
+    } catch (_) {}
+});
+
+function setSavingMessage(text) {
+    try {
+        payoffLoader.innerText = text;
+    } catch (_) {}
+}
+
+function startSavingProgress() {
+    const messages = [
+        "62% guardando emoción…\nNo cierres esta pantalla.",
+        "78% casi listo…\nNo cierres esta pantalla.",
+        "91% no te vayas todavía…\nEsto solo pasa una vez.",
+        "96% terminando de guardar…"
+    ];
+
+    let i = 0;
+    setSavingMessage(messages[0]);
+
+    try {
+        if (savingProgressTimer) clearInterval(savingProgressTimer);
+        savingProgressTimer = setInterval(() => {
+            i = Math.min(i + 1, messages.length - 1);
+            setSavingMessage(messages[i]);
+        }, 1200);
+    } catch (_) {}
+}
+
+function stopSavingProgress() {
+    try {
+        if (savingProgressTimer) clearInterval(savingProgressTimer);
+    } catch (_) {}
+    savingProgressTimer = null;
+    setSavingMessage("100% listo.\nTu momento se ha guardado.");
+}
+
+function showPostVideoHold() {
+    try {
+        payoff.classList.add("show");
+        setSavingMessage("Quédate un segundo más…\nNo te vayas todavía.");
+    } catch (_) {}
+}
+
+
+let ritualStep = __RITUAL_STEP__;
+
+const ritualSteps = [
+    {
+        title: "Shhh…",
+        text: "Esto no es un vídeo.<br>Es un momento.",
+        soft: "No pienses.<br>Solo deja que ocurra.",
+        button: "Continuar"
+    },
+    {
+        title: "Sonido",
+        text: "Si puedes…<br>escúchalo con sonido.",
+        soft: "Mejor con auriculares.",
+        button: "Continuar"
+    },
+    {
+        title: "Antes de abrirlo",
+        text: "Busca un momento tranquilo.",
+        soft: "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
+        button: "Ya está"
+    },
+    {
+        title: "Colócate",
+        text: "Pon el teléfono frente a ti.",
+        soft: "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
+        button: "Listo"
+    },
+    {
+        title: "Luz",
+        text: "Deja que haya algo de luz frente a ti.",
+        soft: "Lo justo para poder verte.",
+        button: "Perfecto"
+    },
+    {
+        title: "Presencia",
+        text: "No hagas nada especial.",
+        soft: "Solo míralo.<br>Este momento es tuyo.",
+        button: "Continuar"
+    },
+    {
+        title: "Una última cosa",
+        text: "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
+        soft: "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
+        button: "Aceptar y continuar"
+    },
+    {
+        title: "Cuando estés listo…",
+        text: "Pulsa empezar.",
+        soft: "Y déjate llevar.",
+        button: "Empezar",
+        final: true
+    }
+];
+
+function renderRitualStep() {
+    const step = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
+
+    ritualTitle.innerHTML = step.title;
+    ritualText.innerHTML = step.text;
+    ritualSoft.innerHTML = step.soft || "";
+
+    if (step.final) {
+        ritualNextBtn.style.display = "none";
+        startBtn.style.display = "inline-block";
+        startBtn.innerText = step.button || "Empezar";
+        startBtn.disabled = false;
+    } else {
+        startBtn.style.display = "none";
+        ritualNextBtn.style.display = "inline-block";
+        ritualNextBtn.innerText = step.button || "Continuar";
+        try {
+            ritualNextBtn.href = "/experiencia/" + recipientToken + "?ritual_step=" + Math.min(ritualStep + 1, ritualSteps.length - 1);
+        } catch (_) {}
+    }
+}
+
+async function prepareCameraAndMicrophoneBeforeStart() {
+    clearStartError();
+
+    try {
+        if (stream) {
+            const activeTracks = stream.getTracks().filter((t) => t.readyState === "live");
+            const hasVideo = activeTracks.some((t) => t.kind === "video");
+            const hasAudio = activeTracks.some((t) => t.kind === "audio");
+
+            if (hasVideo && hasAudio) {
+                return true;
+            }
+
+            try {
+                stream.getTracks().forEach((t) => t.stop());
+            } catch (_) {}
+
+            stream = null;
+        }
+
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        });
+
+        return true;
+    } catch (e) {
+        console.error("camera microphone permission error", e);
+        showStartError("Necesitamos activar cámara y micrófono para continuar con esta experiencia.");
+        return false;
+    }
+}
+
+async function eternaNextRitual() {
+    try {
+        clearStartError();
+
+        const current = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
+
+        if (current && current.button === "Aceptar y continuar") {
+            ritualNextBtn.disabled = true;
+            ritualNextBtn.innerText = "Preparando…";
+
+            const prepared = await prepareCameraAndMicrophoneBeforeStart();
+
+            ritualNextBtn.disabled = false;
+            ritualNextBtn.innerText = current.button || "Aceptar y continuar";
+
+            if (!prepared) {
+                return;
+            }
+        }
+
+        ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
+        renderRitualStep();
+    } catch (e) {
+        console.error("ritual step error", e);
+        showStartError("No hemos podido avanzar. Pulsa de nuevo en continuar.");
+        try {
+            ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
+            renderRitualStep();
+        } catch (_) {}
+    }
+}
+
+window.eternaNextRitual = eternaNextRitual;
+
+// Importante: los pasos del ritual avanzan por URL real del servidor.
+// Así el botón Continuar nunca se queda muerto aunque falle JavaScript.
+// La cámara y el micrófono se piden únicamente al pulsar Empezar.
+renderRitualStep();
+
+function showStartError(message) {
+    if (!errorNote) return;
+    errorNote.textContent = message || "No hemos podido preparar la grabación.";
+    errorNote.classList.add("show");
+}
+
+function clearStartError() {
+    if (!errorNote) return;
+    errorNote.textContent = "";
+    errorNote.classList.remove("show");
+}
+
+function showRetryActions() {
+    if (retryActions) {
+        retryActions.classList.add("show");
+    }
+}
+
+function hideRetryActions() {
+    if (retryActions) {
+        retryActions.classList.remove("show");
+    }
+}
+
+function buildFriendlyUploadMessage(errorCode) {
+    const code = String(errorCode || "").toLowerCase();
+
+    if (code.includes("empty_video")) {
+        return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
+    }
+
+    if (code.includes("video_too_large")) {
+        return "No se ha podido guardar porque el vídeo ocupa demasiado. Inténtalo otra vez.";
+    }
+
+    if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
+        return "No se ha podido grabar la reacción porque faltan permisos de cámara o micrófono.";
+    }
+
+    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
+        return "No se ha podido subir la reacción por un problema de conexión. Revisa internet e inténtalo de nuevo.";
+    }
+
+    return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
+}
+
+function resetRecordingState() {
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
+
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+        }
+    } catch (_) {}
+
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (_) {}
+
+    stream = null;
+    mediaRecorder = null;
+    recordedChunks = [];
+    recordingMimeType = "";
+    recordingExtension = "webm";
+    finishing = false;
+    experienceStarted = false;
+    experienceStarting = false;
+
+    try {
+        video.pause();
+    } catch (_) {}
+
+    try {
+        video.currentTime = 0;
+    } catch (_) {}
+
+    overlay.classList.remove("hidden");
+    payoff.classList.remove("show");
+    ritualStep = 0;
+    renderRitualStep();
+    startBtn.disabled = false;
+    clearStartError();
+    hideRetryActions();
+}
+
+function waitForVideoReady() {
+    return new Promise((resolve) => {
+        const isReady =
+            Number.isFinite(video.duration) &&
+            video.duration > 0 &&
+            video.readyState >= 1;
+
+        if (isReady) {
+            resolve();
+            return;
+        }
+
+        let resolved = false;
+
+        const done = () => {
+            if (resolved) return;
+            resolved = true;
+            video.removeEventListener("loadedmetadata", onReady);
+            video.removeEventListener("loadeddata", onReady);
+            video.removeEventListener("canplay", onReady);
+            clearTimeout(timeoutId);
+            resolve();
+        };
+
+        const onReady = () => {
+            const readyNow =
+                Number.isFinite(video.duration) &&
+                video.duration > 0 &&
+                video.readyState >= 1;
+
+            if (readyNow) {
+                done();
+            }
+        };
+
+        const timeoutId = setTimeout(done, 4000);
+
+        video.addEventListener("loadedmetadata", onReady);
+        video.addEventListener("loadeddata", onReady);
+        video.addEventListener("canplay", onReady);
+    });
+}
+
+function detectRecordingFormat() {
+    const candidates = [
+        { mimeType: "video/mp4", extension: "mp4" },
+        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
+        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
+        { mimeType: "video/webm", extension: "webm" }
+    ];
+
+    if (typeof MediaRecorder === "undefined") {
+        throw new Error("media_recorder_not_supported");
+    }
+
+    for (const candidate of candidates) {
+        try {
+            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
+                return candidate;
+            }
+        } catch (_) {}
+    }
+
+    return { mimeType: "", extension: "webm" };
+}
+
+async function tryStartRecordingStrict() {
+    try {
+        const prepared = await prepareCameraAndMicrophoneBeforeStart();
+
+        if (!prepared || !stream) {
+            throw new Error("camera_microphone_not_ready");
+        }
+
+        const format = detectRecordingFormat();
+        recordingMimeType = format.mimeType;
+        recordingExtension = format.extension;
+        recordedChunks = [];
+
+        mediaRecorder = recordingMimeType
+            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
+            : new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+                recordedChunks.push(e.data);
+            }
+        };
+
+        mediaRecorder.onerror = (e) => {
+            console.error("mediaRecorder error", e);
+        };
+
+        mediaRecorder.start(1000);
+
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    resolve();
+                } else {
+                    reject(new Error("recorder_not_running"));
+                }
+            }, 700);
+
+            try {
+                mediaRecorder.addEventListener("start", () => {
+                    clearTimeout(timer);
+                    resolve();
+                }, { once: true });
+            } catch (_) {}
+        });
+
+        console.log("🎥 grabación iniciada");
+        return true;
+
+    } catch (recordingError) {
+        console.error("recording init error", recordingError);
+
+        try {
+            if (stream) {
+                stream.getTracks().forEach((t) => t.stop());
+            }
+        } catch (_) {}
+
+        stream = null;
+        mediaRecorder = null;
+        recordedChunks = [];
+        recordingMimeType = "";
+        recordingExtension = "webm";
+
+        return false;
+    }
+}
+
+async function finalizeExperienceFlow() {
+    if (finishing) return;
+    finishing = true;
+
+    payoff.classList.add("show");
+    startSavingProgress();
+
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
+
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            try {
+                mediaRecorder.requestData();
+            } catch (_) {}
+
+            await new Promise((resolve) => {
+                let done = false;
+
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+
+                const timeoutId = setTimeout(finish, 2500);
+
+                mediaRecorder.addEventListener("stop", finish, { once: true });
+
+                try {
+                    mediaRecorder.stop();
+                } catch (_) {
+                    finish();
+                }
+            });
+        }
+    } catch (e) {
+        console.error("recorder stop error", e);
+    }
+
+    try {
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+        }
+    } catch (e) {
+        console.error("stream stop error", e);
+    }
+
+    let blob = null;
+    try {
+        blob = new Blob(recordedChunks, {
+            type: recordingMimeType || "video/webm"
+        });
+
+        console.log("chunks:", recordedChunks.length);
+        console.log("blob size:", blob.size);
+    } catch (e) {
+        console.error("blob error", e);
+    }
+
+    try {
+        if (blob && blob.size > 0) {
+            const filename = "reaction." + recordingExtension;
+            const formData = new FormData();
+            formData.append("video", blob, filename);
+
+            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
+                method: "POST",
+                body: formData
+            });
+
+            const uploadData = await uploadResponse.json().catch(() => ({}));
+
+            if (!uploadResponse.ok) {
+                throw new Error(uploadData.detail || "upload_reaction_failed");
+            }
+
+            stopSavingProgress();
+            console.log("✅ reacción subida");
+        } else {
+            throw new Error("empty_blob");
+        }
+    } catch (e) {
+        console.error("upload error", e);
+
+        let humanMessage = buildFriendlyUploadMessage(
+            e?.message || e?.detail || ""
+        );
+
+        try { if (savingProgressTimer) clearInterval(savingProgressTimer); } catch (_) {}
+        savingProgressTimer = null;
+        payoffLoader.innerText = humanMessage;
+        showRetryActions();
+
+        finishing = false;
+        return;
+    }
+
+    setTimeout(() => {
+        window.location.replace("/finalizar-experiencia/" + recipientToken);
+    }, 900);
+}
+
+function armFinishFallbacks() {
+    video.addEventListener("ended", () => {
+        showPostVideoHold();
+        setTimeout(() => {
+            finalizeExperienceFlow();
+        }, 8000);
+    }, { once: true });
+
+    let fallbackMs = 120000;
+
+    if (Number.isFinite(video.duration) && video.duration > 0) {
+        fallbackMs = Math.max(23000, Math.floor(video.duration * 1000) + 11000);
+    }
+
+    finishTimeout = setTimeout(() => {
+        finalizeExperienceFlow();
+    }, fallbackMs);
+}
+
+async function safeResumePlayback() {
+    try {
+        if (!experienceStarted || finishing) return;
+
+        if (video.ended) {
+            finalizeExperienceFlow();
+            return;
+        }
+
+        if (video.paused) {
+            await video.play();
+        }
+    } catch (e) {
+        console.error("resume playback error", e);
+    }
+}
+
+async function eternaStartExperience() {
+    if (experienceStarted || experienceStarting) return;
+    experienceStarting = true;
+    console.log("🎭 ETERNA: usuario ha pulsado Empezar");
+
+    startBtn.disabled = true;
+    clearStartError();
+
+    try {
+        try {
+            video.pause();
+        } catch (_) {}
+
+        try {
+            video.currentTime = 0;
+        } catch (_) {}
+
+        const recordingStarted = await tryStartRecordingStrict();
+
+        if (!recordingStarted) {
+            showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
+            experienceStarting = false;
+            startBtn.disabled = false;
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("recipient_token", recipientToken);
+
+        const response = await fetch("/start-experience", {
+            method: "POST",
+            body: formData
+        });
+
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (_) {}
+
+        if (!response.ok) {
+            throw new Error(data.detail || "start_experience_error");
+        }
+
+        if (data.redirect_url) {
+            window.location.replace(data.redirect_url);
+            return;
+        }
+
+        video.load();
+        await waitForVideoReady();
+
+        overlay.classList.add("hidden");
+        experienceStarted = true;
+        experienceStarting = false;
+
+        armFinishFallbacks();
+
+        try {
+            await video.play();
+        } catch (e) {
+            console.error("video play error", e);
+
+            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
+            experienceStarted = false;
+            experienceStarting = false;
+            overlay.classList.remove("hidden");
+            startBtn.disabled = false;
+
+            try {
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    mediaRecorder.stop();
+                }
+            } catch (_) {}
+
+            try {
+                if (stream) {
+                    stream.getTracks().forEach((t) => t.stop());
+                }
+            } catch (_) {}
+
+            stream = null;
+            mediaRecorder = null;
+            recordedChunks = [];
+            recordingMimeType = "";
+            recordingExtension = "webm";
+
+            return;
+        }
+
+    } catch (e) {
+        console.error("experience start error", e);
+
+        startBtn.disabled = false;
+        experienceStarted = false;
+        experienceStarting = false;
+        payoff.classList.remove("show");
+
+        try {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
+        } catch (_) {}
+
+        try {
+            if (stream) {
+                stream.getTracks().forEach((t) => t.stop());
+            }
+        } catch (_) {}
+
+        stream = null;
+        mediaRecorder = null;
+        recordedChunks = [];
+        recordingMimeType = "";
+        recordingExtension = "webm";
+
+        showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
+    }
+}
+
+window.eternaStartExperience = eternaStartExperience;
+
+if (startBtn) {
+    startBtn.addEventListener("click", (event) => {
+        try { event.preventDefault(); } catch (_) {}
+        eternaStartExperience();
+    });
+}
+
+document.addEventListener("visibilitychange", async () => {
+    if (!experienceStarted || finishing) return;
+
+    if (document.visibilityState === "visible") {
+        await safeResumePlayback();
+    }
+});
+
+window.addEventListener("focus", async () => {
+    if (!experienceStarted || finishing) return;
+    await safeResumePlayback();
+});
+
+window.addEventListener("pagehide", () => {
+    if (!experienceStarted || finishing) return;
+
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.requestData();
+        }
+    } catch (_) {}
+});
+
+window.addEventListener("beforeunload", () => {
+    if (!experienceStarted || finishing) return;
+
+    try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.requestData();
+        }
+    } catch (_) {}
+});
+
+if (retryExperienceBtn) {
+    retryExperienceBtn.addEventListener("click", () => {
+        resetRecordingState();
+        clearStartError();
+    });
+}
+
+if (backToStartBtn) {
+    backToStartBtn.addEventListener("click", () => {
+        window.location.replace("/pedido/" + recipientToken);
+    });
+}
+</script>
+</body>
+</html>
+    """
+
+    ritual_steps_server = [
+        {
+            "title": "Shhh…",
+            "text": "Esto no es un vídeo.<br>Es un momento.",
+            "soft": "No pienses.<br>Solo deja que ocurra.",
+            "button": "Continuar",
+            "final": False,
+        },
+        {
+            "title": "Sonido",
+            "text": "Si puedes…<br>escúchalo con sonido.",
+            "soft": "Mejor con auriculares.",
+            "button": "Continuar",
+            "final": False,
+        },
+        {
+            "title": "Antes de abrirlo",
+            "text": "Busca un momento tranquilo.",
+            "soft": "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
+            "button": "Ya está",
+            "final": False,
+        },
+        {
+            "title": "Colócate",
+            "text": "Pon el teléfono frente a ti.",
+            "soft": "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
+            "button": "Listo",
+            "final": False,
+        },
+        {
+            "title": "Luz",
+            "text": "Deja que haya algo de luz frente a ti.",
+            "soft": "Lo justo para poder verte.",
+            "button": "Perfecto",
+            "final": False,
+        },
+        {
+            "title": "Presencia",
+            "text": "No hagas nada especial.",
+            "soft": "Solo míralo.<br>Este momento es tuyo.",
+            "button": "Continuar",
+            "final": False,
+        },
+        {
+            "title": "Una última cosa",
+            "text": "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
+            "soft": "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
+            "button": "Aceptar y continuar",
+            "final": False,
+        },
+        {
+            "title": "Cuando estés listo…",
+            "text": "Pulsa empezar.",
+            "soft": "Y déjate llevar.",
+            "button": "Empezar",
+            "final": True,
+        },
+    ]
+
+    ritual_current = ritual_steps_server[min(ritual_step, len(ritual_steps_server) - 1)]
+
+    html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
+    html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
+    html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
+    html_page = html_page.replace("__RITUAL_STEP__", str(ritual_step))
+    html_page = html_page.replace("__RITUAL_TITLE__", safe_text(ritual_current["title"]))
+    html_page = html_page.replace("__RITUAL_TEXT__", ritual_current["text"])
+    html_page = html_page.replace("__RITUAL_SOFT__", ritual_current["soft"])
+    html_page = html_page.replace("__RITUAL_BUTTON__", safe_text(ritual_current["button"]))
+    html_page = html_page.replace("__RITUAL_NEXT_URL__", safe_attr(f"/experiencia/{recipient_token}?ritual_step={next_ritual_step}"))
+    html_page = html_page.replace("__RITUAL_NEXT_DISPLAY__", "none" if ritual_current.get("final") else "inline-block")
+    html_page = html_page.replace("__START_DISPLAY__", "inline-block" if ritual_current.get("final") else "none")
+    html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
+    html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
+
+    return HTMLResponse(html_page)
+
+
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
 # =========================================================
@@ -6011,17 +7169,17 @@ def sender_pack(sender_token: str):
     sender_status = "Tu ETERNA ha vuelto."
 
     body_content = f"""
-    <div style="max-width:760px;margin:0 auto;padding:34px 18px 80px;text-align:center;color:white;">
+    <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
 
-        <h1 style="font-size:40px;font-weight:800;margin-bottom:14px;line-height:1.12;">
+        <h1 style="font-size:46px;font-weight:800;margin-bottom:18px;">
             {sender_status}
         </h1>
 
-        <p style="font-size:19px;opacity:.86;margin-bottom:24px;line-height:1.55;">
+        <p style="font-size:22px;opacity:.9;margin-bottom:30px;">
             Lo que diste… ha encontrado el camino de vuelta.
         </p>
 
-        <div style="position:relative;width:min(100%,430px);aspect-ratio:9/16;margin:0 auto;background:#050505;border-radius:32px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.08);">
+        <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
 
             <!-- VIDEO REACCIÓN -->
             <video
@@ -6030,7 +7188,7 @@ def sender_pack(sender_token: str):
                 webkit-playsinline
                 controls
                 preload="metadata"
-                style="width:100%;height:100%;display:block;background:black;object-fit:cover;"
+                style="width:100%;display:block;background:black;"
             >
                 <source src="{reaction_url}" type="video/mp4">
             </video>
@@ -6046,14 +7204,10 @@ def sender_pack(sender_token: str):
                     position:absolute;
                     right:14px;
                     bottom:14px;
-                    width:26%;
-                    max-width:112px;
-                    aspect-ratio:9/16;
-                    object-fit:cover;
+                    width:30%;
+                    max-width:140px;
                     border-radius:16px;
                     background:black;
-                    box-shadow:0 10px 30px rgba(0,0,0,.45);
-                    border:1px solid rgba(255,255,255,.18);
                 "
             >
                 <source src="{original_video_url}" type="video/mp4">
