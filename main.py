@@ -5077,9 +5077,9 @@ video {
                     Estoy listo. Empezar
                 </button>
 
-                <a class="btn btn-secondary" id="notReadyBtn" href="/pedido/__RECIPIENT_TOKEN__">
+                <button class="btn btn-secondary" id="notReadyBtn" type="button">
                     Ahora no, volveré luego
-                </a>
+                </button>
             </div>
 
             <div class="error-note" id="errorNote"></div>
@@ -5113,6 +5113,7 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
+const notReadyBtn = document.getElementById("notReadyBtn");
 const guideConsent = document.getElementById("guideConsent");
 const uploadProgress = document.getElementById("uploadProgress");
 const uploadProgressBar = document.getElementById("uploadProgressBar");
@@ -5126,6 +5127,14 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+let experienceStarting = false;
+
+function setStartButtonState(isLoading, text) {
+    if (!startBtn) return;
+    startBtn.disabled = !!isLoading;
+    startBtn.innerText = text || (isLoading ? "Preparando…" : "Estoy listo. Empezar");
+}
+
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -5286,7 +5295,8 @@ function resetRecordingState() {
 
     overlay.classList.remove("hidden");
     payoff.classList.remove("show");
-    startBtn.disabled = false;
+    experienceStarting = false;
+    setStartButtonState(false);
     clearStartError();
     hideRetryActions();
     hideUploadProgress();
@@ -5588,16 +5598,27 @@ async function safeResumePlayback() {
     }
 }
 
+if (notReadyBtn) {
+    notReadyBtn.addEventListener("click", () => {
+        clearStartError();
+        showStartError("Perfecto. Tu ETERNA seguirá esperándote aquí. Puedes cerrar esta ventana y volver cuando estés preparado.");
+        try { notReadyBtn.innerText = "Tu ETERNA queda guardada"; } catch (_) {}
+        try { startBtn.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) {}
+    });
+}
+
 startBtn.addEventListener("click", async () => {
-    if (experienceStarted) return;
+    if (experienceStarted || experienceStarting) return;
+    experienceStarting = true;
 
     if (guideConsent && !guideConsent.checked) {
         showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
         try { guideConsent.focus(); } catch (_) {}
+        experienceStarting = false;
         return;
     }
 
-    startBtn.disabled = true;
+    setStartButtonState(true, "Preparando…");
     clearStartError();
 
     try {
@@ -5613,7 +5634,8 @@ startBtn.addEventListener("click", async () => {
 
         if (!recordingStarted) {
             showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
-            startBtn.disabled = false;
+            experienceStarting = false;
+            setStartButtonState(false);
             return;
         }
 
@@ -5644,6 +5666,7 @@ startBtn.addEventListener("click", async () => {
 
         overlay.classList.add("hidden");
         experienceStarted = true;
+        experienceStarting = false;
 
         armFinishFallbacks();
 
@@ -5655,7 +5678,8 @@ startBtn.addEventListener("click", async () => {
             showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
             experienceStarted = false;
             overlay.classList.remove("hidden");
-            startBtn.disabled = false;
+            experienceStarting = false;
+            setStartButtonState(false);
 
             try {
                 if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -5681,7 +5705,8 @@ startBtn.addEventListener("click", async () => {
     } catch (e) {
         console.error("experience start error", e);
 
-        startBtn.disabled = false;
+        experienceStarting = false;
+        setStartButtonState(false);
         experienceStarted = false;
         payoff.classList.remove("show");
 
@@ -6195,6 +6220,14 @@ let recordingExtension = "webm";
 let experienceStarted = false;
 let experienceStarting = false;
 let finishTimeout = null;
+let experienceStarting = false;
+
+function setStartButtonState(isLoading, text) {
+    if (!startBtn) return;
+    startBtn.disabled = !!isLoading;
+    startBtn.innerText = text || (isLoading ? "Preparando…" : "Estoy listo. Empezar");
+}
+
 let savingProgressTimer = null;
 
 window.addEventListener("error", function(event) {
@@ -6574,7 +6607,8 @@ function resetRecordingState() {
     payoff.classList.remove("show");
     ritualStep = 0;
     renderRitualStep();
-    startBtn.disabled = false;
+    experienceStarting = false;
+    setStartButtonState(false);
     clearStartError();
     hideRetryActions();
     hideUploadProgress();
@@ -6893,10 +6927,11 @@ async function eternaStartExperience() {
     if (guideConsent && !guideConsent.checked) {
         showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
         try { guideConsent.focus(); } catch (_) {}
+        experienceStarting = false;
         return;
     }
 
-    startBtn.disabled = true;
+    setStartButtonState(true, "Preparando…");
     clearStartError();
 
     try {
