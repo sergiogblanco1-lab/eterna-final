@@ -1952,7 +1952,7 @@ async def create_order_and_redirect(
         raise HTTPException(status_code=400, detail="Modo de entrega no válido")
 
     if not customer_name:
-        raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
+        raise HTTPException(status_code=400, detail="Tu nombre y apellidos es obligatorio")
 
     if not recipient_name:
         raise HTTPException(status_code=400, detail="El nombre del destinatario es obligatorio")
@@ -4649,8 +4649,6 @@ video {
         linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
     padding: 28px;
     text-align: center;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 .overlay.hidden {
@@ -4661,7 +4659,6 @@ video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
-    padding: 18px 0 28px 0;
 }
 
 .eyebrow {
@@ -4712,68 +4709,6 @@ video {
 .btn:disabled {
     opacity: 0.7;
     cursor: default;
-}
-
-.btn-secondary {
-    background: rgba(255,255,255,0.10);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.12);
-    text-decoration: none;
-}
-
-.guide-actions {
-    margin-top: 18px;
-    display: grid;
-    gap: 12px;
-    width: 100%;
-}
-
-.guide-actions .btn {
-    width: 100%;
-}
-
-.guide-consent {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    padding: 13px 14px;
-    border-radius: 18px;
-    background: rgba(255,255,255,0.055);
-    border: 1px solid rgba(255,255,255,0.10);
-    color: rgba(255,255,255,0.70);
-    font-size: 12px;
-    line-height: 1.55;
-    text-align: left;
-}
-
-.guide-consent input {
-    margin-top: 2px;
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-}
-
-.upload-progress {
-    display: none;
-    width: 100%;
-    max-width: 360px;
-    height: 10px;
-    margin: 18px auto 0 auto;
-    border-radius: 999px;
-    overflow: hidden;
-    background: rgba(255,255,255,0.12);
-}
-
-.upload-progress.show {
-    display: block;
-}
-
-.upload-progress-bar {
-    width: 0%;
-    height: 100%;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.92);
-    transition: width 0.25s ease;
 }
 
 .error-note {
@@ -4869,138 +4804,105 @@ video {
     border: 1px solid rgba(255,255,255,0.10);
 }
 
+
+.sender-headline {
+    margin: 0 auto 18px auto;
+    color: white;
+    font-size: 30px;
+    line-height: 1.18;
+    font-weight: 700;
+}
+
+.sender-headline span {
+    display: inline-block;
+    margin-top: 4px;
+    color: rgba(255,255,255,0.70);
+    font-size: 20px;
+    font-weight: 500;
+}
+
 .guide-box {
-    margin: 24px auto 0 auto;
+    margin: 22px auto 0 auto;
     width: 100%;
     max-width: 500px;
     border-radius: 24px;
     border: 1px solid rgba(255,255,255,0.12);
     background: rgba(255,255,255,0.055);
-    padding: 18px 18px 16px 18px;
+    padding: 18px;
     text-align: left;
+    box-sizing: border-box;
 }
 
 .guide-title {
-    font-size: 14px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.52);
-    margin-bottom: 14px;
     text-align: center;
-}
-
-.guide-frame {
-    position: relative;
-    width: 86px;
-    height: 120px;
-    margin: 0 auto 16px auto;
-    border-radius: 28px;
-    border: 2px solid rgba(255,255,255,0.42);
-    background: rgba(0,0,0,0.22);
-}
-
-.guide-face {
-    position: absolute;
-    left: 50%;
-    top: 17px;
-    width: 38px;
-    height: 46px;
-    transform: translateX(-50%);
-    border-radius: 999px;
-    border: 1.5px solid rgba(255,255,255,0.72);
-}
-
-.guide-body {
-    position: absolute;
-    left: 50%;
-    bottom: 18px;
-    width: 54px;
-    height: 34px;
-    transform: translateX(-50%);
-    border-radius: 28px 28px 12px 12px;
-    border: 1.5px solid rgba(255,255,255,0.48);
-    border-bottom-color: rgba(255,255,255,0.18);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(255,255,255,0.50);
+    font-size: 13px;
+    margin-bottom: 14px;
 }
 
 .guide-list {
-    display: grid;
-    gap: 9px;
+    list-style: none;
     margin: 0;
     padding: 0;
-    list-style: none;
+    display: grid;
+    gap: 10px;
+    color: rgba(255,255,255,0.76);
+    font-size: 15px;
+    line-height: 1.45;
 }
 
-.guide-list li {
+.guide-list span {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.13);
+    color: white;
+    margin-right: 8px;
+}
+
+.guide-consent {
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    font-size: 14px;
-    line-height: 1.45;
+    margin: 18px auto 0 auto;
+    width: 100%;
+    max-width: 500px;
+    padding: 14px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.10);
     color: rgba(255,255,255,0.74);
-}
-
-.guide-check {
-    flex: 0 0 auto;
-    width: 18px;
-    height: 18px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.14);
-    color: white;
-    font-size: 12px;
-    line-height: 18px;
-    text-align: center;
-    margin-top: 1px;
-}
-
-.guide-accept {
-    margin-top: 14px;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.55;
-    color: rgba(255,255,255,0.42);
-    text-align: center;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.guide-consent input {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,0.10);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.12);
 }
 
 @media (max-width: 720px) {
-    .overlay {
-        align-items: flex-start;
-        padding: 18px 16px 28px 16px;
-    }
-
     .title {
-        font-size: 38px;
-        margin-bottom: 16px;
+        font-size: 42px;
     }
 
     .text {
-        font-size: 19px;
-    }
-
-    .soft {
-        font-size: 15px;
-    }
-
-    .guide-box {
-        margin-top: 18px;
-        padding: 15px 14px 14px 14px;
-        border-radius: 22px;
-    }
-
-    .guide-frame {
-        width: 70px;
-        height: 96px;
-        margin-bottom: 12px;
-    }
-
-    .guide-list {
-        gap: 8px;
-        font-size: 13px;
-    }
-
-    .btn {
-        min-width: 0;
-        width: 100%;
-        padding: 16px 20px;
-        font-size: 16px;
+        font-size: 21px;
     }
 
     .payoff-title {
@@ -5038,7 +4940,10 @@ video {
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
 
-            <div class="sender-headline">__SENDER_NAME__<span>te envía esto</span></div>
+            <div class="sender-headline">
+                <strong>__SENDER_NAME__</strong><br>
+                <span>te envía esto</span>
+            </div>
 
             <h1 class="title">Shhh…</h1>
 
@@ -5052,37 +4957,28 @@ video {
                 prepara el momento.
             </div>
 
-            <div class="guide-box" aria-label="Guía para vivir ETERNA">
+            <div class="guide-box">
                 <div class="guide-title">Guía de colocación</div>
-                <div class="guide-frame" aria-hidden="true">
-                    <div class="guide-face"></div>
-                    <div class="guide-body"></div>
-                </div>
                 <ul class="guide-list">
-                    <li><span class="guide-check">✓</span><span>Apoya el teléfono. No lo sujetes con la mano.</span></li>
-                    <li><span class="guide-check">✓</span><span>Coloca tu cara dentro del encuadre, con algo de aire arriba.</span></li>
-                    <li><span class="guide-check">✓</span><span>Busca luz de frente y un sitio tranquilo.</span></li>
-                    <li><span class="guide-check">✓</span><span>Activa el sonido. Mejor con auriculares.</span></li>
+                    <li><span>✓</span> Apoya el teléfono. No lo sujetes con la mano.</li>
+                    <li><span>✓</span> Coloca tu cara dentro del encuadre, con algo de aire arriba.</li>
+                    <li><span>✓</span> Busca luz de frente y un sitio tranquilo.</li>
+                    <li><span>✓</span> Activa el sonido. Mejor con auriculares.</li>
                 </ul>
-                <div class="guide-accept">
-                    Al empezar, aceptas esta guía para que el momento pueda guardarse bien.
-                </div>
             </div>
 
-            <div class="guide-actions">
-                <label class="guide-consent" for="guideConsent">
-                    <input type="checkbox" id="guideConsent">
-                    <span>Acepto vivir esta experiencia de forma voluntaria y permitir cámara y micrófono para que este momento pueda guardarse y devolverse a quien lo creó.</span>
-                </label>
+            <label class="guide-consent" for="guideConsent">
+                <input type="checkbox" id="guideConsent" checked>
+                <span>Acepto vivir esta experiencia de forma voluntaria y permitir cámara y micrófono para que este momento pueda guardarse y devolverse a quien lo creó.</span>
+            </label>
 
-                <button class="btn" id="startBtn" type="button" onclick="startEternaFromGuide(event)" ontouchend="startEternaFromGuide(event)">
-                    Estoy listo. Empezar
-                </button>
+            <button class="btn" id="startBtn" style="margin-top:18px;">
+                Estoy listo. Empezar
+            </button>
 
-                <button class="btn btn-secondary" id="notReadyBtn" type="button">
-                    Ahora no, volveré luego
-                </button>
-            </div>
+            <button class="btn btn-secondary" id="notReadyBtn" type="button" style="margin-top:12px;">
+                Ahora no, volveré luego
+            </button>
 
             <div class="error-note" id="errorNote"></div>
         </div>
@@ -5093,9 +4989,6 @@ video {
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
             <div class="loader" id="payoffLoader">Guardando este momento…</div>
-            <div class="upload-progress" id="uploadProgress" aria-hidden="true">
-                <div class="upload-progress-bar" id="uploadProgressBar"></div>
-            </div>
 
             <div class="retry-actions" id="retryActions">
                 <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
@@ -5115,10 +5008,8 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
-const notReadyBtn = document.getElementById("notReadyBtn");
 const guideConsent = document.getElementById("guideConsent");
-const uploadProgress = document.getElementById("uploadProgress");
-const uploadProgressBar = document.getElementById("uploadProgressBar");
+const notReadyBtn = document.getElementById("notReadyBtn");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
 let stream = null;
@@ -5129,14 +5020,6 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
-let experienceStarting = false;
-
-function setStartButtonState(isLoading, text) {
-    if (!startBtn) return;
-    startBtn.disabled = !!isLoading;
-    startBtn.innerText = text || (isLoading ? "Preparando…" : "Estoy listo. Empezar");
-}
-
 
 function showStartError(message) {
     if (!errorNote) return;
@@ -5148,81 +5031,6 @@ function clearStartError() {
     if (!errorNote) return;
     errorNote.textContent = "";
     errorNote.classList.remove("show");
-}
-
-function setUploadProgress(percent, message) {
-    const safePercent = Math.max(0, Math.min(100, Math.round(percent || 0)));
-
-    if (uploadProgress) {
-        uploadProgress.classList.add("show");
-    }
-
-    if (uploadProgressBar) {
-        uploadProgressBar.style.width = safePercent + "%";
-    }
-
-    if (payoffLoader) {
-        payoffLoader.innerText = message || ("Guardando este momento… " + safePercent + "%");
-    }
-}
-
-function hideUploadProgress() {
-    if (uploadProgress) {
-        uploadProgress.classList.remove("show");
-    }
-    if (uploadProgressBar) {
-        uploadProgressBar.style.width = "0%";
-    }
-}
-
-function uploadReactionWithProgress(formData) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/upload-reaction/" + recipientToken, true);
-        xhr.responseType = "text";
-        xhr.timeout = 180000;
-
-        xhr.upload.onprogress = (event) => {
-            if (!event.lengthComputable) {
-                setUploadProgress(35, "Guardando este momento…\nNo cierres esta pantalla.");
-                return;
-            }
-
-            const percent = Math.min(96, Math.max(3, Math.round((event.loaded / event.total) * 100)));
-
-            if (percent < 35) {
-                setUploadProgress(percent, "Guardando este momento… " + percent + "%\nNo cierres esta pantalla.");
-            } else if (percent < 75) {
-                setUploadProgress(percent, "Subiendo la emoción… " + percent + "%\nNo cierres esta pantalla.");
-            } else {
-                setUploadProgress(percent, "Casi listo… " + percent + "%\nQuédate un segundo más.");
-            }
-        };
-
-        xhr.onload = () => {
-            let data = {};
-            try {
-                data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
-            } catch (_) {
-                data = {};
-            }
-
-            if (xhr.status >= 200 && xhr.status < 300) {
-                setUploadProgress(100, "100% recibido.\nPreparando la vuelta…");
-                resolve(data);
-                return;
-            }
-
-            reject(new Error(data.detail || data.reason || ("upload_reaction_failed_" + xhr.status)));
-        };
-
-        xhr.onerror = () => reject(new Error("network_upload_error"));
-        xhr.ontimeout = () => reject(new Error("upload_timeout"));
-        xhr.onabort = () => reject(new Error("upload_aborted"));
-
-        setUploadProgress(3, "Preparando este momento…\nNo cierres esta pantalla.");
-        xhr.send(formData);
-    });
 }
 
 function showRetryActions() {
@@ -5297,11 +5105,9 @@ function resetRecordingState() {
 
     overlay.classList.remove("hidden");
     payoff.classList.remove("show");
-    experienceStarting = false;
-    setStartButtonState(false);
+    startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
-    hideUploadProgress();
 }
 
 function waitForVideoReady() {
@@ -5476,7 +5282,7 @@ async function finalizeExperienceFlow() {
     finishing = true;
 
     payoff.classList.add("show");
-    setUploadProgress(2, "Preparando este momento…\nNo cierres esta pantalla.");
+    payoffLoader.innerText = "Guardando este momento…";
 
     try {
         if (finishTimeout) {
@@ -5542,9 +5348,18 @@ async function finalizeExperienceFlow() {
             const formData = new FormData();
             formData.append("video", blob, filename);
 
-            const uploadData = await uploadReactionWithProgress(formData);
-            setUploadProgress(100, "100% listo.\nTu momento se ha guardado.");
-            console.log("✅ reacción subida", uploadData);
+            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
+                method: "POST",
+                body: formData
+            });
+
+            const uploadData = await uploadResponse.json().catch(() => ({}));
+
+            if (!uploadResponse.ok) {
+                throw new Error(uploadData.detail || "upload_reaction_failed");
+            }
+
+            console.log("✅ reacción subida");
         } else {
             throw new Error("empty_blob");
         }
@@ -5555,9 +5370,7 @@ async function finalizeExperienceFlow() {
             e?.message || e?.detail || ""
         );
 
-        if (payoffLoader) {
-            payoffLoader.innerText = humanMessage;
-        }
+        payoffLoader.innerText = humanMessage;
         showRetryActions();
 
         finishing = false;
@@ -5602,34 +5415,21 @@ async function safeResumePlayback() {
 
 if (notReadyBtn) {
     notReadyBtn.addEventListener("click", () => {
-        clearStartError();
         showStartError("Perfecto. Tu ETERNA seguirá esperándote aquí. Puedes cerrar esta ventana y volver cuando estés preparado.");
         try { notReadyBtn.innerText = "Tu ETERNA queda guardada"; } catch (_) {}
-        try { startBtn.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) {}
     });
 }
 
-async function startEternaFromGuide(event) {
-    try { if (event) { event.preventDefault(); event.stopPropagation(); } } catch (_) {}
-    if (experienceStarted || experienceStarting) return;
-    experienceStarting = true;
-    showStartError("Preparando cámara, sonido y vídeo… Si iPhone pide permiso, pulsa Permitir.");
-    const startWatchdog = setTimeout(() => {
-        if (!experienceStarted && experienceStarting) {
-            setStartButtonState(false, "Intentar empezar otra vez");
-            experienceStarting = false;
-            showStartError("Si no avanza, revisa que Safari permita cámara y micrófono y vuelve a pulsar.");
-        }
-    }, 12000);
+startBtn.addEventListener("click", async () => {
+    if (experienceStarted) return;
 
     if (guideConsent && !guideConsent.checked) {
         showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
-        try { guideConsent.focus(); } catch (_) {}
-        experienceStarting = false;
         return;
     }
 
-    setStartButtonState(true, "Preparando…");
+    startBtn.disabled = true;
+    startBtn.innerText = "Preparando…";
     clearStartError();
 
     try {
@@ -5645,9 +5445,8 @@ async function startEternaFromGuide(event) {
 
         if (!recordingStarted) {
             showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
-            try { clearTimeout(startWatchdog); } catch (_) {}
-            experienceStarting = false;
-            setStartButtonState(false);
+            startBtn.disabled = false;
+            startBtn.innerText = "Estoy listo. Empezar";
             return;
         }
 
@@ -5676,10 +5475,8 @@ async function startEternaFromGuide(event) {
         video.load();
         await waitForVideoReady();
 
-        try { clearTimeout(startWatchdog); } catch (_) {}
         overlay.classList.add("hidden");
         experienceStarted = true;
-        experienceStarting = false;
 
         armFinishFallbacks();
 
@@ -5691,8 +5488,8 @@ async function startEternaFromGuide(event) {
             showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
             experienceStarted = false;
             overlay.classList.remove("hidden");
-            experienceStarting = false;
-            setStartButtonState(false);
+            startBtn.disabled = false;
+            startBtn.innerText = "Estoy listo. Empezar";
 
             try {
                 if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -5718,8 +5515,7 @@ async function startEternaFromGuide(event) {
     } catch (e) {
         console.error("experience start error", e);
 
-        experienceStarting = false;
-        setStartButtonState(false);
+        startBtn.disabled = false;
         experienceStarted = false;
         payoff.classList.remove("show");
 
@@ -5741,14 +5537,10 @@ async function startEternaFromGuide(event) {
         recordingMimeType = "";
         recordingExtension = "webm";
 
-        try { clearTimeout(startWatchdog); } catch (_) {}
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
+        try { startBtn.innerText = "Estoy listo. Empezar"; } catch (_) {}
     }
-}
-
-if (startBtn) {
-    startBtn.addEventListener("click", startEternaFromGuide);
-}
+});
 
 document.addEventListener("visibilitychange", async () => {
     if (!experienceStarted || finishing) return;
@@ -5868,8 +5660,6 @@ video {
         linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
     padding: 28px;
     text-align: center;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 .overlay.hidden {
@@ -5880,7 +5670,6 @@ video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
-    padding: 18px 0 28px 0;
 }
 
 .eyebrow {
@@ -5939,68 +5728,6 @@ video {
 .btn:disabled {
     opacity: 0.7;
     cursor: default;
-}
-
-.btn-secondary {
-    background: rgba(255,255,255,0.10);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.12);
-    text-decoration: none;
-}
-
-.guide-actions {
-    margin-top: 18px;
-    display: grid;
-    gap: 12px;
-    width: 100%;
-}
-
-.guide-actions .btn {
-    width: 100%;
-}
-
-.guide-consent {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    padding: 13px 14px;
-    border-radius: 18px;
-    background: rgba(255,255,255,0.055);
-    border: 1px solid rgba(255,255,255,0.10);
-    color: rgba(255,255,255,0.70);
-    font-size: 12px;
-    line-height: 1.55;
-    text-align: left;
-}
-
-.guide-consent input {
-    margin-top: 2px;
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-}
-
-.upload-progress {
-    display: none;
-    width: 100%;
-    max-width: 360px;
-    height: 10px;
-    margin: 18px auto 0 auto;
-    border-radius: 999px;
-    overflow: hidden;
-    background: rgba(255,255,255,0.12);
-}
-
-.upload-progress.show {
-    display: block;
-}
-
-.upload-progress-bar {
-    width: 0%;
-    height: 100%;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.92);
-    transition: width 0.25s ease;
 }
 
 .error-note {
@@ -6097,46 +5824,12 @@ video {
 }
 
 @media (max-width: 720px) {
-    .overlay {
-        align-items: flex-start;
-        padding: 18px 16px 28px 16px;
-    }
-
     .title {
-        font-size: 38px;
-        margin-bottom: 16px;
+        font-size: 42px;
     }
 
     .text {
-        font-size: 19px;
-    }
-
-    .soft {
-        font-size: 15px;
-    }
-
-    .guide-box {
-        margin-top: 18px;
-        padding: 15px 14px 14px 14px;
-        border-radius: 22px;
-    }
-
-    .guide-frame {
-        width: 70px;
-        height: 96px;
-        margin-bottom: 12px;
-    }
-
-    .guide-list {
-        gap: 8px;
-        font-size: 13px;
-    }
-
-    .btn {
-        min-width: 0;
-        width: 100%;
-        padding: 16px 20px;
-        font-size: 16px;
+        font-size: 21px;
     }
 
     .payoff-title {
@@ -6202,9 +5895,6 @@ video {
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
             <div class="loader" id="payoffLoader">Guardando este momento…</div>
-            <div class="upload-progress" id="uploadProgress" aria-hidden="true">
-                <div class="upload-progress-bar" id="uploadProgressBar"></div>
-            </div>
 
             <div class="retry-actions" id="retryActions">
                 <button type="button" class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
@@ -6239,13 +5929,6 @@ let recordingExtension = "webm";
 let experienceStarted = false;
 let experienceStarting = false;
 let finishTimeout = null;
-
-function setStartButtonState(isLoading, text) {
-    if (!startBtn) return;
-    startBtn.disabled = !!isLoading;
-    startBtn.innerText = text || (isLoading ? "Preparando…" : "Estoy listo. Empezar");
-}
-
 let savingProgressTimer = null;
 
 window.addEventListener("error", function(event) {
@@ -6475,81 +6158,6 @@ function clearStartError() {
     errorNote.classList.remove("show");
 }
 
-function setUploadProgress(percent, message) {
-    const safePercent = Math.max(0, Math.min(100, Math.round(percent || 0)));
-
-    if (uploadProgress) {
-        uploadProgress.classList.add("show");
-    }
-
-    if (uploadProgressBar) {
-        uploadProgressBar.style.width = safePercent + "%";
-    }
-
-    if (payoffLoader) {
-        payoffLoader.innerText = message || ("Guardando este momento… " + safePercent + "%");
-    }
-}
-
-function hideUploadProgress() {
-    if (uploadProgress) {
-        uploadProgress.classList.remove("show");
-    }
-    if (uploadProgressBar) {
-        uploadProgressBar.style.width = "0%";
-    }
-}
-
-function uploadReactionWithProgress(formData) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/upload-reaction/" + recipientToken, true);
-        xhr.responseType = "text";
-        xhr.timeout = 180000;
-
-        xhr.upload.onprogress = (event) => {
-            if (!event.lengthComputable) {
-                setUploadProgress(35, "Guardando este momento…\nNo cierres esta pantalla.");
-                return;
-            }
-
-            const percent = Math.min(96, Math.max(3, Math.round((event.loaded / event.total) * 100)));
-
-            if (percent < 35) {
-                setUploadProgress(percent, "Guardando este momento… " + percent + "%\nNo cierres esta pantalla.");
-            } else if (percent < 75) {
-                setUploadProgress(percent, "Subiendo la emoción… " + percent + "%\nNo cierres esta pantalla.");
-            } else {
-                setUploadProgress(percent, "Casi listo… " + percent + "%\nQuédate un segundo más.");
-            }
-        };
-
-        xhr.onload = () => {
-            let data = {};
-            try {
-                data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
-            } catch (_) {
-                data = {};
-            }
-
-            if (xhr.status >= 200 && xhr.status < 300) {
-                setUploadProgress(100, "100% recibido.\nPreparando la vuelta…");
-                resolve(data);
-                return;
-            }
-
-            reject(new Error(data.detail || data.reason || ("upload_reaction_failed_" + xhr.status)));
-        };
-
-        xhr.onerror = () => reject(new Error("network_upload_error"));
-        xhr.ontimeout = () => reject(new Error("upload_timeout"));
-        xhr.onabort = () => reject(new Error("upload_aborted"));
-
-        setUploadProgress(3, "Preparando este momento…\nNo cierres esta pantalla.");
-        xhr.send(formData);
-    });
-}
-
 function showRetryActions() {
     if (retryActions) {
         retryActions.classList.add("show");
@@ -6625,11 +6233,9 @@ function resetRecordingState() {
     payoff.classList.remove("show");
     ritualStep = 0;
     renderRitualStep();
-    experienceStarting = false;
-    setStartButtonState(false);
+    startBtn.disabled = false;
     clearStartError();
     hideRetryActions();
-    hideUploadProgress();
 }
 
 function waitForVideoReady() {
@@ -6887,9 +6493,7 @@ async function finalizeExperienceFlow() {
 
         try { if (savingProgressTimer) clearInterval(savingProgressTimer); } catch (_) {}
         savingProgressTimer = null;
-        if (payoffLoader) {
-            payoffLoader.innerText = humanMessage;
-        }
+        payoffLoader.innerText = humanMessage;
         showRetryActions();
 
         finishing = false;
@@ -6942,14 +6546,7 @@ async function eternaStartExperience() {
     experienceStarting = true;
     console.log("🎭 ETERNA: usuario ha pulsado Empezar");
 
-    if (guideConsent && !guideConsent.checked) {
-        showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
-        try { guideConsent.focus(); } catch (_) {}
-        experienceStarting = false;
-        return;
-    }
-
-    setStartButtonState(true, "Preparando…");
+    startBtn.disabled = true;
     clearStartError();
 
     try {
