@@ -5075,7 +5075,7 @@ video {
                     <span>Acepto vivir esta experiencia de forma voluntaria y permitir cámara y micrófono para que este momento pueda guardarse y devolverse a quien lo creó.</span>
                 </label>
 
-                <button class="btn" id="startBtn" type="button">
+                <button class="btn" id="startBtn" type="button" onclick="startEternaFromGuide(event)" ontouchend="startEternaFromGuide(event)">
                     Estoy listo. Empezar
                 </button>
 
@@ -5609,7 +5609,8 @@ if (notReadyBtn) {
     });
 }
 
-startBtn.addEventListener("click", async () => {
+async function startEternaFromGuide(event) {
+    try { if (event) { event.preventDefault(); event.stopPropagation(); } } catch (_) {}
     if (experienceStarted || experienceStarting) return;
     experienceStarting = true;
     showStartError("Preparando cámara, sonido y vídeo… Si iPhone pide permiso, pulsa Permitir.");
@@ -5743,7 +5744,11 @@ startBtn.addEventListener("click", async () => {
         try { clearTimeout(startWatchdog); } catch (_) {}
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
     }
-});
+}
+
+if (startBtn) {
+    startBtn.addEventListener("click", startEternaFromGuide);
+}
 
 document.addEventListener("visibilitychange", async () => {
     if (!experienceStarted || finishing) return;
