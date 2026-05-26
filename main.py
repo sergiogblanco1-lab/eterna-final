@@ -1193,7 +1193,7 @@ def get_phrases_by_type(message_type: str):
 
 
 def twilio_enabled() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
 
 
 def send_sms(phone: str, message: str) -> dict:
@@ -1207,6 +1207,9 @@ def send_sms(phone: str, message: str) -> dict:
         print("🚫 SMS DESACTIVADO POR CONFIG")
         print("🚫 Destino:", to_phone)
         return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
+
+    if not TWILIO_FROM_NUMBER:
+        return {"ok": False, "sid": None, "error": "missing_twilio_sms_from"}
 
     if not twilio_enabled():
         return {"ok": False, "sid": None, "error": "twilio_not_configured"}
@@ -1949,7 +1952,7 @@ async def create_order_and_redirect(
         raise HTTPException(status_code=400, detail="Modo de entrega no válido")
 
     if not customer_name:
-        raise HTTPException(status_code=400, detail="Tu nombre y apellidos es obligatorio")
+        raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
 
     if not recipient_name:
         raise HTTPException(status_code=400, detail="El nombre del destinatario es obligatorio")
@@ -2666,7 +2669,7 @@ def render_create_form() -> str:
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
                     <div class="section s1">
                         <div class="section-title">Quién quiere hacer eterno este momento</div>
-                        <input name="customer_name" id="customer_name" placeholder="Tu nombre y apellidos" required>
+                        <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
                         <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
 
                         <div class="phone-row">
@@ -4540,6 +4543,9 @@ async def start_experience(recipient_token: str = Form(...)):
             "ok": True
         })
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
@@ -4636,16 +4642,13 @@ video {
     inset: 0;
     z-index: 30;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     background:
         radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
         linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
-    padding: 34px 28px 54px 28px;
+    padding: 28px;
     text-align: center;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    box-sizing: border-box;
 }
 
 .overlay.hidden {
@@ -4656,35 +4659,6 @@ video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
-    padding: 8px 0 22px 0;
-}
-
-.sender-name {
-    font-size: 28px;
-    line-height: 1.22;
-    font-weight: 700;
-    color: white;
-    margin: 0 0 24px 0;
-}
-
-.guide {
-    margin: 24px auto 0 auto;
-    max-width: 460px;
-    padding: 18px 18px;
-    border-radius: 24px;
-    background: rgba(255,255,255,0.045);
-    border: 1px solid rgba(255,255,255,0.08);
-}
-
-.guide-line {
-    font-size: 15px;
-    line-height: 1.55;
-    color: rgba(255,255,255,0.68);
-    margin: 0 0 8px 0;
-}
-
-.guide-line:last-child {
-    margin-bottom: 0;
 }
 
 .eyebrow {
@@ -4831,38 +4805,12 @@ video {
 }
 
 @media (max-width: 720px) {
-    .overlay {
-        padding: 24px 24px 46px 24px;
-    }
-
-    .sender-name {
-        font-size: 24px;
-        margin-bottom: 20px;
-    }
-
     .title {
-        font-size: 40px;
-        margin-bottom: 18px;
+        font-size: 42px;
     }
 
     .text {
-        font-size: 19px;
-        line-height: 1.55;
-    }
-
-    .guide {
-        margin-top: 20px;
-        padding: 16px;
-    }
-
-    .soft {
-        font-size: 14px;
-        line-height: 1.65;
-    }
-
-    .btn {
-        padding: 17px 24px;
-        font-size: 16px;
+        font-size: 21px;
     }
 
     .payoff-title {
@@ -4900,34 +4848,20 @@ video {
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
 
-            <div class="sender-name">
-                __SENDER_NAME__<br>
-                te envía esto.
-            </div>
-
             <h1 class="title">Shhh…</h1>
 
             <div class="text">
                 Esto no es un vídeo.<br>
-                No es solo un recuerdo.<br><br>
-                Es un momento que alguien ha preparado para ti.
+                Es un momento.
             </div>
 
-            <div class="guide">
-                <p class="guide-line">Busca un lugar tranquilo.</p>
-                <p class="guide-line">Apoya el teléfono. No lo sujetes con la mano.</p>
-                <p class="guide-line">Coloca tu cara dentro del encuadre, con algo de aire arriba.</p>
-                <p class="guide-line">Activa el sonido. Mejor con auriculares.</p>
+            <div class="soft">
+                No pienses.<br>
+                Solo deja que ocurra.
             </div>
 
-            <div class="soft" style="margin-top:24px;">
-                Al pulsar “Estoy listo”, aceptas vivir esta experiencia de forma voluntaria
-                y permites el uso temporal de cámara y micrófono para guardar este momento
-                y devolverlo a quien lo creó.
-            </div>
-
-            <button class="btn" id="startBtn" style="margin-top:26px;">
-                Estoy listo. Empezar
+            <button class="btn" id="startBtn" style="margin-top:28px;">
+                Estoy listo
             </button>
 
             <div class="error-note" id="errorNote"></div>
@@ -5124,11 +5058,47 @@ function detectRecordingFormat() {
     return { mimeType: "", extension: "webm" };
 }
 
+function buildRecorderOptions(mimeType) {
+    const options = {
+        videoBitsPerSecond: 900000,
+        audioBitsPerSecond: 64000
+    };
+
+    if (mimeType) {
+        options.mimeType = mimeType;
+    }
+
+    return options;
+}
+
+function createLightMediaRecorder(stream, mimeType) {
+    try {
+        return new MediaRecorder(stream, buildRecorderOptions(mimeType));
+    } catch (e) {
+        console.warn("light recorder options fallback", e);
+        if (mimeType) {
+            try {
+                return new MediaRecorder(stream, { mimeType: mimeType });
+            } catch (_) {}
+        }
+        return new MediaRecorder(stream);
+    }
+}
+
 async function tryStartRecordingStrict() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
+            video: {
+                facingMode: "user",
+                width: { ideal: 540, max: 720 },
+                height: { ideal: 960, max: 1280 },
+                frameRate: { ideal: 20, max: 24 }
+            },
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }
         });
 
         const format = detectRecordingFormat();
@@ -5136,9 +5106,7 @@ async function tryStartRecordingStrict() {
         recordingExtension = format.extension;
         recordedChunks = [];
 
-        mediaRecorder = recordingMimeType
-            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
-            : new MediaRecorder(stream);
+        mediaRecorder = createLightMediaRecorder(stream, recordingMimeType);
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
@@ -5493,11 +5461,12 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-    html_page = html_page.replace("__SENDER_NAME__", safe_text(order.get("sender_name") or "Alguien"))
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
-    return HTMLResponse(html_page)
+    response = HTMLResponse(html_page)
+    attach_recipient_session_if_needed(order, request, response)
+    return response
 
 
 
@@ -5982,8 +5951,17 @@ async function prepareCameraAndMicrophoneBeforeStart() {
         }
 
         stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
+            video: {
+                facingMode: "user",
+                width: { ideal: 540, max: 720 },
+                height: { ideal: 960, max: 1280 },
+                frameRate: { ideal: 20, max: 24 }
+            },
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }
         });
 
         return true;
@@ -6191,6 +6169,33 @@ function detectRecordingFormat() {
     return { mimeType: "", extension: "webm" };
 }
 
+function buildRecorderOptions(mimeType) {
+    const options = {
+        videoBitsPerSecond: 900000,
+        audioBitsPerSecond: 64000
+    };
+
+    if (mimeType) {
+        options.mimeType = mimeType;
+    }
+
+    return options;
+}
+
+function createLightMediaRecorder(stream, mimeType) {
+    try {
+        return new MediaRecorder(stream, buildRecorderOptions(mimeType));
+    } catch (e) {
+        console.warn("light recorder options fallback", e);
+        if (mimeType) {
+            try {
+                return new MediaRecorder(stream, { mimeType: mimeType });
+            } catch (_) {}
+        }
+        return new MediaRecorder(stream);
+    }
+}
+
 async function tryStartRecordingStrict() {
     try {
         const prepared = await prepareCameraAndMicrophoneBeforeStart();
@@ -6204,9 +6209,7 @@ async function tryStartRecordingStrict() {
         recordingExtension = format.extension;
         recordedChunks = [];
 
-        mediaRecorder = recordingMimeType
-            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
-            : new MediaRecorder(stream);
+        mediaRecorder = createLightMediaRecorder(stream, recordingMimeType);
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
@@ -7169,17 +7172,17 @@ def sender_pack(sender_token: str):
     sender_status = "Tu ETERNA ha vuelto."
 
     body_content = f"""
-    <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
+    <div style="max-width:760px;margin:0 auto;padding:34px 18px 80px;text-align:center;color:white;">
 
-        <h1 style="font-size:46px;font-weight:800;margin-bottom:18px;">
+        <h1 style="font-size:40px;font-weight:800;margin-bottom:14px;line-height:1.12;">
             {sender_status}
         </h1>
 
-        <p style="font-size:22px;opacity:.9;margin-bottom:30px;">
+        <p style="font-size:19px;opacity:.86;margin-bottom:24px;line-height:1.55;">
             Lo que diste… ha encontrado el camino de vuelta.
         </p>
 
-        <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
+        <div style="position:relative;width:min(100%,430px);aspect-ratio:9/16;margin:0 auto;background:#050505;border-radius:32px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.08);">
 
             <!-- VIDEO REACCIÓN -->
             <video
@@ -7188,7 +7191,7 @@ def sender_pack(sender_token: str):
                 webkit-playsinline
                 controls
                 preload="metadata"
-                style="width:100%;display:block;background:black;"
+                style="width:100%;height:100%;display:block;background:black;object-fit:cover;"
             >
                 <source src="{reaction_url}" type="video/mp4">
             </video>
@@ -7204,10 +7207,14 @@ def sender_pack(sender_token: str):
                     position:absolute;
                     right:14px;
                     bottom:14px;
-                    width:30%;
-                    max-width:140px;
+                    width:26%;
+                    max-width:112px;
+                    aspect-ratio:9/16;
+                    object-fit:cover;
                     border-radius:16px;
                     background:black;
+                    box-shadow:0 10px 30px rgba(0,0,0,.45);
+                    border:1px solid rgba(255,255,255,.18);
                 "
             >
                 <source src="{original_video_url}" type="video/mp4">
