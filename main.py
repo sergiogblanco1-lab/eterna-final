@@ -5038,6 +5038,8 @@ video {
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
 
+            <div class="sender-headline">__SENDER_NAME__<span>te envía esto</span></div>
+
             <h1 class="title">Shhh…</h1>
 
             <div class="text">
@@ -5610,6 +5612,14 @@ if (notReadyBtn) {
 startBtn.addEventListener("click", async () => {
     if (experienceStarted || experienceStarting) return;
     experienceStarting = true;
+    showStartError("Preparando cámara, sonido y vídeo… Si iPhone pide permiso, pulsa Permitir.");
+    const startWatchdog = setTimeout(() => {
+        if (!experienceStarted && experienceStarting) {
+            setStartButtonState(false, "Intentar empezar otra vez");
+            experienceStarting = false;
+            showStartError("Si no avanza, revisa que Safari permita cámara y micrófono y vuelve a pulsar.");
+        }
+    }, 12000);
 
     if (guideConsent && !guideConsent.checked) {
         showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
@@ -5634,6 +5644,7 @@ startBtn.addEventListener("click", async () => {
 
         if (!recordingStarted) {
             showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
+            try { clearTimeout(startWatchdog); } catch (_) {}
             experienceStarting = false;
             setStartButtonState(false);
             return;
@@ -5664,6 +5675,7 @@ startBtn.addEventListener("click", async () => {
         video.load();
         await waitForVideoReady();
 
+        try { clearTimeout(startWatchdog); } catch (_) {}
         overlay.classList.add("hidden");
         experienceStarted = true;
         experienceStarting = false;
@@ -5728,6 +5740,7 @@ startBtn.addEventListener("click", async () => {
         recordingMimeType = "";
         recordingExtension = "webm";
 
+        try { clearTimeout(startWatchdog); } catch (_) {}
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
     }
 });
@@ -5785,6 +5798,7 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
+    html_page = html_page.replace("__SENDER_NAME__", safe_text(order.get("sender_name") or "Alguien"))
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
@@ -6220,7 +6234,6 @@ let recordingExtension = "webm";
 let experienceStarted = false;
 let experienceStarting = false;
 let finishTimeout = null;
-let experienceStarting = false;
 
 function setStartButtonState(isLoading, text) {
     if (!startBtn) return;
