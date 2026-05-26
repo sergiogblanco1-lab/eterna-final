@@ -4804,6 +4804,97 @@ video {
     border: 1px solid rgba(255,255,255,0.10);
 }
 
+.guide-box {
+    margin: 24px auto 0 auto;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.055);
+    padding: 18px 18px 16px 18px;
+    text-align: left;
+}
+
+.guide-title {
+    font-size: 14px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.52);
+    margin-bottom: 14px;
+    text-align: center;
+}
+
+.guide-frame {
+    position: relative;
+    width: 86px;
+    height: 120px;
+    margin: 0 auto 16px auto;
+    border-radius: 28px;
+    border: 2px solid rgba(255,255,255,0.42);
+    background: rgba(0,0,0,0.22);
+}
+
+.guide-face {
+    position: absolute;
+    left: 50%;
+    top: 17px;
+    width: 38px;
+    height: 46px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    border: 1.5px solid rgba(255,255,255,0.72);
+}
+
+.guide-body {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    width: 54px;
+    height: 34px;
+    transform: translateX(-50%);
+    border-radius: 28px 28px 12px 12px;
+    border: 1.5px solid rgba(255,255,255,0.48);
+    border-bottom-color: rgba(255,255,255,0.18);
+}
+
+.guide-list {
+    display: grid;
+    gap: 9px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.guide-list li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 14px;
+    line-height: 1.45;
+    color: rgba(255,255,255,0.74);
+}
+
+.guide-check {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.14);
+    color: white;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+    margin-top: 1px;
+}
+
+.guide-accept {
+    margin-top: 14px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: rgba(255,255,255,0.42);
+    text-align: center;
+}
+
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4856,12 +4947,29 @@ video {
             </div>
 
             <div class="soft">
-                No pienses.<br>
-                Solo deja que ocurra.
+                Antes de empezar,<br>
+                prepara el momento.
             </div>
 
-            <button class="btn" id="startBtn" style="margin-top:28px;">
-                Estoy listo
+            <div class="guide-box" aria-label="Guía para vivir ETERNA">
+                <div class="guide-title">Guía de colocación</div>
+                <div class="guide-frame" aria-hidden="true">
+                    <div class="guide-face"></div>
+                    <div class="guide-body"></div>
+                </div>
+                <ul class="guide-list">
+                    <li><span class="guide-check">✓</span><span>Apoya el teléfono. No lo sujetes con la mano.</span></li>
+                    <li><span class="guide-check">✓</span><span>Coloca tu cara dentro del encuadre, con algo de aire arriba.</span></li>
+                    <li><span class="guide-check">✓</span><span>Busca luz de frente y un sitio tranquilo.</span></li>
+                    <li><span class="guide-check">✓</span><span>Activa el sonido. Mejor con auriculares.</span></li>
+                </ul>
+                <div class="guide-accept">
+                    Al empezar, aceptas esta guía para que el momento pueda guardarse bien.
+                </div>
+            </div>
+
+            <button class="btn" id="startBtn" style="margin-top:24px;">
+                He colocado el móvil. Empezar
             </button>
 
             <div class="error-note" id="errorNote"></div>
