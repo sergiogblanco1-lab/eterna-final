@@ -1952,7 +1952,7 @@ async def create_order_and_redirect(
         raise HTTPException(status_code=400, detail="Modo de entrega no válido")
 
     if not customer_name:
-        raise HTTPException(status_code=400, detail="Tu nombre y apellidos es obligatorio")
+        raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
 
     if not recipient_name:
         raise HTTPException(status_code=400, detail="El nombre del destinatario es obligatorio")
@@ -2669,7 +2669,7 @@ def render_create_form() -> str:
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
                     <div class="section s1">
                         <div class="section-title">Quién quiere hacer eterno este momento</div>
-                        <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
+                        <input name="customer_name" id="customer_name" placeholder="Tu nombre y apellidos" required>
                         <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
 
                         <div class="phone-row">
@@ -4577,6 +4577,7 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
+    sender_name = safe_text(order.get("sender_name") or "Alguien")
 
     try:
         ritual_step = int(ritual_step or 0)
@@ -4675,6 +4676,22 @@ video {
     font-weight: 700;
     margin: 0 0 22px 0;
     color: white;
+}
+
+.sender-name {
+    font-size: 34px;
+    line-height: 1.25;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 28px 0;
+}
+
+.consent-copy {
+    margin: 24px auto 0 auto;
+    max-width: 520px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.48);
 }
 
 .text {
@@ -4804,98 +4821,6 @@ video {
     border: 1px solid rgba(255,255,255,0.10);
 }
 
-
-.sender-headline {
-    margin: 0 auto 18px auto;
-    color: white;
-    font-size: 30px;
-    line-height: 1.18;
-    font-weight: 700;
-}
-
-.sender-headline span {
-    display: inline-block;
-    margin-top: 4px;
-    color: rgba(255,255,255,0.70);
-    font-size: 20px;
-    font-weight: 500;
-}
-
-.guide-box {
-    margin: 22px auto 0 auto;
-    width: 100%;
-    max-width: 500px;
-    border-radius: 24px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.055);
-    padding: 18px;
-    text-align: left;
-    box-sizing: border-box;
-}
-
-.guide-title {
-    text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: rgba(255,255,255,0.50);
-    font-size: 13px;
-    margin-bottom: 14px;
-}
-
-.guide-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 10px;
-    color: rgba(255,255,255,0.76);
-    font-size: 15px;
-    line-height: 1.45;
-}
-
-.guide-list span {
-    display: inline-flex;
-    width: 24px;
-    height: 24px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.13);
-    color: white;
-    margin-right: 8px;
-}
-
-.guide-consent {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin: 18px auto 0 auto;
-    width: 100%;
-    max-width: 500px;
-    padding: 14px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.055);
-    border: 1px solid rgba(255,255,255,0.10);
-    color: rgba(255,255,255,0.74);
-    font-size: 13px;
-    line-height: 1.55;
-    text-align: left;
-    box-sizing: border-box;
-}
-
-.guide-consent input {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 auto;
-    margin-top: 2px;
-}
-
-.btn-secondary {
-    background: rgba(255,255,255,0.10);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-
 @media (max-width: 720px) {
     .title {
         font-size: 42px;
@@ -4903,6 +4828,10 @@ video {
 
     .text {
         font-size: 21px;
+    }
+
+    .sender-name {
+        font-size: 28px;
     }
 
     .payoff-title {
@@ -4940,44 +4869,32 @@ video {
         <div class="overlay-card">
             <div class="eyebrow">ETERNA</div>
 
-            <div class="sender-headline">
-                <strong>__SENDER_NAME__</strong><br>
-                <span>te envía esto</span>
+            <div class="sender-name">
+                __SENDER_NAME__<br>
+                te envía esto.
             </div>
 
             <h1 class="title">Shhh…</h1>
 
             <div class="text">
                 Esto no es un vídeo.<br>
-                Es un momento.
+                No es solo un recuerdo.<br><br>
+                Es algo que alguien ha creado para ti.
             </div>
 
             <div class="soft">
-                Antes de empezar,<br>
-                prepara el momento.
+                Busca un lugar tranquilo.<br>
+                Apoya el teléfono.<br>
+                Activa el sonido.<br><br>
+                No tengas prisa.
             </div>
 
-            <div class="guide-box">
-                <div class="guide-title">Guía de colocación</div>
-                <ul class="guide-list">
-                    <li><span>✓</span> Apoya el teléfono. No lo sujetes con la mano.</li>
-                    <li><span>✓</span> Coloca tu cara dentro del encuadre, con algo de aire arriba.</li>
-                    <li><span>✓</span> Busca luz de frente y un sitio tranquilo.</li>
-                    <li><span>✓</span> Activa el sonido. Mejor con auriculares.</li>
-                </ul>
+            <div class="consent-copy">
+                Al pulsar “Estoy listo”, aceptas vivir esta experiencia de forma voluntaria y permites el uso temporal de cámara y micrófono para guardar este momento y devolverlo a quien lo creó.
             </div>
 
-            <label class="guide-consent" for="guideConsent">
-                <input type="checkbox" id="guideConsent" checked>
-                <span>Acepto vivir esta experiencia de forma voluntaria y permitir cámara y micrófono para que este momento pueda guardarse y devolverse a quien lo creó.</span>
-            </label>
-
-            <button class="btn" id="startBtn" style="margin-top:18px;">
+            <button type="button" class="btn" id="startBtn" style="margin-top:28px;">
                 Estoy listo. Empezar
-            </button>
-
-            <button class="btn btn-secondary" id="notReadyBtn" type="button" style="margin-top:12px;">
-                Ahora no, volveré luego
             </button>
 
             <div class="error-note" id="errorNote"></div>
@@ -5008,8 +4925,6 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
-const guideConsent = document.getElementById("guideConsent");
-const notReadyBtn = document.getElementById("notReadyBtn");
 const recipientToken = "__RECIPIENT_TOKEN__";
 
 let stream = null;
@@ -5413,23 +5328,10 @@ async function safeResumePlayback() {
     }
 }
 
-if (notReadyBtn) {
-    notReadyBtn.addEventListener("click", () => {
-        showStartError("Perfecto. Tu ETERNA seguirá esperándote aquí. Puedes cerrar esta ventana y volver cuando estés preparado.");
-        try { notReadyBtn.innerText = "Tu ETERNA queda guardada"; } catch (_) {}
-    });
-}
-
 startBtn.addEventListener("click", async () => {
     if (experienceStarted) return;
 
-    if (guideConsent && !guideConsent.checked) {
-        showStartError("Antes de empezar, acepta la guía y el uso de cámara y micrófono para vivir ETERNA.");
-        return;
-    }
-
     startBtn.disabled = true;
-    startBtn.innerText = "Preparando…";
     clearStartError();
 
     try {
@@ -5446,7 +5348,6 @@ startBtn.addEventListener("click", async () => {
         if (!recordingStarted) {
             showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
             startBtn.disabled = false;
-            startBtn.innerText = "Estoy listo. Empezar";
             return;
         }
 
@@ -5489,7 +5390,6 @@ startBtn.addEventListener("click", async () => {
             experienceStarted = false;
             overlay.classList.remove("hidden");
             startBtn.disabled = false;
-            startBtn.innerText = "Estoy listo. Empezar";
 
             try {
                 if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -5538,7 +5438,6 @@ startBtn.addEventListener("click", async () => {
         recordingExtension = "webm";
 
         showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
-        try { startBtn.innerText = "Estoy listo. Empezar"; } catch (_) {}
     }
 });
 
@@ -5595,1208 +5494,13 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-    html_page = html_page.replace("__SENDER_NAME__", safe_text(order.get("sender_name") or "Alguien"))
+    html_page = html_page.replace("__SENDER_NAME__", sender_name)
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
     response = HTMLResponse(html_page)
     attach_recipient_session_if_needed(order, request, response)
     return response
-
-
-
-
-    # BLOQUE NUEVO ORIGINAL CONSERVADO COMO BACKUP (NO SE EJECUTA)
-    html_page = """
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA</title>
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: black;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-}
-
-body {
-    position: fixed;
-    inset: 0;
-    background: black;
-}
-
-.wrap {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: black;
-}
-
-video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: black;
-}
-
-.overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 30;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
-        linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
-    padding: 28px;
-    text-align: center;
-}
-
-.overlay.hidden {
-    display: none;
-}
-
-.overlay-card {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-}
-
-.eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.36);
-    margin-bottom: 24px;
-}
-
-.title {
-    font-size: 54px;
-    line-height: 1.06;
-    font-weight: 700;
-    margin: 0 0 22px 0;
-    color: white;
-}
-
-.text {
-    font-size: 24px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.86);
-    margin: 0 auto 14px auto;
-    max-width: 520px;
-}
-
-.soft {
-    font-size: 16px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.46);
-    margin: 0 auto 0 auto;
-    max-width: 460px;
-}
-
-.ritual-legal {
-    display: block;
-    margin-top: 16px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.36);
-}
-
-.btn {
-    display: inline-block;
-    min-width: 220px;
-    padding: 18px 26px;
-    border-radius: 999px;
-    border: 0;
-    background: white;
-    color: black;
-    font-weight: 700;
-    font-size: 17px;
-    cursor: pointer;
-}
-
-.btn:disabled {
-    opacity: 0.7;
-    cursor: default;
-}
-
-.error-note {
-    margin-top: 18px;
-    font-size: 14px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.62);
-    max-width: 460px;
-    margin-left: auto;
-    margin-right: auto;
-    display: none;
-}
-
-.error-note.show {
-    display: block;
-}
-
-.payoff {
-    position: absolute;
-    inset: 0;
-    z-index: 35;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 28px;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
-}
-
-.payoff.show {
-    display: flex;
-}
-
-.payoff-card {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-}
-
-.payoff-title {
-    font-size: 46px;
-    line-height: 1.12;
-    font-weight: 700;
-    margin: 0 0 18px 0;
-    color: white;
-}
-
-.payoff-text {
-    font-size: 22px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.82);
-    margin: 0 auto;
-    max-width: 520px;
-}
-
-.loader {
-    margin-top: 28px;
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.48);
-}
-
-.retry-actions {
-    margin-top: 24px;
-    display: none;
-    gap: 12px;
-    max-width: 320px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.retry-actions.show {
-    display: grid;
-}
-
-.retry-btn {
-    width: 100%;
-    padding: 16px 22px;
-    border-radius: 999px;
-    border: 0;
-    background: white;
-    color: black;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-}
-
-.retry-btn.secondary {
-    background: rgba(255,255,255,0.10);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.10);
-}
-
-@media (max-width: 720px) {
-    .title {
-        font-size: 42px;
-    }
-
-    .text {
-        font-size: 21px;
-    }
-
-    .payoff-title {
-        font-size: 36px;
-    }
-
-    .payoff-text {
-        font-size: 19px;
-    }
-}
-</style>
-</head>
-<body>
-<div class="wrap">
-    <video
-    id="video"
-    playsinline
-    webkit-playsinline
-    preload="auto"
-    style="
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform: scale(1.15);
-        transform-origin: center;
-        background: black;
-    "
->
-        <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
-    </video>
-
-    <div class="overlay" id="overlay">
-        <div class="overlay-card">
-            <div class="eyebrow">ETERNA</div>
-
-            <h1 class="title" id="ritualTitle">__RITUAL_TITLE__</h1>
-
-            <div class="text" id="ritualText">__RITUAL_TEXT__</div>
-
-            <div class="soft" id="ritualSoft">__RITUAL_SOFT__</div>
-
-            <a
-                class="btn"
-                id="ritualNextBtn"
-                href="__RITUAL_NEXT_URL__"
-                style="margin-top:28px; display:__RITUAL_NEXT_DISPLAY__;"
-            >
-                __RITUAL_BUTTON__
-            </a>
-
-            <button type="button" class="btn" id="startBtn" style="margin-top:28px; display:__START_DISPLAY__;">
-                Empezar
-            </button>
-
-            <div class="error-note" id="errorNote"></div>
-        </div>
-    </div>
-
-    <div class="payoff" id="payoff">
-        <div class="payoff-card">
-            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
-            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="loader" id="payoffLoader">Guardando este momento…</div>
-
-            <div class="retry-actions" id="retryActions">
-                <button type="button" class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
-                <button type="button" class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-const startBtn = document.getElementById("startBtn");
-const overlay = document.getElementById("overlay");
-const video = document.getElementById("video");
-const payoff = document.getElementById("payoff");
-const payoffLoader = document.getElementById("payoffLoader");
-const retryActions = document.getElementById("retryActions");
-const retryExperienceBtn = document.getElementById("retryExperienceBtn");
-const backToStartBtn = document.getElementById("backToStartBtn");
-const errorNote = document.getElementById("errorNote");
-const ritualTitle = document.getElementById("ritualTitle");
-const ritualText = document.getElementById("ritualText");
-const ritualSoft = document.getElementById("ritualSoft");
-const ritualNextBtn = document.getElementById("ritualNextBtn");
-const recipientToken = "__RECIPIENT_TOKEN__";
-
-let stream = null;
-let mediaRecorder = null;
-let recordedChunks = [];
-let finishing = false;
-let recordingMimeType = "";
-let recordingExtension = "webm";
-let experienceStarted = false;
-let experienceStarting = false;
-let finishTimeout = null;
-let savingProgressTimer = null;
-
-window.addEventListener("error", function(event) {
-    try {
-        console.error("ETERNA JS error:", event.message, event.error);
-        if (errorNote && !experienceStarted) {
-            errorNote.textContent = "Ha ocurrido algo al preparar la experiencia. Pulsa continuar otra vez.";
-            errorNote.classList.add("show");
-        }
-    } catch (_) {}
-});
-
-window.addEventListener("unhandledrejection", function(event) {
-    try {
-        console.error("ETERNA promise error:", event.reason);
-    } catch (_) {}
-});
-
-function setSavingMessage(text) {
-    try {
-        payoffLoader.innerText = text;
-    } catch (_) {}
-}
-
-function startSavingProgress() {
-    const messages = [
-        "62% guardando emoción…\nNo cierres esta pantalla.",
-        "78% casi listo…\nNo cierres esta pantalla.",
-        "91% no te vayas todavía…\nEsto solo pasa una vez.",
-        "96% terminando de guardar…"
-    ];
-
-    let i = 0;
-    setSavingMessage(messages[0]);
-
-    try {
-        if (savingProgressTimer) clearInterval(savingProgressTimer);
-        savingProgressTimer = setInterval(() => {
-            i = Math.min(i + 1, messages.length - 1);
-            setSavingMessage(messages[i]);
-        }, 1200);
-    } catch (_) {}
-}
-
-function stopSavingProgress() {
-    try {
-        if (savingProgressTimer) clearInterval(savingProgressTimer);
-    } catch (_) {}
-    savingProgressTimer = null;
-    setSavingMessage("100% listo.\nTu momento se ha guardado.");
-}
-
-function showPostVideoHold() {
-    try {
-        payoff.classList.add("show");
-        setSavingMessage("Quédate un segundo más…\nNo te vayas todavía.");
-    } catch (_) {}
-}
-
-
-let ritualStep = __RITUAL_STEP__;
-
-const ritualSteps = [
-    {
-        title: "Shhh…",
-        text: "Esto no es un vídeo.<br>Es un momento.",
-        soft: "No pienses.<br>Solo deja que ocurra.",
-        button: "Continuar"
-    },
-    {
-        title: "Sonido",
-        text: "Si puedes…<br>escúchalo con sonido.",
-        soft: "Mejor con auriculares.",
-        button: "Continuar"
-    },
-    {
-        title: "Antes de abrirlo",
-        text: "Busca un momento tranquilo.",
-        soft: "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
-        button: "Ya está"
-    },
-    {
-        title: "Colócate",
-        text: "Pon el teléfono frente a ti.",
-        soft: "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
-        button: "Listo"
-    },
-    {
-        title: "Luz",
-        text: "Deja que haya algo de luz frente a ti.",
-        soft: "Lo justo para poder verte.",
-        button: "Perfecto"
-    },
-    {
-        title: "Presencia",
-        text: "No hagas nada especial.",
-        soft: "Solo míralo.<br>Este momento es tuyo.",
-        button: "Continuar"
-    },
-    {
-        title: "Una última cosa",
-        text: "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
-        soft: "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
-        button: "Aceptar y continuar"
-    },
-    {
-        title: "Cuando estés listo…",
-        text: "Pulsa empezar.",
-        soft: "Y déjate llevar.",
-        button: "Empezar",
-        final: true
-    }
-];
-
-function renderRitualStep() {
-    const step = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
-
-    ritualTitle.innerHTML = step.title;
-    ritualText.innerHTML = step.text;
-    ritualSoft.innerHTML = step.soft || "";
-
-    if (step.final) {
-        ritualNextBtn.style.display = "none";
-        startBtn.style.display = "inline-block";
-        startBtn.innerText = step.button || "Empezar";
-        startBtn.disabled = false;
-    } else {
-        startBtn.style.display = "none";
-        ritualNextBtn.style.display = "inline-block";
-        ritualNextBtn.innerText = step.button || "Continuar";
-        try {
-            ritualNextBtn.href = "/experiencia/" + recipientToken + "?ritual_step=" + Math.min(ritualStep + 1, ritualSteps.length - 1);
-        } catch (_) {}
-    }
-}
-
-async function prepareCameraAndMicrophoneBeforeStart() {
-    clearStartError();
-
-    try {
-        if (stream) {
-            const activeTracks = stream.getTracks().filter((t) => t.readyState === "live");
-            const hasVideo = activeTracks.some((t) => t.kind === "video");
-            const hasAudio = activeTracks.some((t) => t.kind === "audio");
-
-            if (hasVideo && hasAudio) {
-                return true;
-            }
-
-            try {
-                stream.getTracks().forEach((t) => t.stop());
-            } catch (_) {}
-
-            stream = null;
-        }
-
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: "user",
-                width: { ideal: 540, max: 720 },
-                height: { ideal: 960, max: 1280 },
-                frameRate: { ideal: 20, max: 24 }
-            },
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true
-            }
-        });
-
-        return true;
-    } catch (e) {
-        console.error("camera microphone permission error", e);
-        showStartError("Necesitamos activar cámara y micrófono para continuar con esta experiencia.");
-        return false;
-    }
-}
-
-async function eternaNextRitual() {
-    try {
-        clearStartError();
-
-        const current = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
-
-        if (current && current.button === "Aceptar y continuar") {
-            ritualNextBtn.disabled = true;
-            ritualNextBtn.innerText = "Preparando…";
-
-            const prepared = await prepareCameraAndMicrophoneBeforeStart();
-
-            ritualNextBtn.disabled = false;
-            ritualNextBtn.innerText = current.button || "Aceptar y continuar";
-
-            if (!prepared) {
-                return;
-            }
-        }
-
-        ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
-        renderRitualStep();
-    } catch (e) {
-        console.error("ritual step error", e);
-        showStartError("No hemos podido avanzar. Pulsa de nuevo en continuar.");
-        try {
-            ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
-            renderRitualStep();
-        } catch (_) {}
-    }
-}
-
-window.eternaNextRitual = eternaNextRitual;
-
-// Importante: los pasos del ritual avanzan por URL real del servidor.
-// Así el botón Continuar nunca se queda muerto aunque falle JavaScript.
-// La cámara y el micrófono se piden únicamente al pulsar Empezar.
-renderRitualStep();
-
-function showStartError(message) {
-    if (!errorNote) return;
-    errorNote.textContent = message || "No hemos podido preparar la grabación.";
-    errorNote.classList.add("show");
-}
-
-function clearStartError() {
-    if (!errorNote) return;
-    errorNote.textContent = "";
-    errorNote.classList.remove("show");
-}
-
-function showRetryActions() {
-    if (retryActions) {
-        retryActions.classList.add("show");
-    }
-}
-
-function hideRetryActions() {
-    if (retryActions) {
-        retryActions.classList.remove("show");
-    }
-}
-
-function buildFriendlyUploadMessage(errorCode) {
-    const code = String(errorCode || "").toLowerCase();
-
-    if (code.includes("empty_video")) {
-        return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
-    }
-
-    if (code.includes("video_too_large")) {
-        return "No se ha podido guardar porque el vídeo ocupa demasiado. Inténtalo otra vez.";
-    }
-
-    if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
-        return "No se ha podido grabar la reacción porque faltan permisos de cámara o micrófono.";
-    }
-
-    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
-        return "No se ha podido subir la reacción por un problema de conexión. Revisa internet e inténtalo de nuevo.";
-    }
-
-    return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
-}
-
-function resetRecordingState() {
-    try {
-        if (finishTimeout) {
-            clearTimeout(finishTimeout);
-            finishTimeout = null;
-        }
-    } catch (_) {}
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-        }
-    } catch (_) {}
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (_) {}
-
-    stream = null;
-    mediaRecorder = null;
-    recordedChunks = [];
-    recordingMimeType = "";
-    recordingExtension = "webm";
-    finishing = false;
-    experienceStarted = false;
-    experienceStarting = false;
-
-    try {
-        video.pause();
-    } catch (_) {}
-
-    try {
-        video.currentTime = 0;
-    } catch (_) {}
-
-    overlay.classList.remove("hidden");
-    payoff.classList.remove("show");
-    ritualStep = 0;
-    renderRitualStep();
-    startBtn.disabled = false;
-    clearStartError();
-    hideRetryActions();
-}
-
-function waitForVideoReady() {
-    return new Promise((resolve) => {
-        const isReady =
-            Number.isFinite(video.duration) &&
-            video.duration > 0 &&
-            video.readyState >= 1;
-
-        if (isReady) {
-            resolve();
-            return;
-        }
-
-        let resolved = false;
-
-        const done = () => {
-            if (resolved) return;
-            resolved = true;
-            video.removeEventListener("loadedmetadata", onReady);
-            video.removeEventListener("loadeddata", onReady);
-            video.removeEventListener("canplay", onReady);
-            clearTimeout(timeoutId);
-            resolve();
-        };
-
-        const onReady = () => {
-            const readyNow =
-                Number.isFinite(video.duration) &&
-                video.duration > 0 &&
-                video.readyState >= 1;
-
-            if (readyNow) {
-                done();
-            }
-        };
-
-        const timeoutId = setTimeout(done, 4000);
-
-        video.addEventListener("loadedmetadata", onReady);
-        video.addEventListener("loadeddata", onReady);
-        video.addEventListener("canplay", onReady);
-    });
-}
-
-function detectRecordingFormat() {
-    const candidates = [
-        { mimeType: "video/mp4", extension: "mp4" },
-        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
-        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
-        { mimeType: "video/webm", extension: "webm" }
-    ];
-
-    if (typeof MediaRecorder === "undefined") {
-        throw new Error("media_recorder_not_supported");
-    }
-
-    for (const candidate of candidates) {
-        try {
-            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                return candidate;
-            }
-        } catch (_) {}
-    }
-
-    return { mimeType: "", extension: "webm" };
-}
-
-function buildRecorderOptions(mimeType) {
-    const options = {
-        videoBitsPerSecond: 900000,
-        audioBitsPerSecond: 64000
-    };
-
-    if (mimeType) {
-        options.mimeType = mimeType;
-    }
-
-    return options;
-}
-
-function createLightMediaRecorder(stream, mimeType) {
-    try {
-        return new MediaRecorder(stream, buildRecorderOptions(mimeType));
-    } catch (e) {
-        console.warn("light recorder options fallback", e);
-        if (mimeType) {
-            try {
-                return new MediaRecorder(stream, { mimeType: mimeType });
-            } catch (_) {}
-        }
-        return new MediaRecorder(stream);
-    }
-}
-
-async function tryStartRecordingStrict() {
-    try {
-        const prepared = await prepareCameraAndMicrophoneBeforeStart();
-
-        if (!prepared || !stream) {
-            throw new Error("camera_microphone_not_ready");
-        }
-
-        const format = detectRecordingFormat();
-        recordingMimeType = format.mimeType;
-        recordingExtension = format.extension;
-        recordedChunks = [];
-
-        mediaRecorder = createLightMediaRecorder(stream, recordingMimeType);
-
-        mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-                recordedChunks.push(e.data);
-            }
-        };
-
-        mediaRecorder.onerror = (e) => {
-            console.error("mediaRecorder error", e);
-        };
-
-        mediaRecorder.start(1000);
-
-        await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    resolve();
-                } else {
-                    reject(new Error("recorder_not_running"));
-                }
-            }, 700);
-
-            try {
-                mediaRecorder.addEventListener("start", () => {
-                    clearTimeout(timer);
-                    resolve();
-                }, { once: true });
-            } catch (_) {}
-        });
-
-        console.log("🎥 grabación iniciada");
-        return true;
-
-    } catch (recordingError) {
-        console.error("recording init error", recordingError);
-
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
-
-        stream = null;
-        mediaRecorder = null;
-        recordedChunks = [];
-        recordingMimeType = "";
-        recordingExtension = "webm";
-
-        return false;
-    }
-}
-
-async function finalizeExperienceFlow() {
-    if (finishing) return;
-    finishing = true;
-
-    payoff.classList.add("show");
-    startSavingProgress();
-
-    try {
-        if (finishTimeout) {
-            clearTimeout(finishTimeout);
-            finishTimeout = null;
-        }
-    } catch (_) {}
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            try {
-                mediaRecorder.requestData();
-            } catch (_) {}
-
-            await new Promise((resolve) => {
-                let done = false;
-
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    clearTimeout(timeoutId);
-                    resolve();
-                };
-
-                const timeoutId = setTimeout(finish, 2500);
-
-                mediaRecorder.addEventListener("stop", finish, { once: true });
-
-                try {
-                    mediaRecorder.stop();
-                } catch (_) {
-                    finish();
-                }
-            });
-        }
-    } catch (e) {
-        console.error("recorder stop error", e);
-    }
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (e) {
-        console.error("stream stop error", e);
-    }
-
-    let blob = null;
-    try {
-        blob = new Blob(recordedChunks, {
-            type: recordingMimeType || "video/webm"
-        });
-
-        console.log("chunks:", recordedChunks.length);
-        console.log("blob size:", blob.size);
-    } catch (e) {
-        console.error("blob error", e);
-    }
-
-    try {
-        if (blob && blob.size > 0) {
-            const filename = "reaction." + recordingExtension;
-            const formData = new FormData();
-            formData.append("video", blob, filename);
-
-            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
-                method: "POST",
-                body: formData
-            });
-
-            const uploadData = await uploadResponse.json().catch(() => ({}));
-
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.detail || "upload_reaction_failed");
-            }
-
-            stopSavingProgress();
-            console.log("✅ reacción subida");
-        } else {
-            throw new Error("empty_blob");
-        }
-    } catch (e) {
-        console.error("upload error", e);
-
-        let humanMessage = buildFriendlyUploadMessage(
-            e?.message || e?.detail || ""
-        );
-
-        try { if (savingProgressTimer) clearInterval(savingProgressTimer); } catch (_) {}
-        savingProgressTimer = null;
-        payoffLoader.innerText = humanMessage;
-        showRetryActions();
-
-        finishing = false;
-        return;
-    }
-
-    setTimeout(() => {
-        window.location.replace("/finalizar-experiencia/" + recipientToken);
-    }, 900);
-}
-
-function armFinishFallbacks() {
-    video.addEventListener("ended", () => {
-        showPostVideoHold();
-        setTimeout(() => {
-            finalizeExperienceFlow();
-        }, 8000);
-    }, { once: true });
-
-    let fallbackMs = 120000;
-
-    if (Number.isFinite(video.duration) && video.duration > 0) {
-        fallbackMs = Math.max(23000, Math.floor(video.duration * 1000) + 11000);
-    }
-
-    finishTimeout = setTimeout(() => {
-        finalizeExperienceFlow();
-    }, fallbackMs);
-}
-
-async function safeResumePlayback() {
-    try {
-        if (!experienceStarted || finishing) return;
-
-        if (video.ended) {
-            finalizeExperienceFlow();
-            return;
-        }
-
-        if (video.paused) {
-            await video.play();
-        }
-    } catch (e) {
-        console.error("resume playback error", e);
-    }
-}
-
-async function eternaStartExperience() {
-    if (experienceStarted || experienceStarting) return;
-    experienceStarting = true;
-    console.log("🎭 ETERNA: usuario ha pulsado Empezar");
-
-    startBtn.disabled = true;
-    clearStartError();
-
-    try {
-        try {
-            video.pause();
-        } catch (_) {}
-
-        try {
-            video.currentTime = 0;
-        } catch (_) {}
-
-        const recordingStarted = await tryStartRecordingStrict();
-
-        if (!recordingStarted) {
-            showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
-            experienceStarting = false;
-            startBtn.disabled = false;
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append("recipient_token", recipientToken);
-
-        const response = await fetch("/start-experience", {
-            method: "POST",
-            body: formData
-        });
-
-        let data = {};
-        try {
-            data = await response.json();
-        } catch (_) {}
-
-        if (!response.ok) {
-            throw new Error(data.detail || "start_experience_error");
-        }
-
-        if (data.redirect_url) {
-            window.location.replace(data.redirect_url);
-            return;
-        }
-
-        video.load();
-        await waitForVideoReady();
-
-        overlay.classList.add("hidden");
-        experienceStarted = true;
-        experienceStarting = false;
-
-        armFinishFallbacks();
-
-        try {
-            await video.play();
-        } catch (e) {
-            console.error("video play error", e);
-
-            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
-            experienceStarted = false;
-            experienceStarting = false;
-            overlay.classList.remove("hidden");
-            startBtn.disabled = false;
-
-            try {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    mediaRecorder.stop();
-                }
-            } catch (_) {}
-
-            try {
-                if (stream) {
-                    stream.getTracks().forEach((t) => t.stop());
-                }
-            } catch (_) {}
-
-            stream = null;
-            mediaRecorder = null;
-            recordedChunks = [];
-            recordingMimeType = "";
-            recordingExtension = "webm";
-
-            return;
-        }
-
-    } catch (e) {
-        console.error("experience start error", e);
-
-        startBtn.disabled = false;
-        experienceStarted = false;
-        experienceStarting = false;
-        payoff.classList.remove("show");
-
-        try {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-            }
-        } catch (_) {}
-
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
-
-        stream = null;
-        mediaRecorder = null;
-        recordedChunks = [];
-        recordingMimeType = "";
-        recordingExtension = "webm";
-
-        showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
-    }
-}
-
-window.eternaStartExperience = eternaStartExperience;
-
-if (startBtn) {
-    startBtn.addEventListener("click", (event) => {
-        try { event.preventDefault(); } catch (_) {}
-        eternaStartExperience();
-    });
-}
-
-document.addEventListener("visibilitychange", async () => {
-    if (!experienceStarted || finishing) return;
-
-    if (document.visibilityState === "visible") {
-        await safeResumePlayback();
-    }
-});
-
-window.addEventListener("focus", async () => {
-    if (!experienceStarted || finishing) return;
-    await safeResumePlayback();
-});
-
-window.addEventListener("pagehide", () => {
-    if (!experienceStarted || finishing) return;
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
-    } catch (_) {}
-});
-
-window.addEventListener("beforeunload", () => {
-    if (!experienceStarted || finishing) return;
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
-    } catch (_) {}
-});
-
-if (retryExperienceBtn) {
-    retryExperienceBtn.addEventListener("click", () => {
-        resetRecordingState();
-        clearStartError();
-    });
-}
-
-if (backToStartBtn) {
-    backToStartBtn.addEventListener("click", () => {
-        window.location.replace("/pedido/" + recipientToken);
-    });
-}
-</script>
-</body>
-</html>
-    """
-
-    ritual_steps_server = [
-        {
-            "title": "Shhh…",
-            "text": "Esto no es un vídeo.<br>Es un momento.",
-            "soft": "No pienses.<br>Solo deja que ocurra.",
-            "button": "Continuar",
-            "final": False,
-        },
-        {
-            "title": "Sonido",
-            "text": "Si puedes…<br>escúchalo con sonido.",
-            "soft": "Mejor con auriculares.",
-            "button": "Continuar",
-            "final": False,
-        },
-        {
-            "title": "Antes de abrirlo",
-            "text": "Busca un momento tranquilo.",
-            "soft": "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
-            "button": "Ya está",
-            "final": False,
-        },
-        {
-            "title": "Colócate",
-            "text": "Pon el teléfono frente a ti.",
-            "soft": "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
-            "button": "Listo",
-            "final": False,
-        },
-        {
-            "title": "Luz",
-            "text": "Deja que haya algo de luz frente a ti.",
-            "soft": "Lo justo para poder verte.",
-            "button": "Perfecto",
-            "final": False,
-        },
-        {
-            "title": "Presencia",
-            "text": "No hagas nada especial.",
-            "soft": "Solo míralo.<br>Este momento es tuyo.",
-            "button": "Continuar",
-            "final": False,
-        },
-        {
-            "title": "Una última cosa",
-            "text": "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
-            "soft": "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
-            "button": "Aceptar y continuar",
-            "final": False,
-        },
-        {
-            "title": "Cuando estés listo…",
-            "text": "Pulsa empezar.",
-            "soft": "Y déjate llevar.",
-            "button": "Empezar",
-            "final": True,
-        },
-    ]
-
-    ritual_current = ritual_steps_server[min(ritual_step, len(ritual_steps_server) - 1)]
-
-    html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
-    html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
-    html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-    html_page = html_page.replace("__RITUAL_STEP__", str(ritual_step))
-    html_page = html_page.replace("__RITUAL_TITLE__", safe_text(ritual_current["title"]))
-    html_page = html_page.replace("__RITUAL_TEXT__", ritual_current["text"])
-    html_page = html_page.replace("__RITUAL_SOFT__", ritual_current["soft"])
-    html_page = html_page.replace("__RITUAL_BUTTON__", safe_text(ritual_current["button"]))
-    html_page = html_page.replace("__RITUAL_NEXT_URL__", safe_attr(f"/experiencia/{recipient_token}?ritual_step={next_ritual_step}"))
-    html_page = html_page.replace("__RITUAL_NEXT_DISPLAY__", "none" if ritual_current.get("final") else "inline-block")
-    html_page = html_page.replace("__START_DISPLAY__", "inline-block" if ritual_current.get("final") else "none")
-    html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
-    html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
-
-    return HTMLResponse(html_page)
-
-
 # =========================================================
 # UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
 # =========================================================
