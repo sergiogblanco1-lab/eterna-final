@@ -5057,8 +5057,8 @@ async function tryStartRecordingStrict() {
         stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: "user",
-                width: { ideal: 360, max: 480 },
-                height: { ideal: 640, max: 854 },
+                width: { ideal: 480, max: 480 },
+                height: { ideal: 640, max: 640 },
                 frameRate: { ideal: 15, max: 15 }
             },
             audio: {
@@ -5074,7 +5074,7 @@ async function tryStartRecordingStrict() {
         recordedChunks = [];
 
         const recorderOptions = {
-            videoBitsPerSecond: 300000,
+            videoBitsPerSecond: 250000,
             audioBitsPerSecond: 24000
         };
 
@@ -5142,12 +5142,16 @@ async function tryStartRecordingStrict() {
     }
 }
 
+function eternaWait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function finalizeExperienceFlow() {
     if (finishing) return;
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
+    payoffLoader.innerText = "Guardando emoción…\nNo cierres esta ventana.";
 
     try {
         if (finishTimeout) {
@@ -5158,9 +5162,13 @@ async function finalizeExperienceFlow() {
 
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
+            // iPhone/Safari necesita tiempo real para cerrar el encoder antes de crear el blob.
+            // Primero pedimos el último chunk, esperamos, paramos, esperamos onstop y damos un margen extra.
             try {
                 mediaRecorder.requestData();
             } catch (_) {}
+
+            await eternaWait(1500);
 
             await new Promise((resolve) => {
                 let done = false;
@@ -5172,9 +5180,11 @@ async function finalizeExperienceFlow() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 2500);
+                const timeoutId = setTimeout(finish, 6000);
 
-                mediaRecorder.addEventListener("stop", finish, { once: true });
+                try {
+                    mediaRecorder.addEventListener("stop", finish, { once: true });
+                } catch (_) {}
 
                 try {
                     mediaRecorder.stop();
@@ -5182,9 +5192,14 @@ async function finalizeExperienceFlow() {
                     finish();
                 }
             });
+
+            await eternaWait(1500);
+        } else {
+            await eternaWait(1000);
         }
     } catch (e) {
         console.error("recorder stop error", e);
+        await eternaWait(1000);
     }
 
     try {
@@ -5212,6 +5227,12 @@ async function finalizeExperienceFlow() {
             const filename = "reaction." + recordingExtension;
             const formData = new FormData();
             formData.append("video", blob, filename);
+
+            try {
+                if (payoffLoader) {
+                    payoffLoader.innerText = "Subiendo emoción…\nNo cierres esta ventana.";
+                }
+            } catch (_) {}
 
             const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
                 method: "POST",
@@ -5934,8 +5955,8 @@ async function prepareCameraAndMicrophoneBeforeStart() {
         stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: "user",
-                width: { ideal: 360, max: 480 },
-                height: { ideal: 640, max: 854 },
+                width: { ideal: 480, max: 480 },
+                height: { ideal: 640, max: 640 },
                 frameRate: { ideal: 15, max: 15 }
             },
             audio: {
@@ -6164,7 +6185,7 @@ async function tryStartRecordingStrict() {
         recordedChunks = [];
 
         const recorderOptions = {
-            videoBitsPerSecond: 300000,
+            videoBitsPerSecond: 250000,
             audioBitsPerSecond: 24000
         };
 
@@ -6232,6 +6253,10 @@ async function tryStartRecordingStrict() {
     }
 }
 
+function eternaWait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function finalizeExperienceFlow() {
     if (finishing) return;
     finishing = true;
@@ -6248,9 +6273,13 @@ async function finalizeExperienceFlow() {
 
     try {
         if (mediaRecorder && mediaRecorder.state === "recording") {
+            // iPhone/Safari necesita tiempo real para cerrar el encoder antes de crear el blob.
+            // Primero pedimos el último chunk, esperamos, paramos, esperamos onstop y damos un margen extra.
             try {
                 mediaRecorder.requestData();
             } catch (_) {}
+
+            await eternaWait(1500);
 
             await new Promise((resolve) => {
                 let done = false;
@@ -6262,9 +6291,11 @@ async function finalizeExperienceFlow() {
                     resolve();
                 };
 
-                const timeoutId = setTimeout(finish, 2500);
+                const timeoutId = setTimeout(finish, 6000);
 
-                mediaRecorder.addEventListener("stop", finish, { once: true });
+                try {
+                    mediaRecorder.addEventListener("stop", finish, { once: true });
+                } catch (_) {}
 
                 try {
                     mediaRecorder.stop();
@@ -6272,9 +6303,14 @@ async function finalizeExperienceFlow() {
                     finish();
                 }
             });
+
+            await eternaWait(1500);
+        } else {
+            await eternaWait(1000);
         }
     } catch (e) {
         console.error("recorder stop error", e);
+        await eternaWait(1000);
     }
 
     try {
@@ -6302,6 +6338,12 @@ async function finalizeExperienceFlow() {
             const filename = "reaction." + recordingExtension;
             const formData = new FormData();
             formData.append("video", blob, filename);
+
+            try {
+                if (payoffLoader) {
+                    payoffLoader.innerText = "Subiendo emoción…\nNo cierres esta ventana.";
+                }
+            } catch (_) {}
 
             const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
                 method: "POST",
