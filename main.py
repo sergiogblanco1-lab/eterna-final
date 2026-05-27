@@ -9,7 +9,6 @@ print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
 
-print("🔥 REACTION RECORDING ULTRA LIGHT IPHONE 480P 15FPS VERSION 🔥")
 import html
 import json
 import mimetypes
@@ -98,7 +97,7 @@ SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
-MAX_VIDEO_SIZE = 100 * 1024 * 1024
+MAX_VIDEO_SIZE = 15 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
     "video/webm",
     "video/mp4",
@@ -1194,7 +1193,7 @@ def get_phrases_by_type(message_type: str):
 
 
 def twilio_enabled() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
 
 
 def send_sms(phone: str, message: str) -> dict:
@@ -1208,9 +1207,6 @@ def send_sms(phone: str, message: str) -> dict:
         print("🚫 SMS DESACTIVADO POR CONFIG")
         print("🚫 Destino:", to_phone)
         return {"ok": False, "sid": None, "error": "sms_disabled_by_config"}
-
-    if not TWILIO_FROM_NUMBER:
-        return {"ok": False, "sid": None, "error": "missing_twilio_sms_from"}
 
     if not twilio_enabled():
         return {"ok": False, "sid": None, "error": "twilio_not_configured"}
@@ -4544,9 +4540,6 @@ async def start_experience(recipient_token: str = Form(...)):
             "ok": True
         })
 
-    except HTTPException:
-        raise
-
     except Exception as e:
         log_error("START EXPERIENCE ERROR", e)
         raise HTTPException(status_code=500, detail="start_experience_failed")
@@ -5059,33 +5052,6 @@ function detectRecordingFormat() {
     return { mimeType: "", extension: "webm" };
 }
 
-function buildRecorderOptions(mimeType) {
-    const options = {
-        videoBitsPerSecond: 250000,
-        audioBitsPerSecond: 24000
-    };
-
-    if (mimeType) {
-        options.mimeType = mimeType;
-    }
-
-    return options;
-}
-
-function createLightMediaRecorder(stream, mimeType) {
-    try {
-        return new MediaRecorder(stream, buildRecorderOptions(mimeType));
-    } catch (e) {
-        console.warn("light recorder options fallback", e);
-        if (mimeType) {
-            try {
-                return new MediaRecorder(stream, { mimeType: mimeType });
-            } catch (_) {}
-        }
-        return new MediaRecorder(stream);
-    }
-}
-
 async function tryStartRecordingStrict() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -5107,7 +5073,23 @@ async function tryStartRecordingStrict() {
         recordingExtension = format.extension;
         recordedChunks = [];
 
-        mediaRecorder = createLightMediaRecorder(stream, recordingMimeType);
+        const recorderOptions = {
+            videoBitsPerSecond: 300000,
+            audioBitsPerSecond: 24000
+        };
+
+        if (recordingMimeType) {
+            recorderOptions.mimeType = recordingMimeType;
+        }
+
+        try {
+            mediaRecorder = new MediaRecorder(stream, recorderOptions);
+        } catch (e) {
+            console.warn("MediaRecorder low bitrate options failed, using safer fallback", e);
+            mediaRecorder = recordingMimeType
+                ? new MediaRecorder(stream, { mimeType: recordingMimeType })
+                : new MediaRecorder(stream);
+        }
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
@@ -5465,9 +5447,7 @@ if (backToStartBtn) {
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
-    response = HTMLResponse(html_page)
-    attach_recipient_session_if_needed(order, request, response)
-    return response
+    return HTMLResponse(html_page)
 
 
 
@@ -6170,33 +6150,6 @@ function detectRecordingFormat() {
     return { mimeType: "", extension: "webm" };
 }
 
-function buildRecorderOptions(mimeType) {
-    const options = {
-        videoBitsPerSecond: 250000,
-        audioBitsPerSecond: 24000
-    };
-
-    if (mimeType) {
-        options.mimeType = mimeType;
-    }
-
-    return options;
-}
-
-function createLightMediaRecorder(stream, mimeType) {
-    try {
-        return new MediaRecorder(stream, buildRecorderOptions(mimeType));
-    } catch (e) {
-        console.warn("light recorder options fallback", e);
-        if (mimeType) {
-            try {
-                return new MediaRecorder(stream, { mimeType: mimeType });
-            } catch (_) {}
-        }
-        return new MediaRecorder(stream);
-    }
-}
-
 async function tryStartRecordingStrict() {
     try {
         const prepared = await prepareCameraAndMicrophoneBeforeStart();
@@ -6210,7 +6163,23 @@ async function tryStartRecordingStrict() {
         recordingExtension = format.extension;
         recordedChunks = [];
 
-        mediaRecorder = createLightMediaRecorder(stream, recordingMimeType);
+        const recorderOptions = {
+            videoBitsPerSecond: 300000,
+            audioBitsPerSecond: 24000
+        };
+
+        if (recordingMimeType) {
+            recorderOptions.mimeType = recordingMimeType;
+        }
+
+        try {
+            mediaRecorder = new MediaRecorder(stream, recorderOptions);
+        } catch (e) {
+            console.warn("MediaRecorder low bitrate options failed, using safer fallback", e);
+            mediaRecorder = recordingMimeType
+                ? new MediaRecorder(stream, { mimeType: recordingMimeType })
+                : new MediaRecorder(stream);
+        }
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
@@ -7173,17 +7142,17 @@ def sender_pack(sender_token: str):
     sender_status = "Tu ETERNA ha vuelto."
 
     body_content = f"""
-    <div style="max-width:760px;margin:0 auto;padding:34px 18px 80px;text-align:center;color:white;">
+    <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
 
-        <h1 style="font-size:40px;font-weight:800;margin-bottom:14px;line-height:1.12;">
+        <h1 style="font-size:46px;font-weight:800;margin-bottom:18px;">
             {sender_status}
         </h1>
 
-        <p style="font-size:19px;opacity:.86;margin-bottom:24px;line-height:1.55;">
+        <p style="font-size:22px;opacity:.9;margin-bottom:30px;">
             Lo que diste… ha encontrado el camino de vuelta.
         </p>
 
-        <div style="position:relative;width:min(100%,430px);aspect-ratio:9/16;margin:0 auto;background:#050505;border-radius:32px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.08);">
+        <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
 
             <!-- VIDEO REACCIÓN -->
             <video
@@ -7192,7 +7161,7 @@ def sender_pack(sender_token: str):
                 webkit-playsinline
                 controls
                 preload="metadata"
-                style="width:100%;height:100%;display:block;background:black;object-fit:cover;"
+                style="width:100%;display:block;background:black;"
             >
                 <source src="{reaction_url}" type="video/mp4">
             </video>
@@ -7208,14 +7177,10 @@ def sender_pack(sender_token: str):
                     position:absolute;
                     right:14px;
                     bottom:14px;
-                    width:26%;
-                    max-width:112px;
-                    aspect-ratio:9/16;
-                    object-fit:cover;
+                    width:30%;
+                    max-width:140px;
                     border-radius:16px;
                     background:black;
-                    box-shadow:0 10px 30px rgba(0,0,0,.45);
-                    border:1px solid rgba(255,255,255,.18);
                 "
             >
                 <source src="{original_video_url}" type="video/mp4">
