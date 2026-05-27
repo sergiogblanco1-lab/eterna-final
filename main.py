@@ -5034,13 +5034,13 @@ body {
     <div class="overlay" id="overlay">
         <div class="card">
             <div class="eyebrow">ETERNA</div>
-            <h1 class="title" id="ritualTitle">Shhh…</h1>
-            <div class="text" id="ritualText">Esto no es un vídeo.<br>Es un momento.</div>
-            <div class="soft" id="ritualSoft">No pienses.<br>Solo deja que ocurra.</div>
+            <h1 class="title" id="ritualTitle">Antes de vivirlo</h1>
+            <div class="text" id="ritualText">Colócate con calma.<br>Busca buena luz y pon el teléfono frente a ti.</div>
+            <div class="soft" id="ritualSoft">Para abrir esta experiencia necesitamos activar cámara y micrófono.</div>
 
             <div class="actions">
-                <button type="button" class="btn" id="nextBtn">Continuar</button>
-                <button type="button" class="btn" id="startBtn" style="display:none;">Aceptar y empezar</button>
+                <button type="button" class="btn" id="nextBtn" style="display:none;">Continuar</button>
+                <button type="button" class="btn" id="startBtn">Acepto y vivir la experiencia</button>
             </div>
 
             <div class="error-note" id="errorNote"></div>
@@ -5099,38 +5099,10 @@ let savingProgressTimer = null;
 
 const ritualSteps = [
     {
-        title: "Shhh…",
-        text: "Esto no es un vídeo.<br>Es un momento.",
-        soft: "No pienses.<br>Solo deja que ocurra.",
-        button: "Continuar",
-        final: false
-    },
-    {
-        title: "Antes de abrirlo",
-        text: "Busca un sitio tranquilo.",
-        soft: "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
-        button: "Ya estoy",
-        final: false
-    },
-    {
-        title: "Colócate",
-        text: "Pon el teléfono frente a ti.",
-        soft: "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
-        button: "Listo",
-        final: false
-    },
-    {
-        title: "Luz",
-        text: "Deja algo de luz frente a ti.",
-        soft: "No hace falta nada perfecto.<br>Solo que puedas estar cómodo.",
-        button: "Perfecto",
-        final: false
-    },
-    {
-        title: "Una última cosa",
-        text: "Para vivir esta experiencia,<br>necesitamos activar cámara y micrófono.",
-        soft: "Al continuar, aceptas que durante la experiencia se grabe tu imagen y tu voz para crear un recuerdo privado que recibirá la persona que te lo ha enviado.<span class='legal'>No tienes que hacer nada especial. Solo estar presente. Si no quieres ser grabado, puedes cerrar esta pantalla ahora.</span>",
-        button: "Acepto y empezar",
+        title: "Antes de vivirlo",
+        text: "Colócate con calma.<br>Busca buena luz y pon el teléfono frente a ti.",
+        soft: "Para abrir esta experiencia necesitamos activar cámara y micrófono.<span class='legal'>Al pulsar el botón, aceptas que durante la experiencia se grabe tu imagen y tu voz para crear un recuerdo privado que recibirá la persona que te lo ha enviado. Si no quieres ser grabado, puedes cerrar esta pantalla ahora.</span>",
+        button: "Acepto y vivir la experiencia",
         final: true
     }
 ];
