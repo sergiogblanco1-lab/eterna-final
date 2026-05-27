@@ -3905,7 +3905,170 @@ h1 {
         """)
 
     if original_video_ready(order) and delivery_is_unlocked(order):
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+        experience_href = f"/experiencia/{safe_attr(recipient_token)}"
+        html_page = f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<style>
+* {{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }}
+html, body {{
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+}}
+body {{
+    min-height: 100vh;
+    min-height: 100dvh;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 32%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: max(24px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom)) 24px;
+    touch-action: manipulation;
+}}
+.wrap {{
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+}}
+.brand {{
+    font-size: 12px;
+    letter-spacing: 0.30em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 26px;
+}}
+h1 {{
+    margin: 0 0 22px 0;
+    font-size: clamp(42px, 11vw, 68px);
+    line-height: 1.05;
+    font-weight: 800;
+}}
+.main {{
+    font-size: clamp(21px, 5.6vw, 27px);
+    line-height: 1.65;
+    color: rgba(255,255,255,0.90);
+}}
+.soft {{
+    margin: 24px auto 0 auto;
+    max-width: 480px;
+    font-size: 15px;
+    line-height: 1.75;
+    color: rgba(255,255,255,0.56);
+}}
+.actions {{
+    display: grid;
+    gap: 12px;
+    max-width: 420px;
+    margin: 34px auto 0 auto;
+}}
+.btn {{
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+    width: 100%;
+    padding: 19px 24px;
+    border-radius: 999px;
+    background: #fff;
+    color: #000;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 17px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 20;
+    touch-action: manipulation;
+}}
+.btn:active {{ transform: scale(0.99); }}
+.note {{
+    margin-top: 16px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: rgba(255,255,255,0.42);
+}}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="brand">ETERNA</div>
+        <h1>Hay algo para ti</h1>
+        <div class="main">
+            Alguien quiso dejarte un momento<br>
+            que no se olvida.
+        </div>
+        <div class="soft">
+            Busca un sitio tranquilo. Cuando pulses, empezará una experiencia privada creada para ti.
+        </div>
+        <div class="actions">
+            <a class="btn" id="liveExperienceBtn" href="{experience_href}" role="button">Vivir la experiencia</a>
+        </div>
+        <div class="note" id="tapNote">Pulsa una sola vez y mantén esta pantalla abierta.</div>
+    </div>
+
+<script>
+(function () {{
+    "use strict";
+    var btn = document.getElementById("liveExperienceBtn");
+    var note = document.getElementById("tapNote");
+    var going = false;
+    var href = btn ? btn.getAttribute("href") : "{experience_href}";
+
+    function go(event) {{
+        try {{
+            if (event) event.preventDefault();
+        }} catch (_) {{}}
+
+        if (going) return false;
+        going = true;
+
+        try {{
+            if (btn) {{
+                btn.innerText = "Abriendo…";
+                btn.style.pointerEvents = "none";
+                btn.setAttribute("aria-disabled", "true");
+            }}
+            if (note) note.innerText = "No cierres Safari. Preparando el momento…";
+        }} catch (_) {{}}
+
+        setTimeout(function () {{
+            window.location.assign(href);
+        }}, 80);
+
+        setTimeout(function () {{
+            if (window.location.pathname.indexOf("/experiencia/") === -1) {{
+                window.location.href = href;
+            }}
+        }}, 900);
+
+        return false;
+    }}
+
+    if (btn) {{
+        btn.onclick = go;
+        btn.addEventListener("click", go, false);
+        btn.addEventListener("touchend", function (event) {{
+            try {{ event.preventDefault(); }} catch (_) {{}}
+            go(event);
+        }}, {{ passive: false }});
+    }}
+}})();
+</script>
+</body>
+</html>
+        """
+        response = HTMLResponse(html_page)
+        attach_recipient_session_if_needed(order, request, response)
+        return response
 
     refresh = '<meta http-equiv="refresh" content="8">' if not original_video_ready(order) else ""
 
@@ -4931,6 +5094,7 @@ let experienceStarted = false;
 let experienceStarting = false;
 let finishing = false;
 let finishTimeout = null;
+const POST_VIDEO_REACTION_PAD_MS = 8000;
 let savingProgressTimer = null;
 
 const ritualSteps = [
@@ -5331,11 +5495,12 @@ function showRetryActions() {
     } catch (_) {}
 }
 
-async function finalizeExperienceFlow() {
+async function finalizeExperienceFlow(postVideoDelayMs = 0) {
     if (finishing) return;
     finishing = true;
 
-    debug("finalize start");
+    const safePostVideoDelayMs = Math.max(0, Number(postVideoDelayMs || 0));
+    debug("finalize start delay=" + safePostVideoDelayMs);
 
     try {
         if (finishTimeout) clearTimeout(finishTimeout);
@@ -5349,6 +5514,11 @@ async function finalizeExperienceFlow() {
     let blob = null;
 
     try {
+        if (safePostVideoDelayMs > 0) {
+            setSavingMessage("Unos segundos más…\nEstamos guardando tu reacción completa.");
+            await wait(safePostVideoDelayMs);
+        }
+
         await wait(1200);
         blob = await stopRecorderAndBuildBlob();
     } catch (e) {
@@ -5402,7 +5572,7 @@ async function finalizeExperienceFlow() {
 
 function armFinishFallbacks() {
     video.addEventListener("ended", () => {
-        finalizeExperienceFlow();
+        finalizeExperienceFlow(POST_VIDEO_REACTION_PAD_MS);
     }, { once: true });
 
     let fallbackMs = 120000;
@@ -5414,7 +5584,7 @@ function armFinishFallbacks() {
     } catch (_) {}
 
     finishTimeout = setTimeout(() => {
-        finalizeExperienceFlow();
+        finalizeExperienceFlow(POST_VIDEO_REACTION_PAD_MS);
     }, fallbackMs);
 }
 
@@ -5423,7 +5593,7 @@ async function safeResumePlayback() {
         if (!experienceStarted || finishing) return;
 
         if (video.ended) {
-            finalizeExperienceFlow();
+            finalizeExperienceFlow(POST_VIDEO_REACTION_PAD_MS);
             return;
         }
 
