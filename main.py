@@ -4898,9 +4898,26 @@ body {
     transform: scale(0.99);
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn[aria-disabled="true"] {
     opacity: 0.72;
     cursor: default;
+}
+
+.start-hotzone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    -webkit-tap-highlight-color: rgba(255,255,255,0.25);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.actions {
+    position: relative;
+    z-index: 80;
+    pointer-events: auto;
 }
 
 .secondary-btn {
@@ -5038,9 +5055,18 @@ body {
             <div class="text" id="ritualText">Colócate con calma.<br>Busca buena luz y pon el teléfono frente a ti.</div>
             <div class="soft" id="ritualSoft">Para abrir esta experiencia necesitamos activar cámara y micrófono.</div>
 
-            <div class="actions">
+            <div class="actions" id="startActionZone">
                 <button type="button" class="btn" id="nextBtn" style="display:none;">Continuar</button>
-                <button type="button" class="btn" id="startBtn">Acepto y vivir la experiencia</button>
+                <a
+                    href="#vivir"
+                    class="btn start-hotzone"
+                    id="startBtn"
+                    role="button"
+                    tabindex="0"
+                    onclick="return window.ETERNA_FORCE_START ? window.ETERNA_FORCE_START(event) : false;"
+                    ontouchstart="return window.ETERNA_FORCE_START ? window.ETERNA_FORCE_START(event) : false;"
+                    onpointerdown="return window.ETERNA_FORCE_START ? window.ETERNA_FORCE_START(event) : false;"
+                >Acepto y vivir la experiencia</a>
             </div>
 
             <div class="error-note" id="errorNote"></div>
@@ -5171,6 +5197,7 @@ function renderRitualStep() {
         startBtn.style.display = "inline-block";
         startBtn.innerText = step.button || "Aceptar y empezar";
         startBtn.disabled = false;
+        startBtn.setAttribute("aria-disabled", "false");
     } else {
         startBtn.style.display = "none";
         nextBtn.style.display = "inline-block";
@@ -5582,6 +5609,7 @@ async function startExperience() {
 
     experienceStarting = true;
     startBtn.disabled = true;
+    startBtn.setAttribute("aria-disabled", "true");
     clearStartError();
 
     try {
@@ -5649,12 +5677,39 @@ async function startExperience() {
         experienceStarted = false;
         experienceStarting = false;
         startBtn.disabled = false;
+        startBtn.setAttribute("aria-disabled", "false");
         overlay.classList.remove("hidden");
         video.classList.remove("live");
 
         showStartError(friendlyError(e && e.message ? e.message : e));
     }
 }
+
+function forceStartFromEvent(event) {
+    try {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        }
+    } catch (_) {}
+
+    try {
+        debug("FORCE_START_EVENT");
+        startExperience();
+    } catch (e) {
+        console.error("force start error:", e);
+        showStartError(friendlyError(e && e.message ? e.message : e));
+        try {
+            startBtn.disabled = false;
+            startBtn.setAttribute("aria-disabled", "false");
+        } catch (_) {}
+    }
+
+    return false;
+}
+
+window.ETERNA_FORCE_START = forceStartFromEvent;
 
 function bindClicks() {
     nextBtn.onclick = function (event) {
@@ -5667,30 +5722,34 @@ function bindClicks() {
             ritualStep += 1;
             renderRitualStep();
         }
+
+        return false;
     };
 
-    startBtn.onclick = function (event) {
-        try {
-            event.preventDefault();
-            event.stopPropagation();
-        } catch (_) {}
+    startBtn.onclick = forceStartFromEvent;
 
-        startExperience();
-    };
+    ["click", "touchstart", "pointerdown", "mousedown", "keydown"].forEach(function (eventName) {
+        startBtn.addEventListener(eventName, function (event) {
+            try {
+                if (eventName === "keydown" && event.key !== "Enter" && event.key !== " ") return;
+            } catch (_) {}
+            forceStartFromEvent(event);
+        }, { passive: false, capture: true });
+    });
 
-    nextBtn.addEventListener("touchend", function (event) {
+    document.addEventListener("click", function (event) {
         try {
-            event.preventDefault();
+            const target = event.target && event.target.closest ? event.target.closest("#startBtn, #startActionZone") : null;
+            if (target) forceStartFromEvent(event);
         } catch (_) {}
-        nextBtn.click();
-    }, { passive: false });
+    }, true);
 
-    startBtn.addEventListener("touchend", function (event) {
+    document.addEventListener("touchstart", function (event) {
         try {
-            event.preventDefault();
+            const target = event.target && event.target.closest ? event.target.closest("#startBtn, #startActionZone") : null;
+            if (target) forceStartFromEvent(event);
         } catch (_) {}
-        startBtn.click();
-    }, { passive: false });
+    }, { passive: false, capture: true });
 }
 
 document.addEventListener("visibilitychange", async () => {
