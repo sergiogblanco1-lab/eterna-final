@@ -5431,7 +5431,12 @@ function detectRecordingFormat() {
 async function tryStartRecordingStrict() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: {
+                facingMode: "user",
+                width: { ideal: 360, max: 480 },
+                height: { ideal: 640, max: 854 },
+                frameRate: { ideal: 12, max: 15 }
+            },
             audio: true
         });
 
@@ -5446,9 +5451,16 @@ async function tryStartRecordingStrict() {
         liveUploadFailed = false;
         liveLastError = null;
 
-        mediaRecorder = recordingMimeType
-            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
-            : new MediaRecorder(stream);
+        const recorderOptions = {
+            videoBitsPerSecond: 260000,
+            audioBitsPerSecond: 32000
+        };
+
+        if (recordingMimeType) {
+            recorderOptions.mimeType = recordingMimeType;
+        }
+
+        mediaRecorder = new MediaRecorder(stream, recorderOptions);
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
@@ -5462,7 +5474,9 @@ async function tryStartRecordingStrict() {
             logClientStep("recording_error", "error", "MediaRecorder lanzó un error", { error: String(e && e.message ? e.message : e) });
         };
 
-        mediaRecorder.start(2000);
+        // Menos trozos = menos lentitud y menos riesgo en Render/Safari.
+        // Cada 8s seguimos teniendo rescate progresivo, pero sin saturar backend.
+        mediaRecorder.start(8000);
         logClientStep("recording_started", "ok", "Cámara y grabación iniciadas");
 
         await new Promise((resolve, reject) => {
@@ -5556,7 +5570,7 @@ async function finishLiveUploadIfPossible() {
 }
 
 async function uploadReactionChunked(blob) {
-    const chunkSize = 1024 * 1024; // 1 MB: más seguro para iPhone/Safari.
+    const chunkSize = 4 * 1024 * 1024; // 4 MB: menos llamadas, más rápido, sigue siendo seguro para Safari.
     const totalChunks = Math.max(1, Math.ceil(blob.size / chunkSize));
     const sessionId = String(Date.now()) + "_" + Math.random().toString(16).slice(2);
 
@@ -5624,7 +5638,7 @@ async function uploadReactionChunked(blob) {
 
 async function uploadReactionSafely(blob) {
     // Pequeños: subida clásica. Grandes: trozos. Si la clásica falla, fallback a trozos.
-    const singleLimit = 3 * 1024 * 1024;
+    const singleLimit = 4 * 1024 * 1024;
     if (blob.size <= singleLimit) {
         try {
             return await uploadReactionSingle(blob);
@@ -5991,7 +6005,7 @@ async def upload_reaction_live_chunk(
     if not data:
         raise HTTPException(status_code=400, detail="empty_chunk")
 
-    if len(data) > 3 * 1024 * 1024:
+    if len(data) > 8 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="chunk_too_large")
 
     chunk_path = session_folder / f"chunk_{chunk_index:05d}.part"
@@ -6068,7 +6082,7 @@ async def upload_reaction_chunk(
     if not data:
         raise HTTPException(status_code=400, detail="empty_chunk")
 
-    if len(data) > 2 * 1024 * 1024:
+    if len(data) > 8 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="chunk_too_large")
 
     chunk_path = session_folder / f"chunk_{chunk_index:05d}.part"
@@ -6102,9 +6116,19 @@ async def upload_reaction_chunk(
 async def finish_reaction_upload(
     recipient_token: str,
     session_id: str = Form(...),
-    total_chunks: int = Form(...),
+    total_chunks: int = Form(0),
     extension: str = Form("webm"),
 ):
+    """
+    🔧 FINISH FLEXIBLE / MODO MÁQUINA
+    Antes fallaba con 400 si faltaba 1 chunk o Safari mandaba un contador raro.
+    Ahora NO mata la experiencia por eso:
+    - busca todos los chunks reales guardados
+    - los ordena
+    - ensambla lo recibido
+    - guarda local primero
+    - R2 después
+    """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
@@ -6123,28 +6147,44 @@ async def finish_reaction_upload(
         extension = "webm"
 
     try:
-        total_chunks = int(total_chunks)
+        total_chunks = int(total_chunks or 0)
     except Exception:
-        raise HTTPException(status_code=400, detail="invalid_total_chunks")
+        total_chunks = 0
 
     session_folder = REACTION_CHUNKS_FOLDER / order["id"] / session_id
     if not session_folder.exists():
+        insert_order_event(order["id"], "🧩 finish_no_session", "error", "No existe carpeta de chunks", {"session_id": session_id})
         raise HTTPException(status_code=400, detail="chunk_session_not_found")
 
-    missing = []
-    for index in range(total_chunks):
-        if not (session_folder / f"chunk_{index:05d}.part").exists():
-            missing.append(index)
+    chunk_files = sorted(session_folder.glob("chunk_*.part"))
+    received = len(chunk_files)
 
-    if missing:
-        insert_order_event(order["id"], "reaction_chunks_missing", "error", "Faltan chunks de la reacción", {"session_id": session_id, "missing": missing[:20]})
-        raise HTTPException(status_code=400, detail="missing_chunks")
+    if received <= 0:
+        insert_order_event(order["id"], "🧩 finish_no_chunks", "error", "No hay chunks recibidos", {"session_id": session_id})
+        raise HTTPException(status_code=400, detail="no_chunks_received")
+
+    # Informe humano: si Safari dijo 80 y llegaron 78, no rompemos; ensamblamos los 78.
+    if total_chunks and received < total_chunks:
+        insert_order_event(
+            order["id"],
+            "⚠️ reaction_finish_flexible",
+            "warning",
+            f"Safari anunció {total_chunks} chunks, llegaron {received}. Ensamblo lo recibido para no perder la reacción.",
+            {"session_id": session_id, "declared": total_chunks, "received": received},
+        )
+    else:
+        insert_order_event(
+            order["id"],
+            "🧩 reaction_finish_start",
+            "ok",
+            f"Ensamblando reacción con {received} chunks",
+            {"session_id": session_id, "declared": total_chunks, "received": received},
+        )
 
     local_path = reaction_video_path(order["id"], extension)
     try:
         with open(local_path, "wb") as out:
-            for index in range(total_chunks):
-                part_path = session_folder / f"chunk_{index:05d}.part"
+            for part_path in chunk_files:
                 with open(part_path, "rb") as part:
                     out.write(part.read())
 
@@ -6153,24 +6193,46 @@ async def finish_reaction_upload(
             raise Exception("assembled_file_empty")
 
         if saved_size > MAX_VIDEO_SIZE:
+            # Último blindaje: no borramos nada; dejamos pendiente y visible.
+            update_order(order["id"], reaction_upload_pending=1, reaction_upload_error="video_too_large_after_assembly")
+            insert_order_event(order["id"], "🚫 reaction_too_large", "error", "La reacción ensamblada pesa demasiado", {"bytes": saved_size})
             raise HTTPException(status_code=400, detail="video_too_large")
 
-        insert_order_event(order["id"], "reaction_assembled", "ok", "Reacción recompuesta desde chunks", {"session_id": session_id, "bytes": saved_size, "chunks": total_chunks})
-        updated_order = complete_reaction_from_local_file(order, local_path, extension=extension, source="chunked_upload")
-        return JSONResponse({"ok": True, "redirect": f"/cobrar/{recipient_token}", "bytes": saved_size})
+        insert_order_event(
+            order["id"],
+            "💾 reaction_local_saved",
+            "ok",
+            "Reacción guardada localmente antes de R2",
+            {"session_id": session_id, "bytes": saved_size, "chunks": received},
+        )
+
+        updated_order = complete_reaction_from_local_file(order, local_path, extension=extension, source="chunked_upload_flexible")
+
+        insert_order_event(
+            order["id"],
+            "✅ reaction_completed",
+            "ok",
+            "La reacción quedó salvada y ETERNA puede continuar",
+            {"bytes": saved_size, "chunks": received, "r2": bool(updated_order.get("reaction_video_public_url"))},
+        )
+
+        return JSONResponse({
+            "ok": True,
+            "redirect": f"/cobrar/{recipient_token}",
+            "bytes": saved_size,
+            "chunks_received": received,
+            "chunks_declared": total_chunks,
+            "finish_mode": "flexible",
+        })
 
     except HTTPException:
         raise
     except Exception as e:
         update_order(order["id"], reaction_upload_pending=0, reaction_upload_error="chunk_assembly_failed")
-        insert_order_event(order["id"], "reaction_chunk_finish_failed", "error", str(e), {"session_id": session_id})
+        insert_order_event(order["id"], "❌ reaction_chunk_finish_failed", "error", str(e), {"session_id": session_id, "received": received})
         log_error("finish_reaction_upload", e)
         raise HTTPException(status_code=500, detail="chunk_assembly_failed")
 
-
-# =========================================================
-# UPLOAD REACTION (DEFINITIVO + SMS REGALANTE)
-# =========================================================
 
 @app.post("/upload-reaction/{recipient_token}")
 async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
