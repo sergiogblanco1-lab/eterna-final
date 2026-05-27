@@ -5060,8 +5060,8 @@ function detectRecordingFormat() {
 
 function buildRecorderOptions(mimeType) {
     const options = {
-        videoBitsPerSecond: 900000,
-        audioBitsPerSecond: 64000
+        videoBitsPerSecond: 350000,
+        audioBitsPerSecond: 32000
     };
 
     if (mimeType) {
@@ -5090,9 +5090,9 @@ async function tryStartRecordingStrict() {
         stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: "user",
-                width: { ideal: 540, max: 720 },
-                height: { ideal: 960, max: 1280 },
-                frameRate: { ideal: 20, max: 24 }
+                width: { ideal: 360, max: 480 },
+                height: { ideal: 640, max: 854 },
+                frameRate: { ideal: 15, max: 18 }
             },
             audio: {
                 echoCancellation: true,
@@ -5953,9 +5953,9 @@ async function prepareCameraAndMicrophoneBeforeStart() {
         stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: "user",
-                width: { ideal: 540, max: 720 },
-                height: { ideal: 960, max: 1280 },
-                frameRate: { ideal: 20, max: 24 }
+                width: { ideal: 360, max: 480 },
+                height: { ideal: 640, max: 854 },
+                frameRate: { ideal: 15, max: 18 }
             },
             audio: {
                 echoCancellation: true,
@@ -6171,8 +6171,8 @@ function detectRecordingFormat() {
 
 function buildRecorderOptions(mimeType) {
     const options = {
-        videoBitsPerSecond: 900000,
-        audioBitsPerSecond: 64000
+        videoBitsPerSecond: 350000,
+        audioBitsPerSecond: 32000
     };
 
     if (mimeType) {
