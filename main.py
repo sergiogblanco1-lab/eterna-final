@@ -7020,9 +7020,10 @@ def sender_pack(sender_token: str):
                 position: relative;
                 z-index: 2;
                 width: 100%;
+                height: auto;
+                max-height: 62vh;
                 display: block;
                 background: #000;
-                aspect-ratio: 16 / 9;
                 object-fit: contain;
             }}
 
@@ -7043,7 +7044,7 @@ def sender_pack(sender_token: str):
                 width: 100%;
                 height: 100%;
                 display: block;
-                object-fit: cover;
+                object-fit: contain;
                 background: #000;
             }}
 
