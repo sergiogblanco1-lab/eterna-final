@@ -6703,170 +6703,167 @@ def sender_pack(sender_token: str):
     sender_status = "Tu ETERNA ha vuelto."
 
     body_content = f"""
-    <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
-
-        <h1 style="font-size:46px;font-weight:800;margin-bottom:18px;">
-            {sender_status}
-        </h1>
-
-        <p style="font-size:22px;opacity:.9;margin-bottom:30px;">
-            Lo que diste… ha encontrado el camino de vuelta.
-        </p>
-
-        <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
-
-            <!-- VIDEO REACCIÓN -->
+    <main class="sender-shell">
+        <section class="hero-memory">
             <video
-                id="eterna-reaction-player"
-                playsinline
-                webkit-playsinline
-                controls
-                preload="metadata"
-                style="width:100%;display:block;background:black;"
-            >
-                <source src="{reaction_url}" type="video/mp4">
-            </video>
-
-            <!-- VIDEO ORIGINAL MINI -->
-            <video
-                id="eterna-mini-original"
+                class="memory-bg"
                 muted
                 playsinline
                 webkit-playsinline
                 preload="metadata"
-                style="
-                    position:absolute;
-                    right:14px;
-                    bottom:14px;
-                    width:30%;
-                    max-width:140px;
-                    border-radius:16px;
-                    background:black;
-                "
+                aria-hidden="true"
             >
-                <source src="{original_video_url}" type="video/mp4">
+                <source src="{reaction_url}" type="video/mp4">
             </video>
+            <div class="memory-vignette"></div>
 
-        </div>
+            <div class="memory-content">
+                <div class="eyebrow">ETERNA</div>
+                <h1>{sender_status}</h1>
+                <p class="subtitle">Lo que diste… ha encontrado el camino de vuelta.</p>
 
-        <div style="margin-top:14px;font-size:15px;opacity:.55;">
-            Aquí vuelve lo que provocaste.
-        </div>
+                <div class="reaction-stage">
+                    <div class="reaction-glow"></div>
 
-        <div style="margin-top:34px;">
-            <button
-                id="eterna-replay-all"
-                style="width:100%;border:none;border-radius:999px;padding:22px;font-size:22px;font-weight:700;background:#f3f3f3;color:#000;">
-                Volver a sentirlo
-            </button>
-        </div>
+                    <video
+                        id="eterna-reaction-player"
+                        class="reaction-player"
+                        playsinline
+                        webkit-playsinline
+                        controls
+                        preload="metadata"
+                    >
+                        <source src="{reaction_url}" type="video/mp4">
+                    </video>
 
-        <div id="eterna-share-wrap" style="display:none;margin-top:22px;">
+                    <div class="original-mini-card" aria-label="Vídeo original de ETERNA">
+                        <video
+                            id="eterna-mini-original"
+                            muted
+                            playsinline
+                            webkit-playsinline
+                            preload="metadata"
+                        >
+                            <source src="{original_video_url}" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
 
-            <a
-                href="{reaction_url}"
-                download
-                style="display:block;width:100%;border-radius:999px;padding:20px;font-size:20px;font-weight:700;background:#fff;color:#000;text-decoration:none;">
-                Descargar su reacción
-            </a>
+                <p class="caption">Aquí vuelve lo que provocaste.</p>
 
-            <button
-                id="eterna-share-reaction"
-                style="margin-top:12px;width:100%;border:none;border-radius:999px;padding:18px;font-size:18px;font-weight:700;background:#111;color:#fff;">
-                Compartir su reacción
-            </button>
+                <button id="eterna-replay-all" class="primary-action" type="button">
+                    Volver a sentirlo
+                </button>
 
-            <div style="margin-top:14px;font-size:14px;color:rgba(255,255,255,0.5);">
-                Comparte solo la emoción.<br>
-                El vídeo original se queda aquí para no romper la magia de ETERNA.
+                <div id="eterna-share-wrap" class="share-panel">
+                    <a class="secondary-action" href="{reaction_url}" download>
+                        Descargar su reacción
+                    </a>
+
+                    <button id="eterna-share-reaction" class="dark-action" type="button">
+                        Compartir su reacción
+                    </button>
+
+                    <p class="share-note">
+                        Comparte solo la emoción.<br>
+                        El vídeo original se queda aquí para no romper la magia de ETERNA.
+                    </p>
+                </div>
             </div>
-
-        </div>
-
-    </div>
+        </section>
+    </main>
 
     <script>
     (function () {{
-
         const reaction = document.getElementById("eterna-reaction-player");
         const mini = document.getElementById("eterna-mini-original");
+        const bg = document.querySelector(".memory-bg");
         const replay = document.getElementById("eterna-replay-all");
         const shareWrap = document.getElementById("eterna-share-wrap");
         const shareBtn = document.getElementById("eterna-share-reaction");
 
-        function syncMini() {{
-            if (!reaction || !mini) return;
-
+        function safePlay(video) {{
+            if (!video) return;
             try {{
-                const reactionTime = reaction.currentTime || 0;
-                const miniTime = mini.currentTime || 0;
-                const diff = Math.abs(miniTime - reactionTime);
-
-                if (diff > 0.20) {{
-                    mini.currentTime = reactionTime;
-                }}
+                const p = video.play();
+                if (p && typeof p.catch === "function") p.catch(() => {{}});
             }} catch (e) {{}}
         }}
 
-        if (reaction && mini) {{
+        function syncMini() {{
+            if (!reaction || !mini) return;
+            try {{
+                const t = reaction.currentTime || 0;
+                const diff = Math.abs((mini.currentTime || 0) - t);
+                if (diff > 0.25) mini.currentTime = t;
+            }} catch (e) {{}}
+        }}
+
+        function syncBg() {{
+            if (!reaction || !bg) return;
+            try {{
+                const t = reaction.currentTime || 0;
+                const diff = Math.abs((bg.currentTime || 0) - t);
+                if (diff > 0.60) bg.currentTime = t;
+            }} catch (e) {{}}
+        }}
+
+        if (reaction) {{
             reaction.addEventListener("loadedmetadata", function () {{
                 syncMini();
+                syncBg();
             }});
 
             reaction.addEventListener("play", function () {{
                 syncMini();
+                syncBg();
+                safePlay(mini);
+                safePlay(bg);
+            }});
+
+            reaction.addEventListener("pause", function () {{
+                try {{ if (mini) mini.pause(); }} catch (e) {{}}
+                try {{ if (bg) bg.pause(); }} catch (e) {{}}
             }});
 
             reaction.addEventListener("seeking", function () {{
                 syncMini();
+                syncBg();
             }});
 
             reaction.addEventListener("timeupdate", function () {{
                 syncMini();
+                syncBg();
             }});
 
             reaction.addEventListener("ended", function () {{
-                try {{
-                    mini.currentTime = reaction.duration || mini.currentTime || 0;
-                }} catch (e) {{}}
+                try {{ if (mini) mini.currentTime = reaction.duration || mini.currentTime || 0; }} catch (e) {{}}
+                try {{ if (bg) bg.pause(); }} catch (e) {{}}
+                if (shareWrap) shareWrap.classList.add("visible");
+            }});
+        }}
 
-                if (shareWrap) {{
-                    shareWrap.style.display = "block";
-                }}
-            }});
-        }} else if (reaction) {{
-            reaction.addEventListener("ended", function () {{
-                if (shareWrap) {{
-                    shareWrap.style.display = "block";
-                }}
-            }});
+        if (bg) {{
+            bg.muted = true;
+            bg.loop = true;
         }}
 
         if (replay && reaction) {{
             replay.addEventListener("click", function () {{
-                try {{
-                    reaction.currentTime = 0;
-                }} catch (e) {{}}
+                try {{ reaction.currentTime = 0; }} catch (e) {{}}
+                try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
+                try {{ if (bg) bg.currentTime = 0; }} catch (e) {{}}
 
-                if (mini) {{
-                    try {{
-                        mini.currentTime = 0;
-                    }} catch (e) {{}}
-                }}
-
-                if (shareWrap) {{
-                    shareWrap.style.display = "none";
-                }}
-
-                reaction.play().catch(() => {{}});
+                if (shareWrap) shareWrap.classList.remove("visible");
+                safePlay(reaction);
+                safePlay(mini);
+                safePlay(bg);
             }});
         }}
 
         if (shareBtn) {{
             shareBtn.addEventListener("click", async function () {{
-
                 const url = "{reaction_url}";
-
                 if (navigator.share) {{
                     try {{
                         await navigator.share({{
@@ -6877,17 +6874,14 @@ def sender_pack(sender_token: str):
                         return;
                     }} catch (e) {{}}
                 }}
-
                 try {{
                     await navigator.clipboard.writeText(url);
                     alert("Link copiado");
                 }} catch (e) {{
                     alert(url);
                 }}
-
             }});
         }}
-
     }})();
     </script>
     """
@@ -6895,14 +6889,237 @@ def sender_pack(sender_token: str):
     return HTMLResponse(f"""
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <title>ETERNA</title>
         <style>
+            :root {{
+                --bg: #000;
+                --text: #fff;
+                --muted: rgba(255,255,255,.68);
+                --soft: rgba(255,255,255,.10);
+                --gold: rgba(232, 198, 122, .78);
+            }}
+
+            * {{ box-sizing: border-box; }}
+
+            html, body {{
+                margin: 0;
+                min-height: 100%;
+                background: #000;
+                color: #fff;
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, Arial, sans-serif;
+                overflow-x: hidden;
+            }}
+
             body {{
-                margin:0;
-                background:#000;
-                color:#fff;
-                font-family:sans-serif;
+                -webkit-font-smoothing: antialiased;
+                text-rendering: optimizeLegibility;
+            }}
+
+            .sender-shell {{
+                min-height: 100vh;
+                background: radial-gradient(circle at 50% 8%, rgba(255,255,255,.08), transparent 34%), #000;
+            }}
+
+            .hero-memory {{
+                position: relative;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: calc(24px + env(safe-area-inset-top)) 20px calc(42px + env(safe-area-inset-bottom));
+                overflow: hidden;
+            }}
+
+            .memory-bg {{
+                position: fixed;
+                inset: -8%;
+                width: 116%;
+                height: 116%;
+                object-fit: cover;
+                filter: blur(34px) saturate(1.08) brightness(.28);
+                opacity: .44;
+                transform: scale(1.08);
+                pointer-events: none;
+            }}
+
+            .memory-vignette {{
+                position: fixed;
+                inset: 0;
+                background:
+                    radial-gradient(circle at 50% 42%, rgba(0,0,0,.12), rgba(0,0,0,.84) 64%, #000 100%),
+                    linear-gradient(180deg, rgba(0,0,0,.70), rgba(0,0,0,.22) 40%, rgba(0,0,0,.84));
+                pointer-events: none;
+            }}
+
+            .memory-content {{
+                position: relative;
+                z-index: 2;
+                width: 100%;
+                max-width: 820px;
+                text-align: center;
+                animation: eternaFadeUp .85s ease both;
+            }}
+
+            .eyebrow {{
+                color: rgba(255,255,255,.42);
+                letter-spacing: .36em;
+                font-size: 12px;
+                margin-bottom: 22px;
+            }}
+
+            h1 {{
+                font-size: clamp(38px, 8vw, 72px);
+                line-height: .98;
+                margin: 0 0 16px;
+                font-weight: 850;
+                letter-spacing: -.045em;
+            }}
+
+            .subtitle {{
+                margin: 0 auto 34px;
+                max-width: 620px;
+                color: rgba(255,255,255,.82);
+                font-size: clamp(18px, 3.8vw, 24px);
+                line-height: 1.35;
+            }}
+
+            .reaction-stage {{
+                position: relative;
+                width: 100%;
+                max-width: 760px;
+                margin: 0 auto;
+                border-radius: 32px;
+                overflow: hidden;
+                background: rgba(8,8,8,.72);
+                box-shadow:
+                    0 30px 90px rgba(0,0,0,.72),
+                    0 0 0 1px rgba(255,255,255,.12),
+                    0 0 80px rgba(232,198,122,.08);
+            }}
+
+            .reaction-stage::before {{
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(180deg, rgba(255,255,255,.10), transparent 28%, rgba(0,0,0,.16));
+                pointer-events: none;
+                z-index: 3;
+            }}
+
+            .reaction-glow {{
+                position: absolute;
+                inset: auto 8% -28% 8%;
+                height: 36%;
+                background: radial-gradient(ellipse at center, rgba(232,198,122,.20), transparent 65%);
+                pointer-events: none;
+                z-index: 1;
+            }}
+
+            .reaction-player {{
+                position: relative;
+                z-index: 2;
+                width: 100%;
+                display: block;
+                background: #000;
+                aspect-ratio: 16 / 9;
+                object-fit: contain;
+            }}
+
+            .original-mini-card {{
+                position: absolute;
+                right: 14px;
+                bottom: 14px;
+                z-index: 4;
+                width: min(30%, 148px);
+                aspect-ratio: 9 / 16;
+                border-radius: 18px;
+                overflow: hidden;
+                background: #000;
+                box-shadow: 0 16px 34px rgba(0,0,0,.62), 0 0 0 1px rgba(255,255,255,.15);
+            }}
+
+            .original-mini-card video {{
+                width: 100%;
+                height: 100%;
+                display: block;
+                object-fit: cover;
+                background: #000;
+            }}
+
+            .caption {{
+                margin: 18px 0 30px;
+                color: rgba(255,255,255,.52);
+                font-size: 15px;
+            }}
+
+            .primary-action,
+            .secondary-action,
+            .dark-action {{
+                display: block;
+                width: 100%;
+                max-width: 760px;
+                margin: 0 auto;
+                border: none;
+                border-radius: 999px;
+                padding: 21px 22px;
+                font-size: clamp(18px, 4vw, 22px);
+                font-weight: 800;
+                text-decoration: none;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }}
+
+            .primary-action,
+            .secondary-action {{
+                background: rgba(255,255,255,.96);
+                color: #000;
+                box-shadow: 0 16px 46px rgba(0,0,0,.34);
+            }}
+
+            .dark-action {{
+                margin-top: 12px;
+                background: rgba(255,255,255,.10);
+                color: #fff;
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.13);
+            }}
+
+            .share-panel {{
+                display: none;
+                margin-top: 22px;
+                animation: eternaFadeUp .45s ease both;
+            }}
+
+            .share-panel.visible {{ display: block; }}
+
+            .share-note {{
+                margin: 14px auto 0;
+                max-width: 520px;
+                color: rgba(255,255,255,.46);
+                font-size: 14px;
+                line-height: 1.45;
+            }}
+
+            @keyframes eternaFadeUp {{
+                from {{ opacity: 0; transform: translateY(16px) scale(.992); }}
+                to {{ opacity: 1; transform: translateY(0) scale(1); }}
+            }}
+
+            @media (max-width: 520px) {{
+                .hero-memory {{
+                    padding-left: 20px;
+                    padding-right: 20px;
+                }}
+
+                .reaction-stage {{ border-radius: 26px; }}
+                .original-mini-card {{
+                    right: 10px;
+                    bottom: 10px;
+                    width: 28%;
+                    border-radius: 14px;
+                }}
+
+                .caption {{ margin-bottom: 26px; }}
             }}
         </style>
     </head>
