@@ -4010,59 +4010,11 @@ h1 {{
             Busca un sitio tranquilo. Cuando pulses, empezará una experiencia privada creada para ti.
         </div>
         <div class="actions">
-            <a class="btn" id="liveExperienceBtn" href="{experience_href}" role="button">Vivir la experiencia</a>
+            <a class="btn" id="liveExperienceBtn" href="{experience_href}">Vivir la experiencia</a>
         </div>
         <div class="note" id="tapNote">Pulsa una sola vez y mantén esta pantalla abierta.</div>
     </div>
 
-<script>
-(function () {{
-    "use strict";
-    var btn = document.getElementById("liveExperienceBtn");
-    var note = document.getElementById("tapNote");
-    var going = false;
-    var href = btn ? btn.getAttribute("href") : "{experience_href}";
-
-    function go(event) {{
-        try {{
-            if (event) event.preventDefault();
-        }} catch (_) {{}}
-
-        if (going) return false;
-        going = true;
-
-        try {{
-            if (btn) {{
-                btn.innerText = "Abriendo…";
-                btn.style.pointerEvents = "none";
-                btn.setAttribute("aria-disabled", "true");
-            }}
-            if (note) note.innerText = "No cierres Safari. Preparando el momento…";
-        }} catch (_) {{}}
-
-        setTimeout(function () {{
-            window.location.assign(href);
-        }}, 80);
-
-        setTimeout(function () {{
-            if (window.location.pathname.indexOf("/experiencia/") === -1) {{
-                window.location.href = href;
-            }}
-        }}, 900);
-
-        return false;
-    }}
-
-    if (btn) {{
-        btn.onclick = go;
-        btn.addEventListener("click", go, false);
-        btn.addEventListener("touchend", function (event) {{
-            try {{ event.preventDefault(); }} catch (_) {{}}
-            go(event);
-        }}, {{ passive: false }});
-    }}
-}})();
-</script>
 </body>
 </html>
         """
@@ -4776,12 +4728,12 @@ h1 { margin: 0 0 22px; font-size: clamp(42px, 11vw, 62px); line-height: 1.05; fo
 .main-text { font-size: clamp(22px, 6vw, 30px); line-height: 1.45; color: rgba(255,255,255,0.90); margin: 0 auto 16px; max-width: 560px; }
 .soft { font-size: 14px; line-height: 1.65; color: rgba(255,255,255,0.58); margin: 18px auto 0; max-width: 520px; }
 .legal { display: block; margin-top: 16px; padding: 14px 16px; border-radius: 18px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.72); font-size: 13px; line-height: 1.55; }
-.button-zone { margin-top: 30px; position: relative; z-index: 80; display: flex; justify-content: center; align-items: center; min-height: 74px; pointer-events: auto; }
+.button-zone { margin-top: 30px; position: relative; z-index: 80; display: flex; justify-content: center; align-items: center; min-height: 84px; pointer-events: none; }
 #startExperienceBtn {
     appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px;
     background: #fff; color: #000; font-weight: 900; font-size: 16px;
     min-width: 260px; max-width: calc(100vw - 54px); padding: 20px 28px;
-    cursor: pointer; touch-action: manipulation; position: relative; z-index: 90;
+    cursor: pointer; touch-action: manipulation; position: relative; z-index: 9999; pointer-events: auto;
     user-select: none; -webkit-user-select: none; line-height: 1.2;
 }
 #startExperienceBtn:active { transform: scale(0.985); }
@@ -4813,7 +4765,7 @@ h1 { margin: 0 0 22px; font-size: clamp(42px, 11vw, 62px); line-height: 1.05; fo
             <div class="main-text">Colócate con calma.<br>Busca buena luz y pon el teléfono frente a ti.</div>
             <div class="soft">Para abrir esta experiencia necesitamos activar cámara y micrófono.<span class="legal">Al pulsar el botón, aceptas que durante la experiencia se grabe tu imagen y tu voz para crear un recuerdo privado que recibirá la persona que te lo ha enviado. Si no quieres ser grabado, puedes cerrar esta pantalla ahora.</span></div>
             <div class="button-zone" id="buttonZone">
-                <button id="startExperienceBtn" type="button">Acepto y vivir la experiencia</button>
+                <button id="startExperienceBtn" type="button" onclick="return window.ETERNA_START_NOW ? window.ETERNA_START_NOW(event) : false;">Acepto y vivir la experiencia</button>
             </div>
             <div class="status" id="startStatus"></div>
         </div>
@@ -5073,7 +5025,7 @@ async function startFlowFromTap(event) {
     if (starting || started || finishing) return false;
     starting = true;
     startBtn.disabled = true;
-    startBtn.innerText = 'Abriendo cámara…';
+    startBtn.innerText = 'Pidiendo cámara…';
     setStatus('Preparando experiencia…', false);
     debug('tap accepted');
 
@@ -5111,12 +5063,13 @@ window.ETERNA_START_NOW = startFlowFromTap;
 
 function bindStart() {
     const handler = function (event) { return startFlowFromTap(event); };
+
+    // Safari iPhone: el botón debe ser el único disparador real.
+    // Nada de zonas padre ni overlays: solo el botón, directo.
     startBtn.onclick = handler;
     startBtn.addEventListener('click', handler, { passive: false });
-    startBtn.addEventListener('touchend', handler, { passive: false });
-    startBtn.addEventListener('pointerup', handler, { passive: false });
-    buttonZone.addEventListener('click', handler, { passive: false });
-    buttonZone.addEventListener('touchend', handler, { passive: false });
+    startBtn.addEventListener('touchstart', handler, { passive: false });
+    startBtn.addEventListener('pointerdown', handler, { passive: false });
 
     document.addEventListener('keydown', function (event) {
         if ((event.key === 'Enter' || event.key === ' ') && !startScreen.classList.contains('hidden')) handler(event);
