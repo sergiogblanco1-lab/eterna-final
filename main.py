@@ -4728,14 +4728,18 @@ h1 { margin: 0 0 22px; font-size: clamp(42px, 11vw, 62px); line-height: 1.05; fo
 .main-text { font-size: clamp(22px, 6vw, 30px); line-height: 1.45; color: rgba(255,255,255,0.90); margin: 0 auto 16px; max-width: 560px; }
 .soft { font-size: 14px; line-height: 1.65; color: rgba(255,255,255,0.58); margin: 18px auto 0; max-width: 520px; }
 .legal { display: block; margin-top: 16px; padding: 14px 16px; border-radius: 18px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.72); font-size: 13px; line-height: 1.55; }
-.button-zone { margin-top: 30px; position: relative; z-index: 80; display: flex; justify-content: center; align-items: center; min-height: 84px; pointer-events: none; }
+.button-zone { margin-top: 30px; position: relative; z-index: 80; display: flex; justify-content: center; align-items: center; min-height: 100px; pointer-events: auto; padding: 10px 0; }
 #startExperienceBtn {
+    display: inline-flex; align-items: center; justify-content: center;
     appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px;
     background: #fff; color: #000; font-weight: 900; font-size: 16px;
     min-width: 260px; max-width: calc(100vw - 54px); padding: 20px 28px;
     cursor: pointer; touch-action: manipulation; position: relative; z-index: 9999; pointer-events: auto;
     user-select: none; -webkit-user-select: none; line-height: 1.2;
+    -webkit-transform: translateZ(0); transform: translateZ(0);
 }
+#startExperienceBtn * { pointer-events: none; }
+
 #startExperienceBtn:active { transform: scale(0.985); }
 #startExperienceBtn[disabled] { opacity: 0.72; }
 .status { margin-top: 16px; min-height: 22px; font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.68); white-space: pre-line; }
@@ -5061,15 +5065,61 @@ async function startFlowFromTap(event) {
 
 window.ETERNA_START_NOW = startFlowFromTap;
 
+function getPointFromEvent(event) {
+    try {
+        const t = (event.touches && event.touches[0]) || (event.changedTouches && event.changedTouches[0]) || event;
+        return { x: Number(t.clientX), y: Number(t.clientY) };
+    } catch (_) {
+        return { x: NaN, y: NaN };
+    }
+}
+
+function isInsideButtonArea(event) {
+    try {
+        if (!startScreen || startScreen.classList.contains('hidden')) return false;
+        const target = event && event.target;
+        if (target && target.closest && target.closest('#startExperienceBtn')) return true;
+        const p = getPointFromEvent(event);
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+        const rect = startBtn.getBoundingClientRect();
+        const pad = 34;
+        return (
+            p.x >= rect.left - pad &&
+            p.x <= rect.right + pad &&
+            p.y >= rect.top - pad &&
+            p.y <= rect.bottom + pad
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
 function bindStart() {
     const handler = function (event) { return startFlowFromTap(event); };
 
-    // Safari iPhone: el botón debe ser el único disparador real.
-    // Nada de zonas padre ni overlays: solo el botón, directo.
+    // Safari iPhone real: el botón y SOLO su zona visible disparan la experiencia.
+    // Arreglo clave: quitamos pointer-events:none del contenedor y añadimos captura global
+    // por coordenadas, por si Safari/Mensajes manda el toque a una capa visual distinta.
     startBtn.onclick = handler;
+    startBtn.ontouchstart = handler;
+    startBtn.onpointerdown = handler;
     startBtn.addEventListener('click', handler, { passive: false });
     startBtn.addEventListener('touchstart', handler, { passive: false });
+    startBtn.addEventListener('touchend', handler, { passive: false });
     startBtn.addEventListener('pointerdown', handler, { passive: false });
+    startBtn.addEventListener('pointerup', handler, { passive: false });
+
+    const captureHandler = function (event) {
+        if (starting || started || finishing) return;
+        if (!isInsideButtonArea(event)) return;
+        return startFlowFromTap(event);
+    };
+
+    document.addEventListener('click', captureHandler, { capture: true, passive: false });
+    document.addEventListener('touchstart', captureHandler, { capture: true, passive: false });
+    document.addEventListener('touchend', captureHandler, { capture: true, passive: false });
+    document.addEventListener('pointerdown', captureHandler, { capture: true, passive: false });
+    document.addEventListener('pointerup', captureHandler, { capture: true, passive: false });
 
     document.addEventListener('keydown', function (event) {
         if ((event.key === 'Enter' || event.key === ' ') && !startScreen.classList.contains('hidden')) handler(event);
