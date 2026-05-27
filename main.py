@@ -113,6 +113,9 @@ VIDEO_FOLDER.mkdir(parents=True, exist_ok=True)
 REACTIONS_FOLDER = Path(os.getenv("REACTIONS_FOLDER", "/data/reactions"))
 REACTIONS_FOLDER.mkdir(parents=True, exist_ok=True)
 
+REACTION_CHUNKS_FOLDER = Path(os.getenv("REACTION_CHUNKS_FOLDER", "/data/reaction_chunks"))
+REACTION_CHUNKS_FOLDER.mkdir(parents=True, exist_ok=True)
+
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
 
@@ -362,6 +365,19 @@ def init_db():
         asset_type TEXT NOT NULL,
         file_url TEXT NOT NULL,
         storage_provider TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(order_id) REFERENCES orders(id)
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS order_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id TEXT NOT NULL,
+        step TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'ok',
+        message TEXT,
+        meta_json TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(order_id) REFERENCES orders(id)
     )
@@ -705,6 +721,144 @@ def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider
     """, (order_id, asset_type, file_url, storage_provider, now_iso()))
     conn.commit()
     conn.close()
+
+
+def insert_order_event(order_id: str, step: str, status: str = "ok", message: str = "", meta: Optional[dict] = None):
+    """Log humano por pedido: permite saber exactamente dónde se queda ETERNA."""
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS order_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id TEXT NOT NULL,
+                step TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'ok',
+                message TEXT,
+                meta_json TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        cur.execute("""
+            INSERT INTO order_events (order_id, step, status, message, meta_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            str(order_id or ""),
+            str(step or "unknown"),
+            str(status or "ok"),
+            str(message or ""),
+            json.dumps(meta or {}, ensure_ascii=False),
+            now_iso(),
+        ))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("[WARN] insert_order_event failed:", step, e)
+
+
+def list_order_events(order_id: str, limit: int = 80):
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS order_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id TEXT NOT NULL,
+                step TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'ok',
+                message TEXT,
+                meta_json TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        cur.execute("""
+            SELECT id, order_id, step, status, message, meta_json, created_at
+            FROM order_events
+            WHERE order_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+        """, (order_id, int(limit or 80)))
+        rows = cur.fetchall()
+        conn.close()
+        return [dict(r) for r in reversed(rows)]
+    except Exception as e:
+        print("[WARN] list_order_events failed:", e)
+        return []
+
+
+def complete_reaction_from_local_file(order: dict, local_path: str, extension: str = "webm", source: str = "single_upload") -> dict:
+    """Regla de oro: local primero, R2 después. Si local existe, ETERNA no se pierde."""
+    if not local_path or not os.path.exists(local_path):
+        raise Exception("reaction_local_file_missing")
+
+    saved_size = os.path.getsize(local_path)
+    if saved_size <= 0:
+        raise Exception("reaction_local_file_empty")
+
+    extension = (extension or "webm").lower().strip()
+    if extension not in {"webm", "mp4"}:
+        extension = "webm"
+
+    insert_order_event(
+        order["id"],
+        "reaction_saved_local",
+        "ok",
+        "Reacción guardada localmente en el servidor",
+        {"bytes": saved_size, "source": source, "path": local_path},
+    )
+
+    public_url = None
+    r2_error = None
+    try:
+        content_type = guess_media_type_from_path(local_path)
+        remote_name = r2_order_key(order, "reaction", f"reaction.{extension}")
+        public_url = upload_video_to_r2(local_path, remote_name, content_type=content_type)
+        insert_order_event(
+            order["id"],
+            "reaction_r2_uploaded" if public_url else "reaction_r2_skipped",
+            "ok" if public_url else "pending",
+            "Reacción subida a R2" if public_url else "R2 no configurado; se conserva local",
+            {"public_url": public_url, "content_type": content_type},
+        )
+    except Exception as e:
+        r2_error = str(e)
+        insert_order_event(order["id"], "reaction_r2_pending", "warning", "R2 falló; la reacción queda segura localmente", {"error": r2_error})
+        log_error("complete_reaction_r2_best_effort", e)
+
+    update_order(
+        order["id"],
+        reaction_video_local=local_path,
+        reaction_video_public_url=public_url,
+        reaction_uploaded=1,
+        experience_started=1,
+        experience_completed=1,
+        delivered_to_recipient=1,
+        reaction_upload_pending=0,
+        reaction_upload_error=r2_error,
+        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+    )
+
+    updated_order = maybe_mark_eterna_completed(order["id"])
+    insert_order_event(updated_order["id"], "eterna_completed", "ok", "ETERNA completada: reacción segura y pack desbloqueado")
+
+    try:
+        print("📩 INTENTANDO ENVÍO AL REGALANTE DESDE REACTION COMPLETE")
+        result = try_send_sender_sms(updated_order)
+        print("📩 RESULTADO ENVÍO REGALANTE:", result)
+        insert_order_event(updated_order["id"], "sender_sms_attempt", "ok" if result.get("ok") else "warning", str(result), result)
+    except Exception as e:
+        insert_order_event(updated_order["id"], "sender_sms_error", "error", str(e))
+        log_error("complete_reaction_try_send_sender_sms", e)
+
+    try:
+        payout_result = process_gift_transfer_for_order(updated_order)
+        print("💸 PAYOUT DESDE REACTION COMPLETE:", payout_result)
+        insert_order_event(updated_order["id"], "payout_attempt", "ok", str(payout_result), payout_result)
+    except Exception as e:
+        insert_order_event(updated_order["id"], "payout_error", "error", str(e))
+        log_error("complete_reaction_payout", e)
+
+    return updated_order
 
 
 def list_assets(order_id: str):
@@ -1404,6 +1558,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         )
 
         updated = get_order_by_id(order_id)
+        insert_order_event(order_id, "recipient_sms_sent", "ok", "SMS/enlace enviado al destinatario", {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0)})
 
         return {
             "ok": True,
@@ -1428,6 +1583,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     )
 
     updated = get_order_by_id(order_id)
+    insert_order_event(order_id, "recipient_sms_failed", "error", final_error, {"attempts": int(updated.get("recipient_sms_attempts") or 0)})
 
     return {
         "ok": False,
@@ -2110,6 +2266,7 @@ async def create_order_and_redirect(
         )
 
         conn.commit()
+        insert_order_event(order_id, "order_created", "ok", "Pedido creado y pendiente de pago")
 
         log_human(
             "NUEVA ETERNA CREADA",
@@ -3741,6 +3898,7 @@ def pedido(request: Request, recipient_token: str):
 
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
+        insert_order_event(order["id"], "recipient_opened", "ok", "El destinatario abrió el enlace recibido")
         log_info("🚪 DESTINATARIO HA ABIERTO ETERNA")
         log_info("🆔 Order ID", order.get("id"))
         log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
@@ -4386,6 +4544,7 @@ async def internal_video_ready(request: Request):
 
     try:
         order = get_order_by_id(order_id)
+        insert_order_event(order_id, "video_ready", "ok", "El motor de vídeo avisó de que el vídeo está listo", {"video_url": video_url})
 
         if not bool(order.get("paid")):
             return JSONResponse(
@@ -4630,6 +4789,7 @@ def resumen(order_id: str):
 async def start_experience(recipient_token: str = Form(...)):
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
+        insert_order_event(order["id"], "experience_started", "ok", "El destinatario ha pulsado empezar y se inicia cámara/vídeo")
 
         log_human("EXPERIENCIA INICIADA", f"🎭 {order.get('recipient_name')} ha pulsado Empezar", f"🆔 Pedido: {order.get('id')}")
         print("🎬 START EXPERIENCE:", order["id"])
@@ -4664,6 +4824,26 @@ async def start_experience(recipient_token: str = Form(...)):
 # =========================================================
 # EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
 # =========================================================
+
+@app.post("/experience-event/{recipient_token}")
+async def experience_event(recipient_token: str, request: Request):
+    """Eventos humanos desde Safari: permite saber si aceptó cámara, empezó grabación, terminó vídeo, etc."""
+    order = get_order_by_recipient_token_or_404(recipient_token)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    step = str(payload.get("step") or "client_event")[:80]
+    status = str(payload.get("status") or "ok")[:30]
+    message = str(payload.get("message") or "")[:300]
+    meta = payload.get("meta") or {}
+    if not isinstance(meta, dict):
+        meta = {"value": str(meta)[:300]}
+
+    insert_order_event(order["id"], step, status, message, meta)
+    return JSONResponse({"ok": True})
+
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
 def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
@@ -4703,7 +4883,7 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
 
     # =========================================================
     # EXPERIENCIA FUNCIONAL RECUPERADA DEL MAIN ESTABLE
-    # Este return deja debajo el bloque nuevo como backup no ejecutado.
+    # Bloque único activo: cámara + MediaRecorder + vídeo + subida segura.
     # =========================================================
     html_page = """
 <!DOCTYPE html>
@@ -5012,6 +5192,15 @@ let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
 
+// Blindaje industrial Safari:
+// además de guardar chunks en memoria, subimos trozos en paralelo mientras se vive la experiencia.
+let liveUploadSessionId = "";
+let liveChunkIndex = 0;
+let liveUploadedChunks = 0;
+let liveUploadChain = Promise.resolve();
+let liveUploadFailed = false;
+let liveLastError = null;
+
 function showStartError(message) {
     if (!errorNote) return;
     errorNote.textContent = message || "No hemos podido preparar la grabación.";
@@ -5022,6 +5211,72 @@ function clearStartError() {
     if (!errorNote) return;
     errorNote.textContent = "";
     errorNote.classList.remove("show");
+}
+
+function logClientStep(step, status, message, meta) {
+    try {
+        fetch("/experience-event/" + recipientToken, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                step: step || "client_event",
+                status: status || "ok",
+                message: message || "",
+                meta: meta || {}
+            }),
+            keepalive: true
+        }).catch(() => {});
+    } catch (_) {}
+}
+
+function newLiveUploadSession() {
+    return String(Date.now()) + "_" + Math.random().toString(16).slice(2);
+}
+
+async function uploadLiveChunk(part, index) {
+    const formData = new FormData();
+    formData.append("session_id", liveUploadSessionId);
+    formData.append("chunk_index", String(index));
+    formData.append("extension", recordingExtension || "webm");
+    formData.append("chunk", part, "live_chunk_" + index + ".part");
+
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const response = await fetch("/upload-reaction-live-chunk/" + recipientToken, {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.detail || "live_chunk_upload_failed");
+            }
+            liveUploadedChunks += 1;
+            return data;
+        } catch (e) {
+            lastError = e;
+            await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
+        }
+    }
+    throw lastError || new Error("live_chunk_upload_failed");
+}
+
+function queueLiveChunkUpload(part) {
+    if (!part || part.size <= 0 || !liveUploadSessionId || liveUploadFailed) return;
+
+    const index = liveChunkIndex;
+    liveChunkIndex += 1;
+
+    liveUploadChain = liveUploadChain.then(async () => {
+        if (liveUploadFailed) return;
+        try {
+            await uploadLiveChunk(part, index);
+        } catch (e) {
+            liveUploadFailed = true;
+            liveLastError = e;
+            logClientStep("reaction_live_chunk_failed", "warning", String(e && e.message ? e.message : e), { index });
+        }
+    });
 }
 
 function showRetryActions() {
@@ -5085,6 +5340,12 @@ function resetRecordingState() {
     recordingExtension = "webm";
     finishing = false;
     experienceStarted = false;
+    liveUploadSessionId = "";
+    liveChunkIndex = 0;
+    liveUploadedChunks = 0;
+    liveUploadChain = Promise.resolve();
+    liveUploadFailed = false;
+    liveLastError = null;
 
     try {
         video.pause();
@@ -5178,6 +5439,12 @@ async function tryStartRecordingStrict() {
         recordingMimeType = format.mimeType;
         recordingExtension = format.extension;
         recordedChunks = [];
+        liveUploadSessionId = newLiveUploadSession();
+        liveChunkIndex = 0;
+        liveUploadedChunks = 0;
+        liveUploadChain = Promise.resolve();
+        liveUploadFailed = false;
+        liveLastError = null;
 
         mediaRecorder = recordingMimeType
             ? new MediaRecorder(stream, { mimeType: recordingMimeType })
@@ -5186,14 +5453,17 @@ async function tryStartRecordingStrict() {
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
                 recordedChunks.push(e.data);
+                queueLiveChunkUpload(e.data);
             }
         };
 
         mediaRecorder.onerror = (e) => {
             console.error("mediaRecorder error", e);
+            logClientStep("recording_error", "error", "MediaRecorder lanzó un error", { error: String(e && e.message ? e.message : e) });
         };
 
-        mediaRecorder.start(1000);
+        mediaRecorder.start(2000);
+        logClientStep("recording_started", "ok", "Cámara y grabación iniciadas");
 
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -5232,6 +5502,138 @@ async function tryStartRecordingStrict() {
 
         return false;
     }
+}
+
+async function uploadReactionSingle(blob) {
+    const filename = "reaction." + recordingExtension;
+    const formData = new FormData();
+    formData.append("video", blob, filename);
+
+    const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
+        method: "POST",
+        body: formData
+    });
+
+    const uploadData = await uploadResponse.json().catch(() => ({}));
+
+    if (!uploadResponse.ok) {
+        throw new Error(uploadData.detail || "upload_reaction_failed");
+    }
+
+    return uploadData;
+}
+
+async function finishLiveUploadIfPossible() {
+    if (!liveUploadSessionId || liveChunkIndex <= 0 || liveUploadFailed) {
+        return null;
+    }
+
+    payoffLoader.innerText = "Terminando de guardar…";
+    await liveUploadChain;
+
+    if (liveUploadFailed) {
+        throw liveLastError || new Error("live_chunk_upload_failed");
+    }
+
+    const finishData = new FormData();
+    finishData.append("session_id", liveUploadSessionId);
+    finishData.append("total_chunks", String(liveChunkIndex));
+    finishData.append("extension", recordingExtension || "webm");
+
+    const finishResponse = await fetch("/finish-reaction-upload/" + recipientToken, {
+        method: "POST",
+        body: finishData
+    });
+
+    const finishJson = await finishResponse.json().catch(() => ({}));
+    if (!finishResponse.ok) {
+        throw new Error(finishJson.detail || "finish_live_upload_failed");
+    }
+
+    payoffLoader.innerText = "Momento guardado.";
+    logClientStep("reaction_live_upload_finished", "ok", "Reacción ensamblada desde subida progresiva", { chunks: liveChunkIndex });
+    return finishJson;
+}
+
+async function uploadReactionChunked(blob) {
+    const chunkSize = 1024 * 1024; // 1 MB: más seguro para iPhone/Safari.
+    const totalChunks = Math.max(1, Math.ceil(blob.size / chunkSize));
+    const sessionId = String(Date.now()) + "_" + Math.random().toString(16).slice(2);
+
+    payoffLoader.innerText = "Guardando este momento… 0%";
+
+    for (let index = 0; index < totalChunks; index++) {
+        const start = index * chunkSize;
+        const end = Math.min(blob.size, start + chunkSize);
+        const slice = blob.slice(start, end, recordingMimeType || "video/webm");
+
+        const formData = new FormData();
+        formData.append("session_id", sessionId);
+        formData.append("chunk_index", String(index));
+        formData.append("total_chunks", String(totalChunks));
+        formData.append("extension", recordingExtension || "webm");
+        formData.append("chunk", slice, "chunk_" + index + ".part");
+
+        let uploaded = false;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const response = await fetch("/upload-reaction-chunk/" + recipientToken, {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.detail || "chunk_upload_failed");
+                }
+                uploaded = true;
+                break;
+            } catch (e) {
+                lastError = e;
+                await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+            }
+        }
+
+        if (!uploaded) {
+            throw lastError || new Error("chunk_upload_failed");
+        }
+
+        const pct = Math.min(99, Math.round(((index + 1) / totalChunks) * 100));
+        payoffLoader.innerText = "Guardando este momento… " + pct + "%";
+    }
+
+    const finishData = new FormData();
+    finishData.append("session_id", sessionId);
+    finishData.append("total_chunks", String(totalChunks));
+    finishData.append("extension", recordingExtension || "webm");
+
+    const finishResponse = await fetch("/finish-reaction-upload/" + recipientToken, {
+        method: "POST",
+        body: finishData
+    });
+
+    const finishJson = await finishResponse.json().catch(() => ({}));
+    if (!finishResponse.ok) {
+        throw new Error(finishJson.detail || "finish_chunk_upload_failed");
+    }
+
+    payoffLoader.innerText = "Momento guardado.";
+    return finishJson;
+}
+
+async function uploadReactionSafely(blob) {
+    // Pequeños: subida clásica. Grandes: trozos. Si la clásica falla, fallback a trozos.
+    const singleLimit = 3 * 1024 * 1024;
+    if (blob.size <= singleLimit) {
+        try {
+            return await uploadReactionSingle(blob);
+        } catch (e) {
+            console.warn("single upload failed, trying chunked", e);
+            return await uploadReactionChunked(blob);
+        }
+    }
+    return await uploadReactionChunked(blob);
 }
 
 async function finalizeExperienceFlow() {
@@ -5300,23 +5702,24 @@ async function finalizeExperienceFlow() {
     }
 
     try {
-        if (blob && blob.size > 0) {
-            const filename = "reaction." + recordingExtension;
-            const formData = new FormData();
-            formData.append("video", blob, filename);
-
-            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
-                method: "POST",
-                body: formData
-            });
-
-            const uploadData = await uploadResponse.json().catch(() => ({}));
-
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.detail || "upload_reaction_failed");
+        // Prioridad 1: usar lo que ya se fue subiendo mientras la persona veía el vídeo.
+        // Si esto falla, todavía tenemos el blob local en memoria como rescate.
+        try {
+            const liveResult = await finishLiveUploadIfPossible();
+            if (liveResult) {
+                console.log("✅ reacción subida progresivamente");
+                window.location.replace("/finalizar-experiencia/" + recipientToken);
+                return;
             }
+        } catch (liveError) {
+            console.warn("live upload failed, using blob fallback", liveError);
+            logClientStep("reaction_live_upload_fallback", "warning", "Fallo subida progresiva; intento subida de rescate", { error: String(liveError && liveError.message ? liveError.message : liveError) });
+        }
 
-            console.log("✅ reacción subida");
+        // Rescate: si la subida progresiva no terminó, subimos el blob completo o por chunks al final.
+        if (blob && blob.size > 0) {
+            await uploadReactionSafely(blob);
+            console.log("✅ reacción subida por rescate");
         } else {
             throw new Error("empty_blob");
         }
@@ -5339,6 +5742,7 @@ async function finalizeExperienceFlow() {
 
 function armFinishFallbacks() {
     video.addEventListener("ended", () => {
+        logClientStep("experience_video_ended", "ok", "El vídeo terminó en Safari");
         finalizeExperienceFlow();
     }, { once: true });
 
@@ -5420,6 +5824,7 @@ startBtn.addEventListener("click", async () => {
 
         overlay.classList.add("hidden");
         experienceStarted = true;
+        logClientStep("experience_started_client", "ok", "La persona empezó a vivir la experiencia");
 
         armFinishFallbacks();
 
@@ -5542,1163 +5947,225 @@ if (backToStartBtn) {
     return HTMLResponse(html_page)
 
 
+# =========================================================
+# UPLOAD REACTION POR TROZOS (BLINDAJE SAFARI/IPHONE)
+# =========================================================
 
+@app.post("/upload-reaction-live-chunk/{recipient_token}")
+async def upload_reaction_live_chunk(
+    recipient_token: str,
+    session_id: str = Form(...),
+    chunk_index: int = Form(...),
+    extension: str = Form("webm"),
+    chunk: UploadFile = File(...),
+):
+    """Subida progresiva: Safari va mandando trozos mientras la experiencia ocurre."""
+    order = get_order_by_recipient_token_or_404(recipient_token)
 
-    # BLOQUE NUEVO ORIGINAL CONSERVADO COMO BACKUP (NO SE EJECUTA)
-    html_page = """
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA</title>
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: black;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-}
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="not_paid")
 
-body {
-    position: fixed;
-    inset: 0;
-    background: black;
-}
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="video_not_ready")
 
-.wrap {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: black;
-}
+    if reaction_is_safe(order):
+        return JSONResponse({"ok": True, "already_uploaded": True})
 
-video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: black;
-}
+    session_id = safe_slug(session_id, "live_session")
+    extension = (extension or "webm").lower().strip()
+    if extension not in {"webm", "mp4"}:
+        extension = "webm"
 
-.overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 30;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 32%),
-        linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.90) 100%);
-    padding: 28px;
-    text-align: center;
-}
+    try:
+        chunk_index = int(chunk_index)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid_chunk_index")
 
-.overlay.hidden {
-    display: none;
-}
+    if chunk_index < 0 or chunk_index > 1000:
+        raise HTTPException(status_code=400, detail="invalid_chunk_index")
 
-.overlay-card {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-}
+    session_folder = REACTION_CHUNKS_FOLDER / order["id"] / session_id
+    session_folder.mkdir(parents=True, exist_ok=True)
 
-.eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.36);
-    margin-bottom: 24px;
-}
+    data = await chunk.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty_chunk")
 
-.title {
-    font-size: 54px;
-    line-height: 1.06;
-    font-weight: 700;
-    margin: 0 0 22px 0;
-    color: white;
-}
+    if len(data) > 3 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="chunk_too_large")
 
-.text {
-    font-size: 24px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.86);
-    margin: 0 auto 14px auto;
-    max-width: 520px;
-}
+    chunk_path = session_folder / f"chunk_{chunk_index:05d}.part"
+    with open(chunk_path, "wb") as f:
+        f.write(data)
 
-.soft {
-    font-size: 16px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.46);
-    margin: 0 auto 0 auto;
-    max-width: 460px;
-}
-
-.ritual-legal {
-    display: block;
-    margin-top: 16px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.36);
-}
-
-.btn {
-    display: inline-block;
-    min-width: 220px;
-    padding: 18px 26px;
-    border-radius: 999px;
-    border: 0;
-    background: white;
-    color: black;
-    font-weight: 700;
-    font-size: 17px;
-    cursor: pointer;
-}
-
-.btn:disabled {
-    opacity: 0.7;
-    cursor: default;
-}
-
-.error-note {
-    margin-top: 18px;
-    font-size: 14px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.62);
-    max-width: 460px;
-    margin-left: auto;
-    margin-right: auto;
-    display: none;
-}
-
-.error-note.show {
-    display: block;
-}
-
-.payoff {
-    position: absolute;
-    inset: 0;
-    z-index: 35;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 28px;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
-}
-
-.payoff.show {
-    display: flex;
-}
-
-.payoff-card {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-}
-
-.payoff-title {
-    font-size: 46px;
-    line-height: 1.12;
-    font-weight: 700;
-    margin: 0 0 18px 0;
-    color: white;
-}
-
-.payoff-text {
-    font-size: 22px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.82);
-    margin: 0 auto;
-    max-width: 520px;
-}
-
-.loader {
-    margin-top: 28px;
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.48);
-}
-
-.retry-actions {
-    margin-top: 24px;
-    display: none;
-    gap: 12px;
-    max-width: 320px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.retry-actions.show {
-    display: grid;
-}
-
-.retry-btn {
-    width: 100%;
-    padding: 16px 22px;
-    border-radius: 999px;
-    border: 0;
-    background: white;
-    color: black;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-}
-
-.retry-btn.secondary {
-    background: rgba(255,255,255,0.10);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.10);
-}
-
-@media (max-width: 720px) {
-    .title {
-        font-size: 42px;
+    manifest_path = session_folder / "manifest.json"
+    manifest = {
+        "order_id": order["id"],
+        "session_id": session_id,
+        "extension": extension,
+        "mode": "live",
+        "updated_at": now_iso(),
     }
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
 
-    .text {
-        font-size: 21px;
+    received = len(list(session_folder.glob("chunk_*.part")))
+    update_order(order["id"], reaction_upload_pending=1, reaction_upload_error=None)
+
+    # Para no llenar logs, guardamos eventos clave: primer chunk y cada 5 chunks.
+    if chunk_index == 0 or (chunk_index + 1) % 5 == 0:
+        insert_order_event(
+            order["id"],
+            "reaction_live_chunk_received",
+            "ok",
+            f"Grabación progresiva recibida: {received} trozos",
+            {"session_id": session_id, "chunk_index": chunk_index, "bytes": len(data), "received": received},
+        )
+
+    return JSONResponse({"ok": True, "received": received, "chunk_index": chunk_index})
+
+
+@app.post("/upload-reaction-chunk/{recipient_token}")
+async def upload_reaction_chunk(
+    recipient_token: str,
+    session_id: str = Form(...),
+    chunk_index: int = Form(...),
+    total_chunks: int = Form(...),
+    extension: str = Form("webm"),
+    chunk: UploadFile = File(...),
+):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="not_paid")
+
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="video_not_ready")
+
+    if reaction_is_safe(order):
+        return JSONResponse({"ok": True, "already_uploaded": True})
+
+    session_id = safe_slug(session_id, "session")
+    extension = (extension or "webm").lower().strip()
+    if extension not in {"webm", "mp4"}:
+        extension = "webm"
+
+    try:
+        chunk_index = int(chunk_index)
+        total_chunks = int(total_chunks)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid_chunk_numbers")
+
+    if total_chunks <= 0 or total_chunks > 300:
+        raise HTTPException(status_code=400, detail="invalid_total_chunks")
+
+    if chunk_index < 0 or chunk_index >= total_chunks:
+        raise HTTPException(status_code=400, detail="invalid_chunk_index")
+
+    session_folder = REACTION_CHUNKS_FOLDER / order["id"] / session_id
+    session_folder.mkdir(parents=True, exist_ok=True)
+
+    data = await chunk.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty_chunk")
+
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="chunk_too_large")
+
+    chunk_path = session_folder / f"chunk_{chunk_index:05d}.part"
+    with open(chunk_path, "wb") as f:
+        f.write(data)
+
+    manifest_path = session_folder / "manifest.json"
+    manifest = {
+        "order_id": order["id"],
+        "session_id": session_id,
+        "total_chunks": total_chunks,
+        "extension": extension,
+        "updated_at": now_iso(),
     }
-
-    .payoff-title {
-        font-size: 36px;
-    }
-
-    .payoff-text {
-        font-size: 19px;
-    }
-}
-</style>
-</head>
-<body>
-<div class="wrap">
-    <video
-    id="video"
-    playsinline
-    webkit-playsinline
-    preload="auto"
-    style="
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform: scale(1.15);
-        transform-origin: center;
-        background: black;
-    "
->
-        <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
-    </video>
-
-    <div class="overlay" id="overlay">
-        <div class="overlay-card">
-            <div class="eyebrow">ETERNA</div>
-
-            <h1 class="title" id="ritualTitle">__RITUAL_TITLE__</h1>
-
-            <div class="text" id="ritualText">__RITUAL_TEXT__</div>
-
-            <div class="soft" id="ritualSoft">__RITUAL_SOFT__</div>
-
-            <a
-                class="btn"
-                id="ritualNextBtn"
-                href="__RITUAL_NEXT_URL__"
-                style="margin-top:28px; display:__RITUAL_NEXT_DISPLAY__;"
-            >
-                __RITUAL_BUTTON__
-            </a>
-
-            <button type="button" class="btn" id="startBtn" style="margin-top:28px; display:__START_DISPLAY__;">
-                Empezar
-            </button>
-
-            <div class="error-note" id="errorNote"></div>
-        </div>
-    </div>
-
-    <div class="payoff" id="payoff">
-        <div class="payoff-card">
-            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
-            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="loader" id="payoffLoader">Guardando este momento…</div>
-
-            <div class="retry-actions" id="retryActions">
-                <button type="button" class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
-                <button type="button" class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-const startBtn = document.getElementById("startBtn");
-const overlay = document.getElementById("overlay");
-const video = document.getElementById("video");
-const payoff = document.getElementById("payoff");
-const payoffLoader = document.getElementById("payoffLoader");
-const retryActions = document.getElementById("retryActions");
-const retryExperienceBtn = document.getElementById("retryExperienceBtn");
-const backToStartBtn = document.getElementById("backToStartBtn");
-const errorNote = document.getElementById("errorNote");
-const ritualTitle = document.getElementById("ritualTitle");
-const ritualText = document.getElementById("ritualText");
-const ritualSoft = document.getElementById("ritualSoft");
-const ritualNextBtn = document.getElementById("ritualNextBtn");
-const recipientToken = "__RECIPIENT_TOKEN__";
-
-let stream = null;
-let mediaRecorder = null;
-let recordedChunks = [];
-let finishing = false;
-let recordingMimeType = "";
-let recordingExtension = "webm";
-let experienceStarted = false;
-let experienceStarting = false;
-let finishTimeout = null;
-let savingProgressTimer = null;
-
-window.addEventListener("error", function(event) {
-    try {
-        console.error("ETERNA JS error:", event.message, event.error);
-        if (errorNote && !experienceStarted) {
-            errorNote.textContent = "Ha ocurrido algo al preparar la experiencia. Pulsa continuar otra vez.";
-            errorNote.classList.add("show");
-        }
-    } catch (_) {}
-});
-
-window.addEventListener("unhandledrejection", function(event) {
-    try {
-        console.error("ETERNA promise error:", event.reason);
-    } catch (_) {}
-});
-
-function setSavingMessage(text) {
-    try {
-        payoffLoader.innerText = text;
-    } catch (_) {}
-}
-
-function startSavingProgress() {
-    const messages = [
-        "62% guardando emoción…\nNo cierres esta pantalla.",
-        "78% casi listo…\nNo cierres esta pantalla.",
-        "91% no te vayas todavía…\nEsto solo pasa una vez.",
-        "96% terminando de guardar…"
-    ];
-
-    let i = 0;
-    setSavingMessage(messages[0]);
-
-    try {
-        if (savingProgressTimer) clearInterval(savingProgressTimer);
-        savingProgressTimer = setInterval(() => {
-            i = Math.min(i + 1, messages.length - 1);
-            setSavingMessage(messages[i]);
-        }, 1200);
-    } catch (_) {}
-}
-
-function stopSavingProgress() {
-    try {
-        if (savingProgressTimer) clearInterval(savingProgressTimer);
-    } catch (_) {}
-    savingProgressTimer = null;
-    setSavingMessage("100% listo.\nTu momento se ha guardado.");
-}
-
-function showPostVideoHold() {
-    try {
-        payoff.classList.add("show");
-        setSavingMessage("Quédate un segundo más…\nNo te vayas todavía.");
-    } catch (_) {}
-}
-
-
-let ritualStep = __RITUAL_STEP__;
-
-const ritualSteps = [
-    {
-        title: "Shhh…",
-        text: "Esto no es un vídeo.<br>Es un momento.",
-        soft: "No pienses.<br>Solo deja que ocurra.",
-        button: "Continuar"
-    },
-    {
-        title: "Sonido",
-        text: "Si puedes…<br>escúchalo con sonido.",
-        soft: "Mejor con auriculares.",
-        button: "Continuar"
-    },
-    {
-        title: "Antes de abrirlo",
-        text: "Busca un momento tranquilo.",
-        soft: "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
-        button: "Ya está"
-    },
-    {
-        title: "Colócate",
-        text: "Pon el teléfono frente a ti.",
-        soft: "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
-        button: "Listo"
-    },
-    {
-        title: "Luz",
-        text: "Deja que haya algo de luz frente a ti.",
-        soft: "Lo justo para poder verte.",
-        button: "Perfecto"
-    },
-    {
-        title: "Presencia",
-        text: "No hagas nada especial.",
-        soft: "Solo míralo.<br>Este momento es tuyo.",
-        button: "Continuar"
-    },
-    {
-        title: "Una última cosa",
-        text: "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
-        soft: "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
-        button: "Aceptar y continuar"
-    },
-    {
-        title: "Cuando estés listo…",
-        text: "Pulsa empezar.",
-        soft: "Y déjate llevar.",
-        button: "Empezar",
-        final: true
-    }
-];
-
-function renderRitualStep() {
-    const step = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
-
-    ritualTitle.innerHTML = step.title;
-    ritualText.innerHTML = step.text;
-    ritualSoft.innerHTML = step.soft || "";
-
-    if (step.final) {
-        ritualNextBtn.style.display = "none";
-        startBtn.style.display = "inline-block";
-        startBtn.innerText = step.button || "Empezar";
-        startBtn.disabled = false;
-    } else {
-        startBtn.style.display = "none";
-        ritualNextBtn.style.display = "inline-block";
-        ritualNextBtn.innerText = step.button || "Continuar";
-        try {
-            ritualNextBtn.href = "/experiencia/" + recipientToken + "?ritual_step=" + Math.min(ritualStep + 1, ritualSteps.length - 1);
-        } catch (_) {}
-    }
-}
-
-async function prepareCameraAndMicrophoneBeforeStart() {
-    clearStartError();
-
-    try {
-        if (stream) {
-            const activeTracks = stream.getTracks().filter((t) => t.readyState === "live");
-            const hasVideo = activeTracks.some((t) => t.kind === "video");
-            const hasAudio = activeTracks.some((t) => t.kind === "audio");
-
-            if (hasVideo && hasAudio) {
-                return true;
-            }
-
-            try {
-                stream.getTracks().forEach((t) => t.stop());
-            } catch (_) {}
-
-            stream = null;
-        }
-
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-        });
-
-        return true;
-    } catch (e) {
-        console.error("camera microphone permission error", e);
-        showStartError("Necesitamos activar cámara y micrófono para continuar con esta experiencia.");
-        return false;
-    }
-}
-
-async function eternaNextRitual() {
-    try {
-        clearStartError();
-
-        const current = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
-
-        if (current && current.button === "Aceptar y continuar") {
-            ritualNextBtn.disabled = true;
-            ritualNextBtn.innerText = "Preparando…";
-
-            const prepared = await prepareCameraAndMicrophoneBeforeStart();
-
-            ritualNextBtn.disabled = false;
-            ritualNextBtn.innerText = current.button || "Aceptar y continuar";
-
-            if (!prepared) {
-                return;
-            }
-        }
-
-        ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
-        renderRitualStep();
-    } catch (e) {
-        console.error("ritual step error", e);
-        showStartError("No hemos podido avanzar. Pulsa de nuevo en continuar.");
-        try {
-            ritualStep = Math.min(ritualStep + 1, ritualSteps.length - 1);
-            renderRitualStep();
-        } catch (_) {}
-    }
-}
-
-window.eternaNextRitual = eternaNextRitual;
-
-// Importante: los pasos del ritual avanzan por URL real del servidor.
-// Así el botón Continuar nunca se queda muerto aunque falle JavaScript.
-// La cámara y el micrófono se piden únicamente al pulsar Empezar.
-renderRitualStep();
-
-function showStartError(message) {
-    if (!errorNote) return;
-    errorNote.textContent = message || "No hemos podido preparar la grabación.";
-    errorNote.classList.add("show");
-}
-
-function clearStartError() {
-    if (!errorNote) return;
-    errorNote.textContent = "";
-    errorNote.classList.remove("show");
-}
-
-function showRetryActions() {
-    if (retryActions) {
-        retryActions.classList.add("show");
-    }
-}
-
-function hideRetryActions() {
-    if (retryActions) {
-        retryActions.classList.remove("show");
-    }
-}
-
-function buildFriendlyUploadMessage(errorCode) {
-    const code = String(errorCode || "").toLowerCase();
-
-    if (code.includes("empty_video")) {
-        return "No se ha detectado ninguna grabación. Vamos a intentarlo de nuevo.";
-    }
-
-    if (code.includes("video_too_large")) {
-        return "No se ha podido guardar porque el vídeo ocupa demasiado. Inténtalo otra vez.";
-    }
-
-    if (code.includes("notallowederror") || code.includes("permission") || code.includes("camera") || code.includes("microphone")) {
-        return "No se ha podido grabar la reacción porque faltan permisos de cámara o micrófono.";
-    }
-
-    if (code.includes("network") || code.includes("failed to fetch") || code.includes("fetch")) {
-        return "No se ha podido subir la reacción por un problema de conexión. Revisa internet e inténtalo de nuevo.";
-    }
-
-    return "No se ha podido guardar este momento. Puede faltar espacio, conexión o permisos. Vamos a intentarlo otra vez.";
-}
-
-function resetRecordingState() {
-    try {
-        if (finishTimeout) {
-            clearTimeout(finishTimeout);
-            finishTimeout = null;
-        }
-    } catch (_) {}
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-        }
-    } catch (_) {}
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (_) {}
-
-    stream = null;
-    mediaRecorder = null;
-    recordedChunks = [];
-    recordingMimeType = "";
-    recordingExtension = "webm";
-    finishing = false;
-    experienceStarted = false;
-    experienceStarting = false;
-
-    try {
-        video.pause();
-    } catch (_) {}
-
-    try {
-        video.currentTime = 0;
-    } catch (_) {}
-
-    overlay.classList.remove("hidden");
-    payoff.classList.remove("show");
-    ritualStep = 0;
-    renderRitualStep();
-    startBtn.disabled = false;
-    clearStartError();
-    hideRetryActions();
-}
-
-function waitForVideoReady() {
-    return new Promise((resolve) => {
-        const isReady =
-            Number.isFinite(video.duration) &&
-            video.duration > 0 &&
-            video.readyState >= 1;
-
-        if (isReady) {
-            resolve();
-            return;
-        }
-
-        let resolved = false;
-
-        const done = () => {
-            if (resolved) return;
-            resolved = true;
-            video.removeEventListener("loadedmetadata", onReady);
-            video.removeEventListener("loadeddata", onReady);
-            video.removeEventListener("canplay", onReady);
-            clearTimeout(timeoutId);
-            resolve();
-        };
-
-        const onReady = () => {
-            const readyNow =
-                Number.isFinite(video.duration) &&
-                video.duration > 0 &&
-                video.readyState >= 1;
-
-            if (readyNow) {
-                done();
-            }
-        };
-
-        const timeoutId = setTimeout(done, 4000);
-
-        video.addEventListener("loadedmetadata", onReady);
-        video.addEventListener("loadeddata", onReady);
-        video.addEventListener("canplay", onReady);
-    });
-}
-
-function detectRecordingFormat() {
-    const candidates = [
-        { mimeType: "video/mp4", extension: "mp4" },
-        { mimeType: "video/webm;codecs=vp9,opus", extension: "webm" },
-        { mimeType: "video/webm;codecs=vp8,opus", extension: "webm" },
-        { mimeType: "video/webm", extension: "webm" }
-    ];
-
-    if (typeof MediaRecorder === "undefined") {
-        throw new Error("media_recorder_not_supported");
-    }
-
-    for (const candidate of candidates) {
-        try {
-            if (!candidate.mimeType || MediaRecorder.isTypeSupported(candidate.mimeType)) {
-                return candidate;
-            }
-        } catch (_) {}
-    }
-
-    return { mimeType: "", extension: "webm" };
-}
-
-async function tryStartRecordingStrict() {
-    try {
-        const prepared = await prepareCameraAndMicrophoneBeforeStart();
-
-        if (!prepared || !stream) {
-            throw new Error("camera_microphone_not_ready");
-        }
-
-        const format = detectRecordingFormat();
-        recordingMimeType = format.mimeType;
-        recordingExtension = format.extension;
-        recordedChunks = [];
-
-        mediaRecorder = recordingMimeType
-            ? new MediaRecorder(stream, { mimeType: recordingMimeType })
-            : new MediaRecorder(stream);
-
-        mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-                recordedChunks.push(e.data);
-            }
-        };
-
-        mediaRecorder.onerror = (e) => {
-            console.error("mediaRecorder error", e);
-        };
-
-        mediaRecorder.start(1000);
-
-        await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    resolve();
-                } else {
-                    reject(new Error("recorder_not_running"));
-                }
-            }, 700);
-
-            try {
-                mediaRecorder.addEventListener("start", () => {
-                    clearTimeout(timer);
-                    resolve();
-                }, { once: true });
-            } catch (_) {}
-        });
-
-        console.log("🎥 grabación iniciada");
-        return true;
-
-    } catch (recordingError) {
-        console.error("recording init error", recordingError);
-
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
-
-        stream = null;
-        mediaRecorder = null;
-        recordedChunks = [];
-        recordingMimeType = "";
-        recordingExtension = "webm";
-
-        return false;
-    }
-}
-
-async function finalizeExperienceFlow() {
-    if (finishing) return;
-    finishing = true;
-
-    payoff.classList.add("show");
-    startSavingProgress();
-
-    try {
-        if (finishTimeout) {
-            clearTimeout(finishTimeout);
-            finishTimeout = null;
-        }
-    } catch (_) {}
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            try {
-                mediaRecorder.requestData();
-            } catch (_) {}
-
-            await new Promise((resolve) => {
-                let done = false;
-
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    clearTimeout(timeoutId);
-                    resolve();
-                };
-
-                const timeoutId = setTimeout(finish, 2500);
-
-                mediaRecorder.addEventListener("stop", finish, { once: true });
-
-                try {
-                    mediaRecorder.stop();
-                } catch (_) {
-                    finish();
-                }
-            });
-        }
-    } catch (e) {
-        console.error("recorder stop error", e);
-    }
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((t) => t.stop());
-        }
-    } catch (e) {
-        console.error("stream stop error", e);
-    }
-
-    let blob = null;
-    try {
-        blob = new Blob(recordedChunks, {
-            type: recordingMimeType || "video/webm"
-        });
-
-        console.log("chunks:", recordedChunks.length);
-        console.log("blob size:", blob.size);
-    } catch (e) {
-        console.error("blob error", e);
-    }
-
-    try {
-        if (blob && blob.size > 0) {
-            const filename = "reaction." + recordingExtension;
-            const formData = new FormData();
-            formData.append("video", blob, filename);
-
-            const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
-                method: "POST",
-                body: formData
-            });
-
-            const uploadData = await uploadResponse.json().catch(() => ({}));
-
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.detail || "upload_reaction_failed");
-            }
-
-            stopSavingProgress();
-            console.log("✅ reacción subida");
-        } else {
-            throw new Error("empty_blob");
-        }
-    } catch (e) {
-        console.error("upload error", e);
-
-        let humanMessage = buildFriendlyUploadMessage(
-            e?.message || e?.detail || ""
-        );
-
-        try { if (savingProgressTimer) clearInterval(savingProgressTimer); } catch (_) {}
-        savingProgressTimer = null;
-        payoffLoader.innerText = humanMessage;
-        showRetryActions();
-
-        finishing = false;
-        return;
-    }
-
-    setTimeout(() => {
-        window.location.replace("/finalizar-experiencia/" + recipientToken);
-    }, 900);
-}
-
-function armFinishFallbacks() {
-    video.addEventListener("ended", () => {
-        showPostVideoHold();
-        setTimeout(() => {
-            finalizeExperienceFlow();
-        }, 8000);
-    }, { once: true });
-
-    let fallbackMs = 120000;
-
-    if (Number.isFinite(video.duration) && video.duration > 0) {
-        fallbackMs = Math.max(23000, Math.floor(video.duration * 1000) + 11000);
-    }
-
-    finishTimeout = setTimeout(() => {
-        finalizeExperienceFlow();
-    }, fallbackMs);
-}
-
-async function safeResumePlayback() {
-    try {
-        if (!experienceStarted || finishing) return;
-
-        if (video.ended) {
-            finalizeExperienceFlow();
-            return;
-        }
-
-        if (video.paused) {
-            await video.play();
-        }
-    } catch (e) {
-        console.error("resume playback error", e);
-    }
-}
-
-async function eternaStartExperience() {
-    if (experienceStarted || experienceStarting) return;
-    experienceStarting = true;
-    console.log("🎭 ETERNA: usuario ha pulsado Empezar");
-
-    startBtn.disabled = true;
-    clearStartError();
-
-    try {
-        try {
-            video.pause();
-        } catch (_) {}
-
-        try {
-            video.currentTime = 0;
-        } catch (_) {}
-
-        const recordingStarted = await tryStartRecordingStrict();
-
-        if (!recordingStarted) {
-            showStartError("No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.");
-            experienceStarting = false;
-            startBtn.disabled = false;
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append("recipient_token", recipientToken);
-
-        const response = await fetch("/start-experience", {
-            method: "POST",
-            body: formData
-        });
-
-        let data = {};
-        try {
-            data = await response.json();
-        } catch (_) {}
-
-        if (!response.ok) {
-            throw new Error(data.detail || "start_experience_error");
-        }
-
-        if (data.redirect_url) {
-            window.location.replace(data.redirect_url);
-            return;
-        }
-
-        video.load();
-        await waitForVideoReady();
-
-        overlay.classList.add("hidden");
-        experienceStarted = true;
-        experienceStarting = false;
-
-        armFinishFallbacks();
-
-        try {
-            await video.play();
-        } catch (e) {
-            console.error("video play error", e);
-
-            showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
-            experienceStarted = false;
-            experienceStarting = false;
-            overlay.classList.remove("hidden");
-            startBtn.disabled = false;
-
-            try {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    mediaRecorder.stop();
-                }
-            } catch (_) {}
-
-            try {
-                if (stream) {
-                    stream.getTracks().forEach((t) => t.stop());
-                }
-            } catch (_) {}
-
-            stream = null;
-            mediaRecorder = null;
-            recordedChunks = [];
-            recordingMimeType = "";
-            recordingExtension = "webm";
-
-            return;
-        }
-
-    } catch (e) {
-        console.error("experience start error", e);
-
-        startBtn.disabled = false;
-        experienceStarted = false;
-        experienceStarting = false;
-        payoff.classList.remove("show");
-
-        try {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-            }
-        } catch (_) {}
-
-        try {
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
-        } catch (_) {}
-
-        stream = null;
-        mediaRecorder = null;
-        recordedChunks = [];
-        recordingMimeType = "";
-        recordingExtension = "webm";
-
-        showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
-    }
-}
-
-window.eternaStartExperience = eternaStartExperience;
-
-if (startBtn) {
-    startBtn.addEventListener("click", (event) => {
-        try { event.preventDefault(); } catch (_) {}
-        eternaStartExperience();
-    });
-}
-
-document.addEventListener("visibilitychange", async () => {
-    if (!experienceStarted || finishing) return;
-
-    if (document.visibilityState === "visible") {
-        await safeResumePlayback();
-    }
-});
-
-window.addEventListener("focus", async () => {
-    if (!experienceStarted || finishing) return;
-    await safeResumePlayback();
-});
-
-window.addEventListener("pagehide", () => {
-    if (!experienceStarted || finishing) return;
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
-    } catch (_) {}
-});
-
-window.addEventListener("beforeunload", () => {
-    if (!experienceStarted || finishing) return;
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
-    } catch (_) {}
-});
-
-if (retryExperienceBtn) {
-    retryExperienceBtn.addEventListener("click", () => {
-        resetRecordingState();
-        clearStartError();
-    });
-}
-
-if (backToStartBtn) {
-    backToStartBtn.addEventListener("click", () => {
-        window.location.replace("/pedido/" + recipientToken);
-    });
-}
-</script>
-</body>
-</html>
-    """
-
-    ritual_steps_server = [
-        {
-            "title": "Shhh…",
-            "text": "Esto no es un vídeo.<br>Es un momento.",
-            "soft": "No pienses.<br>Solo deja que ocurra.",
-            "button": "Continuar",
-            "final": False,
-        },
-        {
-            "title": "Sonido",
-            "text": "Si puedes…<br>escúchalo con sonido.",
-            "soft": "Mejor con auriculares.",
-            "button": "Continuar",
-            "final": False,
-        },
-        {
-            "title": "Antes de abrirlo",
-            "text": "Busca un momento tranquilo.",
-            "soft": "Sin ruido.<br>Sin interrupciones.<br>Este momento es solo para ti.",
-            "button": "Ya está",
-            "final": False,
-        },
-        {
-            "title": "Colócate",
-            "text": "Pon el teléfono frente a ti.",
-            "soft": "A la altura de tus ojos.<br>Como si alguien estuviera mirándote.",
-            "button": "Listo",
-            "final": False,
-        },
-        {
-            "title": "Luz",
-            "text": "Deja que haya algo de luz frente a ti.",
-            "soft": "Lo justo para poder verte.",
-            "button": "Perfecto",
-            "final": False,
-        },
-        {
-            "title": "Presencia",
-            "text": "No hagas nada especial.",
-            "soft": "Solo míralo.<br>Este momento es tuyo.",
-            "button": "Continuar",
-            "final": False,
-        },
-        {
-            "title": "Una última cosa",
-            "text": "Para vivir esta experiencia,<br>necesitamos activar tu cámara y tu micrófono.",
-            "soft": "No tienes que hacer nada especial.<br>Solo estar presente.<br><span class='ritual-legal'>Al continuar, aceptas el uso de cámara y micrófono durante la experiencia.</span>",
-            "button": "Aceptar y continuar",
-            "final": False,
-        },
-        {
-            "title": "Cuando estés listo…",
-            "text": "Pulsa empezar.",
-            "soft": "Y déjate llevar.",
-            "button": "Empezar",
-            "final": True,
-        },
-    ]
-
-    ritual_current = ritual_steps_server[min(ritual_step, len(ritual_steps_server) - 1)]
-
-    html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
-    html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
-    html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-    html_page = html_page.replace("__RITUAL_STEP__", str(ritual_step))
-    html_page = html_page.replace("__RITUAL_TITLE__", safe_text(ritual_current["title"]))
-    html_page = html_page.replace("__RITUAL_TEXT__", ritual_current["text"])
-    html_page = html_page.replace("__RITUAL_SOFT__", ritual_current["soft"])
-    html_page = html_page.replace("__RITUAL_BUTTON__", safe_text(ritual_current["button"]))
-    html_page = html_page.replace("__RITUAL_NEXT_URL__", safe_attr(f"/experiencia/{recipient_token}?ritual_step={next_ritual_step}"))
-    html_page = html_page.replace("__RITUAL_NEXT_DISPLAY__", "none" if ritual_current.get("final") else "inline-block")
-    html_page = html_page.replace("__START_DISPLAY__", "inline-block" if ritual_current.get("final") else "none")
-    html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
-    html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
-
-    return HTMLResponse(html_page)
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+
+    received = len(list(session_folder.glob("chunk_*.part")))
+    update_order(order["id"], reaction_upload_pending=1, reaction_upload_error=None)
+    insert_order_event(
+        order["id"],
+        "reaction_chunk_received",
+        "ok",
+        f"Chunk {chunk_index + 1}/{total_chunks} recibido",
+        {"session_id": session_id, "chunk_index": chunk_index, "total_chunks": total_chunks, "bytes": len(data), "received": received},
+    )
+
+    return JSONResponse({"ok": True, "received": received, "total_chunks": total_chunks})
+
+
+@app.post("/finish-reaction-upload/{recipient_token}")
+async def finish_reaction_upload(
+    recipient_token: str,
+    session_id: str = Form(...),
+    total_chunks: int = Form(...),
+    extension: str = Form("webm"),
+):
+    order = get_order_by_recipient_token_or_404(recipient_token)
+
+    if not bool(order.get("paid")):
+        raise HTTPException(status_code=403, detail="not_paid")
+
+    if not original_video_ready(order):
+        raise HTTPException(status_code=403, detail="video_not_ready")
+
+    if reaction_is_safe(order):
+        maybe_mark_eterna_completed(order["id"])
+        return JSONResponse({"ok": True, "already_uploaded": True, "redirect": f"/cobrar/{recipient_token}"})
+
+    session_id = safe_slug(session_id, "session")
+    extension = (extension or "webm").lower().strip()
+    if extension not in {"webm", "mp4"}:
+        extension = "webm"
+
+    try:
+        total_chunks = int(total_chunks)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid_total_chunks")
+
+    session_folder = REACTION_CHUNKS_FOLDER / order["id"] / session_id
+    if not session_folder.exists():
+        raise HTTPException(status_code=400, detail="chunk_session_not_found")
+
+    missing = []
+    for index in range(total_chunks):
+        if not (session_folder / f"chunk_{index:05d}.part").exists():
+            missing.append(index)
+
+    if missing:
+        insert_order_event(order["id"], "reaction_chunks_missing", "error", "Faltan chunks de la reacción", {"session_id": session_id, "missing": missing[:20]})
+        raise HTTPException(status_code=400, detail="missing_chunks")
+
+    local_path = reaction_video_path(order["id"], extension)
+    try:
+        with open(local_path, "wb") as out:
+            for index in range(total_chunks):
+                part_path = session_folder / f"chunk_{index:05d}.part"
+                with open(part_path, "rb") as part:
+                    out.write(part.read())
+
+        saved_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
+        if saved_size <= 0:
+            raise Exception("assembled_file_empty")
+
+        if saved_size > MAX_VIDEO_SIZE:
+            raise HTTPException(status_code=400, detail="video_too_large")
+
+        insert_order_event(order["id"], "reaction_assembled", "ok", "Reacción recompuesta desde chunks", {"session_id": session_id, "bytes": saved_size, "chunks": total_chunks})
+        updated_order = complete_reaction_from_local_file(order, local_path, extension=extension, source="chunked_upload")
+        return JSONResponse({"ok": True, "redirect": f"/cobrar/{recipient_token}", "bytes": saved_size})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        update_order(order["id"], reaction_upload_pending=0, reaction_upload_error="chunk_assembly_failed")
+        insert_order_event(order["id"], "reaction_chunk_finish_failed", "error", str(e), {"session_id": session_id})
+        log_error("finish_reaction_upload", e)
+        raise HTTPException(status_code=500, detail="chunk_assembly_failed")
 
 
 # =========================================================
@@ -6762,54 +6229,15 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         print("💾 reaction_saved_size:", saved_size)
         log_human("EMOCIÓN GUARDADA EN SERVIDOR", "💾 Guardada localmente", f"📦 Tamaño: {round(saved_size / (1024 * 1024), 2)} MB")
 
-        public_url = None
-        r2_error = None
-        try:
-            content_type = guess_media_type_from_path(local_path)
-            remote_name = r2_order_key(order, "reaction", f"reaction.{extension}")
-            public_url = upload_video_to_r2(local_path, remote_name, content_type=content_type)
-            print("☁️ R2 reaction upload:", public_url or "r2_disabled")
-        except Exception as e:
-            r2_error = str(e)
-            log_error("upload_reaction_r2_best_effort", e)
-
-        # Regla de oro: si la reacción está guardada localmente, ETERNA termina aunque R2 falle.
-        update_order(
-            order["id"],
-            reaction_video_local=local_path,
-            reaction_video_public_url=public_url,
-            reaction_uploaded=1,
-            experience_started=1,
-            experience_completed=1,
-            delivered_to_recipient=1,
-            reaction_upload_pending=0,
-            reaction_upload_error=r2_error,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-        )
-
-        updated_order = maybe_mark_eterna_completed(order["id"])
+        updated_order = complete_reaction_from_local_file(order, local_path, extension=extension, source="single_upload")
 
         print("✅ DB ACTUALIZADA: reacción segura")
         log_human("ETERNA COMPLETADA", "✅ La emoción se ha guardado", f"🎁 Pack listo para {order.get('sender_name')}", "💸 Siguiente paso: cobros")
         log_info("✅ REACCIÓN GUARDADA Y ETERNA COMPLETADA")
         log_info("🆔 Order ID", order["id"])
         log_info("💾 Reacción local", local_path)
-        log_info("☁️ Reacción R2", public_url or "no subida a R2, pero guardada localmente")
         log_info("🎁 Pack regalante", sender_pack_url_from_order(updated_order))
         log_info("💸 Siguiente paso", f"/cobrar/{recipient_token}")
-
-        try:
-            print("📩 INTENTANDO ENVÍO AL REGALANTE DESDE UPLOAD")
-            result = try_send_sender_sms(updated_order)
-            print("📩 RESULTADO ENVÍO REGALANTE:", result)
-        except Exception as e:
-            log_error("upload_try_send_sender_sms", e)
-
-        try:
-            payout_result = process_gift_transfer_for_order(updated_order)
-            print("💸 PAYOUT DESDE UPLOAD:", payout_result)
-        except Exception as e:
-            log_error("upload_payout", e)
 
         return JSONResponse({
             "ok": True,
@@ -6822,6 +6250,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_pending=0,
             reaction_upload_error=str(e.detail),
         )
+        insert_order_event(order["id"], "reaction_upload_failed", "error", str(e.detail))
         raise
 
     except Exception as e:
@@ -6832,6 +6261,7 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_pending=0,
             reaction_upload_error="local_save_failed",
         )
+        insert_order_event(order["id"], "reaction_upload_failed", "error", "local_save_failed")
 
         raise HTTPException(status_code=500, detail="local_save_failed")
 
@@ -7459,6 +6889,71 @@ def get_sender_reaction_video(sender_token: str):
 # =========================================================
 # OPTIONAL ADMIN
 # =========================================================
+
+@app.get("/admin/order-status/{order_id}", response_class=HTMLResponse)
+def admin_order_status(order_id: str, token: str):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="unauthorized")
+
+    order = get_order_by_id(order_id)
+    events = list_order_events(order_id, limit=120)
+
+    steps = [
+        ("order_created", "Pedido creado"),
+        ("payment_received", "Pago recibido"),
+        ("render_requested", "Vídeo enviado al motor"),
+        ("video_ready", "Vídeo generado"),
+        ("recipient_sms_sent", "SMS enviado"),
+        ("recipient_opened", "Destinatario abrió enlace"),
+        ("experience_started", "Experiencia iniciada"),
+        ("reaction_chunk_received", "Chunks recibidos"),
+        ("reaction_assembled", "Reacción recompuesta"),
+        ("reaction_saved_local", "Reacción guardada local"),
+        ("reaction_r2_uploaded", "Reacción subida a R2"),
+        ("eterna_completed", "ETERNA completada"),
+        ("sender_sms_attempt", "SMS al regalante"),
+    ]
+
+    latest_by_step = {}
+    for ev in events:
+        latest_by_step[ev.get("step")] = ev
+
+    rows = ""
+    for step, label in steps:
+        ev = latest_by_step.get(step)
+        if ev:
+            status = ev.get("status") or "ok"
+            icon = "✅" if status == "ok" else ("⚠️" if status in {"warning", "pending"} else "❌")
+            msg = safe_text(ev.get("message") or "")
+            created = safe_text(ev.get("created_at") or "")
+        else:
+            icon = "⏳"
+            msg = "Pendiente"
+            created = ""
+        rows += f"<tr><td>{icon}</td><td>{safe_text(label)}</td><td>{msg}</td><td>{created}</td></tr>"
+
+    raw_rows = ""
+    for ev in events:
+        raw_rows += f"<tr><td>{safe_text(ev.get('created_at'))}</td><td>{safe_text(ev.get('step'))}</td><td>{safe_text(ev.get('status'))}</td><td>{safe_text(ev.get('message'))}</td></tr>"
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Estado ETERNA</title>
+<style>
+body {{ background:#050505; color:#fff; font-family:Arial,sans-serif; padding:22px; }}
+h1 {{ margin:0 0 10px; }}
+.card {{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:18px; margin:16px 0; }}
+table {{ width:100%; border-collapse:collapse; font-size:14px; }}
+td, th {{ border-bottom:1px solid rgba(255,255,255,.10); padding:10px; text-align:left; vertical-align:top; }}
+.small {{ color:rgba(255,255,255,.62); line-height:1.6; }}
+</style></head><body>
+<h1>Estado ETERNA</h1>
+<div class="small">Pedido: {safe_text(order_id)} · Destinatario: {safe_text(order.get('recipient_name'))} · Regalante: {safe_text(order.get('sender_name'))}</div>
+<div class="card"><h2>Proceso sencillo</h2><table><tbody>{rows}</tbody></table></div>
+<div class="card"><h2>Eventos técnicos</h2><table><thead><tr><th>Hora</th><th>Paso</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>{raw_rows}</tbody></table></div>
+</body></html>
+    """)
+
 
 @app.get("/admin/order/{order_id}")
 def admin_order(order_id: str, token: str):
