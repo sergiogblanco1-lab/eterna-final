@@ -4750,1064 +4750,399 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ETERNA</title>
 <style>
-* {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: #000; color: #fff; font-family: Arial, sans-serif;
+    overflow: hidden; overscroll-behavior: none;
 }
-
-html,
-body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: #000;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    color: #fff;
+body { position: fixed; inset: 0; touch-action: manipulation; }
+.wrap { position: relative; width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; background: #000; }
+#experienceVideo {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; background: #000; opacity: 0; transition: opacity 450ms ease;
 }
-
-body {
-    position: fixed;
-    inset: 0;
-    overscroll-behavior: none;
-    touch-action: manipulation;
-}
-
-.wrap {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-    background: #000;
-}
-
-#video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: #000;
-    opacity: 0;
-    transition: opacity 900ms ease;
-}
-
-#video.live {
-    opacity: 1;
-}
-
-.overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 40;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: max(24px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom)) 24px;
+#experienceVideo.live { opacity: 1; }
+.screen {
+    position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+    padding: max(28px, env(safe-area-inset-top)) 22px max(34px, env(safe-area-inset-bottom)) 22px;
     text-align: center;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.07), transparent 34%),
-        linear-gradient(180deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.96) 100%);
+    background: radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 34%), linear-gradient(180deg, #050505 0%, #000 100%);
 }
-
-.overlay.hidden {
-    display: none;
-    pointer-events: none;
+.screen.hidden { display: none !important; pointer-events: none !important; }
+.card { width: 100%; max-width: 600px; margin: 0 auto; position: relative; z-index: 30; }
+.eyebrow { font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(255,255,255,0.36); margin-bottom: 24px; }
+h1 { margin: 0 0 22px; font-size: clamp(42px, 11vw, 62px); line-height: 1.05; font-weight: 800; }
+.main-text { font-size: clamp(22px, 6vw, 30px); line-height: 1.45; color: rgba(255,255,255,0.90); margin: 0 auto 16px; max-width: 560px; }
+.soft { font-size: 14px; line-height: 1.65; color: rgba(255,255,255,0.58); margin: 18px auto 0; max-width: 520px; }
+.legal { display: block; margin-top: 16px; padding: 14px 16px; border-radius: 18px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.72); font-size: 13px; line-height: 1.55; }
+.button-zone { margin-top: 30px; position: relative; z-index: 80; display: flex; justify-content: center; align-items: center; min-height: 74px; pointer-events: auto; }
+#startExperienceBtn {
+    appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px;
+    background: #fff; color: #000; font-weight: 900; font-size: 16px;
+    min-width: 260px; max-width: calc(100vw - 54px); padding: 20px 28px;
+    cursor: pointer; touch-action: manipulation; position: relative; z-index: 90;
+    user-select: none; -webkit-user-select: none; line-height: 1.2;
 }
-
-.card {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-}
-
-.eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.38);
-    margin-bottom: 24px;
-}
-
-.title {
-    font-size: clamp(38px, 10vw, 58px);
-    line-height: 1.06;
-    font-weight: 700;
-    margin: 0 0 22px 0;
-    color: #fff;
-}
-
-.text {
-    font-size: clamp(21px, 6vw, 28px);
-    line-height: 1.55;
-    color: rgba(255,255,255,0.88);
-    margin: 0 auto 14px auto;
-    max-width: 540px;
-}
-
-.soft {
-    font-size: 15px;
-    line-height: 1.75;
-    color: rgba(255,255,255,0.56);
-    margin: 0 auto;
-    max-width: 500px;
-}
-
-.legal {
-    display: block;
-    margin-top: 18px;
-    padding: 14px 16px;
-    border-radius: 18px;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.10);
-    color: rgba(255,255,255,0.72);
-    font-size: 13px;
-    line-height: 1.55;
-}
-
-.actions {
-    display: grid;
-    gap: 12px;
-    justify-items: center;
-    margin-top: 30px;
-}
-
-.btn {
-    appearance: none;
-    -webkit-appearance: none;
-    display: inline-block;
-    min-width: 230px;
-    max-width: 100%;
-    padding: 18px 26px;
-    border-radius: 999px;
-    border: 0;
-    background: #fff;
-    color: #000;
-    font-weight: 800;
-    font-size: 16px;
-    cursor: pointer;
-    line-height: 1.2;
-    touch-action: manipulation;
-    position: relative;
-    z-index: 50;
-}
-
-.btn:active {
-    transform: scale(0.99);
-}
-
-.btn:disabled,
-.btn[aria-disabled="true"] {
-    opacity: 0.72;
-    cursor: default;
-}
-
-.start-hotzone {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    -webkit-tap-highlight-color: rgba(255,255,255,0.25);
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-.actions {
-    position: relative;
-    z-index: 80;
-    pointer-events: auto;
-}
-
-.secondary-btn {
-    background: rgba(255,255,255,0.09);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-
-.error-note {
-    margin-top: 18px;
-    font-size: 14px;
-    line-height: 1.65;
-    color: rgba(255,255,255,0.72);
-    max-width: 480px;
-    margin-left: auto;
-    margin-right: auto;
-    display: none;
-    white-space: pre-line;
-}
-
-.error-note.show {
-    display: block;
-}
-
-.payoff {
-    position: absolute;
-    inset: 0;
-    z-index: 60;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    text-align: center;
-    background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.98) 100%);
-}
-
-.payoff.show {
-    display: flex;
-}
-
-.payoff-card {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-}
-
-.payoff-title {
-    font-size: clamp(34px, 9vw, 52px);
-    font-weight: 800;
-    line-height: 1.1;
-    margin-bottom: 18px;
-}
-
-.payoff-text {
-    font-size: 20px;
-    line-height: 1.65;
-    color: rgba(255,255,255,0.82);
-}
-
-.loader {
-    margin-top: 28px;
-    color: rgba(255,255,255,0.62);
-    font-size: 14px;
-    line-height: 1.65;
-    white-space: pre-line;
-}
-
-.retry-actions {
-    display: none;
-    margin-top: 24px;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.retry-actions.show {
-    display: flex;
-}
-
-.retry-btn {
-    appearance: none;
-    -webkit-appearance: none;
-    border: 0;
-    border-radius: 999px;
-    padding: 14px 18px;
-    background: #fff;
-    color: #000;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.retry-btn.secondary {
-    background: rgba(255,255,255,0.10);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-
-.debug-tap {
-    position: fixed;
-    left: 10px;
-    bottom: 10px;
-    z-index: 90;
-    max-width: calc(100vw - 20px);
-    padding: 8px 10px;
-    border-radius: 12px;
-    background: rgba(0,0,0,0.55);
-    color: rgba(255,255,255,0.55);
-    font-size: 11px;
-    line-height: 1.35;
-    display: none;
-    text-align: left;
-    white-space: pre-line;
-}
+#startExperienceBtn:active { transform: scale(0.985); }
+#startExperienceBtn[disabled] { opacity: 0.72; }
+.status { margin-top: 16px; min-height: 22px; font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.68); white-space: pre-line; }
+.status.error { color: rgba(255,225,225,0.95); }
+.payoff { display: none; position: absolute; inset: 0; z-index: 60; align-items: center; justify-content: center; padding: 24px; text-align: center; background: radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%), linear-gradient(180deg, rgba(0,0,0,0.86), rgba(0,0,0,0.98)); }
+.payoff.show { display: flex; }
+.payoff-title { font-size: clamp(36px, 9vw, 54px); line-height: 1.08; font-weight: 900; margin-bottom: 18px; }
+.payoff-text { font-size: 20px; line-height: 1.65; color: rgba(255,255,255,0.84); }
+.loader { margin-top: 28px; color: rgba(255,255,255,0.68); font-size: 14px; line-height: 1.65; white-space: pre-line; }
+.retry-actions { display: none; margin-top: 24px; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.retry-actions.show { display: flex; }
+.retry-btn { border: 0; border-radius: 999px; padding: 14px 18px; background: #fff; color: #000; font-weight: 900; cursor: pointer; }
+.retry-btn.secondary { background: rgba(255,255,255,0.10); color: #fff; border: 1px solid rgba(255,255,255,0.12); }
+.debug { display: none; position: fixed; left: 10px; bottom: 10px; z-index: 999; padding: 8px 10px; border-radius: 12px; background: rgba(0,0,0,0.58); color: rgba(255,255,255,0.65); font-size: 11px; line-height: 1.35; text-align: left; white-space: pre-line; max-width: calc(100vw - 20px); }
 </style>
 </head>
 <body>
 <div class="wrap">
-    <video
-        id="video"
-        playsinline
-        webkit-playsinline
-        preload="auto"
-        controlslist="nodownload noplaybackrate noremoteplayback"
-        disablepictureinpicture
-    >
+    <video id="experienceVideo" playsinline webkit-playsinline preload="auto" controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture>
         <source src="__VIDEO_URL__" type="__VIDEO_TYPE__">
     </video>
 
-    <div class="overlay" id="overlay">
+    <div class="screen" id="startScreen">
         <div class="card">
             <div class="eyebrow">ETERNA</div>
-            <h1 class="title" id="ritualTitle">Antes de vivirlo</h1>
-            <div class="text" id="ritualText">Colócate con calma.<br>Busca buena luz y pon el teléfono frente a ti.</div>
-            <div class="soft" id="ritualSoft">Para abrir esta experiencia necesitamos activar cámara y micrófono.</div>
-
-            <div class="actions" id="startActionZone">
-                <button type="button" class="btn" id="nextBtn" style="display:none;">Continuar</button>
-                <a
-                    href="#vivir"
-                    class="btn start-hotzone"
-                    id="startBtn"
-                    role="button"
-                    tabindex="0"
-                    onclick="return window.ETERNA_FORCE_START ? window.ETERNA_FORCE_START(event) : false;"
-                    ontouchstart="return window.ETERNA_FORCE_START ? window.ETERNA_FORCE_START(event) : false;"
-                    onpointerdown="return window.ETERNA_FORCE_START ? window.ETERNA_FORCE_START(event) : false;"
-                >Acepto y vivir la experiencia</a>
+            <h1>Antes de vivirlo</h1>
+            <div class="main-text">Colócate con calma.<br>Busca buena luz y pon el teléfono frente a ti.</div>
+            <div class="soft">Para abrir esta experiencia necesitamos activar cámara y micrófono.<span class="legal">Al pulsar el botón, aceptas que durante la experiencia se grabe tu imagen y tu voz para crear un recuerdo privado que recibirá la persona que te lo ha enviado. Si no quieres ser grabado, puedes cerrar esta pantalla ahora.</span></div>
+            <div class="button-zone" id="buttonZone">
+                <button id="startExperienceBtn" type="button">Acepto y vivir la experiencia</button>
             </div>
-
-            <div class="error-note" id="errorNote"></div>
+            <div class="status" id="startStatus"></div>
         </div>
     </div>
 
     <div class="payoff" id="payoff">
-        <div class="payoff-card">
-            <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
-            <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="loader" id="payoffLoader">Guardando este momento…<br>No cierres esta pantalla.</div>
-
+        <div class="card">
+            <div class="payoff-title">__PAYOFF_TITLE__</div>
+            <div class="payoff-text">__PAYOFF_TEXT__</div>
+            <div class="loader" id="loaderText">Guardando este momento…<br>No cierres esta pantalla.</div>
             <div class="retry-actions" id="retryActions">
-                <button type="button" class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
-                <button type="button" class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
+                <button type="button" class="retry-btn" id="retryBtn">Volver a intentarlo</button>
+                <button type="button" class="retry-btn secondary" id="backBtn">Volver al inicio</button>
             </div>
         </div>
     </div>
-
-    <div class="debug-tap" id="debugTap"></div>
+    <div class="debug" id="debugBox"></div>
 </div>
 
 <script>
 (function () {
-"use strict";
+'use strict';
 
 const recipientToken = "__RECIPIENT_TOKEN__";
+const video = document.getElementById('experienceVideo');
+const startScreen = document.getElementById('startScreen');
+const startBtn = document.getElementById('startExperienceBtn');
+const buttonZone = document.getElementById('buttonZone');
+const startStatus = document.getElementById('startStatus');
+const payoff = document.getElementById('payoff');
+const loaderText = document.getElementById('loaderText');
+const retryActions = document.getElementById('retryActions');
+const retryBtn = document.getElementById('retryBtn');
+const backBtn = document.getElementById('backBtn');
+const debugBox = document.getElementById('debugBox');
 
-const video = document.getElementById("video");
-const overlay = document.getElementById("overlay");
-const nextBtn = document.getElementById("nextBtn");
-const startBtn = document.getElementById("startBtn");
-const ritualTitle = document.getElementById("ritualTitle");
-const ritualText = document.getElementById("ritualText");
-const ritualSoft = document.getElementById("ritualSoft");
-const errorNote = document.getElementById("errorNote");
-const payoff = document.getElementById("payoff");
-const payoffLoader = document.getElementById("payoffLoader");
-const retryActions = document.getElementById("retryActions");
-const retryExperienceBtn = document.getElementById("retryExperienceBtn");
-const backToStartBtn = document.getElementById("backToStartBtn");
-const debugTap = document.getElementById("debugTap");
-
-let ritualStep = 0;
 let stream = null;
-let mediaRecorder = null;
-let recordedChunks = [];
-let recordingMimeType = "";
-let recordingExtension = "webm";
-let experienceStarted = false;
-let experienceStarting = false;
+let recorder = null;
+let chunks = [];
+let mimeType = '';
+let extension = 'webm';
+let starting = false;
+let started = false;
 let finishing = false;
-let finishTimeout = null;
-const POST_VIDEO_REACTION_PAD_MS = 8000;
-let savingProgressTimer = null;
+let finishTimer = null;
+let savingTimer = null;
+const POST_VIDEO_PAD_MS = 8000;
 
-const ritualSteps = [
-    {
-        title: "Antes de vivirlo",
-        text: "Colócate con calma.<br>Busca buena luz y pon el teléfono frente a ti.",
-        soft: "Para abrir esta experiencia necesitamos activar cámara y micrófono.<span class='legal'>Al pulsar el botón, aceptas que durante la experiencia se grabe tu imagen y tu voz para crear un recuerdo privado que recibirá la persona que te lo ha enviado. Si no quieres ser grabado, puedes cerrar esta pantalla ahora.</span>",
-        button: "Acepto y vivir la experiencia",
-        final: true
-    }
-];
-
-function debug(message) {
+function debug(msg) {
     try {
-        console.log("ETERNA:", message);
-        if (debugTap && /debug=1/i.test(window.location.search || "")) {
-            debugTap.style.display = "block";
-            debugTap.innerText = String(message);
+        console.log('ETERNA', msg);
+        if (/debug=1/i.test(window.location.search || '')) {
+            debugBox.style.display = 'block';
+            debugBox.innerText = String(msg);
         }
     } catch (_) {}
 }
 
-function clearStartError() {
+function setStatus(msg, isError) {
     try {
-        errorNote.innerText = "";
-        errorNote.classList.remove("show");
+        startStatus.innerText = msg || '';
+        if (isError) startStatus.classList.add('error');
+        else startStatus.classList.remove('error');
     } catch (_) {}
 }
 
-function showStartError(message) {
-    try {
-        errorNote.innerText = message;
-        errorNote.classList.add("show");
-    } catch (_) {}
+function friendlyError(err) {
+    const text = String(err && err.message ? err.message : err || '').toLowerCase();
+    if (text.includes('notallowed') || text.includes('permission') || text.includes('denied')) return 'Safari necesita permiso de cámara y micrófono. Permítelos y vuelve a pulsar.';
+    if (text.includes('notfound') || text.includes('devices')) return 'No hemos podido encontrar cámara o micrófono en este dispositivo.';
+    if (text.includes('media_recorder_not_supported')) return 'Este navegador no permite grabar la reacción. Abre el enlace en Safari actualizado.';
+    if (text.includes('empty_blob') || text.includes('empty_video')) return 'Safari no ha entregado bien la grabación. Vuelve a intentarlo sin cerrar la pantalla.';
+    if (text.includes('too_large') || text.includes('413')) return 'El vídeo pesa demasiado para guardarse bien. Vuelve a intentarlo con buena conexión.';
+    if (text.includes('network') || text.includes('fetch')) return 'La conexión ha fallado guardando el momento. Mantén esta pantalla abierta y vuelve a intentarlo.';
+    return 'No hemos podido continuar. Vuelve a intentarlo sin cerrar Safari.';
 }
 
-function friendlyError(raw) {
-    const text = String(raw || "").toLowerCase();
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-    if (text.includes("notallowed") || text.includes("permission") || text.includes("denied")) {
-        return "Safari necesita permiso de cámara y micrófono. Permítelos y vuelve a pulsar.";
+function pickMimeType() {
+    const candidates = ['video/mp4;codecs=h264,aac', 'video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    for (const c of candidates) {
+        try { if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; } catch (_) {}
     }
-
-    if (text.includes("notfound") || text.includes("devices")) {
-        return "No hemos podido encontrar cámara o micrófono en este dispositivo.";
-    }
-
-    if (text.includes("network") || text.includes("fetch")) {
-        return "La conexión ha fallado mientras guardábamos el momento. Mantén esta pantalla abierta y vuelve a intentarlo.";
-    }
-
-    if (text.includes("too_large") || text.includes("413")) {
-        return "El vídeo pesa demasiado para guardarse bien. Vuelve a intentarlo con buena conexión.";
-    }
-
-    if (text.includes("empty_blob") || text.includes("empty_video")) {
-        return "Safari no ha entregado bien la grabación. Vuelve a intentarlo sin cerrar la pantalla.";
-    }
-
-    return "No hemos podido guardar el momento. Vuelve a intentarlo sin cerrar Safari.";
+    return '';
 }
 
-function renderRitualStep() {
-    const step = ritualSteps[Math.min(ritualStep, ritualSteps.length - 1)];
+function extFor(type) { return String(type || '').toLowerCase().includes('mp4') ? 'mp4' : 'webm'; }
 
-    ritualTitle.innerHTML = step.title;
-    ritualText.innerHTML = step.text;
-    ritualSoft.innerHTML = step.soft || "";
-
-    clearStartError();
-
-    if (step.final) {
-        nextBtn.style.display = "none";
-        startBtn.style.display = "inline-block";
-        startBtn.innerText = step.button || "Aceptar y empezar";
-        startBtn.disabled = false;
-        startBtn.setAttribute("aria-disabled", "false");
-    } else {
-        startBtn.style.display = "none";
-        nextBtn.style.display = "inline-block";
-        nextBtn.innerText = step.button || "Continuar";
-        nextBtn.disabled = false;
-    }
-}
-
-function pickRecordingMimeType() {
-    const candidates = [
-        "video/mp4;codecs=h264,aac",
-        "video/mp4",
-        "video/webm;codecs=vp8,opus",
-        "video/webm"
-    ];
-
-    for (const type of candidates) {
-        try {
-            if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
-                return type;
-            }
-        } catch (_) {}
-    }
-
-    return "";
-}
-
-function extensionForMime(type) {
-    return String(type || "").toLowerCase().includes("mp4") ? "mp4" : "webm";
-}
-
-function resetRecordingState() {
-    try {
-        if (finishTimeout) clearTimeout(finishTimeout);
-    } catch (_) {}
-
-    try {
-        if (savingProgressTimer) clearInterval(savingProgressTimer);
-    } catch (_) {}
-
-    finishTimeout = null;
-    savingProgressTimer = null;
-    finishing = false;
-    experienceStarted = false;
-    experienceStarting = false;
-    recordedChunks = [];
-    recordingMimeType = "";
-    recordingExtension = "webm";
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-        }
-    } catch (_) {}
-
-    mediaRecorder = null;
-
-    try {
-        if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-        }
-    } catch (_) {}
-
+function stopTracks() {
+    try { if (stream) stream.getTracks().forEach(t => t.stop()); } catch (_) {}
     stream = null;
-
-    try {
-        video.pause();
-        video.currentTime = 0;
-        video.classList.remove("live");
-    } catch (_) {}
-
-    try {
-        payoff.classList.remove("show");
-        retryActions.classList.remove("show");
-    } catch (_) {}
-
-    overlay.classList.remove("hidden");
-    ritualStep = 0;
-    renderRitualStep();
 }
 
-async function wait(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+function hardResetForRetry() {
+    try { if (finishTimer) clearTimeout(finishTimer); } catch (_) {}
+    try { if (savingTimer) clearInterval(savingTimer); } catch (_) {}
+    finishTimer = null; savingTimer = null;
+    finishing = false; starting = false; started = false;
+    chunks = []; mimeType = ''; extension = 'webm';
+    try { if (recorder && recorder.state === 'recording') recorder.stop(); } catch (_) {}
+    recorder = null;
+    stopTracks();
+    try { video.pause(); video.currentTime = 0; video.classList.remove('live'); } catch (_) {}
+    try { payoff.classList.remove('show'); retryActions.classList.remove('show'); } catch (_) {}
+    try { startScreen.classList.remove('hidden'); } catch (_) {}
+    startBtn.disabled = false;
+    startBtn.innerText = 'Acepto y vivir la experiencia';
+    setStatus('', false);
 }
 
 async function waitForVideoReady() {
     if (video.readyState >= 2) return true;
-
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
         let done = false;
-
+        const ok = () => { if (done) return; done = true; cleanup(); resolve(true); };
         const cleanup = () => {
-            video.removeEventListener("loadedmetadata", ok);
-            video.removeEventListener("canplay", ok);
-            video.removeEventListener("error", fail);
-            if (timer) clearTimeout(timer);
+            try { video.removeEventListener('loadedmetadata', ok); video.removeEventListener('canplay', ok); video.removeEventListener('error', ok); } catch (_) {}
+            try { clearTimeout(timer); } catch (_) {}
         };
-
-        const ok = () => {
-            if (done) return;
-            done = true;
-            cleanup();
-            resolve(true);
-        };
-
-        const fail = () => {
-            if (done) return;
-            done = true;
-            cleanup();
-            reject(new Error("video_load_error"));
-        };
-
         const timer = setTimeout(ok, 6000);
-
-        video.addEventListener("loadedmetadata", ok, { once: true });
-        video.addEventListener("canplay", ok, { once: true });
-        video.addEventListener("error", fail, { once: true });
-
-        try {
-            video.load();
-        } catch (_) {}
+        video.addEventListener('loadedmetadata', ok, { once: true });
+        video.addEventListener('canplay', ok, { once: true });
+        video.addEventListener('error', ok, { once: true });
+        try { video.load(); } catch (_) {}
     });
 }
 
-async function startRecordingStrict() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("media_devices_not_supported");
-    }
+async function openCameraAndStartRecorder() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('media_devices_not_supported');
+    if (!window.MediaRecorder) throw new Error('media_recorder_not_supported');
 
-    if (!window.MediaRecorder) {
-        throw new Error("media_recorder_not_supported");
-    }
-
-    recordedChunks = [];
+    setStatus('Abriendo cámara…\nAcepta el permiso de Safari.', false);
 
     stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-            facingMode: "user",
-            width: { ideal: 360, max: 480 },
-            height: { ideal: 640, max: 854 },
-            frameRate: { ideal: 15, max: 15 }
-        },
-        audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-        }
+        video: { facingMode: 'user', width: { ideal: 360, max: 480 }, height: { ideal: 640, max: 854 }, frameRate: { ideal: 15, max: 15 } },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
 
-    recordingMimeType = pickRecordingMimeType();
-    recordingExtension = extensionForMime(recordingMimeType);
+    chunks = [];
+    mimeType = pickMimeType();
+    extension = extFor(mimeType);
+    const options = { videoBitsPerSecond: 220000, audioBitsPerSecond: 32000 };
+    if (mimeType) options.mimeType = mimeType;
 
-    const options = {
-        videoBitsPerSecond: 220000,
-        audioBitsPerSecond: 32000
+    recorder = new MediaRecorder(stream, options);
+    recorder.ondataavailable = function (event) {
+        try { if (event.data && event.data.size > 0) chunks.push(event.data); } catch (_) {}
     };
-
-    if (recordingMimeType) {
-        options.mimeType = recordingMimeType;
-    }
-
-    mediaRecorder = new MediaRecorder(stream, options);
-
-    mediaRecorder.ondataavailable = function (event) {
-        try {
-            if (event.data && event.data.size > 0) {
-                recordedChunks.push(event.data);
-                debug("chunk: " + event.data.size);
-            }
-        } catch (_) {}
-    };
-
-    mediaRecorder.onerror = function (event) {
-        try {
-            console.error("MediaRecorder error:", event);
-        } catch (_) {}
-    };
-
-    mediaRecorder.start(1000);
-
-    await wait(350);
-
-    if (!mediaRecorder || mediaRecorder.state !== "recording") {
-        throw new Error("recorder_not_recording");
-    }
-
+    recorder.onerror = function (event) { console.error('MediaRecorder error', event); };
+    recorder.start(1000);
+    await wait(300);
+    if (!recorder || recorder.state !== 'recording') throw new Error('recorder_not_recording');
     return true;
 }
 
-function stopRecorderAndBuildBlob() {
+function startExperienceOnBackend() {
+    const fd = new FormData();
+    fd.append('recipient_token', recipientToken);
+    return fetch('/start-experience', { method: 'POST', body: fd, cache: 'no-store' })
+        .then(async response => {
+            let data = {};
+            try { data = await response.json(); } catch (_) {}
+            if (!response.ok) throw new Error(data.detail || 'start_experience_error');
+            if (data.redirect_url) { window.location.replace(data.redirect_url); return { redirected: true }; }
+            return data;
+        });
+}
+
+function stopRecorderToBlob() {
     return new Promise((resolve, reject) => {
         let settled = false;
-
         const finish = async () => {
             if (settled) return;
             settled = true;
-
             try {
-                await wait(900);
-
-                const type = recordingMimeType || "video/webm";
-                const blob = new Blob(recordedChunks, { type });
-
-                if (!blob || blob.size <= 0) {
-                    reject(new Error("empty_blob"));
-                    return;
-                }
-
+                await wait(1000);
+                const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+                if (!blob || blob.size <= 0) { reject(new Error('empty_blob')); return; }
                 resolve(blob);
-            } catch (e) {
-                reject(e);
-            }
+            } catch (e) { reject(e); }
         };
-
         try {
-            if (!mediaRecorder) {
-                reject(new Error("missing_recorder"));
-                return;
-            }
-
-            mediaRecorder.onstop = finish;
-
-            if (mediaRecorder.state === "recording") {
-                try {
-                    mediaRecorder.requestData();
-                } catch (_) {}
-
-                setTimeout(() => {
-                    try {
-                        if (mediaRecorder && mediaRecorder.state === "recording") {
-                            mediaRecorder.stop();
-                        }
-                    } catch (e) {
-                        reject(e);
-                    }
-                }, 650);
+            if (!recorder) { reject(new Error('missing_recorder')); return; }
+            recorder.onstop = finish;
+            if (recorder.state === 'recording') {
+                try { recorder.requestData(); } catch (_) {}
+                setTimeout(() => { try { if (recorder && recorder.state === 'recording') recorder.stop(); } catch (e) { reject(e); } }, 700);
             } else {
                 finish();
             }
-
-            setTimeout(finish, 4500);
-        } catch (e) {
-            reject(e);
-        }
+            setTimeout(finish, 5000);
+        } catch (e) { reject(e); }
     });
 }
 
-function stopTracks() {
-    try {
-        if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-        }
-    } catch (_) {}
-    stream = null;
-}
-
-function setSavingMessage(text) {
-    try {
-        payoffLoader.innerText = text;
-    } catch (_) {}
-}
-
-function startSavingProgress() {
+function startSavingMessages() {
     const messages = [
-        "Guardando este momento…\nNo cierres esta pantalla.",
-        "Casi listo…\nSafari necesita unos segundos.",
-        "No te vayas todavía…\nEsto solo pasa una vez.",
-        "Terminando de guardar…"
+        'Guardando este momento…\nNo cierres esta pantalla.',
+        'Casi listo…\nSafari necesita unos segundos.',
+        'No te vayas todavía…\nEsto solo pasa una vez.',
+        'Terminando de guardar…'
     ];
-
     let i = 0;
-    setSavingMessage(messages[0]);
-
-    try {
-        if (savingProgressTimer) clearInterval(savingProgressTimer);
-        savingProgressTimer = setInterval(() => {
-            i = Math.min(i + 1, messages.length - 1);
-            setSavingMessage(messages[i]);
-        }, 1400);
-    } catch (_) {}
+    loaderText.innerText = messages[0];
+    try { if (savingTimer) clearInterval(savingTimer); } catch (_) {}
+    savingTimer = setInterval(() => {
+        i = Math.min(i + 1, messages.length - 1);
+        loaderText.innerText = messages[i];
+    }, 1500);
 }
 
-function stopSavingProgress() {
-    try {
-        if (savingProgressTimer) clearInterval(savingProgressTimer);
-    } catch (_) {}
-    savingProgressTimer = null;
-    setSavingMessage("100% listo.\nTu momento se ha guardado.");
-}
-
-function showRetryActions() {
-    try {
-        retryActions.classList.add("show");
-    } catch (_) {}
-}
-
-async function finalizeExperienceFlow(postVideoDelayMs = 0) {
+async function finalizeExperience(delayMs) {
     if (finishing) return;
     finishing = true;
-
-    const safePostVideoDelayMs = Math.max(0, Number(postVideoDelayMs || 0));
-    debug("finalize start delay=" + safePostVideoDelayMs);
-
-    try {
-        if (finishTimeout) clearTimeout(finishTimeout);
-    } catch (_) {}
+    try { if (finishTimer) clearTimeout(finishTimer); } catch (_) {}
+    payoff.classList.add('show');
+    startSavingMessages();
 
     try {
-        payoff.classList.add("show");
-        startSavingProgress();
-    } catch (_) {}
-
-    let blob = null;
-
-    try {
-        if (safePostVideoDelayMs > 0) {
-            setSavingMessage("Unos segundos más…\nEstamos guardando tu reacción completa.");
-            await wait(safePostVideoDelayMs);
-        }
-
+        await wait(Math.max(0, delayMs || 0));
         await wait(1200);
-        blob = await stopRecorderAndBuildBlob();
+        const blob = await stopRecorderToBlob();
+        stopTracks();
+
+        const fd = new FormData();
+        fd.append('video', blob, 'reaction_' + Date.now() + '.' + extension);
+        const response = await fetch('/upload-reaction/' + recipientToken, { method: 'POST', body: fd, cache: 'no-store', keepalive: false });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || 'upload_reaction_failed');
+
+        try { if (savingTimer) clearInterval(savingTimer); } catch (_) {}
+        loaderText.innerText = '100% listo.\nTu momento se ha guardado.';
+        await wait(600);
+        window.location.replace((data && data.redirect) ? data.redirect : ('/finalizar-experiencia/' + recipientToken));
     } catch (e) {
-        console.error("stop/build blob error:", e);
-        setSavingMessage(friendlyError(e && e.message ? e.message : e));
-        showRetryActions();
+        console.error('finalize error', e);
+        loaderText.innerText = friendlyError(e);
+        retryActions.classList.add('show');
         stopTracks();
         finishing = false;
-        return;
-    }
-
-    stopTracks();
-
-    try {
-        const formData = new FormData();
-        formData.append(
-            "video",
-            blob,
-            "reaction_" + Date.now() + "." + recordingExtension
-        );
-
-        const uploadResponse = await fetch("/upload-reaction/" + recipientToken, {
-            method: "POST",
-            body: formData,
-            cache: "no-store",
-            keepalive: false
-        });
-
-        const uploadData = await uploadResponse.json().catch(() => ({}));
-
-        if (!uploadResponse.ok) {
-            throw new Error(uploadData.detail || "upload_reaction_failed");
-        }
-
-        stopSavingProgress();
-
-        await wait(500);
-
-        if (uploadData && uploadData.redirect) {
-            window.location.replace(uploadData.redirect);
-        } else {
-            window.location.replace("/finalizar-experiencia/" + recipientToken);
-        }
-    } catch (e) {
-        console.error("upload error:", e);
-        setSavingMessage(friendlyError(e && e.message ? e.message : e));
-        showRetryActions();
-        finishing = false;
     }
 }
 
-function armFinishFallbacks() {
-    video.addEventListener("ended", () => {
-        finalizeExperienceFlow(POST_VIDEO_REACTION_PAD_MS);
-    }, { once: true });
-
+function armFinish() {
+    video.addEventListener('ended', () => finalizeExperience(POST_VIDEO_PAD_MS), { once: true });
     let fallbackMs = 120000;
+    try { if (Number.isFinite(video.duration) && video.duration > 0) fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 3500); } catch (_) {}
+    finishTimer = setTimeout(() => finalizeExperience(POST_VIDEO_PAD_MS), fallbackMs);
+}
 
+async function startFlowFromTap(event) {
     try {
-        if (Number.isFinite(video.duration) && video.duration > 0) {
-            fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 3500);
-        }
+        if (event) { event.preventDefault(); event.stopPropagation(); }
     } catch (_) {}
 
-    finishTimeout = setTimeout(() => {
-        finalizeExperienceFlow(POST_VIDEO_REACTION_PAD_MS);
-    }, fallbackMs);
-}
-
-async function safeResumePlayback() {
-    try {
-        if (!experienceStarted || finishing) return;
-
-        if (video.ended) {
-            finalizeExperienceFlow(POST_VIDEO_REACTION_PAD_MS);
-            return;
-        }
-
-        if (video.paused) {
-            await video.play();
-        }
-    } catch (e) {
-        console.error("resume playback error:", e);
-    }
-}
-
-async function startExperience() {
-    if (experienceStarted || experienceStarting || finishing) return;
-
-    experienceStarting = true;
+    if (starting || started || finishing) return false;
+    starting = true;
     startBtn.disabled = true;
-    startBtn.setAttribute("aria-disabled", "true");
-    clearStartError();
+    startBtn.innerText = 'Abriendo cámara…';
+    setStatus('Preparando experiencia…', false);
+    debug('tap accepted');
 
     try {
-        debug("start click");
+        try { video.pause(); video.currentTime = 0; video.muted = false; video.load(); } catch (_) {}
 
-        try {
-            video.pause();
-            video.currentTime = 0;
-            video.muted = false;
-        } catch (_) {}
+        await openCameraAndStartRecorder();
+        setStatus('Cámara lista. Abriendo el momento…', false);
 
-        await startRecordingStrict();
-
-        const formData = new FormData();
-        formData.append("recipient_token", recipientToken);
-
-        const response = await fetch("/start-experience", {
-            method: "POST",
-            body: formData,
-            cache: "no-store"
-        });
-
-        let data = {};
-        try {
-            data = await response.json();
-        } catch (_) {}
-
-        if (!response.ok) {
-            throw new Error(data.detail || "start_experience_error");
-        }
-
-        if (data.redirect_url) {
-            window.location.replace(data.redirect_url);
-            return;
-        }
+        const backendData = await startExperienceOnBackend();
+        if (backendData && backendData.redirected) return false;
 
         await waitForVideoReady();
-
-        overlay.classList.add("hidden");
-        video.classList.add("live");
-
-        experienceStarted = true;
-        experienceStarting = false;
-
-        armFinishFallbacks();
-
+        startScreen.classList.add('hidden');
+        video.classList.add('live');
+        started = true;
+        starting = false;
+        armFinish();
         await video.play();
-
     } catch (e) {
-        console.error("experience start error:", e);
-
-        stopTracks();
-
-        try {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-            }
-        } catch (_) {}
-
-        mediaRecorder = null;
-        recordedChunks = [];
-        recordingMimeType = "";
-        recordingExtension = "webm";
-
-        experienceStarted = false;
-        experienceStarting = false;
+        console.error('start flow error', e);
+        try { if (recorder && recorder.state === 'recording') recorder.stop(); } catch (_) {}
+        recorder = null; chunks = []; mimeType = ''; extension = 'webm'; stopTracks();
+        starting = false; started = false;
         startBtn.disabled = false;
-        startBtn.setAttribute("aria-disabled", "false");
-        overlay.classList.remove("hidden");
-        video.classList.remove("live");
-
-        showStartError(friendlyError(e && e.message ? e.message : e));
+        startBtn.innerText = 'Acepto y vivir la experiencia';
+        setStatus(friendlyError(e), true);
+        startScreen.classList.remove('hidden');
+        video.classList.remove('live');
     }
-}
-
-function forceStartFromEvent(event) {
-    try {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-        }
-    } catch (_) {}
-
-    try {
-        debug("FORCE_START_EVENT");
-        startExperience();
-    } catch (e) {
-        console.error("force start error:", e);
-        showStartError(friendlyError(e && e.message ? e.message : e));
-        try {
-            startBtn.disabled = false;
-            startBtn.setAttribute("aria-disabled", "false");
-        } catch (_) {}
-    }
-
     return false;
 }
 
-window.ETERNA_FORCE_START = forceStartFromEvent;
+window.ETERNA_START_NOW = startFlowFromTap;
 
-function bindClicks() {
-    nextBtn.onclick = function (event) {
-        try {
-            event.preventDefault();
-            event.stopPropagation();
-        } catch (_) {}
+function bindStart() {
+    const handler = function (event) { return startFlowFromTap(event); };
+    startBtn.onclick = handler;
+    startBtn.addEventListener('click', handler, { passive: false });
+    startBtn.addEventListener('touchend', handler, { passive: false });
+    startBtn.addEventListener('pointerup', handler, { passive: false });
+    buttonZone.addEventListener('click', handler, { passive: false });
+    buttonZone.addEventListener('touchend', handler, { passive: false });
 
-        if (ritualStep < ritualSteps.length - 1) {
-            ritualStep += 1;
-            renderRitualStep();
-        }
-
-        return false;
-    };
-
-    startBtn.onclick = forceStartFromEvent;
-
-    ["click", "touchstart", "pointerdown", "mousedown", "keydown"].forEach(function (eventName) {
-        startBtn.addEventListener(eventName, function (event) {
-            try {
-                if (eventName === "keydown" && event.key !== "Enter" && event.key !== " ") return;
-            } catch (_) {}
-            forceStartFromEvent(event);
-        }, { passive: false, capture: true });
-    });
-
-    document.addEventListener("click", function (event) {
-        try {
-            const target = event.target && event.target.closest ? event.target.closest("#startBtn, #startActionZone") : null;
-            if (target) forceStartFromEvent(event);
-        } catch (_) {}
-    }, true);
-
-    document.addEventListener("touchstart", function (event) {
-        try {
-            const target = event.target && event.target.closest ? event.target.closest("#startBtn, #startActionZone") : null;
-            if (target) forceStartFromEvent(event);
-        } catch (_) {}
-    }, { passive: false, capture: true });
+    document.addEventListener('keydown', function (event) {
+        if ((event.key === 'Enter' || event.key === ' ') && !startScreen.classList.contains('hidden')) handler(event);
+    }, false);
 }
 
-document.addEventListener("visibilitychange", async () => {
-    if (!experienceStarted || finishing) return;
-
-    if (document.visibilityState === "visible") {
-        await safeResumePlayback();
-    }
-});
-
-window.addEventListener("focus", async () => {
-    if (!experienceStarted || finishing) return;
-    await safeResumePlayback();
-});
-
-window.addEventListener("pagehide", () => {
-    if (!experienceStarted || finishing) return;
-
+async function resumeIfNeeded() {
+    if (!started || finishing) return;
     try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
+        if (video.ended) { finalizeExperience(POST_VIDEO_PAD_MS); return; }
+        if (video.paused) await video.play();
     } catch (_) {}
-});
-
-window.addEventListener("beforeunload", () => {
-    if (!experienceStarted || finishing) return;
-
-    try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.requestData();
-        }
-    } catch (_) {}
-});
-
-if (retryExperienceBtn) {
-    retryExperienceBtn.addEventListener("click", () => {
-        resetRecordingState();
-        clearStartError();
-    });
 }
 
-if (backToStartBtn) {
-    backToStartBtn.addEventListener("click", () => {
-        window.location.replace("/pedido/" + recipientToken);
-    });
-}
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') resumeIfNeeded(); });
+window.addEventListener('focus', resumeIfNeeded);
+window.addEventListener('pagehide', function () { try { if (recorder && recorder.state === 'recording') recorder.requestData(); } catch (_) {} });
+window.addEventListener('beforeunload', function () { try { if (recorder && recorder.state === 'recording') recorder.requestData(); } catch (_) {} });
 
-try {
-    video.addEventListener("loadedmetadata", () => debug("video metadata ready"));
-    video.addEventListener("canplay", () => debug("video can play"));
-    video.addEventListener("error", () => debug("video error"));
-} catch (_) {}
+retryBtn.addEventListener('click', hardResetForRetry);
+backBtn.addEventListener('click', function () { window.location.replace('/pedido/' + recipientToken); });
 
-bindClicks();
-renderRitualStep();
-debug("experience ready");
-
+try { video.addEventListener('error', function () { debug('video error'); }); } catch (_) {}
+bindStart();
+setStatus('', false);
+debug('ready');
 })();
 </script>
 </body>
