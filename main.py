@@ -9,6 +9,7 @@ print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
 
+print("🔥 REACTION RECORDING ULTRA LIGHT IPHONE 480P 15FPS VERSION 🔥")
 import html
 import json
 import mimetypes
@@ -5060,8 +5061,8 @@ function detectRecordingFormat() {
 
 function buildRecorderOptions(mimeType) {
     const options = {
-        videoBitsPerSecond: 350000,
-        audioBitsPerSecond: 32000
+        videoBitsPerSecond: 250000,
+        audioBitsPerSecond: 24000
     };
 
     if (mimeType) {
@@ -5092,7 +5093,7 @@ async function tryStartRecordingStrict() {
                 facingMode: "user",
                 width: { ideal: 360, max: 480 },
                 height: { ideal: 640, max: 854 },
-                frameRate: { ideal: 15, max: 18 }
+                frameRate: { ideal: 15, max: 15 }
             },
             audio: {
                 echoCancellation: true,
@@ -5955,7 +5956,7 @@ async function prepareCameraAndMicrophoneBeforeStart() {
                 facingMode: "user",
                 width: { ideal: 360, max: 480 },
                 height: { ideal: 640, max: 854 },
-                frameRate: { ideal: 15, max: 18 }
+                frameRate: { ideal: 15, max: 15 }
             },
             audio: {
                 echoCancellation: true,
@@ -6171,8 +6172,8 @@ function detectRecordingFormat() {
 
 function buildRecorderOptions(mimeType) {
     const options = {
-        videoBitsPerSecond: 350000,
-        audioBitsPerSecond: 32000
+        videoBitsPerSecond: 250000,
+        audioBitsPerSecond: 24000
     };
 
     if (mimeType) {
