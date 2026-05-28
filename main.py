@@ -2931,32 +2931,315 @@ def render_create_form() -> str:
                     font-size: 18px;
                 }}
             }}
-        </style>
+        
+            /* =========================================================
+               ETERNA LUXURY CINEMATIC UI — ONE PAGE FLOW
+               Solo capa visual: no toca backend, pagos ni rutas.
+            ========================================================= */
+            body {{
+                padding: clamp(14px, 3vw, 28px);
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(255, 211, 125, 0.20), transparent 28%),
+                    radial-gradient(circle at 8% 22%, rgba(189, 133, 47, 0.13), transparent 28%),
+                    radial-gradient(circle at 88% 58%, rgba(255, 222, 159, 0.08), transparent 34%),
+                    radial-gradient(circle at 50% 115%, rgba(189, 133, 47, 0.12), transparent 34%),
+                    linear-gradient(180deg, #020202 0%, #080603 46%, #000 100%);
+            }}
+            body::before {{
+                background:
+                    radial-gradient(circle at 50% 28%, rgba(246, 204, 120, 0.11), transparent 22%),
+                    radial-gradient(circle at 35% 82%, rgba(246, 204, 120, 0.055), transparent 24%),
+                    linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px),
+                    linear-gradient(0deg, rgba(255,255,255,0.008) 1px, transparent 1px);
+                background-size: auto, auto, 96px 96px, 96px 96px;
+                opacity: .9;
+                animation: eternaAura 12s ease-in-out infinite;
+            }}
+            body::after {{
+                background:
+                    radial-gradient(circle at center, transparent 38%, rgba(0,0,0,.82) 100%),
+                    linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.42));
+            }}
+            @keyframes eternaAura {{
+                0%,100% {{ opacity: .58; transform: scale(1); }}
+                50% {{ opacity: 1; transform: scale(1.035); }}
+            }}
+            .wrap {{ max-width: 980px; }}
+            .card {{
+                position: relative;
+                border-radius: 36px;
+                padding: clamp(22px, 4vw, 44px);
+                background:
+                    radial-gradient(circle at 50% -8%, rgba(255, 218, 146, .17), transparent 34%),
+                    radial-gradient(circle at 4% 36%, rgba(220, 164, 74, .07), transparent 26%),
+                    radial-gradient(circle at 96% 72%, rgba(220, 164, 74, .06), transparent 30%),
+                    linear-gradient(180deg, rgba(18,15,9,.82), rgba(3,3,3,.92));
+                border: 1px solid rgba(231, 183, 92, .24);
+                box-shadow:
+                    0 38px 140px rgba(0,0,0,.86),
+                    0 0 90px rgba(221, 169, 72,.12),
+                    inset 0 0 0 1px rgba(255,255,255,.035);
+            }}
+            .card::before {{
+                content:"";
+                position:absolute;
+                inset:0;
+                border-radius:inherit;
+                pointer-events:none;
+                background:
+                    linear-gradient(135deg, rgba(255,255,255,.12), transparent 28%, transparent 70%, rgba(255,214,134,.08)),
+                    radial-gradient(circle at 50% 0%, rgba(255,226,166,.18), transparent 38%);
+                opacity:.55;
+            }}
+            .card > * {{ position: relative; z-index: 2; }}
+            h1 {{
+                font-size: clamp(36px, 7vw, 68px);
+                letter-spacing: clamp(4px, 1.4vw, 10px);
+                color: #ffe2a3;
+                text-shadow:
+                    0 0 18px rgba(255,226,163,.42),
+                    0 0 54px rgba(212,160,68,.30);
+                margin-top: 4px;
+            }}
+            .subtitle {{
+                font-size: clamp(15px, 2.4vw, 19px);
+                color: rgba(255,245,222,.78);
+                text-shadow: 0 0 24px rgba(255,224,158,.14);
+            }}
+            .intro {{
+                min-height: unset;
+                margin-bottom: 26px;
+                padding: 20px 16px 4px;
+            }}
+            .intro-line {{
+                font-family: Georgia, "Times New Roman", serif;
+                font-size: clamp(20px, 3vw, 28px);
+                color: rgba(255,255,255,.92);
+                text-shadow: 0 0 26px rgba(255,217,140,.12);
+            }}
+            .intro-line.l4 {{
+                color: #ffd985;
+                text-shadow: 0 0 30px rgba(255,202,98,.35);
+            }}
+            .form-progress,
+            .step-actions,
+            #backStep1,
+            .atmosphere-title {{ display: none !important; }}
+            .form-step {{ display: block !important; opacity: 1 !important; }}
+            .section {{
+                margin-top: 26px;
+                padding: clamp(16px, 2.6vw, 24px);
+                border-radius: 28px;
+                background:
+                    linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
+                    radial-gradient(circle at 50% 0%, rgba(230,176,83,.08), transparent 56%);
+                border: 1px solid rgba(231,183,92,.13);
+                box-shadow:
+                    0 18px 50px rgba(0,0,0,.26),
+                    inset 0 0 0 1px rgba(255,255,255,.025);
+            }}
+            .section-title {{
+                color: #e9c06f;
+                letter-spacing: 1.8px;
+                font-size: 12px;
+                margin: 0 0 14px 0;
+                text-shadow: 0 0 18px rgba(233,192,111,.18);
+            }}
+            input, select, textarea {{
+                border-radius: 18px;
+                border: 1px solid rgba(233,192,111,.16);
+                background: rgba(255,255,255,.055);
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.018);
+                transition: border-color .25s ease, box-shadow .25s ease, background .25s ease, transform .25s ease;
+            }}
+            input:focus, select:focus, textarea:focus {{
+                border-color: rgba(255,218,143,.56);
+                box-shadow: 0 0 0 4px rgba(233,192,111,.08), 0 0 28px rgba(233,192,111,.12);
+                background: rgba(255,255,255,.075);
+            }}
+            .photo-picker-main {{
+                border-radius: 30px;
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(255,218,143,.18), transparent 48%),
+                    linear-gradient(180deg, rgba(233,192,111,.10), rgba(255,255,255,.030));
+                border: 1px solid rgba(233,192,111,.28);
+                box-shadow: 0 18px 55px rgba(0,0,0,.34), 0 0 38px rgba(233,192,111,.08);
+            }}
+            .photo-picker-title {{ color: #ffe3a3; text-shadow: 0 0 18px rgba(233,192,111,.20); }}
+            .photo-picker-btn, button {{
+                background: linear-gradient(135deg, #fff0bd 0%, #e6bb62 46%, #b77d2d 100%);
+                color: #130d05;
+                box-shadow:
+                    0 14px 36px rgba(212,157,63,.25),
+                    inset 0 1px 0 rgba(255,255,255,.35);
+                transition: transform .22s ease, box-shadow .22s ease, filter .22s ease;
+            }}
+            .photo-picker-btn:hover, button:hover {{
+                transform: translateY(-1px);
+                box-shadow:
+                    0 20px 46px rgba(212,157,63,.34),
+                    inset 0 1px 0 rgba(255,255,255,.42);
+                filter: brightness(1.03);
+            }}
+            .photo-grid {{ gap: clamp(10px, 2vw, 16px); }}
+            .photo-card {{
+                position: relative;
+                border-radius: 26px;
+                background: linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.022));
+                border: 1px solid rgba(233,192,111,.14);
+                box-shadow: 0 16px 42px rgba(0,0,0,.28);
+                overflow: hidden;
+            }}
+            .photo-card::before {{
+                content:"";
+                position:absolute;
+                inset:0;
+                pointer-events:none;
+                background: radial-gradient(circle at 50% 0%, rgba(233,192,111,.12), transparent 46%);
+                opacity:.6;
+            }}
+            .photo-label {{ color:#f4c975; text-shadow: 0 0 18px rgba(244,201,117,.18); }}
+            .photo-box {{
+                border: 1px dashed rgba(233,192,111,.30);
+                background:
+                    radial-gradient(circle at 50% 30%, rgba(233,192,111,.08), transparent 48%),
+                    rgba(255,255,255,.025);
+            }}
+            .photo-preview {{ filter: saturate(1.08) contrast(1.03); }}
+            .emotion-grid {{ gap: clamp(12px, 2vw, 18px); }}
+            .emotion-card {{
+                position: relative;
+                min-height: 104px;
+                padding: 20px 19px;
+                border-radius: 26px;
+                border: 1px solid rgba(233,192,111,.14);
+                background:
+                    radial-gradient(circle at 20% 0%, rgba(233,192,111,.10), transparent 44%),
+                    linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.022));
+                box-shadow: 0 18px 48px rgba(0,0,0,.24);
+                overflow: hidden;
+            }}
+            .emotion-card::before {{
+                content:"";
+                position:absolute;
+                inset:0;
+                opacity:0;
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(255,221,151,.25), transparent 48%),
+                    linear-gradient(135deg, rgba(255,255,255,.09), transparent 42%);
+                transition: opacity .28s ease;
+                pointer-events:none;
+            }}
+            .emotion-card::after {{
+                content:"";
+                position:absolute;
+                right:18px;
+                top:18px;
+                width:8px;
+                height:8px;
+                border-radius:999px;
+                background: rgba(233,192,111,.38);
+                box-shadow: 0 0 18px rgba(233,192,111,.26);
+                transition: transform .28s ease, opacity .28s ease;
+            }}
+            .emotion-card:hover {{
+                transform: translateY(-2px);
+                border-color: rgba(233,192,111,.34);
+                box-shadow: 0 24px 60px rgba(0,0,0,.32), 0 0 34px rgba(233,192,111,.09);
+            }}
+            .emotion-card:hover::before,
+            .emotion-card.selected::before {{ opacity:1; }}
+            .emotion-card.selected {{
+                border-color: rgba(255,219,146,.72);
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(255,219,146,.22), transparent 52%),
+                    linear-gradient(180deg, rgba(233,192,111,.13), rgba(255,255,255,.045));
+                box-shadow:
+                    0 26px 70px rgba(0,0,0,.38),
+                    0 0 38px rgba(233,192,111,.20),
+                    inset 0 0 0 1px rgba(255,255,255,.05);
+            }}
+            .emotion-card.selected::after {{
+                transform: scale(1.65);
+                opacity:1;
+                background:#ffe3a3;
+                box-shadow: 0 0 28px rgba(255,227,163,.62);
+            }}
+            .emotion-title {{
+                position:relative;
+                z-index:2;
+                color: rgba(255,247,230,.96);
+                font-size: 18px;
+                font-weight: 800;
+                letter-spacing: -.2px;
+            }}
+            .emotion-sub {{
+                position:relative;
+                z-index:2;
+                color: rgba(255,255,255,.58);
+                font-size: 13px;
+            }}
+            .mode-box, .delivery-box, .delivery-option, .price-box {{
+                border-color: rgba(233,192,111,.15);
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(233,192,111,.075), transparent 56%),
+                    rgba(255,255,255,.04);
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.018);
+            }}
+            .delivery-option {{ transition: border-color .22s ease, box-shadow .22s ease, background .22s ease; }}
+            .delivery-option:has(input:checked) {{
+                border-color: rgba(255,219,146,.58);
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(255,219,146,.16), transparent 56%),
+                    rgba(255,255,255,.055);
+                box-shadow: 0 0 30px rgba(233,192,111,.10);
+            }}
+            .price-box {{ color: rgba(255,244,220,.82); }}
+            .buttons {{ margin-top: 28px; }}
+            #submitBtn {{ font-size: 16px; padding: 19px 22px; }}
+            .ghost {{ display:none !important; }}
+            .error-box {{
+                border-color: rgba(255,210,130,.20);
+                background: rgba(233,192,111,.07);
+            }}
+            a {{ color:#ffe3a3 !important; }}
+            @media (max-width: 760px) {{
+                .card {{ border-radius: 30px; }}
+                h1 {{ letter-spacing: 5px; }}
+                .emotion-grid {{ grid-template-columns: 1fr; }}
+                .emotion-card {{ min-height: 96px; }}
+                .section {{ padding: 16px; border-radius: 24px; }}
+                .photo-grid {{ grid-template-columns: repeat(2, 1fr); }}
+            }}
+            @media (max-width: 430px) {{
+                body {{ padding: 10px; }}
+                .card {{ padding: 18px; }}
+                .photo-grid {{ grid-template-columns: repeat(2, 1fr); }}
+                .phone-row {{ gap: 8px; }}
+                .phone-code {{ min-width: 96px; flex-basis: 96px; }}
+                .intro-line {{ font-size: 18px; }}
+            }}
+</style>
     </head>
     <body>
         <div class="wrap">
             <div class="card">
-                <h1>CREAR ETERNA</h1>
-                <div class="subtitle">Hay momentos que merecen llegar exactamente cuando deben llegar</div>
+                <h1>ETERNA</h1>
+                <div class="subtitle">Crea algo que no se abra. Se viva.</div>
 
                 <div class="intro">
-                    <p class="intro-line l1">Esto no es un vídeo…</p>
-                    <p class="intro-line l2">No es solo un recuerdo…</p>
-                    <p class="intro-line l3">Es una espera hecha con intención…</p>
-                    <p class="intro-line l4">MAGIA.</p>
+                    <p class="intro-line l1">No todo lo importante</p>
+                    <p class="intro-line l2">debería desaparecer.</p>
+                    <p class="intro-line l3">Haz que vuelva convertido</p>
+                    <p class="intro-line l4">en emoción real.</p>
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
-                    <div class="form-progress" aria-hidden="true">
-                        <div class="progress-pill active" id="progressStep1">01 · El recuerdo</div>
-                        <div class="progress-pill" id="progressStep2">02 · El momento</div>
-                    </div>
-
                     <div class="form-step active" id="formStep1">
                         <div class="atmosphere-title">Primero construimos el recuerdo. Luego decidimos cómo vuelve.</div>
 
                     <div class="section s1">
-                        <div class="section-title">Quién quiere hacer eterno este momento</div>
+                        <div class="section-title">Quién lo crea</div>
                         <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
                         <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
 
@@ -2985,7 +3268,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s2">
-                        <div class="section-title">Para quién es esto</div>
+                        <div class="section-title">Quién lo va a vivir</div>
                         <input name="recipient_name" id="recipient_name" placeholder="Su nombre" required>
 
                         <div class="phone-row" style="align-items: stretch;">
@@ -3031,7 +3314,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s3">
-                        <div class="section-title">Selecciona los recuerdos</div>
+                        <div class="section-title">Los recuerdos</div>
                         <div class="soft-copy">
                             Elige 6 fotos directamente desde tu galería. ETERNA las colocará como Foto 1, Foto 2, Foto 3...
                         </div>
@@ -3116,7 +3399,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s4">
-                        <div class="section-title">La emoción que quieres dejar</div>
+                        <div class="section-title">Qué quieres provocar</div>
 
                         <div class="emotion-grid">
                             <div class="emotion-card" data-type="cumpleanos">
@@ -3180,16 +3463,13 @@ def render_create_form() -> str:
                         <input type="hidden" name="message_type" id="messageType" required>
                     </div>
 
-                        <div class="step-actions">
-                            <button type="button" id="goStep2">Continuar</button>
-                        </div>
                     </div>
 
-                    <div class="form-step" id="formStep2">
+                    <div class="form-step active" id="formStep2">
                         <div class="atmosphere-title">Ahora dale intención: palabras, momento de entrega y pago seguro.</div>
 
                     <div class="section s5">
-                        <div class="section-title">Las palabras que quieres dejar</div>
+                        <div class="section-title">Las palabras</div>
 
                         <div class="mode-box">
                             <div class="radio-row">
@@ -3214,7 +3494,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s6">
-                        <div class="section-title">Cuándo debe llegar</div>
+                        <div class="section-title">El momento exacto</div>
 
                         <div class="delivery-box">
                             <div class="delivery-copy">
@@ -3328,7 +3608,6 @@ def render_create_form() -> str:
 
                         <div class="buttons">
                         <button type="submit" id="submitBtn">Crear y pasar al pago seguro</button>
-                        <button type="button" class="btn ghost" id="backStep1">Volver al recuerdo</button>
                         </div>
                         </div>
                     </div>
@@ -4079,12 +4358,12 @@ def render_create_intro() -> HTMLResponse:
                     <p class="copy">
                         Crea una experiencia íntima con fotos, palabras y un momento que volverá a ti convertido en emoción real.
                     </p>
-                    <div class="mock" aria-hidden="true"></div>
+                    
                     <div class="actions">
                         <a class="btn" href="/crear">Crear mi ETERNA</a>
-                        <a class="btn ghost" href="/">Volver al inicio</a>
+                        
                     </div>
-                    <div class="tiny">Pensado para móvil. Diseñado para sentirse.</div>
+                    <div class="tiny">6 fotos. 3 frases. Un recuerdo que vuelve.</div>
                 </div>
             </section>
         </main>
