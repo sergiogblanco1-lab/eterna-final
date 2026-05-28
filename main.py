@@ -7014,8 +7014,8 @@ def sender_pack(sender_token: str):
             <div class="intro-card">
                 <div class="gold-dot"></div>
                 <h1>Ya ha pasado.</h1>
-                <p>Tu ETERNA ha vuelto.</p>
-                <button id="open-return" class="gold-button" type="button">Abrir</button>
+                <p>Respira. Tu ETERNA ha vuelto.</p>
+                <button id="open-return" class="gold-button" type="button">Estoy preparado</button>
             </div>
         </section>
 
@@ -7024,6 +7024,7 @@ def sender_pack(sender_token: str):
             <div class="bridge-copy">
                 <p>Lo que diste…</p>
                 <h2>ha encontrado<br>el camino de vuelta.</h2>
+                <span>Ahora vuelve a ti.</span>
             </div>
         </section>
 
@@ -7056,7 +7057,6 @@ def sender_pack(sender_token: str):
                         muted
                         playsinline
                         webkit-playsinline
-                        controls
                         preload="metadata"
                     >
                         <source src="{reaction_url_safe}" type="video/mp4">
@@ -7078,7 +7078,7 @@ def sender_pack(sender_token: str):
 
             <div class="return-copy">
                 <h2>Aquí vuelve lo que provocaste.</h2>
-                <p>El sonido ambiente está apagado para que viva solo la emoción.</p>
+                
             </div>
 
             <div id="eterna-share-wrap" class="share-wrap" style="display:none;">
@@ -7118,7 +7118,7 @@ def sender_pack(sender_token: str):
         function openReturn() {{
             if (intro) intro.classList.remove("active");
             if (bridge) bridge.classList.add("active");
-            window.setTimeout(showView, 1850);
+            window.setTimeout(showView, 6200);
         }}
 
         function syncMini() {{
@@ -7322,6 +7322,19 @@ def sender_pack(sender_token: str):
                 letter-spacing:-.045em;
                 color:#fff;
                 text-shadow:0 0 34px rgba(215,180,106,.24);
+                animation:bridgePhrase 2.2s ease both .55s;
+            }}
+            .bridge-copy span {{
+                display:block;
+                margin-top:26px;
+                font-size:20px;
+                color:#d7b46a;
+                opacity:0;
+                animation:bridgePhrase 2.2s ease both 2.8s;
+            }}
+            @keyframes bridgePhrase {{
+                from {{ opacity:0; transform:translateY(14px); filter:blur(8px); }}
+                to {{ opacity:1; transform:translateY(0); filter:blur(0); }}
             }}
             @keyframes bridgeIn {{
                 from {{ opacity:0; transform:translateY(18px) scale(.98); filter:blur(10px); }}
@@ -7330,20 +7343,27 @@ def sender_pack(sender_token: str):
 
             .return-view {{
                 min-height:100svh;
+                height:100svh;
                 display:none;
-                flex-direction:column;
-                padding:calc(env(safe-area-inset-top) + 16px) 14px calc(env(safe-area-inset-bottom) + 24px);
-                gap:14px;
+                position:relative;
+                overflow:hidden;
+                background:#020202;
             }}
-            .return-view.active {{ display:flex; }}
+            .return-view.active {{ display:block; }}
             .top-bar {{
+                position:absolute;
+                top:calc(env(safe-area-inset-top) + 18px);
+                left:20px;
+                right:20px;
                 display:flex;
                 align-items:flex-start;
                 justify-content:space-between;
                 gap:12px;
-                padding:2px 4px 0;
-                z-index:3;
+                padding:0;
+                z-index:8;
+                pointer-events:none;
             }}
+            .top-bar .small-action {{ pointer-events:auto; }}
             .eyebrow {{
                 font-size:11px;
                 letter-spacing:.34em;
@@ -7353,29 +7373,31 @@ def sender_pack(sender_token: str):
             }}
             .top-bar h1 {{
                 margin:0;
-                font-size:24px;
+                font-size:25px;
                 line-height:1.05;
-                letter-spacing:-.04em;
+                letter-spacing:-.045em;
+                text-shadow:0 8px 28px rgba(0,0,0,.9);
             }}
             .small-action {{
-                border:1px solid rgba(215,180,106,.28);
-                background:rgba(0,0,0,.38);
+                border:1px solid rgba(215,180,106,.26);
+                background:rgba(0,0,0,.34);
                 color:#fff;
                 border-radius:999px;
-                padding:11px 13px;
-                font-size:13px;
+                padding:10px 12px;
+                font-size:12px;
                 font-weight:750;
                 white-space:nowrap;
+                backdrop-filter:blur(14px);
+                -webkit-backdrop-filter:blur(14px);
             }}
             .call-shell {{
-                position:relative;
-                flex:1;
-                min-height:0;
-                border-radius:38px;
+                position:absolute;
+                inset:0;
                 overflow:hidden;
                 background:#020202;
-                border:1px solid rgba(215,180,106,.20);
-                box-shadow:0 34px 120px rgba(0,0,0,.74), 0 0 0 1px rgba(255,255,255,.035) inset;
+                border:0;
+                border-radius:0;
+                box-shadow:none;
             }}
             .call-glow {{
                 position:absolute;
@@ -7392,46 +7414,46 @@ def sender_pack(sender_token: str):
                 width:100%;
                 height:100%;
                 object-fit:cover;
-                filter:blur(32px) brightness(.34) saturate(1.05);
-                transform:scale(1.18);
-                opacity:.62;
+                filter:blur(36px) brightness(.25) saturate(1.08);
+                transform:scale(1.22);
+                opacity:.76;
                 z-index:0;
             }}
             .reaction-frame {{
                 position:absolute;
-                inset:18px 18px 18px 18px;
+                inset:76px 10px 104px 10px;
                 z-index:2;
                 display:flex;
                 align-items:center;
                 justify-content:center;
-                border-radius:32px;
+                border-radius:34px;
                 overflow:hidden;
                 background:#000;
-                box-shadow:0 20px 70px rgba(0,0,0,.64), 0 0 0 1px rgba(255,255,255,.08) inset;
+                box-shadow:0 24px 90px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 46px rgba(215,180,106,.13);
             }}
             #eterna-reaction-player {{
                 width:100%;
                 height:100%;
-                object-fit:contain;
+                object-fit:cover;
                 background:#000;
-                animation:eternaSlowZoom 32s ease-in-out forwards;
+                animation:eternaSlowZoom 46s ease-in-out forwards;
             }}
             @keyframes eternaSlowZoom {{
                 from {{ transform:scale(1.000); }}
-                to {{ transform:scale(1.075); }}
+                to {{ transform:scale(1.055); }}
             }}
             .mini-original-wrap {{
                 position:absolute;
-                right:22px;
-                bottom:24px;
-                z-index:4;
-                width:min(31vw, 132px);
+                right:18px;
+                bottom:calc(env(safe-area-inset-bottom) + 104px);
+                z-index:5;
+                width:min(27vw, 112px);
                 aspect-ratio:9/16;
                 border-radius:22px;
                 overflow:hidden;
                 background:#000;
-                border:1px solid rgba(255,226,158,.34);
-                box-shadow:0 18px 52px rgba(0,0,0,.68), 0 0 30px rgba(215,180,106,.16);
+                border:1px solid rgba(255,226,158,.32);
+                box-shadow:0 18px 58px rgba(0,0,0,.72), 0 0 28px rgba(215,180,106,.15);
             }}
             .mini-label {{
                 position:absolute;
@@ -7454,24 +7476,33 @@ def sender_pack(sender_token: str):
                 background:#000;
             }}
             .return-copy {{
+                position:absolute;
+                left:18px;
+                right:18px;
+                bottom:calc(env(safe-area-inset-bottom) + 30px);
+                z-index:6;
                 text-align:center;
-                padding:0 10px;
+                padding:0;
+                pointer-events:none;
             }}
             .return-copy h2 {{
-                margin:0 0 6px;
-                font-size:23px;
+                margin:0;
+                font-size:20px;
                 line-height:1.14;
                 letter-spacing:-.035em;
+                text-shadow:0 8px 28px rgba(0,0,0,.9);
+                color:rgba(255,255,255,.86);
             }}
-            .return-copy p {{
-                margin:0;
-                font-size:13px;
-                color:rgba(255,255,255,.48);
-            }}
+            .return-copy p {{ display:none; }}
             .share-wrap {{
+                position:absolute;
+                left:18px;
+                right:18px;
+                bottom:calc(env(safe-area-inset-bottom) + 22px);
+                z-index:10;
                 display:grid;
                 gap:10px;
-                padding:4px 4px 0;
+                padding:0;
             }}
             .download-link, .share-button {{
                 display:block;
@@ -7493,10 +7524,25 @@ def sender_pack(sender_token: str):
                 color:rgba(255,255,255,.45);
             }}
             @media (min-width: 760px) {{
+                body {{
+                    display:flex;
+                    justify-content:center;
+                    background:#050403;
+                }}
+                .sender-experience {{
+                    max-width:430px;
+                    min-height:100svh;
+                    box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 0 80px rgba(0,0,0,.7);
+                }}
                 .return-view {{
-                    max-width:520px;
+                    width:430px;
+                    max-width:430px;
                     margin:0 auto;
-                    width:100%;
+                }}
+                .sender-stage {{
+                    left:50%;
+                    width:430px;
+                    transform:translateX(-50%);
                 }}
             }}
         </style>
