@@ -7875,10 +7875,10 @@ def sender_pack(sender_token: str):
 
         <section id="return-bridge" class="sender-stage" data-stage="bridge">
             <div class="brand-mark">ETERNA</div>
-            <div class="bridge-copy">
-                <p>Lo que diste…</p>
-                <h2>ha encontrado<br>el camino de vuelta.</h2>
-                <span>Ahora vuelve a ti.</span>
+            <div class="bridge-copy sender-return-sequence">
+                <p class="seq-line seq-one">Sube el volumen.</p>
+                <h2 class="seq-line seq-two">Tu ETERNA<br>ha vuelto.</h2>
+                <span class="seq-line seq-three">Aquí vuelve lo que provocaste.</span>
             </div>
         </section>
 
@@ -7935,8 +7935,16 @@ def sender_pack(sender_token: str):
                 
             </div>
 
+            <div id="eterna-final-signature" class="final-signature" aria-hidden="true">
+                <div class="final-orb">∞</div>
+                <div class="final-brand">ETERNA</div>
+                <h2>Lo que das se queda en alguien.</h2>
+                <p>Y un día, vuelve.</p>
+                <button id="eterna-replay-final" class="final-replay" type="button">Volver a sentirlo</button>
+            </div>
+
             <div id="eterna-share-wrap" class="share-wrap" style="display:none;">
-                <a class="download-link" href="{reaction_url_safe}" download>Descargar su reacción</a>
+                <a class="download-link" href="{reaction_url_safe}" download>Guardar este regreso</a>
                 <button id="eterna-share-reaction" class="share-button" type="button">Compartir su reacción</button>
                 <div class="share-note">
                     Comparte solo la emoción.<br>
@@ -7958,6 +7966,8 @@ def sender_pack(sender_token: str):
         const bgReaction = document.getElementById("eterna-bg-reaction");
         const mini = document.getElementById("eterna-mini-original");
         const replay = document.getElementById("eterna-replay-all");
+        const finalSignature = document.getElementById("eterna-final-signature");
+        const finalReplay = document.getElementById("eterna-replay-final");
         const shareWrap = document.getElementById("eterna-share-wrap");
         const shareBtn = document.getElementById("eterna-share-reaction");
 
@@ -7972,7 +7982,7 @@ def sender_pack(sender_token: str):
         function openReturn() {{
             if (intro) intro.classList.remove("active");
             if (bridge) bridge.classList.add("active");
-            window.setTimeout(showView, 6200);
+            window.setTimeout(showView, 7200);
         }}
 
         function syncMini() {{
@@ -7995,6 +8005,10 @@ def sender_pack(sender_token: str):
 
         function playAllFromStart() {{
             if (shareWrap) shareWrap.style.display = "none";
+            if (finalSignature) {{
+                finalSignature.classList.remove("active");
+                finalSignature.setAttribute("aria-hidden", "true");
+            }}
 
             try {{ if (reaction) reaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
@@ -8035,12 +8049,20 @@ def sender_pack(sender_token: str):
             reaction.addEventListener("ended", function () {{
                 try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
                 try {{ if (mini) mini.pause(); }} catch (e) {{}}
+                if (finalSignature) {{
+                    finalSignature.classList.add("active");
+                    finalSignature.setAttribute("aria-hidden", "false");
+                }}
                 if (shareWrap) shareWrap.style.display = "grid";
             }});
         }}
 
         if (replay) {{
             replay.addEventListener("click", playAllFromStart);
+        }}
+
+        if (finalReplay) {{
+            finalReplay.addEventListener("click", playAllFromStart);
         }}
 
         if (shareBtn) {{
@@ -8195,6 +8217,32 @@ def sender_pack(sender_token: str):
                 to {{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); }}
             }}
 
+            .sender-return-sequence {{
+                width:100%;
+                max-width:420px;
+                min-height:260px;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:center;
+                gap:16px;
+            }}
+            .seq-line {{
+                opacity:0;
+                filter:blur(12px);
+                transform:translateY(18px);
+                animation:senderBlackFade 2.4s ease both;
+            }}
+            .seq-one {{ animation-delay:.25s; }}
+            .seq-two {{ animation-delay:2.05s; }}
+            .seq-three {{ animation-delay:4.25s; }}
+            @keyframes senderBlackFade {{
+                0% {{ opacity:0; transform:translateY(18px); filter:blur(14px); }}
+                38% {{ opacity:1; transform:translateY(0); filter:blur(0); }}
+                78% {{ opacity:1; transform:translateY(0); filter:blur(0); }}
+                100% {{ opacity:0; transform:translateY(-8px); filter:blur(10px); }}
+            }}
+
             .return-view {{
                 min-height:100svh;
                 height:100svh;
@@ -8283,7 +8331,30 @@ def sender_pack(sender_token: str):
                 border-radius:34px;
                 overflow:hidden;
                 background:#000;
-                box-shadow:0 24px 90px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 46px rgba(215,180,106,.13);
+                border:1px solid rgba(255,224,154,.28);
+                box-shadow:
+                    0 26px 100px rgba(0,0,0,.76),
+                    0 0 0 1px rgba(255,255,255,.075) inset,
+                    0 0 34px rgba(215,180,106,.18),
+                    0 0 88px rgba(215,180,106,.11);
+                animation:eternaFrameBreath 9.5s ease-in-out infinite;
+            }}
+            .reaction-frame::after {{
+                content:"";
+                position:absolute;
+                inset:0;
+                z-index:3;
+                pointer-events:none;
+                border-radius:34px;
+                background:
+                    linear-gradient(120deg, rgba(255,255,255,.16), transparent 18%, transparent 72%, rgba(255,224,154,.10)),
+                    radial-gradient(circle at 50% 0%, rgba(255,224,154,.16), transparent 38%);
+                mix-blend-mode:screen;
+                opacity:.62;
+            }}
+            @keyframes eternaFrameBreath {{
+                0%,100% {{ box-shadow:0 26px 100px rgba(0,0,0,.76), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 28px rgba(215,180,106,.13), 0 0 70px rgba(215,180,106,.08); }}
+                50% {{ box-shadow:0 30px 112px rgba(0,0,0,.82), 0 0 0 1px rgba(255,255,255,.095) inset, 0 0 46px rgba(215,180,106,.25), 0 0 105px rgba(215,180,106,.14); }}
             }}
             #eterna-reaction-player {{
                 width:100%;
@@ -8348,6 +8419,84 @@ def sender_pack(sender_token: str):
                 color:rgba(255,255,255,.86);
             }}
             .return-copy p {{ display:none; }}
+            .final-signature {{
+                position:absolute;
+                inset:0;
+                z-index:9;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:center;
+                padding:30px 24px calc(env(safe-area-inset-bottom) + 120px);
+                text-align:center;
+                background:
+                    radial-gradient(circle at 50% 30%, rgba(218,177,83,.20), transparent 34%),
+                    linear-gradient(180deg, rgba(0,0,0,.76), #020202 72%);
+                opacity:0;
+                pointer-events:none;
+                filter:blur(10px);
+                transform:scale(1.015);
+                transition:opacity 1.4s ease, filter 1.4s ease, transform 1.4s ease;
+            }}
+            .final-signature.active {{
+                opacity:1;
+                pointer-events:auto;
+                filter:blur(0);
+                transform:scale(1);
+            }}
+            .final-orb {{
+                width:82px;
+                height:82px;
+                border-radius:50%;
+                display:grid;
+                place-items:center;
+                margin-bottom:22px;
+                color:#f3d78f;
+                font-size:46px;
+                line-height:1;
+                border:1px solid rgba(255,224,154,.26);
+                background:radial-gradient(circle, rgba(243,215,143,.20), rgba(184,135,47,.08) 58%, rgba(0,0,0,.25));
+                box-shadow:0 0 58px rgba(218,177,83,.28);
+                animation:finalOrbBreath 7s ease-in-out infinite;
+            }}
+            .final-brand {{
+                letter-spacing:.42em;
+                font-size:12px;
+                font-weight:850;
+                color:#d7b46a;
+                margin-bottom:20px;
+                text-shadow:0 0 22px rgba(215,180,106,.26);
+            }}
+            .final-signature h2 {{
+                margin:0;
+                font-size:34px;
+                line-height:1.08;
+                letter-spacing:-.055em;
+                max-width:340px;
+            }}
+            .final-signature p {{
+                margin:16px 0 0;
+                font-size:22px;
+                color:rgba(255,255,255,.72);
+            }}
+            .final-replay {{
+                margin-top:30px;
+                border:1px solid rgba(255,224,154,.30);
+                color:#fff;
+                background:rgba(255,255,255,.08);
+                border-radius:999px;
+                padding:14px 18px;
+                font-size:15px;
+                font-weight:800;
+                backdrop-filter:blur(16px);
+                -webkit-backdrop-filter:blur(16px);
+                box-shadow:0 18px 54px rgba(0,0,0,.42), 0 0 30px rgba(215,180,106,.10);
+            }}
+            @keyframes finalOrbBreath {{
+                0%,100% {{ transform:scale(1); opacity:.92; }}
+                50% {{ transform:scale(1.045); opacity:1; }}
+            }}
+
             .share-wrap {{
                 position:absolute;
                 left:18px;
