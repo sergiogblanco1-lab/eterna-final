@@ -2450,29 +2450,56 @@ def render_create_form() -> str:
         <title>Crear ETERNA</title>
         <style>
             * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            html, body {{ margin: 0; min-height: 100%; background: #020202; }}
             body {{
                 min-height: 100vh;
                 background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                    radial-gradient(circle at 50% -12%, rgba(225,180,92,0.24), transparent 34%),
+                    radial-gradient(circle at 12% 18%, rgba(255,230,170,0.08), transparent 26%),
+                    radial-gradient(circle at 90% 78%, rgba(204,140,44,0.10), transparent 34%),
+                    linear-gradient(180deg, #050403 0%, #000000 48%, #050403 100%);
                 color: white;
-                font-family: Arial, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
                 padding: 24px;
+                overflow-x: hidden;
             }}
-            .wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
+            body::before {{
+                content: "";
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                background:
+                    radial-gradient(circle at 50% 32%, rgba(255,213,130,0.12), transparent 18%),
+                    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+                background-size: auto, 92px 92px;
+                opacity: .72;
+            }}
+            body::after {{
+                content: "";
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                background: radial-gradient(circle at center, transparent 42%, rgba(0,0,0,.72) 100%);
+            }}
+            .wrap {{ width: 100%; max-width: 900px; margin: 0 auto; position: relative; z-index: 2; }}
             .card {{
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 28px;
-                padding: 28px;
+                background:
+                    linear-gradient(180deg, rgba(18,15,10,0.92), rgba(4,4,4,0.96)),
+                    radial-gradient(circle at 50% 0%, rgba(225,180,92,.14), transparent 42%);
+                border: 1px solid rgba(225,180,92,0.18);
+                border-radius: 32px;
+                padding: 30px;
                 overflow: hidden;
+                box-shadow: 0 30px 120px rgba(0,0,0,.75), 0 0 80px rgba(225,180,92,.08);
+                backdrop-filter: blur(18px);
             }}
             h1 {{
                 margin: 0 0 12px 0;
-                font-size: 34px;
+                font-size: clamp(34px, 6vw, 62px);
                 text-align: center;
-                letter-spacing: 2px;
+                letter-spacing: 8px;
+                color: #f7dfaa;
+                text-shadow: 0 0 24px rgba(225,180,92,.40);
             }}
             .subtitle {{
                 text-align: center;
@@ -2920,6 +2947,14 @@ def render_create_form() -> str:
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
+                    <div class="form-progress" aria-hidden="true">
+                        <div class="progress-pill active" id="progressStep1">01 · El recuerdo</div>
+                        <div class="progress-pill" id="progressStep2">02 · El momento</div>
+                    </div>
+
+                    <div class="form-step active" id="formStep1">
+                        <div class="atmosphere-title">Primero construimos el recuerdo. Luego decidimos cómo vuelve.</div>
+
                     <div class="section s1">
                         <div class="section-title">Quién quiere hacer eterno este momento</div>
                         <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
@@ -3145,6 +3180,14 @@ def render_create_form() -> str:
                         <input type="hidden" name="message_type" id="messageType" required>
                     </div>
 
+                        <div class="step-actions">
+                            <button type="button" id="goStep2">Continuar</button>
+                        </div>
+                    </div>
+
+                    <div class="form-step" id="formStep2">
+                        <div class="atmosphere-title">Ahora dale intención: palabras, momento de entrega y pago seguro.</div>
+
                     <div class="section s5">
                         <div class="section-title">Las palabras que quieres dejar</div>
 
@@ -3284,8 +3327,8 @@ def render_create_form() -> str:
                         </div>
 
                         <div class="buttons">
-                        <button type="submit" id="submitBtn">SEGUIR CREANDO</button>
-                        <a class="btn ghost" href="/">Volver</a>
+                        <button type="submit" id="submitBtn">Crear y pasar al pago seguro</button>
+                        <button type="button" class="btn ghost" id="backStep1">Volver al recuerdo</button>
                         </div>
                         </div>
                     </div>
@@ -3312,6 +3355,58 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     const recipientCountryCode = document.getElementById("recipient_country_code");
     const recipientPhoneInput = document.getElementById("recipient_phone");
+    const formStep1 = document.getElementById("formStep1");
+    const formStep2 = document.getElementById("formStep2");
+    const progressStep1 = document.getElementById("progressStep1");
+    const progressStep2 = document.getElementById("progressStep2");
+    const goStep2 = document.getElementById("goStep2");
+    const backStep1 = document.getElementById("backStep1");
+
+    function setCreateStep(step) {{
+        const first = step === 1;
+        if (formStep1) formStep1.classList.toggle("active", first);
+        if (formStep2) formStep2.classList.toggle("active", !first);
+        if (progressStep1) progressStep1.classList.toggle("active", first);
+        if (progressStep2) progressStep2.classList.toggle("active", !first);
+        window.scrollTo({{ top: 0, behavior: "smooth" }});
+    }}
+
+    function validateFirstStep() {{
+        const requiredIds = ["customer_name", "customer_phone", "recipient_name", "recipient_phone"];
+        for (const id of requiredIds) {{
+            const el = document.getElementById(id);
+            if (el && !String(el.value || "").trim()) {{
+                showError("Falta completar los datos principales antes de continuar.");
+                try {{ el.focus(); }} catch (e) {{}}
+                return false;
+            }}
+        }}
+        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
+        if (!messageType) {{
+            showError("Elige qué quieres celebrar con esta ETERNA.");
+            return false;
+        }}
+        if (!allPhotosPresent()) {{
+            showError("Necesitas elegir las 6 fotos antes de continuar.");
+            return false;
+        }}
+        clearError();
+        return true;
+    }}
+
+    if (goStep2) {{
+        goStep2.addEventListener("click", function () {{
+            if (!validateFirstStep()) return;
+            setCreateStep(2);
+        }});
+    }}
+
+    if (backStep1) {{
+        backStep1.addEventListener("click", function () {{
+            clearError();
+            setCreateStep(1);
+        }});
+    }}
 
     function showError(message) {{
         if (!errorBox) return;
@@ -3986,7 +4081,7 @@ def render_create_intro() -> HTMLResponse:
                     </p>
                     <div class="mock" aria-hidden="true"></div>
                     <div class="actions">
-                        <a class="btn" href="/crear/formulario">Crear mi ETERNA</a>
+                        <a class="btn" href="/crear">Crear mi ETERNA</a>
                         <a class="btn ghost" href="/">Volver al inicio</a>
                     </div>
                     <div class="tiny">Pensado para móvil. Diseñado para sentirse.</div>
@@ -4004,6 +4099,11 @@ def home(request: Request):
 
 @app.get("/crear", response_class=HTMLResponse)
 def crear_get():
+    return render_create_form()
+
+
+@app.get("/crear/entrada", response_class=HTMLResponse)
+def crear_entrada_get():
     return render_create_intro()
 
 
