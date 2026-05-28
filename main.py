@@ -3219,6 +3219,220 @@ def render_create_form() -> str:
                 .phone-code {{ min-width: 96px; flex-basis: 96px; }}
                 .intro-line {{ font-size: 18px; }}
             }}
+            /* =========================================================
+               ETERNA ART MODE — MODERN LUXURY POLISH
+               Solo capa visual. No toca pagos, render, upload ni lógica.
+               ========================================================= */
+            :root {{
+                --et-gold: #f4c873;
+                --et-gold-soft: rgba(244,200,115,.52);
+                --et-deep: #020202;
+                --et-glass: rgba(255,255,255,.045);
+            }}
+            html {{ scroll-behavior: smooth; }}
+            body {{
+                position: relative;
+                overflow-x: hidden;
+                background:
+                    radial-gradient(circle at 50% -12%, rgba(255,205,113,.22), transparent 36%),
+                    radial-gradient(circle at 12% 20%, rgba(146,96,34,.18), transparent 38%),
+                    radial-gradient(circle at 90% 8%, rgba(255,225,165,.105), transparent 32%),
+                    linear-gradient(180deg, #020202 0%, #070503 42%, #000000 100%) !important;
+            }}
+            body::before {{
+                content: "";
+                position: fixed;
+                inset: -25%;
+                pointer-events: none;
+                z-index: 0;
+                background:
+                    radial-gradient(circle at 42% 20%, rgba(255,211,138,.16), transparent 20%),
+                    radial-gradient(circle at 64% 72%, rgba(188,118,37,.12), transparent 26%),
+                    conic-gradient(from 180deg at 50% 50%, transparent, rgba(255,218,143,.055), transparent, rgba(128,74,23,.06), transparent);
+                filter: blur(34px);
+                opacity: .78;
+                animation: eternaAurora 18s ease-in-out infinite alternate;
+            }}
+            body::after {{
+                content: "";
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 0;
+                background-image:
+                    radial-gradient(circle, rgba(255,225,170,.20) 0 1px, transparent 1.6px),
+                    linear-gradient(115deg, transparent 0%, rgba(255,255,255,.025) 46%, transparent 58%);
+                background-size: 92px 92px, 100% 100%;
+                opacity: .14;
+                mix-blend-mode: screen;
+                animation: eternaDust 26s linear infinite;
+            }}
+            @keyframes eternaAurora {{
+                0% {{ transform: translate3d(-1.5%, -1%, 0) scale(1); opacity: .62; }}
+                100% {{ transform: translate3d(1.8%, 1.2%, 0) scale(1.045); opacity: .90; }}
+            }}
+            @keyframes eternaDust {{
+                from {{ background-position: 0 0, 0 0; }}
+                to {{ background-position: 92px -184px, 0 0; }}
+            }}
+            .wrap, .card {{ position: relative; z-index: 1; }}
+            .card {{
+                background:
+                    linear-gradient(180deg, rgba(255,255,255,.072), rgba(255,255,255,.026)),
+                    radial-gradient(circle at 50% 0%, rgba(244,200,115,.13), transparent 42%) !important;
+                border: 1px solid rgba(244,200,115,.18) !important;
+                box-shadow:
+                    0 32px 110px rgba(0,0,0,.72),
+                    0 0 0 1px rgba(255,255,255,.026) inset,
+                    0 0 90px rgba(244,200,115,.055) !important;
+                backdrop-filter: blur(18px);
+            }}
+            .card::before {{
+                content: "";
+                position: absolute;
+                inset: 1px;
+                border-radius: inherit;
+                pointer-events: none;
+                background:
+                    linear-gradient(135deg, rgba(255,235,184,.12), transparent 23%, transparent 68%, rgba(210,145,56,.09)),
+                    radial-gradient(circle at 50% 0%, rgba(255,222,150,.12), transparent 38%);
+                opacity: .78;
+            }}
+            .subtitle {{
+                letter-spacing: .2px;
+                color: rgba(255,239,203,.86) !important;
+            }}
+            .intro {{
+                border-radius: 34px;
+                margin-top: 18px;
+                padding: clamp(20px, 4vw, 38px) 18px 20px !important;
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(255,213,132,.12), transparent 46%),
+                    linear-gradient(180deg, rgba(255,255,255,.035), transparent);
+                border: 1px solid rgba(244,200,115,.10);
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.018);
+            }}
+            .section {{
+                position: relative;
+                overflow: hidden;
+                background:
+                    radial-gradient(circle at 12% 0%, rgba(255,217,145,.15), transparent 34%),
+                    radial-gradient(circle at 86% 18%, rgba(176,105,35,.12), transparent 40%),
+                    linear-gradient(180deg, rgba(255,255,255,.060), rgba(255,255,255,.020)) !important;
+                border: 1px solid rgba(244,200,115,.18) !important;
+                box-shadow:
+                    0 26px 74px rgba(0,0,0,.42),
+                    0 0 42px rgba(244,200,115,.045),
+                    inset 0 0 0 1px rgba(255,255,255,.026) !important;
+                backdrop-filter: blur(14px);
+            }}
+            .section::before {{
+                content:"";
+                position:absolute;
+                left: 18px;
+                right: 18px;
+                top: 0;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(255,226,166,.55), transparent);
+                opacity: .72;
+            }}
+            .section-title {{
+                color: #ffdc94 !important;
+                font-weight: 800;
+                text-shadow: 0 0 22px rgba(255,220,148,.24) !important;
+            }}
+            input, select, textarea {{
+                background:
+                    linear-gradient(180deg, rgba(255,255,255,.070), rgba(255,255,255,.038)) !important;
+                border-color: rgba(244,200,115,.22) !important;
+            }}
+            .emotion-card, .photo-card, .mode-box, .delivery-box, .delivery-option, .price-box {{
+                border-color: rgba(244,200,115,.20) !important;
+                box-shadow:
+                    0 22px 64px rgba(0,0,0,.34),
+                    inset 0 0 0 1px rgba(255,255,255,.026) !important;
+            }}
+            .emotion-card {{
+                isolation: isolate;
+                background:
+                    radial-gradient(circle at 12% 0%, rgba(255,219,146,.13), transparent 38%),
+                    linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.025)) !important;
+            }}
+            .emotion-card::before {{
+                background:
+                    radial-gradient(circle at 50% 0%, rgba(255,226,166,.34), transparent 50%),
+                    linear-gradient(135deg, rgba(255,255,255,.13), transparent 38%, rgba(255,210,126,.06)) !important;
+            }}
+            .emotion-card::after {{
+                width: 9px !important;
+                height: 9px !important;
+                background: #f3c773 !important;
+                box-shadow: 0 0 22px rgba(243,199,115,.55) !important;
+            }}
+            .emotion-card.selected {{
+                transform: translateY(-2px) scale(1.012);
+                border-color: rgba(255,223,158,.84) !important;
+                box-shadow:
+                    0 28px 86px rgba(0,0,0,.46),
+                    0 0 58px rgba(244,200,115,.25),
+                    inset 0 0 0 1px rgba(255,255,255,.075) !important;
+            }}
+            .emotion-title {{ color: rgba(255,250,238,.98) !important; }}
+            .emotion-sub {{ color: rgba(255,242,216,.66) !important; }}
+            .photo-picker-btn, button {{
+                position: relative;
+                overflow: hidden;
+                border: 1px solid rgba(255,236,184,.36) !important;
+                background:
+                    linear-gradient(135deg, #fff3c8 0%, #f2ca75 40%, #c8913e 72%, #8f581f 100%) !important;
+                box-shadow:
+                    0 18px 48px rgba(212,157,63,.30),
+                    0 0 36px rgba(244,200,115,.14),
+                    inset 0 1px 0 rgba(255,255,255,.48) !important;
+                letter-spacing: .2px;
+            }}
+            .photo-picker-btn::after, button::after {{
+                content:"";
+                position:absolute;
+                inset:-40% -80%;
+                pointer-events:none;
+                background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.34) 50%, transparent 66%);
+                transform: translateX(-45%);
+                animation: eternaShimmer 4.8s ease-in-out infinite;
+            }}
+            @keyframes eternaShimmer {{
+                0%, 58% {{ transform: translateX(-55%); opacity: 0; }}
+                68% {{ opacity: .78; }}
+                100% {{ transform: translateX(55%); opacity: 0; }}
+            }}
+            .photo-box {{
+                border-color: rgba(244,200,115,.38) !important;
+                box-shadow: inset 0 0 28px rgba(244,200,115,.035);
+            }}
+            .photo-preview {{ filter: saturate(1.08) contrast(1.05) brightness(.98) !important; }}
+            .buttons {{ position: relative; }}
+            #submitBtn {{
+                min-height: 58px;
+                text-transform: none;
+                font-weight: 900;
+            }}
+            #nextStep1,
+            #nextStep,
+            .continue-btn,
+            .step-actions,
+            button[data-action="continue"],
+            a[data-action="continue"] {{
+                display: none !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }}
+            .luxury-divider {{
+                width: min(240px, 52vw);
+                height: 1px;
+                margin: 28px auto 4px;
+                background: linear-gradient(90deg, transparent, rgba(255,220,148,.52), transparent);
+                box-shadow: 0 0 24px rgba(255,220,148,.16);
+            }}
 </style>
     </head>
     <body>
@@ -3233,6 +3447,8 @@ def render_create_form() -> str:
                     <p class="intro-line l3">Haz que vuelva convertido</p>
                     <p class="intro-line l4">en emoción real.</p>
                 </div>
+
+                <div class="luxury-divider"></div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
                     <div class="form-step active" id="formStep1">
@@ -3620,6 +3836,14 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     const STORAGE_KEY = "eterna_create_form_v4";
 
+
+    // ETERNA safety: elimina botones de continuar que no forman parte del flujo final.
+    document.querySelectorAll("button, a").forEach((el) => {{
+        const t = (el.textContent || "").trim().toLowerCase();
+        if (t === "continuar" || t === "continuar creando") {{
+            el.remove();
+        }}
+    }});
     const form = document.getElementById("createForm");
     const button = document.getElementById("submitBtn");
     const errorBox = document.getElementById("errorBox");
