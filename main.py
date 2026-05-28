@@ -1294,10 +1294,18 @@ def try_send_sender_sms(order: dict) -> dict:
 
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
-    fixed_fee = round(FIXED_PLATFORM_FEE, 2)
-    variable_fee = round(gift_amount * GIFT_COMMISSION_RATE, 2)
+
+    # Regla clara de precios ETERNA:
+    # - Si NO hay regalo económico: solo BASE_PRICE.
+    # - Si hay regalo económico: +2€ gestión segura + 5% del importe regalado.
+    # - Si entrega programada: +2€ SOLO por programación.
+    has_gift = gift_amount > 0
+    fixed_fee = round(FIXED_PLATFORM_FEE if has_gift else 0.0, 2)
+    variable_fee = round(gift_amount * GIFT_COMMISSION_RATE if has_gift else 0.0, 2)
+
     delivery_mode = (delivery_mode or "instant").strip().lower()
     scheduled_fee = round(SCHEDULED_DELIVERY_FEE if delivery_mode == "scheduled" else 0.0, 2)
+
     total_fee = round(fixed_fee + variable_fee, 2)
     total_amount = round(BASE_PRICE + gift_amount + total_fee + scheduled_fee, 2)
     return {
@@ -1327,6 +1335,41 @@ def get_phrases_by_type(message_type: str):
             "Todo vuelve a ti.",
             "Gracias por tanto.",
         ],
+        "amistad": [
+            "Hay personas que aparecen",
+            "y se quedan para siempre.",
+            "Gracias por estar.",
+        ],
+        "madre": [
+            "Nunca podré devolverte todo.",
+            "Pero sí recordarte lo importante que eres.",
+            "Gracias por ser hogar.",
+        ],
+        "padre": [
+            "Aunque no siempre lo diga,",
+            "muchas cosas que soy empezaron contigo.",
+            "Gracias por todo.",
+        ],
+        "distancia": [
+            "Aunque hoy no estés cerca,",
+            "hay algo de ti que sigue aquí.",
+            "Y eso no se va.",
+        ],
+        "perdon": [
+            "A veces cuesta decirlo.",
+            "Pero hay cosas que merecen sanar.",
+            "Ojalá esto llegue donde mis palabras no llegaron.",
+        ],
+        "reencuentro": [
+            "Hay caminos que se separan,",
+            "pero hay recuerdos que vuelven.",
+            "Y este vuelve para ti.",
+        ],
+        "gratitud": [
+            "A veces no sabemos cómo decirlo.",
+            "Pero hay personas que cambian la vida.",
+            "Y tú eres una de ellas.",
+        ],
         "superacion": [
             "Nunca dejaste de intentarlo.",
             "Y eso lo cambia todo.",
@@ -1341,6 +1384,11 @@ def get_phrases_by_type(message_type: str):
             "Pensabas que hoy era un día normal…",
             "Pero alguien ha estado pensando en ti.",
             "Mucho más de lo que imaginas.",
+        ],
+        "no_se_decirlo": [
+            "No siempre encuentro las palabras.",
+            "Pero sí sé lo que siento.",
+            "Y quería que lo vivieras así.",
         ],
     }
     return phrase_templates.get(message_type, phrase_templates["sorpresa"])
@@ -2363,7 +2411,7 @@ async def create_order_and_redirect(
                             "description": (
                                 f"Base {money(BASE_PRICE)}€ + "
                                 f"regalo {money(fees['gift_amount'])}€ + "
-                                f"comisión {money(fees['total_fee'])}€ + "
+                                f"gestión regalo {money(fees['total_fee'])}€ + "
                                 f"programación {money(fees['scheduled_delivery_fee'])}€"
                             ),
                         },
@@ -2529,24 +2577,62 @@ def render_create_form() -> str:
             .phone-input {{
                 flex: 1;
             }}
+            .photo-picker-main {{
+                margin: 14px 0 18px;
+                border-radius: 26px;
+                padding: 18px;
+                background: linear-gradient(180deg, rgba(218,178,92,0.11), rgba(255,255,255,0.035));
+                border: 1px solid rgba(218,178,92,0.20);
+                text-align: center;
+            }}
+            .photo-picker-title {{
+                font-size: 18px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            }}
+            .photo-picker-sub {{
+                color: rgba(255,255,255,0.54);
+                font-size: 13px;
+                line-height: 1.7;
+                margin-bottom: 14px;
+            }}
+            .photo-picker-btn {{
+                display: block;
+                width: 100%;
+                padding: 16px 18px;
+                border-radius: 999px;
+                background: rgba(255,255,255,0.92);
+                color: #050505;
+                font-weight: 800;
+                cursor: pointer;
+                position: relative;
+                overflow: hidden;
+            }}
+            .photo-picker-btn input {{
+                position:absolute;
+                inset:0;
+                opacity:0;
+                cursor:pointer;
+            }}
             .photo-grid {{
                 display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
                 margin-top: 12px;
             }}
             .photo-card {{
                 background: rgba(255,255,255,0.04);
                 border: 1px solid rgba(255,255,255,0.08);
                 border-radius: 22px;
-                padding: 16px;
+                padding: 10px;
             }}
             .photo-label {{
                 font-size: 12px;
                 text-transform: uppercase;
                 letter-spacing: 1.2px;
-                color: rgba(255,255,255,0.45);
+                color: rgba(218,178,92,0.82);
                 margin-bottom: 8px;
+                text-align: center;
             }}
             .photo-guide {{
                 font-size: 15px;
@@ -2559,14 +2645,15 @@ def render_create_form() -> str:
                 position: relative;
                 border: 1px dashed rgba(255,255,255,0.18);
                 border-radius: 18px;
-                min-height: 210px;
+                aspect-ratio: 9 / 16;
+                min-height: 0;
                 overflow: hidden;
                 background: rgba(255,255,255,0.03);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 text-align: center;
-                padding: 16px;
+                padding: 10px;
                 cursor: pointer;
             }}
             .photo-box input[type="file"] {{
@@ -2581,13 +2668,13 @@ def render_create_form() -> str:
                 z-index: 3;
             }}
             .photo-placeholder {{
-                color: rgba(255,255,255,0.58);
-                line-height: 1.7;
-                font-size: 14px;
+                color: rgba(255,255,255,0.50);
+                line-height: 1.45;
+                font-size: 12px;
                 position: relative;
                 z-index: 1;
                 pointer-events: none;
-                max-width: 180px;
+                max-width: 110px;
             }}
             .photo-preview {{
                 position: absolute;
@@ -2600,11 +2687,12 @@ def render_create_form() -> str:
                 border-radius: 18px;
             }}
             .photo-status {{
-                margin-top: 10px;
+                margin-top: 8px;
                 color: rgba(255,255,255,0.48);
-                font-size: 12px;
-                line-height: 1.6;
-                min-height: 20px;
+                font-size: 11px;
+                line-height: 1.45;
+                min-height: 16px;
+                text-align: center;
             }}
             .mini-note {{
                 margin-top: 12px;
@@ -2616,7 +2704,7 @@ def render_create_form() -> str:
             .emotion-grid {{
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 14px;
+                gap: 12px;
                 margin-top: 12px;
             }}
             .emotion-card {{
@@ -2667,6 +2755,14 @@ def render_create_form() -> str:
             }}
             .phrases-manual.hidden {{
                 display: none;
+            }}
+            textarea {{
+                width: 100%;
+                min-height: 96px;
+                resize: none;
+                overflow: hidden;
+                line-height: 1.55;
+                font-family: inherit;
             }}
             .delivery-box {{
                 margin-top: 12px;
@@ -2784,10 +2880,13 @@ def render_create_form() -> str:
                 line-height: 1.7;
             }}
             @media (max-width: 760px) {{
-                .photo-grid,
                 .emotion-grid,
                 .delivery-grid {{
                     grid-template-columns: 1fr;
+                }}
+                .photo-grid {{
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 10px;
                 }}
                 .phone-row {{
                     flex-direction: row;
@@ -2897,81 +2996,87 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s3">
-                        <div class="section-title">Los recuerdos que lo harán volver</div>
+                        <div class="section-title">Selecciona los recuerdos</div>
                         <div class="soft-copy">
-                            Elige 6 fotos que merezcan volver a sentirse.
+                            Elige 6 fotos directamente desde tu galería. ETERNA las colocará como Foto 1, Foto 2, Foto 3...
+                        </div>
+
+                        <div class="photo-picker-main">
+                            <div class="photo-picker-title">Seleccionar 6 recuerdos</div>
+                            <div class="photo-picker-sub">
+                                Puedes elegir las 6 fotos de una vez. Después podrás cambiar cualquiera individualmente.
+                            </div>
+                            <label class="photo-picker-btn">
+                                Abrir galería
+                                <input type="file" id="multi_photo_picker" accept="image/*" multiple>
+                            </label>
                         </div>
 
                         <div class="photo-grid">
                             <div class="photo-card">
                                 <div class="photo-label">Foto 1</div>
-                                <div class="photo-guide">Una foto suya que diga quién es.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo1">
-                                    <div class="photo-placeholder" id="placeholder_photo1">Toca para elegir una foto de tu galería</div>
+                                    <div class="photo-placeholder" id="placeholder_photo1">Cambiar</div>
                                     <input type="file" name="photo1" id="photo1" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo1">Aún no has elegido esta foto.</div>
+                                <div class="photo-status" id="status_photo1">Pendiente</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 2</div>
-                                <div class="photo-guide">Un instante que te lleve directo a ella.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo2">
-                                    <div class="photo-placeholder" id="placeholder_photo2">Toca para elegir una foto de tu galería</div>
+                                    <div class="photo-placeholder" id="placeholder_photo2">Cambiar</div>
                                     <input type="file" name="photo2" id="photo2" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo2">Aún no has elegido esta foto.</div>
+                                <div class="photo-status" id="status_photo2">Pendiente</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 3</div>
-                                <div class="photo-guide">Algo que os una sin necesidad de explicarlo.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo3">
-                                    <div class="photo-placeholder" id="placeholder_photo3">Toca para elegir una foto de tu galería</div>
+                                    <div class="photo-placeholder" id="placeholder_photo3">Cambiar</div>
                                     <input type="file" name="photo3" id="photo3" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo3">Aún no has elegido esta foto.</div>
+                                <div class="photo-status" id="status_photo3">Pendiente</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 4</div>
-                                <div class="photo-guide">Un recuerdo que todavía vive dentro.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo4">
-                                    <div class="photo-placeholder" id="placeholder_photo4">Toca para elegir una foto de tu galería</div>
+                                    <div class="photo-placeholder" id="placeholder_photo4">Cambiar</div>
                                     <input type="file" name="photo4" id="photo4" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo4">Aún no has elegido esta foto.</div>
+                                <div class="photo-status" id="status_photo4">Pendiente</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 5</div>
-                                <div class="photo-guide">Una imagen que solo vosotros entendéis.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo5">
-                                    <div class="photo-placeholder" id="placeholder_photo5">Toca para elegir una foto de tu galería</div>
+                                    <div class="photo-placeholder" id="placeholder_photo5">Cambiar</div>
                                     <input type="file" name="photo5" id="photo5" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo5">Aún no has elegido esta foto.</div>
+                                <div class="photo-status" id="status_photo5">Pendiente</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 6</div>
-                                <div class="photo-guide">La foto que jamás querrías perder.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo6">
-                                    <div class="photo-placeholder" id="placeholder_photo6">Toca para elegir una foto de tu galería</div>
+                                    <div class="photo-placeholder" id="placeholder_photo6">Cambiar</div>
                                     <input type="file" name="photo6" id="photo6" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo6">Aún no has elegido esta foto.</div>
+                                <div class="photo-status" id="status_photo6">Pendiente</div>
                             </div>
+
                         </div>
 
                         <div class="mini-note">
-                            Recomendación: mejor verticales. Idealmente 2 fotos suyas, 2 juntos y 2 finales suyas.
+                            Recomendación: formato vertical. Lo importante es que sean recuerdos que de verdad tengan sentido.
                         </div>
                     </div>
 
@@ -2981,27 +3086,59 @@ def render_create_form() -> str:
                         <div class="emotion-grid">
                             <div class="emotion-card" data-type="cumpleanos">
                                 <div class="emotion-title">Cumpleaños</div>
-                                <div class="emotion-sub">Un día que merece quedarse para siempre.</div>
+                                <div class="emotion-sub">Un día que merece quedarse.</div>
                             </div>
                             <div class="emotion-card" data-type="amor">
                                 <div class="emotion-title">Amor</div>
                                 <div class="emotion-sub">Cuando lo que sientes ya no cabe dentro.</div>
                             </div>
+                            <div class="emotion-card" data-type="madre">
+                                <div class="emotion-title">Mamá</div>
+                                <div class="emotion-sub">Para quien siempre fue hogar.</div>
+                            </div>
+                            <div class="emotion-card" data-type="padre">
+                                <div class="emotion-title">Papá</div>
+                                <div class="emotion-sub">Para quien dejó huella sin hacer ruido.</div>
+                            </div>
                             <div class="emotion-card" data-type="familia">
                                 <div class="emotion-title">Familia</div>
-                                <div class="emotion-sub">Para quien siempre ha estado.</div>
+                                <div class="emotion-sub">Para quienes siempre vuelven a ti.</div>
+                            </div>
+                            <div class="emotion-card" data-type="amistad">
+                                <div class="emotion-title">Amistad</div>
+                                <div class="emotion-sub">Para esa persona que se quedó.</div>
+                            </div>
+                            <div class="emotion-card" data-type="distancia">
+                                <div class="emotion-title">Distancia</div>
+                                <div class="emotion-sub">Cuando alguien está lejos, pero sigue cerca.</div>
+                            </div>
+                            <div class="emotion-card" data-type="perdon">
+                                <div class="emotion-title">Perdón</div>
+                                <div class="emotion-sub">Para decir algo que cuesta decir.</div>
+                            </div>
+                            <div class="emotion-card" data-type="reencuentro">
+                                <div class="emotion-title">Reencuentro</div>
+                                <div class="emotion-sub">Cuando algo vuelve después del tiempo.</div>
+                            </div>
+                            <div class="emotion-card" data-type="gratitud">
+                                <div class="emotion-title">Gracias</div>
+                                <div class="emotion-sub">Para agradecer de verdad.</div>
                             </div>
                             <div class="emotion-card" data-type="superacion">
                                 <div class="emotion-title">Superación</div>
                                 <div class="emotion-sub">Para recordarle todo lo que vale.</div>
                             </div>
+                            <div class="emotion-card" data-type="sorpresa">
+                                <div class="emotion-title">Sorpresa</div>
+                                <div class="emotion-sub">Cuando quieres tocar el corazón sin avisar.</div>
+                            </div>
                             <div class="emotion-card" data-type="esfuerzo">
                                 <div class="emotion-title">Esfuerzo</div>
                                 <div class="emotion-sub">Para reconocer lo que a veces no se dice.</div>
                             </div>
-                            <div class="emotion-card" data-type="sorpresa">
-                                <div class="emotion-title">Sorpresa</div>
-                                <div class="emotion-sub">Cuando quieres tocar el corazón sin avisar.</div>
+                            <div class="emotion-card" data-type="no_se_decirlo">
+                                <div class="emotion-title">No sé cómo decirlo</div>
+                                <div class="emotion-sub">Cuando ETERNA debe decirlo por ti.</div>
                             </div>
                         </div>
 
@@ -3027,9 +3164,9 @@ def render_create_form() -> str:
                         </div>
 
                         <div class="phrases-manual hidden" id="manualPhrases">
-                            <input name="phrase_1" id="phrase_1" placeholder="Lo que nunca quieres que olvide" maxlength="160">
-                            <input name="phrase_2" id="phrase_2" placeholder="Eso que sientes y a veces no dices" maxlength="160">
-                            <input name="phrase_3" id="phrase_3" placeholder="La frase que quieres dejarle para siempre" maxlength="160">
+                            <textarea name="phrase_1" id="phrase_1" placeholder="Lo que nunca quieres que olvide" maxlength="220"></textarea>
+                            <textarea name="phrase_2" id="phrase_2" placeholder="Eso que sientes y a veces no dices" maxlength="220"></textarea>
+                            <textarea name="phrase_3" id="phrase_3" placeholder="La frase que quieres dejarle para siempre" maxlength="220"></textarea>
                         </div>
                     </div>
 
@@ -3103,7 +3240,7 @@ def render_create_form() -> str:
 
                         <div class="price-box">
                             Precio base ETERNA: {money(BASE_PRICE)}€<br>
-                            Comisión regalo: {money(FIXED_PLATFORM_FEE)}€ + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado<br>
+                            Si añades regalo económico: +{money(FIXED_PLATFORM_FEE)}€ gestión segura + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado<br>
                             Entrega programada: +{money(SCHEDULED_DELIVERY_FEE)}€ solo si eliges guardarlo y entregarlo en un momento exacto
                         </div>
 
@@ -3476,6 +3613,54 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
     }}
 
+
+    function setInputFile(input, file) {{
+        if (!input || !file) return false;
+        try {{
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            input.dispatchEvent(new Event("change", {{ bubbles: true }}));
+            return true;
+        }} catch (e) {{
+            console.error("No se pudo asignar la foto", e);
+            return false;
+        }}
+    }}
+
+    const multiPhotoPicker = document.getElementById("multi_photo_picker");
+    if (multiPhotoPicker) {{
+        multiPhotoPicker.addEventListener("change", function () {{
+            clearError();
+            const files = Array.from(multiPhotoPicker.files || []).filter((file) => (file.type || "").startsWith("image/"));
+            if (!files.length) return;
+            if (files.length < 6) {{
+                showError("Elige 6 fotos para crear ETERNA.");
+            }}
+            files.slice(0, 6).forEach((file, index) => {{
+                const input = document.getElementById("photo" + (index + 1));
+                setInputFile(input, file);
+            }});
+            if ((multiPhotoPicker.files || []).length > 6) {{
+                showError("He usado las 6 primeras fotos. Luego puedes cambiar cualquiera una a una.");
+            }}
+            saveFormState();
+        }});
+    }}
+
+    function autoGrowTextarea(el) {{
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = Math.max(96, el.scrollHeight) + "px";
+    }}
+
+    ["phrase_1", "phrase_2", "phrase_3"].forEach((id) => {{
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", function () {{ autoGrowTextarea(el); saveFormState(); }});
+        autoGrowTextarea(el);
+    }});
+
     function bindPreview(inputId) {{
         const fileInput = document.getElementById(inputId);
         if (!fileInput) return;
@@ -3544,9 +3729,9 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
 
         if (manualRadio && manualRadio.checked) {{
-            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
-            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
-            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
+            const phrase1 = form.querySelector('[name="phrase_1"]')?.value.trim();
+            const phrase2 = form.querySelector('[name="phrase_2"]')?.value.trim();
+            const phrase3 = form.querySelector('[name="phrase_3"]')?.value.trim();
 
             if (!phrase1 || !phrase2 || !phrase3) {{
                 showError("Escribe tus 3 frases.");
@@ -3628,6 +3813,190 @@ document.addEventListener("DOMContentLoaded", function () {{
 # HOME / CREATE
 # =========================================================
 
+
+def render_create_intro() -> HTMLResponse:
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <title>Crear ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin:0; min-height:100%; background:#030303; }}
+            body {{
+                min-height:100vh;
+                color:white;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                overflow-x:hidden;
+                background:
+                    radial-gradient(circle at 50% -10%, rgba(218,178,92,.22), transparent 36%),
+                    radial-gradient(circle at 20% 90%, rgba(218,178,92,.10), transparent 30%),
+                    linear-gradient(180deg,#050505,#000 58%,#050505);
+            }}
+            .stage {{
+                min-height:100vh;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+            }}
+            .phone {{
+                width:100%;
+                max-width:430px;
+                min-height: min(820px, 94vh);
+                border-radius:38px;
+                padding:26px 22px;
+                position:relative;
+                overflow:hidden;
+                border:1px solid rgba(218,178,92,.20);
+                background:
+                    linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),
+                    rgba(0,0,0,.68);
+                box-shadow:0 30px 90px rgba(0,0,0,.72), inset 0 0 0 1px rgba(255,255,255,.035);
+            }}
+            .phone:before {{
+                content:"";
+                position:absolute;
+                inset:-30%;
+                background: radial-gradient(circle, rgba(218,178,92,.08), transparent 28%);
+                animation: breathe 9s ease-in-out infinite;
+                pointer-events:none;
+            }}
+            @keyframes breathe {{ 0%,100% {{ transform:scale(1); opacity:.55; }} 50% {{ transform:scale(1.12); opacity:1; }} }}
+            .content {{ position:relative; z-index:2; min-height: calc(min(820px, 94vh) - 52px); display:flex; flex-direction:column; }}
+            .brand {{
+                letter-spacing:5px;
+                font-size:13px;
+                color:rgba(218,178,92,.92);
+                text-align:center;
+                margin-top:8px;
+            }}
+            .orb {{
+                width:86px;
+                height:86px;
+                margin:42px auto 34px;
+                border-radius:999px;
+                border:1px solid rgba(218,178,92,.35);
+                box-shadow:0 0 44px rgba(218,178,92,.22), inset 0 0 28px rgba(218,178,92,.10);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                color:rgba(218,178,92,.92);
+                font-size:34px;
+                animation: pulse 4.8s ease-in-out infinite;
+            }}
+            @keyframes pulse {{ 0%,100% {{ transform:scale(1); }} 50% {{ transform:scale(1.045); }} }}
+            .line {{
+                font-family: Georgia, "Times New Roman", serif;
+                font-size: clamp(31px, 8vw, 43px);
+                line-height:1.08;
+                text-align:center;
+                letter-spacing:-.7px;
+                margin:0;
+                opacity:0;
+                transform:translateY(18px);
+                animation: reveal 1.6s ease forwards;
+            }}
+            .line.two {{ animation-delay:1.25s; color:rgba(255,255,255,.88); }}
+            .line.three {{ animation-delay:2.65s; color:rgba(218,178,92,.95); }}
+            @keyframes reveal {{ to {{ opacity:1; transform:translateY(0); }} }}
+            .copy {{
+                margin:30px auto 0;
+                max-width:330px;
+                text-align:center;
+                color:rgba(255,255,255,.58);
+                line-height:1.8;
+                font-size:15px;
+                opacity:0;
+                animation: reveal 1.4s ease forwards;
+                animation-delay:4.1s;
+            }}
+            .mock {{
+                margin:34px auto 0;
+                width:76%;
+                max-width:250px;
+                aspect-ratio:9/16;
+                border-radius:30px;
+                border:1px solid rgba(218,178,92,.26);
+                background:
+                    radial-gradient(circle at 50% 25%, rgba(255,255,255,.16), transparent 34%),
+                    linear-gradient(180deg, rgba(218,178,92,.10), rgba(0,0,0,.55));
+                box-shadow:0 22px 60px rgba(0,0,0,.58);
+                position:relative;
+                overflow:hidden;
+                opacity:0;
+                transform:translateY(20px) scale(.98);
+                animation: revealMock 1.7s ease forwards;
+                animation-delay:5.2s;
+            }}
+            @keyframes revealMock {{ to {{ opacity:1; transform:translateY(0) scale(1); }} }}
+            .mock:after {{
+                content:"Tu ETERNA ha vuelto";
+                position:absolute;
+                left:18px;
+                right:18px;
+                bottom:22px;
+                text-align:center;
+                font-family:Georgia,"Times New Roman",serif;
+                font-size:20px;
+                color:rgba(255,255,255,.9);
+            }}
+            .actions {{ margin-top:auto; padding-top:30px; display:grid; gap:12px; }}
+            .btn {{
+                display:block;
+                width:100%;
+                padding:18px 22px;
+                border-radius:999px;
+                text-align:center;
+                text-decoration:none;
+                font-weight:800;
+                letter-spacing:.3px;
+                background:linear-gradient(135deg,#f6e1a8,#c89d45);
+                color:#120d05;
+                box-shadow:0 14px 34px rgba(218,178,92,.22);
+            }}
+            .ghost {{
+                background:rgba(255,255,255,.055);
+                color:rgba(255,255,255,.78);
+                border:1px solid rgba(255,255,255,.08);
+                box-shadow:none;
+            }}
+            .tiny {{
+                text-align:center;
+                margin-top:12px;
+                color:rgba(255,255,255,.35);
+                font-size:12px;
+                line-height:1.5;
+            }}
+        </style>
+    </head>
+    <body>
+        <main class="stage">
+            <section class="phone">
+                <div class="content">
+                    <div class="brand">ETERNA</div>
+                    <div class="orb">∞</div>
+                    <h1 class="line">No todo lo importante</h1>
+                    <h2 class="line two">debería desaparecer.</h2>
+                    <h2 class="line three">Haz que vuelva.</h2>
+                    <p class="copy">
+                        Crea una experiencia íntima con fotos, palabras y un momento que volverá a ti convertido en emoción real.
+                    </p>
+                    <div class="mock" aria-hidden="true"></div>
+                    <div class="actions">
+                        <a class="btn" href="/crear/formulario">Crear mi ETERNA</a>
+                        <a class="btn ghost" href="/">Volver al inicio</a>
+                    </div>
+                    <div class="tiny">Pensado para móvil. Diseñado para sentirse.</div>
+                </div>
+            </section>
+        </main>
+    </body>
+    </html>
+    """)
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
@@ -3635,6 +4004,11 @@ def home(request: Request):
 
 @app.get("/crear", response_class=HTMLResponse)
 def crear_get():
+    return render_create_intro()
+
+
+@app.get("/crear/formulario", response_class=HTMLResponse)
+def crear_formulario_get():
     return render_create_form()
 
 
