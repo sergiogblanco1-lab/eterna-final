@@ -100,7 +100,11 @@ SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
-MAX_VIDEO_SIZE = 15 * 1024 * 1024
+# Reacción móvil blindada:
+# antes estaba limitado a 15MB y en móvil/Safari una emoción real puede superar ese tamaño.
+# Si supera el límite, no se marca reaction_uploaded y por tanto NO vuelve el sender pack.
+MAX_VIDEO_SIZE_MB = int(os.getenv("MAX_REACTION_VIDEO_MB", "100"))
+MAX_VIDEO_SIZE = MAX_VIDEO_SIZE_MB * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
     "video/webm",
     "video/mp4",
@@ -7755,7 +7759,7 @@ async def finish_reaction_upload(
         if saved_size > MAX_VIDEO_SIZE:
             # Último blindaje: no borramos nada; dejamos pendiente y visible.
             update_order(order["id"], reaction_upload_pending=1, reaction_upload_error="video_too_large_after_assembly")
-            insert_order_event(order["id"], "🚫 reaction_too_large", "error", "La reacción ensamblada pesa demasiado", {"bytes": saved_size})
+            insert_order_event(order["id"], "🚫 reaction_too_large", "error", "La reacción ensamblada pesa demasiado", {"bytes": saved_size, "max_bytes": MAX_VIDEO_SIZE, "max_mb": MAX_VIDEO_SIZE_MB})
             raise HTTPException(status_code=400, detail="video_too_large")
 
         insert_order_event(
@@ -9212,9 +9216,24 @@ def admin_retry_recipient_message(order_id: str, request: Request):
 
 
 @app.get("/admin/retry-sender-message/{order_id}")
-def admin_retry_sender_message(order_id: str, token: str = ""):
+def admin_retry_sender_message(order_id: str, token: str = "", force: int = 0):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
+
+    # Modo rescate: si un pedido agotó 3 intentos cuando SMS/WhatsApp estaba sin saldo
+    # o mal configurado, permitimos resetear SOLO desde admin y SOLO bajo petición explícita.
+    # Uso:
+    # /admin/retry-sender-message/ORDER_ID?token=ADMIN_TOKEN&force=1
+    if int(force or 0) == 1:
+        update_order(
+            order_id,
+            sender_sms_attempts=0,
+            sender_sms_error=None,
+            sender_sms_sent_at=None,
+            sender_sms_sid=None,
+            sender_notified=0,
+        )
+        insert_order_event(order_id, "admin_sender_retry_forced", "warning", "Reintento forzado del aviso al regalante: intentos reseteados por admin")
 
     order = maybe_mark_eterna_completed(order_id)
     result = try_send_sender_sms(order)
@@ -9228,6 +9247,7 @@ def admin_retry_sender_message(order_id: str, token: str = ""):
         "sender_sms_attempts": updated.get("sender_sms_attempts"),
         "sender_sms_error": updated.get("sender_sms_error"),
         "eterna_completed": bool(updated.get("eterna_completed")),
+        "force_used": bool(int(force or 0) == 1),
     })
 
 
