@@ -7945,6 +7945,7 @@ def sender_pack(sender_token: str):
             </div>
 
             <div id="eterna-share-wrap" class="share-wrap" style="display:none;">
+                <button id="eterna-replay-final" class="replay-emotion-button" type="button">▶️ Volver a ver esta emoción</button>
                 <a class="download-link" href="{reaction_url_safe}" download>Guardar este regreso</a>
                 <button id="eterna-share-reaction" class="share-button" type="button">Compartir su reacción</button>
                 <div class="share-note">
@@ -7970,6 +7971,7 @@ def sender_pack(sender_token: str):
         const finalSignature = document.getElementById("eterna-final-signature");
         const shareWrap = document.getElementById("eterna-share-wrap");
         const shareBtn = document.getElementById("eterna-share-reaction");
+        const replayFinal = document.getElementById("eterna-replay-final");
 
         function showView() {{
             if (intro) intro.classList.remove("active");
@@ -8061,6 +8063,10 @@ def sender_pack(sender_token: str):
 
         if (replay) {{
             replay.addEventListener("click", playAllFromStart);
+        }}
+
+        if (replayFinal) {{
+            replayFinal.addEventListener("click", playAllFromStart);
         }}
 
         if (shareBtn) {{
@@ -8505,7 +8511,7 @@ def sender_pack(sender_token: str):
                 gap:10px;
                 padding:0;
             }}
-            .download-link, .share-button {{
+            .download-link, .share-button, .replay-emotion-button {{
                 display:block;
                 width:100%;
                 border:none;
@@ -8515,6 +8521,11 @@ def sender_pack(sender_token: str):
                 font-size:17px;
                 font-weight:800;
                 text-decoration:none;
+            }}
+            .replay-emotion-button {{
+                background:linear-gradient(135deg, #d8b76d, #fff0b8);
+                color:#070503;
+                box-shadow:0 18px 54px rgba(215,180,106,.18);
             }}
             .download-link {{ background:#fff; color:#000; }}
             .share-button {{ background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.12); }}
