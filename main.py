@@ -1322,73 +1322,73 @@ def get_phrases_by_type(message_type: str):
     phrase_templates = {
         "cumpleanos": [
             "Hoy no es un día cualquiera.",
-            "Es una vida celebrándose en silencio.",
-            "Y lo mejor… todavía está por llegar.",
+            "Es tu historia celebrándose.",
+            "Y lo mejor… aún está por venir.",
         ],
         "amor": [
-            "Hay personas que no se eligen una vez.",
-            "Se eligen cada día, incluso en silencio.",
-            "Y yo te elegiría siempre a ti.",
+            "Si volviera a empezar,",
+            "te elegiría otra vez.",
+            "Siempre tú.",
         ],
         "familia": [
-            "Hay personas que son hogar.",
-            "No importa dónde estés.",
-            "Gracias por ser el mío.",
+            "Todo empieza contigo.",
+            "Todo vuelve a ti.",
+            "Gracias por tanto.",
         ],
         "amistad": [
-            "Hay personas que llegan por casualidad.",
-            "Y terminan convirtiéndose en parte de tu historia.",
-            "Gracias por quedarte.",
+            "Hay personas que aparecen",
+            "y se quedan para siempre.",
+            "Gracias por estar.",
         ],
         "madre": [
-            "Nunca podré devolverte todo lo que me diste.",
-            "Pero sí puedo recordarte lo inmenso que eres para mí.",
+            "Nunca podré devolverte todo.",
+            "Pero sí recordarte lo importante que eres.",
             "Gracias por ser hogar.",
         ],
         "padre": [
-            "Hay cosas que no siempre supe decirte.",
-            "Pero muchas partes de mí empezaron contigo.",
-            "Gracias por estar incluso cuando no lo dije.",
+            "Aunque no siempre lo diga,",
+            "muchas cosas que soy empezaron contigo.",
+            "Gracias por todo.",
         ],
         "distancia": [
-            "Hay personas que siguen cerca aunque no podamos abrazarlas.",
-            "Porque algunos kilómetros nunca separan lo importante.",
-            "Y tú sigues aquí.",
+            "Aunque hoy no estés cerca,",
+            "hay algo de ti que sigue aquí.",
+            "Y eso no se va.",
         ],
         "perdon": [
-            "A veces el corazón tarda en encontrar las palabras.",
+            "A veces cuesta decirlo.",
             "Pero hay cosas que merecen sanar.",
-            "Ojalá esto llegue donde mi voz no supo llegar.",
+            "Ojalá esto llegue donde mis palabras no llegaron.",
         ],
         "reencuentro": [
-            "Hay caminos que se separan durante un tiempo.",
-            "Pero hay recuerdos que siempre encuentran la forma de volver.",
+            "Hay caminos que se separan,",
+            "pero hay recuerdos que vuelven.",
             "Y este vuelve para ti.",
         ],
         "gratitud": [
-            "Hay personas que dejan huella sin darse cuenta.",
-            "Personas que cambian etapas enteras de nuestra vida.",
+            "A veces no sabemos cómo decirlo.",
+            "Pero hay personas que cambian la vida.",
             "Y tú eres una de ellas.",
         ],
         "superacion": [
-            "Hubo días en los que seguir ya era una victoria.",
-            "Y aun así no dejaste de intentarlo.",
-            "Nunca olvides la fuerza que hay en ti.",
+            "Nunca dejaste de intentarlo.",
+            "Y eso lo cambia todo.",
+            "Creemos en ti.",
         ],
         "esfuerzo": [
-            "Nadie vio todo lo que cargaste en silencio.",
-            "Pero cada paso que diste tuvo valor.",
-            "Y hoy merece ser reconocido.",
+            "Todo lo que has dado",
+            "no ha pasado desapercibido.",
+            "Y lo valoramos más de lo que imaginas.",
         ],
         "sorpresa": [
-            "Pensabas que hoy era un día normal.",
+            "Pensabas que hoy era un día normal…",
             "Pero alguien ha estado pensando en ti.",
             "Mucho más de lo que imaginas.",
         ],
         "no_se_decirlo": [
-            "Hay sentimientos demasiado grandes para explicarlos.",
-            "Hay cosas que llevo tiempo queriendo decirte.",
-            "Y hoy he encontrado una forma.",
+            "No siempre encuentro las palabras.",
+            "Pero sí sé lo que siento.",
+            "Y quería que lo vivieras así.",
         ],
     }
     return phrase_templates.get(message_type, phrase_templates["sorpresa"])
@@ -3547,13 +3547,13 @@ def render_create_form() -> str:
                                 <div class="emotion-title">Esfuerzo</div>
                                 <div class="emotion-sub">Para reconocer lo que a veces no se dice.</div>
                             </div>
-                            <div class="emotion-card" data-type="no_se_decirlo">
+                            <div class="emotion-card selected" data-type="no_se_decirlo">
                                 <div class="emotion-title">No sé cómo decirlo</div>
                                 <div class="emotion-sub">Cuando ETERNA debe decirlo por ti.</div>
                             </div>
                         </div>
 
-                        <input type="hidden" name="message_type" id="messageType" required>
+                        <input type="hidden" name="message_type" id="messageType" value="no_se_decirlo" required>
                     </div>
 
                     </div>
@@ -3768,7 +3768,8 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
         if (!messageType) {{
-            showError("Elige qué quieres celebrar con esta ETERNA.");
+            showError("Selecciona una emoción para continuar.");
+            scrollToEmotionChoice();
             return false;
         }}
         if (!allPhotosPresent()) {{
@@ -3791,6 +3792,29 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (!errorBox) return;
         errorBox.style.display = "none";
         errorBox.innerText = "";
+    }}
+
+    function applyDefaultEmotionIfNeeded() {{
+        if (!messageTypeInput) return;
+        const current = String(messageTypeInput.value || "").trim();
+        if (current) return;
+
+        const defaultType = "no_se_decirlo";
+        messageTypeInput.value = defaultType;
+
+        cards.forEach((card) => {{
+            const isDefault = (card.dataset.type || "") === defaultType;
+            card.classList.toggle("selected", isDefault);
+        }});
+
+        saveFormState();
+    }}
+
+    function scrollToEmotionChoice() {{
+        try {{
+            const selected = document.querySelector('.emotion-card.selected') || document.querySelector('.emotion-card');
+            if (selected) selected.scrollIntoView({{ behavior: "smooth", block: "center" }});
+        }} catch (e) {{}}
     }}
 
     function getPersistableData() {{
@@ -4189,7 +4213,8 @@ document.addEventListener("DOMContentLoaded", function () {{
 
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
         if (!messageType) {{
-            showError("Elige la emoción que quieres dejar.");
+            showError("Selecciona una emoción para continuar.");
+            scrollToEmotionChoice();
             return false;
         }}
 
@@ -4245,6 +4270,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     if (!form) return;
 
     restoreFormState();
+    applyDefaultEmotionIfNeeded();
     bindAutosave();
     updatePhraseMode();
     updateDeliveryMode();
@@ -8005,14 +8031,7 @@ def sender_pack(sender_token: str):
             }} catch (e) {{}}
         }}
 
-        function playAllFromStart() {{
-            if (shareWrap) shareWrap.style.display = "none";
-            if (replay) replay.style.display = "";
-            if (finalSignature) {{
-                finalSignature.classList.remove("active");
-                finalSignature.setAttribute("aria-hidden", "true");
-            }}
-
+        function preparePlayersForStart() {{
             try {{ if (reaction) reaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
@@ -8024,6 +8043,38 @@ def sender_pack(sender_token: str):
                 mini.muted = false;
                 mini.volume = 0.65;
             }}
+        }}
+
+        function playAllFromStart() {{
+            if (shareWrap) shareWrap.style.display = "none";
+            if (replay) replay.style.display = "";
+            if (finalSignature) {{
+                finalSignature.classList.remove("active");
+                finalSignature.setAttribute("aria-hidden", "true");
+            }}
+
+            if (reaction) reaction.controls = false;
+            if (mini) mini.controls = false;
+
+            preparePlayersForStart();
+
+            if (bgReaction) bgReaction.play().catch(() => {{}});
+            if (mini) mini.play().catch(() => {{}});
+            if (reaction) reaction.play().catch(() => {{}});
+        }}
+
+        function replayEmotionFreely() {{
+            if (shareWrap) shareWrap.style.display = "grid";
+            if (replay) replay.style.display = "";
+            if (finalSignature) {{
+                finalSignature.classList.remove("active");
+                finalSignature.setAttribute("aria-hidden", "true");
+            }}
+
+            if (reaction) reaction.controls = true;
+            if (mini) mini.controls = true;
+
+            preparePlayersForStart();
 
             if (bgReaction) bgReaction.play().catch(() => {{}});
             if (mini) mini.play().catch(() => {{}});
@@ -8066,7 +8117,7 @@ def sender_pack(sender_token: str):
         }}
 
         if (replayFinal) {{
-            replayFinal.addEventListener("click", playAllFromStart);
+            replayFinal.addEventListener("click", replayEmotionFreely);
         }}
 
         if (shareBtn) {{
@@ -8525,7 +8576,13 @@ def sender_pack(sender_token: str):
             .replay-emotion-button {{
                 background:linear-gradient(135deg, #d8b76d, #fff0b8);
                 color:#070503;
-                box-shadow:0 18px 54px rgba(215,180,106,.18);
+                border:1px solid rgba(255,228,164,.72);
+                box-shadow:0 18px 54px rgba(215,180,106,.24), inset 0 1px 0 rgba(255,255,255,.42);
+            }}
+            .replay-emotion-button:focus,
+            .replay-emotion-button:active {{
+                outline:none;
+                box-shadow:0 0 0 3px rgba(216,183,109,.22), 0 18px 54px rgba(215,180,106,.24);
             }}
             .download-link {{ background:#fff; color:#000; }}
             .share-button {{ background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.12); }}
