@@ -8,6 +8,7 @@ print("🔥 GLOBAL PHONE READY VERSION 🔥")
 print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
+print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 
 import html
 import json
@@ -1918,10 +1919,10 @@ def render_viral_block_page() -> HTMLResponse:
             body {
                 min-height: 100vh;
                 background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
+                    radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
+                    linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+                color: #fff7e6;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -1960,17 +1961,16 @@ def render_viral_block_page() -> HTMLResponse:
                 width: 100%;
                 padding: 17px 22px;
                 border-radius: 999px;
-                background: linear-gradient(135deg, #f7d98b, #c99b35);
-                color: #120c02;
+                background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+                color: #120b02;
                 text-decoration: none;
                 font-weight: bold;
                 font-size: 15px;
-                box-shadow: 0 18px 45px rgba(201,155,53,0.20);
             }
             .ghost {
-                background: rgba(201,155,53,0.12);
-                color: #f7d98b;
-                border: 1px solid rgba(247,217,139,0.34);
+                background: rgba(218,178,92,0.10);
+                color: #fff7e6;
+                border: 1px solid rgba(218,178,92,0.22);
             }
         </style>
     </head>
@@ -2165,7 +2165,7 @@ body {
     margin:0;
     background:#000;
     color:#fff;
-    font-family:Arial,sans-serif;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
     padding:24px;
     line-height:1.7;
 }
@@ -2570,7 +2570,7 @@ def render_create_form() -> str:
                     radial-gradient(circle at 12% 18%, rgba(255,230,170,0.08), transparent 26%),
                     radial-gradient(circle at 90% 78%, rgba(204,140,44,0.10), transparent 34%),
                     linear-gradient(180deg, #050403 0%, #000000 48%, #050403 100%);
-                color: white;
+                color: #fff7e6;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
                 padding: 24px;
                 overflow-x: hidden;
@@ -2678,9 +2678,9 @@ def render_create_form() -> str:
                 padding: 15px 16px;
                 margin: 8px 0;
                 border-radius: 16px;
-                border: 1px solid rgba(255,255,255,0.10);
+                border: 1px solid rgba(218,178,92,0.22);
                 background: rgba(255,255,255,0.05);
-                color: white;
+                color: #fff7e6;
                 outline: none;
                 font-size: 15px;
             }}
@@ -2994,8 +2994,8 @@ def render_create_form() -> str:
                 cursor: pointer;
             }}
             button {{
-                background: white;
-                color: black;
+                background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+                color: #120b02;
             }}
             button:disabled {{
                 opacity: 0.7;
@@ -3003,9 +3003,9 @@ def render_create_form() -> str:
             }}
             .ghost {{
                 display: inline-block;
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
+                background: rgba(218,178,92,0.10);
+                color: #fff7e6;
+                border: 1px solid rgba(218,178,92,0.22);
             }}
             .error-box {{
                 display: none;
@@ -3013,7 +3013,7 @@ def render_create_form() -> str:
                 padding: 14px 16px;
                 border-radius: 16px;
                 background: rgba(255,255,255,0.06);
-                border: 1px solid rgba(255,255,255,0.10);
+                border: 1px solid rgba(218,178,92,0.22);
                 color: rgba(255,255,255,0.82);
                 font-size: 14px;
                 line-height: 1.7;
@@ -3786,7 +3786,7 @@ def render_create_form() -> str:
                             padding:16px;
                             border-radius:18px;
                             background:rgba(255,255,255,0.055);
-                            border:1px solid rgba(255,255,255,0.10);
+                            border:1px solid rgba(218,178,92,0.22);
                             color:rgba(255,255,255,0.78);
                             font-size:13px;
                             line-height:1.65;
@@ -3806,9 +3806,9 @@ def render_create_form() -> str:
 
                         <div style="margin-top:14px;font-size:13px;line-height:1.7;color:rgba(255,255,255,0.58);text-align:center;">
                             Al continuar, aceptas las
-                            <a href="/condiciones" target="_blank" style="color:white;text-decoration:underline;">condiciones</a>
+                            <a href="/condiciones" target="_blank" style="color:#fff7e6;text-decoration:underline;">condiciones</a>
                             y la
-                            <a href="/privacidad" target="_blank" style="color:white;text-decoration:underline;">política de privacidad</a>.
+                            <a href="/privacidad" target="_blank" style="color:#fff7e6;text-decoration:underline;">política de privacidad</a>.
                         </div>
 
                         <div class="buttons">
@@ -4442,13 +4442,13 @@ def render_create_intro() -> HTMLResponse:
             html, body {{ margin:0; min-height:100%; background:#030303; }}
             body {{
                 min-height:100vh;
-                color:white;
+                color:#fff7e6;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                 overflow-x:hidden;
                 background:
                     radial-gradient(circle at 50% -10%, rgba(218,178,92,.22), transparent 36%),
                     radial-gradient(circle at 20% 90%, rgba(218,178,92,.10), transparent 30%),
-                    linear-gradient(180deg,#050505,#000 58%,#050505);
+                    linear-gradient(180deg,#050403,#000 58%,#050403);
             }}
             .stage {{
                 min-height:100vh;
@@ -4922,10 +4922,10 @@ html, body {
 body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
+        radial-gradient(circle at top, rgba(218,178,92,0.14), transparent 34%),
+        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+    color: #fff7e6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4967,16 +4967,16 @@ h1 {
     text-decoration: none;
     font-weight: bold;
     font-size: 15px;
-    border: 1px solid rgba(255,255,255,0.10);
+    border: 1px solid rgba(218,178,92,0.22);
 }
 .btn.primary {
-    background: white;
-    color: black;
+    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+    color: #120b02;
     border: none;
 }
 .btn.secondary {
     background: rgba(255,255,255,0.10);
-    color: white;
+    color: #fff7e6;
 }
 </style>
 </head>
@@ -5013,10 +5013,10 @@ html, body {
 body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
+        radial-gradient(circle at top, rgba(218,178,92,0.14), transparent 34%),
+        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+    color: #fff7e6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5076,10 +5076,10 @@ body {{
     min-height: 100vh;
     min-height: 100dvh;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 32%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
+        radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
+        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+    color: #fff7e6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5130,8 +5130,8 @@ h1 {{
     width: 100%;
     padding: 19px 24px;
     border-radius: 999px;
-    background: #fff;
-    color: #000;
+    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+    color: #120b02;
     text-decoration: none;
     font-weight: 900;
     font-size: 17px;
@@ -5193,10 +5193,10 @@ html, body {{
 body {{
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
+        radial-gradient(circle at top, rgba(218,178,92,0.14), transparent 34%),
+        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+    color: #fff7e6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5243,8 +5243,8 @@ h1 {{
     width: 100%;
     padding: 18px 24px;
     border-radius: 999px;
-    background: white;
-    color: black;
+    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+    color: #120b02;
     text-decoration: none;
     font-weight: 700;
     font-size: 17px;
@@ -5315,10 +5315,10 @@ def checkout_exito(order_id: str):
             body {{
                 min-height: 100vh;
                 background:
-                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-                    linear-gradient(180deg, #050505 0%, #000000 100%);
-                color: white;
-                font-family: Arial, sans-serif;
+                    radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
+                    linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+                color: #fff7e6;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -5364,16 +5364,16 @@ def checkout_exito(order_id: str):
                 width: 100%;
                 padding: 17px 22px;
                 border-radius: 999px;
-                background: white;
-                color: black;
+                background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+                color: #120b02;
                 text-decoration: none;
                 font-weight: bold;
                 font-size: 15px;
             }}
             .ghost {{
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
+                background: rgba(218,178,92,0.10);
+                color: #fff7e6;
+                border: 1px solid rgba(218,178,92,0.22);
             }}
         </style>
     </head>
@@ -5387,7 +5387,7 @@ def checkout_exito(order_id: str):
             </div>
 
             <div class="buttons">
-                <a class="btn ghost" href="/">Volver al inicio</a>
+                <a class="btn" href="/">Volver al inicio</a>
             </div>
         </div>
 
@@ -5672,7 +5672,7 @@ def resumen(order_id: str):
             status_line = "Pago confirmado"
             sub_line = "ETERNA ya se está preparando."
             soft_line = (
-                "Cuando ETERNA esté lista, la entregaremos automáticamente."
+                "En cuanto el vídeo esté terminado de verdad, se enviará automáticamente."
             )
 
     refresh = ""
@@ -5713,16 +5713,13 @@ def resumen(order_id: str):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
     </head>
-    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;background-image:radial-gradient(circle at 50% 0%, rgba(247,217,139,0.16), transparent 34%), radial-gradient(circle at 15% 85%, rgba(201,155,53,0.10), transparent 34%), linear-gradient(180deg,#050505 0%,#000 100%);">
-        <div style="max-width:760px;width:100%;padding:34px 22px;border:1px solid rgba(247,217,139,0.18);border-radius:32px;background:rgba(255,255,255,0.035);box-shadow:0 30px 90px rgba(0,0,0,0.65);">
-            <div style="font-size:42px;line-height:1;margin-bottom:14px;color:#f7d98b;text-shadow:0 0 28px rgba(247,217,139,0.22);">∞</div>
-            <div style="letter-spacing:0.34em;text-transform:uppercase;font-size:12px;color:rgba(247,217,139,0.72);margin-bottom:22px;">ETERNA</div>
-
-            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;color:#f7d98b;">
+    <body style="margin:0;min-height:100vh;background:#000;color:#fff7e6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
+        <div style="max-width:760px;width:100%;">
+            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
                 {status_line}
             </h1>
 
-            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.90);">
+            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
                 {sub_line}
             </div>
 
@@ -5739,17 +5736,32 @@ def resumen(order_id: str):
             <div style="margin-top:34px;display:grid;gap:12px;max-width:420px;margin-left:auto;margin-right:auto;">
                 <a
                     href="/"
-                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:linear-gradient(135deg,#f7d98b,#c99b35);color:#120c02;text-decoration:none;font-weight:bold;font-size:15px;box-shadow:0 18px 45px rgba(201,155,53,0.22);"
+                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:linear-gradient(135deg,#fff0bd 0%,#e4bd69 45%,#b9822f 100%);color:#120b02;text-decoration:none;font-weight:bold;font-size:15px;"
                 >
                     Volver al inicio
                 </a>
             </div>
-
-            <div style="margin-top:30px;font-size:15px;line-height:1.8;color:rgba(247,217,139,0.62);">
-                Lo que das se queda en alguien.<br>
-                Y un día, vuelve.
-            </div>
         </div>
+
+        <script>
+            const STORAGE_KEY = "eterna_create_form_v4";
+            const preloadData = JSON.parse("{preload_json}");
+            const btn = document.getElementById("createAgainBtn");
+
+            if (btn) {{
+                btn.addEventListener("click", function (e) {{
+                    e.preventDefault();
+
+                    try {{
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(preloadData));
+                    }} catch (err) {{
+                        console.error("preload eterna error", err);
+                    }}
+
+                    window.location.href = "/crear";
+                }});
+            }}
+        </script>
     </body>
     </html>
     """)
@@ -6147,7 +6159,7 @@ html, body {
     height: 100%;
     background: black;
     overflow: hidden;
-    font-family: Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 body {
@@ -6210,7 +6222,7 @@ video {
     line-height: 1.06;
     font-weight: 700;
     margin: 0 0 22px 0;
-    color: white;
+    color: #fff7e6;
 }
 
 .text {
@@ -6235,8 +6247,8 @@ video {
     padding: 18px 26px;
     border-radius: 999px;
     border: 0;
-    background: white;
-    color: black;
+    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+    color: #120b02;
     font-weight: 700;
     font-size: 17px;
     cursor: pointer;
@@ -6291,7 +6303,7 @@ video {
     line-height: 1.12;
     font-weight: 700;
     margin: 0 0 18px 0;
-    color: white;
+    color: #fff7e6;
 }
 
 .payoff-text {
@@ -6327,8 +6339,8 @@ video {
     padding: 16px 22px;
     border-radius: 999px;
     border: 0;
-    background: white;
-    color: black;
+    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+    color: #120b02;
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
@@ -6336,8 +6348,8 @@ video {
 
 .retry-btn.secondary {
     background: rgba(255,255,255,0.10);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.10);
+    color: #fff7e6;
+    border: 1px solid rgba(218,178,92,0.22);
 }
 
 @media (max-width: 720px) {
@@ -7610,8 +7622,8 @@ html, body {{
     margin: 0;
     padding: 0;
     background: black;
-    color: white;
-    font-family: Arial, sans-serif;
+    color: #fff7e6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }}
 
 .container {{
@@ -7656,13 +7668,13 @@ h1 {{
 }}
 
 .btn.primary {{
-    background: white;
-    color: black;
+    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+    color: #120b02;
 }}
 
 .btn.secondary {{
     background: rgba(255,255,255,0.12);
-    color: white;
+    color: #fff7e6;
 }}
 </style>
 </head>
@@ -7794,10 +7806,10 @@ html, body {{
 body {{
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
-    color: white;
-    font-family: Arial, sans-serif;
+        radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
+        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+    color: #fff7e6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7839,17 +7851,17 @@ h1 {{
     text-decoration: none;
     font-weight: bold;
     font-size: 15px;
-    border: 1px solid rgba(255,255,255,0.10);
+    border: 1px solid rgba(218,178,92,0.22);
     cursor: pointer;
 }}
 .btn.primary {{
-    background: white;
-    color: black;
+    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
+    color: #120b02;
     border: none;
 }}
 .btn.secondary {{
     background: rgba(255,255,255,0.10);
-    color: white;
+    color: #fff7e6;
 }}
 </style>
 </head>
@@ -7957,7 +7969,7 @@ def sender_pack(sender_token: str):
             <title>ETERNA</title>
             <style>
                 * { box-sizing: border-box; }
-                html, body { margin:0; min-height:100%; background:#050403; color:white; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+                html, body { margin:0; min-height:100%; background:#050403; color:#fff7e6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
                 body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; text-align:center; background:radial-gradient(circle at top, rgba(212,175,92,.18), transparent 34%), #050403; }
                 .card { width:100%; max-width:460px; border:1px solid rgba(212,175,92,.24); border-radius:32px; padding:34px 24px; background:rgba(255,255,255,.05); box-shadow:0 30px 90px rgba(0,0,0,.65); }
                 .logo { letter-spacing:.34em; color:#d8b76d; font-size:12px; font-weight:800; margin-bottom:22px; }
@@ -8675,7 +8687,7 @@ def sender_pack(sender_token: str):
                 outline:none;
                 box-shadow:0 0 0 3px rgba(216,183,109,.22), 0 18px 54px rgba(215,180,106,.24);
             }}
-            .download-link {{ background:#fff; color:#000; }}
+            .download-link {{ background:linear-gradient(135deg,#fff0bd,#d2a649 45%,#a56f22); color:#120b02; }}
             .share-button {{ background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.12); }}
             .share-note {{
                 font-size:12px;
@@ -8803,7 +8815,7 @@ def admin_order_status(order_id: str, token: str):
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Estado ETERNA</title>
 <style>
-body {{ background:#050505; color:#fff; font-family:Arial,sans-serif; padding:22px; }}
+body {{ background:#050505; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; padding:22px; }}
 h1 {{ margin:0 0 10px; }}
 .card {{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:18px; margin:16px 0; }}
 table {{ width:100%; border-collapse:collapse; font-size:14px; }}
