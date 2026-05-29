@@ -151,19 +151,111 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 
 
 # =========================================================
-# LOG
+# LOG HUMANO ETERNA (ESPAÑOL)
 # =========================================================
 
+LOG_TRANSLATIONS = {
+    "ORDER_CREATED": "Pedido creado",
+    "PAYMENT_COMPLETED": "Pago recibido",
+    "VIDEO_REQUESTED": "Vídeo solicitado al motor",
+    "VIDEO_READY": "Vídeo terminado",
+    "RECIPIENT_SENT": "Mensaje enviado al destinatario",
+    "EXPERIENCE_STARTED": "Experiencia iniciada",
+    "REACTION_UPLOADED": "Reacción recibida",
+    "PAYOUT_COMPLETED": "Regalo entregado",
+    "SENDER_NOTIFIED": "Regalante avisado",
+    "ETERNA_COMPLETED": "ETERNA completada",
+
+    "order_created": "Pedido creado",
+    "payment_completed": "Pago recibido",
+    "checkout_completed": "Pago recibido",
+    "video_requested": "Vídeo solicitado al motor",
+    "video_ready": "Vídeo terminado",
+    "recipient_sms_sent": "Mensaje enviado al destinatario",
+    "recipient_sms_failed": "No se pudo enviar el mensaje al destinatario",
+    "sender_sms_attempt": "Aviso al regalante",
+    "sender_sms_error": "Error avisando al regalante",
+    "reaction_saved_local": "Reacción guardada en local",
+    "reaction_r2_uploaded": "Reacción subida a la nube",
+    "reaction_r2_skipped": "Reacción guardada solo en local",
+    "reaction_r2_pending": "Reacción pendiente de subir a la nube",
+    "payout_attempt": "Intento de entrega del regalo",
+    "payout_error": "Error en la entrega del regalo",
+    "eterna_completed": "ETERNA completada",
+    "video_engine_requested": "Vídeo enviado al motor",
+    "video_engine_error": "Error del motor de vídeo",
+    "video_callback_received": "Callback recibido del motor",
+    "admin_retry": "Reintento manual desde admin",
+
+    "ok": "correcto",
+    "warning": "aviso",
+    "error": "error",
+    "pending": "pendiente",
+}
+
+STATUS_ICONS = {
+    "ok": "✅",
+    "warning": "⚠️",
+    "error": "🚨",
+    "pending": "⏳",
+}
+
+STEP_ICONS = {
+    "order": "🧾",
+    "payment": "💳",
+    "checkout": "💳",
+    "video": "🎬",
+    "recipient": "📩",
+    "sender": "📱",
+    "reaction": "🎥",
+    "payout": "💸",
+    "transfer": "💸",
+    "eterna": "✨",
+    "admin": "🛠️",
+}
+
+
+def human_label(value: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return "Paso sin nombre"
+    if raw in LOG_TRANSLATIONS:
+        return LOG_TRANSLATIONS[raw]
+    lowered = raw.lower()
+    if lowered in LOG_TRANSLATIONS:
+        return LOG_TRANSLATIONS[lowered]
+    return lowered.replace("_", " ").replace("-", " ").strip().capitalize()
+
+
+def icon_for_step(step: str, status: str = "ok") -> str:
+    status = str(status or "ok").strip().lower()
+    if status == "error":
+        return "🚨"
+    step_raw = str(step or "").strip().lower()
+    for key, icon in STEP_ICONS.items():
+        if key in step_raw:
+            return icon
+    return STATUS_ICONS.get(status, "ℹ️")
+
+
 def log_info(label: str, value=None):
-    if value is None:
-        print(f"[INFO] {label}")
-    else:
-        print(f"[INFO] {label}: {value}")
+    title = human_label(label)
+    print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"ℹ️ INFO ETERNA: {title}")
+    if value is not None and str(value).strip():
+        print(f"📌 Detalle: {value}")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
 
 def log_error(label: str, error: Exception):
-    print(f"[ERROR] {label}: {error}")
+    title = human_label(label)
+    print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"🚨 ERROR ETERNA: {title}")
+    print(f"❌ Qué ha pasado: {error}")
+    print("🔎 Detalle técnico debajo para poder arreglarlo:")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━")
     traceback.print_exc()
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
 
 def mask_email(email: str) -> str:
@@ -183,8 +275,10 @@ def mask_phone(phone: str) -> str:
 
 
 def log_human(title: str, *lines):
+    readable_title = human_label(title)
+    icon = icon_for_step(title)
     print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print(f"🎬 {title}")
+    print(f"{icon} {readable_title.upper()}")
     for line in lines:
         if line is not None and str(line).strip():
             print(str(line))
@@ -726,6 +820,19 @@ def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider
 def insert_order_event(order_id: str, step: str, status: str = "ok", message: str = "", meta: Optional[dict] = None):
     """Log humano por pedido: permite saber exactamente dónde se queda ETERNA."""
     try:
+        readable_step = human_label(step)
+        readable_status = human_label(status)
+        icon = icon_for_step(step, status)
+        clean_message = str(message or "").strip()
+
+        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print(f"{icon} PASO ETERNA: {readable_step}")
+        print(f"🆔 Pedido: {order_id or 'sin pedido'}")
+        print(f"📍 Estado: {readable_status}")
+        if clean_message:
+            print(f"📝 Detalle: {clean_message}")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
         conn = db_conn()
         cur = conn.cursor()
         cur.execute("""
@@ -753,7 +860,11 @@ def insert_order_event(order_id: str, step: str, status: str = "ok", message: st
         conn.commit()
         conn.close()
     except Exception as e:
-        print("[WARN] insert_order_event failed:", step, e)
+        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("⚠️ AVISO ETERNA: no pude guardar un evento del pedido")
+        print(f"🧩 Paso: {step}")
+        print(f"❌ Error: {e}")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
 
 def list_order_events(order_id: str, limit: int = 80):
