@@ -3419,7 +3419,7 @@ def render_create_form() -> str:
                             </div>
                             <label class="photo-picker-btn">
                                 Abrir galería
-                                <input type="file" id="multi_photo_picker" accept="image/*" multiple>
+                                <input type="file" id="multi_photo_picker" accept="image/*" multiple data-max-files="6">
                             </label>
                         </div>
 
@@ -4110,7 +4110,9 @@ document.addEventListener("DOMContentLoaded", function () {{
                 setInputFile(input, file);
             }});
             if ((multiPhotoPicker.files || []).length > 6) {{
-                showError("He usado las 6 primeras fotos. Luego puedes cambiar cualquiera una a una.");
+                clearError();
+                const status6 = document.getElementById("status_photo6");
+                if (status6) status6.innerText = "He usado solo las 6 primeras. Puedes cambiar cualquiera una a una.";
             }}
             saveFormState();
         }});
@@ -7940,7 +7942,6 @@ def sender_pack(sender_token: str):
                 <div class="final-brand">ETERNA</div>
                 <h2>Lo que das se queda en alguien.</h2>
                 <p>Y un día, vuelve.</p>
-                <button id="eterna-replay-final" class="final-replay" type="button">Volver a sentirlo</button>
             </div>
 
             <div id="eterna-share-wrap" class="share-wrap" style="display:none;">
@@ -7967,7 +7968,6 @@ def sender_pack(sender_token: str):
         const mini = document.getElementById("eterna-mini-original");
         const replay = document.getElementById("eterna-replay-all");
         const finalSignature = document.getElementById("eterna-final-signature");
-        const finalReplay = document.getElementById("eterna-replay-final");
         const shareWrap = document.getElementById("eterna-share-wrap");
         const shareBtn = document.getElementById("eterna-share-reaction");
 
@@ -8005,6 +8005,7 @@ def sender_pack(sender_token: str):
 
         function playAllFromStart() {{
             if (shareWrap) shareWrap.style.display = "none";
+            if (replay) replay.style.display = "";
             if (finalSignature) {{
                 finalSignature.classList.remove("active");
                 finalSignature.setAttribute("aria-hidden", "true");
@@ -8053,16 +8054,13 @@ def sender_pack(sender_token: str):
                     finalSignature.classList.add("active");
                     finalSignature.setAttribute("aria-hidden", "false");
                 }}
+                if (replay) replay.style.display = "none";
                 if (shareWrap) shareWrap.style.display = "grid";
             }});
         }}
 
         if (replay) {{
             replay.addEventListener("click", playAllFromStart);
-        }}
-
-        if (finalReplay) {{
-            finalReplay.addEventListener("click", playAllFromStart);
         }}
 
         if (shareBtn) {{
