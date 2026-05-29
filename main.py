@@ -1960,16 +1960,17 @@ def render_viral_block_page() -> HTMLResponse:
                 width: 100%;
                 padding: 17px 22px;
                 border-radius: 999px;
-                background: white;
-                color: black;
+                background: linear-gradient(135deg, #f7d98b, #c99b35);
+                color: #120c02;
                 text-decoration: none;
                 font-weight: bold;
                 font-size: 15px;
+                box-shadow: 0 18px 45px rgba(201,155,53,0.20);
             }
             .ghost {
-                background: rgba(255,255,255,0.10);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.10);
+                background: rgba(201,155,53,0.12);
+                color: #f7d98b;
+                border: 1px solid rgba(247,217,139,0.34);
             }
         </style>
     </head>
@@ -5386,8 +5387,7 @@ def checkout_exito(order_id: str):
             </div>
 
             <div class="buttons">
-                <a class="btn" href="/crear">Crear otra experiencia</a>
-                <a class="btn ghost" href="/">Volver</a>
+                <a class="btn ghost" href="/">Volver al inicio</a>
             </div>
         </div>
 
@@ -5672,7 +5672,7 @@ def resumen(order_id: str):
             status_line = "Pago confirmado"
             sub_line = "ETERNA ya se está preparando."
             soft_line = (
-                "En cuanto el vídeo esté terminado de verdad, se enviará automáticamente."
+                "Cuando ETERNA esté lista, la entregaremos automáticamente."
             )
 
     refresh = ""
@@ -5713,13 +5713,16 @@ def resumen(order_id: str):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ETERNA</title>
     </head>
-    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
-        <div style="max-width:760px;width:100%;">
-            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
+    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;background-image:radial-gradient(circle at 50% 0%, rgba(247,217,139,0.16), transparent 34%), radial-gradient(circle at 15% 85%, rgba(201,155,53,0.10), transparent 34%), linear-gradient(180deg,#050505 0%,#000 100%);">
+        <div style="max-width:760px;width:100%;padding:34px 22px;border:1px solid rgba(247,217,139,0.18);border-radius:32px;background:rgba(255,255,255,0.035);box-shadow:0 30px 90px rgba(0,0,0,0.65);">
+            <div style="font-size:42px;line-height:1;margin-bottom:14px;color:#f7d98b;text-shadow:0 0 28px rgba(247,217,139,0.22);">∞</div>
+            <div style="letter-spacing:0.34em;text-transform:uppercase;font-size:12px;color:rgba(247,217,139,0.72);margin-bottom:22px;">ETERNA</div>
+
+            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;color:#f7d98b;">
                 {status_line}
             </h1>
 
-            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
+            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.90);">
                 {sub_line}
             </div>
 
@@ -5735,41 +5738,18 @@ def resumen(order_id: str):
 
             <div style="margin-top:34px;display:grid;gap:12px;max-width:420px;margin-left:auto;margin-right:auto;">
                 <a
-                    href="#"
-                    id="createAgainBtn"
-                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;font-size:15px;"
-                >
-                    Crear otra ETERNA
-                </a>
-
-                <a
                     href="/"
-                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:rgba(255,255,255,0.10);color:white;text-decoration:none;font-weight:bold;font-size:15px;border:1px solid rgba(255,255,255,0.10);"
+                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:linear-gradient(135deg,#f7d98b,#c99b35);color:#120c02;text-decoration:none;font-weight:bold;font-size:15px;box-shadow:0 18px 45px rgba(201,155,53,0.22);"
                 >
                     Volver al inicio
                 </a>
             </div>
+
+            <div style="margin-top:30px;font-size:15px;line-height:1.8;color:rgba(247,217,139,0.62);">
+                Lo que das se queda en alguien.<br>
+                Y un día, vuelve.
+            </div>
         </div>
-
-        <script>
-            const STORAGE_KEY = "eterna_create_form_v4";
-            const preloadData = JSON.parse("{preload_json}");
-            const btn = document.getElementById("createAgainBtn");
-
-            if (btn) {{
-                btn.addEventListener("click", function (e) {{
-                    e.preventDefault();
-
-                    try {{
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(preloadData));
-                    }} catch (err) {{
-                        console.error("preload eterna error", err);
-                    }}
-
-                    window.location.href = "/crear";
-                }});
-            }}
-        </script>
     </body>
     </html>
     """)
