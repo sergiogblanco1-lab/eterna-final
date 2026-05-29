@@ -9,6 +9,7 @@ print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
+print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 
 import html
 import json
@@ -4723,16 +4724,33 @@ def list_pending_scheduled_deliveries():
 
 
 def list_pending_sender_notifications():
+    """
+    Worker blindado para avisar al regalante.
+
+    Regla importante:
+    después de un deploy NO debe volver a procesar pedidos antiguos agotados.
+    Solo trae pedidos realmente pendientes:
+    - pagados
+    - con reacción recibida
+    - sin SMS/WhatsApp enviado al regalante
+    - sin sender_notified
+    - con menos de 3 intentos
+
+    Esto evita el ruido infinito tipo:
+    max_attempts_reached / sms_disabled_by_config / whatsapp_disabled
+    en cada arranque o ciclo del worker.
+    """
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
         SELECT id
         FROM orders
         WHERE
-            paid = 1
-            AND COALESCE(sender_sms_sent_at, '') = ''
+            COALESCE(paid, 0) = 1
             AND COALESCE(reaction_uploaded, 0) = 1
-            AND 1 = 1
+            AND COALESCE(sender_sms_sent_at, '') = ''
+            AND COALESCE(sender_notified, 0) = 0
+            AND COALESCE(sender_sms_attempts, 0) < 3
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
