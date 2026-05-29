@@ -10,6 +10,7 @@ print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
+print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 
 import html
 import json
@@ -4615,7 +4616,243 @@ def render_create_intro() -> HTMLResponse:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return HTMLResponse("""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETERNA</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; min-height: 100%; background: #030201; }
+        body {
+            min-height: 100vh;
+            color: #fff7e6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            overflow-x: hidden;
+            background:
+                radial-gradient(circle at 50% 8%, rgba(255,213,139,0.28), transparent 23%),
+                radial-gradient(circle at 50% 44%, rgba(218,146,58,0.12), transparent 32%),
+                linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+        }
+        .page {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 42px 20px;
+            text-align: center;
+            isolation: isolate;
+        }
+        .page::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: .26;
+            background-image:
+                radial-gradient(circle at 20% 18%, rgba(255,255,255,.18) 0 1px, transparent 1.5px),
+                radial-gradient(circle at 74% 28%, rgba(255,214,142,.20) 0 1px, transparent 1.7px),
+                radial-gradient(circle at 44% 76%, rgba(255,214,142,.14) 0 1px, transparent 1.5px);
+            background-size: 160px 160px, 220px 220px, 190px 190px;
+        }
+        .page::after {
+            content: "";
+            position: fixed;
+            left: -12%;
+            right: -12%;
+            bottom: -12%;
+            height: 34%;
+            pointer-events: none;
+            opacity: .48;
+            background:
+                radial-gradient(ellipse at 50% 100%, rgba(255,190,82,.42), transparent 56%),
+                linear-gradient(90deg, transparent 0%, rgba(255,195,94,.18) 30%, rgba(255,236,183,.20) 50%, rgba(255,195,94,.18) 70%, transparent 100%);
+            filter: blur(16px);
+        }
+        .hero {
+            width: 100%;
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 28px 0 8px;
+            position: relative;
+            z-index: 1;
+        }
+        .symbol {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 18px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffd98b;
+            font-size: 96px;
+            line-height: 1;
+            text-shadow: 0 0 28px rgba(255,204,111,.65), 0 0 64px rgba(255,164,57,.38);
+            background: radial-gradient(circle, rgba(255,225,159,.19), transparent 68%);
+            border: 1px solid rgba(255,220,150,.18);
+            box-shadow: 0 0 72px rgba(255,177,68,.18);
+        }
+        .brand {
+            margin: 0;
+            letter-spacing: .22em;
+            padding-left: .22em;
+            font-size: clamp(54px, 10vw, 104px);
+            line-height: .92;
+            font-weight: 800;
+            color: #ffd98b;
+            text-shadow: 0 0 24px rgba(255,220,155,.52), 0 18px 50px rgba(0,0,0,.6);
+        }
+        .tag {
+            margin: 28px auto 0;
+            max-width: 660px;
+            font-size: clamp(17px, 2.8vw, 24px);
+            line-height: 1.55;
+            letter-spacing: .28em;
+            padding-left: .28em;
+            text-transform: uppercase;
+            color: rgba(255,224,164,.92);
+        }
+        .divider {
+            margin: 26px auto 0;
+            width: 260px;
+            max-width: 70%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            color: #f0c46c;
+            opacity: .9;
+        }
+        .divider::before,
+        .divider::after {
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: linear-gradient(90deg, transparent, rgba(240,196,108,.74));
+        }
+        .divider::after { background: linear-gradient(90deg, rgba(240,196,108,.74), transparent); }
+        .copy {
+            margin: 34px auto 0;
+            font-size: clamp(18px, 3.4vw, 23px);
+            line-height: 1.7;
+            color: rgba(255,255,255,.90);
+        }
+        .btn {
+            margin: 36px auto 0;
+            width: min(100%, 430px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 72px;
+            padding: 18px 28px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%);
+            color: #150d03;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: .34em;
+            padding-left: calc(28px + .34em);
+            text-transform: uppercase;
+            box-shadow: 0 18px 60px rgba(255,172,62,.24), inset 0 1px 0 rgba(255,255,255,.55);
+        }
+        .pillars {
+            width: min(100%, 760px);
+            margin: 58px auto 0;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+        .pillar {
+            min-height: 132px;
+            padding: 18px 12px;
+            border-radius: 22px;
+            border: 1px solid rgba(255,215,142,.15);
+            background: rgba(255,255,255,.035);
+        }
+        .pillar .ico {
+            font-size: 30px;
+            color: #f0c46c;
+            margin-bottom: 10px;
+        }
+        .pillar .title {
+            color: #f6d18b;
+            font-size: 13px;
+            letter-spacing: .24em;
+            padding-left: .24em;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .pillar p {
+            margin: 10px 0 0;
+            color: rgba(255,255,255,.70);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .promise {
+            margin: 54px auto 0;
+            color: rgba(255,224,164,.88);
+            font-size: clamp(14px, 2.4vw, 18px);
+            line-height: 1.8;
+            letter-spacing: .24em;
+            padding-left: .24em;
+            text-transform: uppercase;
+        }
+        @media (max-width: 720px) {
+            .page { align-items: flex-start; padding: 28px 18px 42px; }
+            .symbol { width: 108px; height: 108px; font-size: 72px; margin-bottom: 12px; }
+            .tag { letter-spacing: .16em; padding-left: .16em; }
+            .btn { border-radius: 999px; min-height: 64px; letter-spacing: .20em; padding-left: calc(22px + .20em); }
+            .pillars { grid-template-columns: 1fr; margin-top: 36px; gap: 12px; }
+            .pillar { min-height: 0; }
+            .promise { letter-spacing: .16em; padding-left: .16em; margin-top: 36px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="hero" aria-label="ETERNA">
+            <div class="symbol">∞</div>
+            <h1 class="brand">ETERNA</h1>
+            <div class="tag">Hay momentos que merecen quedarse para siempre</div>
+            <div class="divider">∞</div>
+            <div class="copy">
+                No es un vídeo.<br>
+                Es un momento.
+            </div>
+            <a class="btn" href="/crear">Crear mi ETERNA</a>
+
+            <div class="pillars">
+                <div class="pillar">
+                    <div class="ico">🔒</div>
+                    <div class="title">Privado</div>
+                    <p>Solo el destinatario puede vivirlo.</p>
+                </div>
+                <div class="pillar">
+                    <div class="ico">♡</div>
+                    <div class="title">Emocional</div>
+                    <p>Un mensaje que se siente, no que se ve.</p>
+                </div>
+                <div class="pillar">
+                    <div class="ico">◷</div>
+                    <div class="title">Eterno</div>
+                    <p>Se entrega en el momento justo.</p>
+                </div>
+            </div>
+
+            <div class="promise">
+                Lo que das, se queda en alguien.<br>
+                Y un día, vuelve.
+            </div>
+        </section>
+    </main>
+</body>
+</html>
+    """)
 
 
 @app.get("/crear", response_class=HTMLResponse)
@@ -5311,107 +5548,171 @@ h1 {{
 def checkout_exito(order_id: str):
     order = get_order_by_id(order_id)
     is_paid = bool(order.get("paid"))
-
     refresh = '<meta http-equiv="refresh" content="6">' if not is_paid else ""
-    redirect_script = f"""
-        setTimeout(function() {{
-            window.location.href = "/post-pago/{safe_attr(order_id)}";
-        }}, 5000);
-    """ if is_paid else ""
+
+    title = "Pago confirmado" if is_paid else "Confirmando pago"
+    subtitle = (
+        "Tu ETERNA ya está en marcha."
+        if is_paid else
+        "Estamos esperando la confirmación segura del pago."
+    )
+    detail = (
+        "Estamos preparando algo que pronto llegará a alguien importante."
+        if is_paid else
+        "No cierres esta pantalla. Esto puede tardar unos segundos."
+    )
 
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        {refresh}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-        <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #000; }}
-            body {{
-                min-height: 100vh;
-                background:
-                    radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-                    linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
-                color: #fff7e6;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                padding: 24px;
-            }}
-            .wrap {{
-                width: 100%;
-                max-width: 720px;
-                margin: 0 auto;
-            }}
-            .main {{
-                font-size: 22px;
-                line-height: 1.8;
-                color: rgba(255,255,255,0.92);
-            }}
-            .eterna-text {{
-                max-width: 600px;
-                margin: 0 auto;
-            }}
-            .eterna-heart {{
-                display: inline-block;
-                animation: eternaHeartbeat 3.6s ease-in-out infinite;
-            }}
-            @keyframes eternaHeartbeat {{
-                0%   {{ transform: scale(1); opacity: 0.9; }}
-                10%  {{ transform: scale(1.12); opacity: 1; }}
-                20%  {{ transform: scale(1); opacity: 0.95; }}
-                35%  {{ transform: scale(1.08); opacity: 1; }}
-                50%  {{ transform: scale(1); opacity: 0.9; }}
-                100% {{ transform: scale(1); opacity: 0.9; }}
-            }}
-            .buttons {{
-                margin-top: 34px;
-                display: grid;
-                gap: 12px;
-                max-width: 420px;
-                margin-left: auto;
-                margin-right: auto;
-            }}
-            .btn {{
-                display: block;
-                width: 100%;
-                padding: 17px 22px;
-                border-radius: 999px;
-                background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-                color: #120b02;
-                text-decoration: none;
-                font-weight: bold;
-                font-size: 15px;
-            }}
-            .ghost {{
-                background: rgba(218,178,92,0.10);
-                color: #fff7e6;
-                border: 1px solid rgba(218,178,92,0.22);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <div class="main eterna-text">
-                Lo que das<br>
-                se queda en alguien.<br><br>
-                Y un día,<br>
-                <span class="eterna-heart">vuelve</span>
-            </div>
-
-            <div class="buttons">
-                <a class="btn" href="/">Volver al inicio</a>
-            </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    {refresh}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago confirmado — ETERNA</title>
+    <style>
+        * {{ box-sizing: border-box; }}
+        html, body {{ margin: 0; min-height: 100%; background: #030201; }}
+        body {{
+            min-height: 100vh;
+            color: #fff7e6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 50% 14%, rgba(255,213,139,0.25), transparent 28%),
+                radial-gradient(circle at 50% 76%, rgba(218,146,58,0.10), transparent 32%),
+                linear-gradient(180deg, #050403 0%, #000000 62%, #050403 100%);
+        }}
+        .card {{
+            width: min(100%, 760px);
+            border-radius: 34px;
+            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
+            border: 1px solid rgba(255,220,150,.20);
+            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
+            backdrop-filter: blur(12px);
+        }}
+        .mark {{
+            width: 88px;
+            height: 88px;
+            margin: 0 auto 22px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,220,150,.28);
+            color: #ffd98b;
+            font-size: 44px;
+            text-shadow: 0 0 26px rgba(255,204,111,.62);
+            background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%);
+        }}
+        .brand {{
+            color: #ffd98b;
+            letter-spacing: .38em;
+            padding-left: .38em;
+            text-transform: uppercase;
+            font-size: 14px;
+            font-weight: 900;
+            margin-bottom: 18px;
+        }}
+        h1 {{
+            margin: 0;
+            font-size: clamp(42px, 8vw, 76px);
+            line-height: .98;
+            color: #fff7e6;
+            text-shadow: 0 0 30px rgba(255,255,255,.20);
+        }}
+        .subtitle {{
+            margin: 24px auto 0;
+            max-width: 620px;
+            font-size: clamp(20px, 3.8vw, 28px);
+            line-height: 1.5;
+            font-weight: 800;
+            color: rgba(255,255,255,.92);
+        }}
+        .detail {{
+            margin: 18px auto 0;
+            max-width: 620px;
+            font-size: clamp(16px, 2.7vw, 20px);
+            line-height: 1.7;
+            color: rgba(255,255,255,.68);
+        }}
+        .divider {{
+            width: min(320px, 78%);
+            margin: 34px auto 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #f0c46c;
+        }}
+        .divider::before,
+        .divider::after {{
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: linear-gradient(90deg, transparent, rgba(240,196,108,.72));
+        }}
+        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
+        .promise {{
+            margin: 28px auto 0;
+            max-width: 560px;
+            font-size: clamp(23px, 4.6vw, 38px);
+            line-height: 1.45;
+            font-family: Georgia, "Times New Roman", serif;
+            color: #fff7e6;
+        }}
+        .promise span {{
+            display: inline-block;
+            color: #ffd98b;
+            text-shadow: 0 0 24px rgba(255,204,111,.34);
+        }}
+        .btn {{
+            margin: 38px auto 0;
+            width: min(100%, 440px);
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%);
+            color: #150d03;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55);
+        }}
+        .soft {{
+            margin-top: 16px;
+            color: rgba(255,255,255,.42);
+            font-size: 13px;
+            line-height: 1.5;
+        }}
+    </style>
+</head>
+<body>
+    <main class="card">
+        <div class="brand">ETERNA</div>
+        <div class="mark">∞</div>
+        <h1>{title}</h1>
+        <div class="subtitle">{subtitle}</div>
+        <div class="detail">{detail}</div>
+        <div class="divider">∞</div>
+        <div class="promise">
+            Lo que das<br>
+            se queda en alguien.<br>
+            <span>Y un día, vuelve.</span>
         </div>
-
-        <script>{redirect_script}</script>
-    </body>
-    </html>
+        <a class="btn" href="/crear">Volver al inicio</a>
+        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
+    </main>
+</body>
+</html>
     """)
 
 
@@ -5656,133 +5957,95 @@ def post_pago(order_id: str):
 @app.get("/resumen/{order_id}", response_class=HTMLResponse)
 def resumen(order_id: str):
     order = get_order_by_id(order_id)
-
-    recipient_name = safe_text(order.get("recipient_name") or "esa persona")
+    is_paid = bool(order.get("paid"))
     video_ready = original_video_ready(order)
-    delivery_sent_flag = bool(order.get("delivery_sent"))
-    delivery_display = safe_text(scheduled_delivery_display(order))
     delivery_mode = (order.get("delivery_mode") or "instant").strip()
+    delivery_display = safe_text(scheduled_delivery_display(order))
 
-    sender_code, sender_number = split_phone_for_form(order.get("sender_phone") or "")
-    recipient_code, recipient_number = split_phone_for_form(order.get("recipient_phone") or "")
-
-    if delivery_sent_flag:
-        status_line = "Tu ETERNA ya ha salido"
-        sub_line = f"{recipient_name} ya tiene su mensaje."
-        soft_line = "El momento ya está ocurriendo exactamente cuando debía ocurrir."
+    if not is_paid:
+        title = "Confirmando pago"
+        subtitle = "Todavía estamos esperando la confirmación segura."
+        detail = "No cierres esta pantalla. ETERNA actualizará el estado cuando el pago quede confirmado."
     elif video_ready and delivery_mode == "scheduled":
-        status_line = "Tu ETERNA ya está guardada"
-        sub_line = f"Todo quedará listo para llegar el {delivery_display}."
-        soft_line = "No se enviará antes. Llegará exactamente cuando debe llegar."
-    elif video_ready and delivery_mode == "instant":
-        status_line = "Tu ETERNA está lista"
-        sub_line = "En cuanto quede procesada del todo, saldrá automáticamente."
-        soft_line = "No hace falta esperar una fecha concreta: se enviará en cuanto esté lista."
+        title = "Pago confirmado"
+        subtitle = "Tu ETERNA ya está guardada."
+        detail = f"Llegará en el momento elegido: {delivery_display}."
+    elif video_ready:
+        title = "Pago confirmado"
+        subtitle = "Tu ETERNA ya está lista."
+        detail = "La entregaremos automáticamente en cuanto termine el proceso seguro."
     else:
-        if delivery_mode == "scheduled":
-            status_line = "Pago confirmado"
-            sub_line = "ETERNA ya se está preparando."
-            soft_line = (
-                f"Cuando todo esté listo, quedará guardada para llegar el {delivery_display}. "
-                "No se enviará antes."
-            )
-        else:
-            status_line = "Pago confirmado"
-            sub_line = "ETERNA ya se está preparando."
-            soft_line = (
-                "En cuanto el vídeo esté terminado de verdad, se enviará automáticamente."
-            )
-
-    refresh = ""
-
-    preload_data = {
-        "customer_name": order.get("sender_name") or "",
-        "customer_email": order.get("sender_email") or "",
-        "customer_country_code": sender_code,
-        "customer_phone": sender_number,
-        "recipient_name": order.get("recipient_name") or "",
-        "recipient_country_code": recipient_code,
-        "recipient_phone": recipient_number,
-        "message_type": order.get("message_type") or "",
-        "phrase_mode": order.get("phrase_mode") or "auto",
-        "phrase_1": order.get("phrase_1") or "",
-        "phrase_2": order.get("phrase_2") or "",
-        "phrase_3": order.get("phrase_3") or "",
-        "delivery_mode": order.get("delivery_mode") or "instant",
-        "gift_amount": str(order.get("gift_amount") or "0"),
-    }
-
-    preload_json = html.escape(json.dumps(preload_data), quote=True)
-
-    extra_fee_line = ""
-    if float(order.get("scheduled_delivery_fee") or 0) > 0:
-        extra_fee_line = f"""
-            <div style="margin-top:10px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.56);">
-                Programación y guardado del momento: {safe_text(format_amount_display(order.get("scheduled_delivery_fee") or 0))}
-            </div>
-        """
+        title = "Pago confirmado"
+        subtitle = "Tu ETERNA ya está en marcha."
+        detail = "Estamos preparando algo que pronto llegará a alguien importante."
 
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        {refresh}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ETERNA</title>
-    </head>
-    <body style="margin:0;min-height:100vh;background:#000;color:#fff7e6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
-        <div style="max-width:760px;width:100%;">
-            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
-                {status_line}
-            </h1>
-
-            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
-                {sub_line}
-            </div>
-
-            <div style="margin-top:24px;font-size:17px;line-height:1.8;color:rgba(255,255,255,0.62);">
-                Modo de entrega: {"momento exacto" if delivery_mode == "scheduled" else "en cuanto esté lista"}
-            </div>
-
-            {extra_fee_line}
-
-            <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
-                {soft_line}
-            </div>
-
-            <div style="margin-top:34px;display:grid;gap:12px;max-width:420px;margin-left:auto;margin-right:auto;">
-                <a
-                    href="/"
-                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:linear-gradient(135deg,#fff0bd 0%,#e4bd69 45%,#b9822f 100%);color:#120b02;text-decoration:none;font-weight:bold;font-size:15px;"
-                >
-                    Volver al inicio
-                </a>
-            </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago confirmado — ETERNA</title>
+    <style>
+        * {{ box-sizing: border-box; }}
+        html, body {{ margin: 0; min-height: 100%; background: #030201; }}
+        body {{
+            min-height: 100vh;
+            color: #fff7e6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 50% 14%, rgba(255,213,139,0.25), transparent 28%),
+                radial-gradient(circle at 50% 76%, rgba(218,146,58,0.10), transparent 32%),
+                linear-gradient(180deg, #050403 0%, #000000 62%, #050403 100%);
+        }}
+        .card {{
+            width: min(100%, 760px);
+            border-radius: 34px;
+            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
+            border: 1px solid rgba(255,220,150,.20);
+            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
+            backdrop-filter: blur(12px);
+        }}
+        .brand {{ color: #ffd98b; letter-spacing: .38em; padding-left: .38em; text-transform: uppercase; font-size: 14px; font-weight: 900; margin-bottom: 18px; }}
+        .mark {{ width: 88px; height: 88px; margin: 0 auto 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,220,150,.28); color: #ffd98b; font-size: 44px; text-shadow: 0 0 26px rgba(255,204,111,.62); background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%); }}
+        h1 {{ margin: 0; font-size: clamp(42px, 8vw, 76px); line-height: .98; color: #fff7e6; text-shadow: 0 0 30px rgba(255,255,255,.20); }}
+        .subtitle {{ margin: 24px auto 0; max-width: 620px; font-size: clamp(20px, 3.8vw, 28px); line-height: 1.5; font-weight: 800; color: rgba(255,255,255,.92); }}
+        .detail {{ margin: 18px auto 0; max-width: 620px; font-size: clamp(16px, 2.7vw, 20px); line-height: 1.7; color: rgba(255,255,255,.68); }}
+        .divider {{ width: min(320px, 78%); margin: 34px auto 0; display: flex; align-items: center; gap: 16px; color: #f0c46c; }}
+        .divider::before, .divider::after {{ content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, rgba(240,196,108,.72)); }}
+        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
+        .promise {{ margin: 28px auto 0; max-width: 560px; font-size: clamp(23px, 4.6vw, 38px); line-height: 1.45; font-family: Georgia, "Times New Roman", serif; color: #fff7e6; }}
+        .promise span {{ display: inline-block; color: #ffd98b; text-shadow: 0 0 24px rgba(255,204,111,.34); }}
+        .btn {{ margin: 38px auto 0; width: min(100%, 440px); min-height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%); color: #150d03; text-decoration: none; font-size: 15px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55); }}
+        .soft {{ margin-top: 16px; color: rgba(255,255,255,.42); font-size: 13px; line-height: 1.5; }}
+    </style>
+</head>
+<body>
+    <main class="card">
+        <div class="brand">ETERNA</div>
+        <div class="mark">∞</div>
+        <h1>{title}</h1>
+        <div class="subtitle">{subtitle}</div>
+        <div class="detail">{detail}</div>
+        <div class="divider">∞</div>
+        <div class="promise">
+            Lo que das<br>
+            se queda en alguien.<br>
+            <span>Y un día, vuelve.</span>
         </div>
-
-        <script>
-            const STORAGE_KEY = "eterna_create_form_v4";
-            const preloadData = JSON.parse("{preload_json}");
-            const btn = document.getElementById("createAgainBtn");
-
-            if (btn) {{
-                btn.addEventListener("click", function (e) {{
-                    e.preventDefault();
-
-                    try {{
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(preloadData));
-                    }} catch (err) {{
-                        console.error("preload eterna error", err);
-                    }}
-
-                    window.location.href = "/crear";
-                }});
-            }}
-        </script>
-    </body>
-    </html>
+        <a class="btn" href="/crear">Volver al inicio</a>
+        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
+    </main>
+</body>
+</html>
     """)
+
 
 # =========================================================
 # START EXPERIENCE (FIX CRÍTICO)
