@@ -3828,7 +3828,8 @@ def render_create_form() -> str:
                 <div class="payment-mark">∞</div>
                 <h2 class="payment-title">Preparando tu ETERNA</h2>
                 <p class="payment-sub">
-                    Estamos guardando los recuerdos y abriendo el pago seguro.<br>
+                    Estamos guardando tus recuerdos y abriendo el pago seguro.<br>
+                    Esto puede tardar unos segundos.<br>
                     No cierres esta pantalla.
                 </p>
                 <div class="payment-loader"></div>
@@ -4389,18 +4390,9 @@ document.addEventListener("DOMContentLoaded", function () {{
     updatePhraseMode();
     updateDeliveryMode();
 
-    form.addEventListener("submit", function (e) {{
-        if (recipientPhoneInput && recipientPhoneInput.value) {{
-            applyRecipientPhoneValue(recipientPhoneInput.value);
-        }}
+    let eternaSubmitting = false;
 
-        if (!validateBeforeSubmit()) {{
-            e.preventDefault();
-            return;
-        }}
-
-        clearError();
-
+    function showPaymentLoadingNow() {{
         if (button) {{
             button.disabled = true;
             button.classList.add("is-loading");
@@ -4412,12 +4404,40 @@ document.addEventListener("DOMContentLoaded", function () {{
             paymentOverlay.classList.add("show");
             paymentOverlay.setAttribute("aria-hidden", "false");
         }}
+    }}
+
+    form.addEventListener("submit", function (e) {{
+        if (eternaSubmitting) {{
+            return;
+        }}
+
+        if (recipientPhoneInput && recipientPhoneInput.value) {{
+            applyRecipientPhoneValue(recipientPhoneInput.value);
+        }}
+
+        if (!validateBeforeSubmit()) {{
+            e.preventDefault();
+            return;
+        }}
+
+        e.preventDefault();
+        eternaSubmitting = true;
+        clearError();
+        showPaymentLoadingNow();
 
         try {{
             localStorage.removeItem(STORAGE_KEY);
         }} catch (err) {{
             console.error("localStorage remove error", err);
         }}
+
+        // Importante en móvil: dejamos que el navegador pinte la pantalla
+        // "Preparando tu ETERNA" antes de empezar la subida pesada de las 6 fotos.
+        window.requestAnimationFrame(function () {{
+            window.setTimeout(function () {{
+                form.submit();
+            }}, 140);
+        }});
     }});
 
 }});
