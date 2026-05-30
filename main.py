@@ -8676,18 +8676,17 @@ def sender_pack(sender_token: str):
                     preload="metadata"
                     aria-hidden="true"
                 >
-                    <source src="{reaction_url_safe}" type="video/mp4">
+                    <source src="{reaction_url_safe}">
                 </video>
 
                 <div class="reaction-frame">
                     <video
                         id="eterna-reaction-player"
-                        muted
                         playsinline
                         webkit-playsinline
                         preload="metadata"
                     >
-                        <source src="{reaction_url_safe}" type="video/mp4">
+                        <source src="{reaction_url_safe}">
                     </video>
                 </div>
 
@@ -8699,7 +8698,7 @@ def sender_pack(sender_token: str):
                         webkit-playsinline
                         preload="metadata"
                     >
-                        <source src="{original_video_url_safe}" type="video/mp4">
+                        <source src="{original_video_url_safe}">
                     </video>
                 </div>
             </div>
@@ -8782,12 +8781,16 @@ def sender_pack(sender_token: str):
             try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
 
-            // La reacción va sin sonido ambiente. La música/piano vive desde el vídeo original.
-            if (reaction) reaction.muted = true;
+            // Sender Pack: la reacción debe escucharse. El fondo queda silenciado para no duplicar audio.
+            if (reaction) {{
+                reaction.muted = false;
+                reaction.volume = 1;
+                try {{ reaction.removeAttribute("muted"); }} catch (e) {{}}
+            }}
             if (bgReaction) bgReaction.muted = true;
             if (mini) {{
-                mini.muted = false;
-                mini.volume = 0.65;
+                mini.muted = true;
+                mini.volume = 0;
             }}
         }}
 
@@ -9160,13 +9163,13 @@ def sender_pack(sender_token: str):
             #eterna-reaction-player {{
                 width:100%;
                 height:100%;
-                object-fit:cover;
+                object-fit:contain;
                 background:#000;
-                animation:eternaSlowZoom 46s ease-in-out forwards;
+                transform:scale(.94);
             }}
             @keyframes eternaSlowZoom {{
-                from {{ transform:scale(1.000); }}
-                to {{ transform:scale(1.055); }}
+                from {{ transform:scale(.94); }}
+                to {{ transform:scale(.94); }}
             }}
             .mini-original-wrap {{
                 position:absolute;
