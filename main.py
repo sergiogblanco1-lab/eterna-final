@@ -1763,6 +1763,206 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     }
     
 # =========================================================
+# RESCATE AUTOMÁTICO DE REACCIÓN POR CHUNKS
+# =========================================================
+
+def _chunk_session_info(session_folder: Path) -> dict:
+    chunk_files = sorted(session_folder.glob("chunk_*.part"))
+    manifest_path = session_folder / "manifest.json"
+    extension = "webm"
+    mode = "unknown"
+    updated_ts = 0.0
+
+    try:
+        updated_ts = max([p.stat().st_mtime for p in chunk_files] + ([manifest_path.stat().st_mtime] if manifest_path.exists() else [session_folder.stat().st_mtime]))
+    except Exception:
+        updated_ts = 0.0
+
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            extension = (manifest.get("extension") or "webm").lower().strip()
+            mode = (manifest.get("mode") or "unknown").strip()
+        except Exception:
+            pass
+
+    if extension not in {"webm", "mp4"}:
+        extension = "webm"
+
+    size = 0
+    for part in chunk_files:
+        try:
+            size += part.stat().st_size
+        except Exception:
+            pass
+
+    return {
+        "folder": session_folder,
+        "chunk_files": chunk_files,
+        "chunks": len(chunk_files),
+        "extension": extension,
+        "mode": mode,
+        "updated_ts": updated_ts,
+        "size": size,
+    }
+
+
+def find_latest_reaction_chunk_session(order_id: str) -> Optional[dict]:
+    base = REACTION_CHUNKS_FOLDER / str(order_id)
+    if not base.exists():
+        return None
+
+    sessions = []
+    try:
+        for session_folder in base.iterdir():
+            if not session_folder.is_dir():
+                continue
+            info = _chunk_session_info(session_folder)
+            if info.get("chunks", 0) > 0 and info.get("size", 0) > 0:
+                sessions.append(info)
+    except Exception as e:
+        log_error("find_latest_reaction_chunk_session", e)
+        return None
+
+    if not sessions:
+        return None
+
+    sessions.sort(key=lambda item: item.get("updated_ts", 0), reverse=True)
+    return sessions[0]
+
+
+def recover_reaction_from_chunks_if_possible(order_or_id, min_idle_seconds: int = 0, source: str = "auto_recovery") -> dict:
+    """
+    Rescate final ETERNA:
+    Si el destinatario corta justo al final y no llega a ejecutar /finish-reaction-upload,
+    pero ya hay chunks progresivos en /data/reaction_chunks, ensamblamos lo recibido,
+    marcamos reaction_uploaded=1 y disparamos el SMS del sender pack.
+    """
+    order = get_order_by_id(order_or_id) if isinstance(order_or_id, str) else dict(order_or_id)
+
+    if reaction_is_safe(order):
+        return {"ok": True, "reason": "already_safe", "order_id": order.get("id")}
+
+    if not bool(order.get("paid")):
+        return {"ok": False, "reason": "order_not_paid", "order_id": order.get("id")}
+
+    if not original_video_ready(order):
+        return {"ok": False, "reason": "original_video_not_ready", "order_id": order.get("id")}
+
+    session = find_latest_reaction_chunk_session(order["id"])
+    if not session:
+        return {"ok": False, "reason": "no_chunks_found", "order_id": order.get("id")}
+
+    if int(min_idle_seconds or 0) > 0:
+        age = max(0.0, time.time() - float(session.get("updated_ts") or 0))
+        if age < int(min_idle_seconds):
+            return {
+                "ok": False,
+                "reason": "chunks_still_active",
+                "order_id": order.get("id"),
+                "seconds_since_last_chunk": round(age, 2),
+                "required_idle_seconds": int(min_idle_seconds),
+            }
+
+    chunk_files = session.get("chunk_files") or []
+    if not chunk_files:
+        return {"ok": False, "reason": "no_chunk_files", "order_id": order.get("id")}
+
+    extension = session.get("extension") or "webm"
+    local_path = reaction_video_path(order["id"], extension)
+
+    try:
+        insert_order_event(
+            order["id"],
+            "reaction_auto_recovery_started",
+            "warning",
+            "Rescate automático: había trozos de grabación pero no se había cerrado la reacción",
+            {
+                "source": source,
+                "session_folder": str(session.get("folder")),
+                "chunks": len(chunk_files),
+                "bytes": session.get("size"),
+                "extension": extension,
+            },
+        )
+
+        with open(local_path, "wb") as out:
+            for part_path in chunk_files:
+                with open(part_path, "rb") as part:
+                    out.write(part.read())
+
+        saved_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
+        if saved_size <= 0:
+            raise Exception("auto_recovery_empty_file")
+
+        if saved_size > MAX_VIDEO_SIZE:
+            update_order(order["id"], reaction_upload_pending=1, reaction_upload_error="auto_recovery_video_too_large")
+            insert_order_event(order["id"], "reaction_auto_recovery_too_large", "error", "El rescate ensamblado pesa demasiado", {"bytes": saved_size, "max_bytes": MAX_VIDEO_SIZE})
+            return {"ok": False, "reason": "video_too_large", "order_id": order.get("id"), "bytes": saved_size}
+
+        updated_order = complete_reaction_from_local_file(order, local_path, extension=extension, source=source)
+
+        insert_order_event(
+            order["id"],
+            "reaction_auto_recovery_completed",
+            "ok",
+            "Reacción rescatada automáticamente y sender pack desbloqueado",
+            {"bytes": saved_size, "chunks": len(chunk_files), "source": source},
+        )
+
+        return {
+            "ok": True,
+            "reason": "recovered",
+            "order_id": order.get("id"),
+            "bytes": saved_size,
+            "chunks": len(chunk_files),
+            "sender_sms_sent_at": updated_order.get("sender_sms_sent_at"),
+            "sender_sms_attempts": int(updated_order.get("sender_sms_attempts") or 0),
+            "sender_sms_error": updated_order.get("sender_sms_error"),
+        }
+
+    except Exception as e:
+        update_order(order["id"], reaction_upload_pending=1, reaction_upload_error=str(e))
+        insert_order_event(order["id"], "reaction_auto_recovery_failed", "error", str(e), {"source": source})
+        log_error("recover_reaction_from_chunks_if_possible", e)
+        return {"ok": False, "reason": str(e), "order_id": order.get("id")}
+
+
+def list_pending_reaction_recovery_orders(limit: int = 25) -> list[str]:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE COALESCE(paid, 0) = 1
+          AND COALESCE(reaction_uploaded, 0) = 0
+          AND COALESCE(experience_started, 0) = 1
+          AND COALESCE(reaction_upload_pending, 0) = 1
+          AND experience_video_url IS NOT NULL
+          AND TRIM(experience_video_url) != ''
+        ORDER BY updated_at ASC
+        LIMIT ?
+    """, (int(limit or 25),))
+    rows = cur.fetchall()
+    conn.close()
+    return [str(r["id"]) for r in rows]
+
+
+def process_all_pending_reaction_recoveries() -> list[dict]:
+    results = []
+    for order_id in list_pending_reaction_recovery_orders():
+        try:
+            result = recover_reaction_from_chunks_if_possible(order_id, min_idle_seconds=20, source="worker_auto_recovery")
+            if result.get("ok"):
+                print("🎥 Worker reaction recovery:", order_id, result)
+            results.append({"order_id": order_id, "result": result})
+        except Exception as e:
+            log_error("reaction_recovery_worker_process", e)
+            results.append({"order_id": order_id, "result": {"ok": False, "reason": str(e)}})
+    return results
+
+
+# =========================================================
 # HELPERS EXTRA
 # =========================================================
 
@@ -5127,6 +5327,7 @@ def delivery_worker_loop():
     while True:
         try:
             process_all_due_scheduled_deliveries()
+            process_all_pending_reaction_recoveries()
             process_all_due_sender_notifications()
             process_all_due_payouts()
         except Exception as e:
@@ -7180,7 +7381,7 @@ async function finishLiveUploadIfPossible() {
         return null;
     }
 
-    payoffLoader.innerText = "Terminando de guardar…";
+    payoffLoader.innerText = "Terminando de guardar… no cierres todavía.";
     await liveUploadChain;
 
     if (liveUploadFailed) {
@@ -7293,7 +7494,7 @@ async function finalizeExperienceFlow() {
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando este momento…";
+    payoffLoader.innerText = "Guardando tu emoción… no cierres esta pantalla.";
 
     try {
         if (finishTimeout) {
@@ -9289,6 +9490,34 @@ def admin_retry_recipient_message(order_id: str, request: Request):
     return result
 
 
+@app.get("/admin/recover-reaction/{order_id}")
+def admin_recover_reaction(order_id: str, token: str = "", force: int = 0):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    result = recover_reaction_from_chunks_if_possible(
+        order_id,
+        min_idle_seconds=0 if int(force or 0) == 1 else 20,
+        source="admin_manual_recovery",
+    )
+    updated = get_order_by_id(order_id)
+
+    return JSONResponse({
+        "ok": result.get("ok", False),
+        "result": result,
+        "order_id": order_id,
+        "reaction_uploaded": bool(updated.get("reaction_uploaded")),
+        "reaction_upload_pending": bool(updated.get("reaction_upload_pending")),
+        "reaction_upload_error": updated.get("reaction_upload_error"),
+        "reaction_video_local": updated.get("reaction_video_local"),
+        "reaction_video_public_url": updated.get("reaction_video_public_url"),
+        "sender_sms_sent_at": updated.get("sender_sms_sent_at"),
+        "sender_sms_attempts": int(updated.get("sender_sms_attempts") or 0),
+        "sender_sms_error": updated.get("sender_sms_error"),
+        "eterna_completed": bool(updated.get("eterna_completed")),
+    })
+
+
 @app.get("/admin/retry-sender-message/{order_id}")
 def admin_retry_sender_message(order_id: str, token: str = "", force: int = 0):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
@@ -9308,6 +9537,10 @@ def admin_retry_sender_message(order_id: str, token: str = "", force: int = 0):
             sender_notified=0,
         )
         insert_order_event(order_id, "admin_sender_retry_forced", "warning", "Reintento forzado del aviso al regalante: intentos reseteados por admin")
+
+    # Si el problema real fue que el destinatario cortó justo al final, antes de reenviar
+    # intentamos convertir los chunks pendientes en reacción final.
+    recover_reaction_from_chunks_if_possible(order_id, min_idle_seconds=0, source="admin_retry_sender_recovery")
 
     order = maybe_mark_eterna_completed(order_id)
     result = try_send_sender_sms(order)
@@ -9335,6 +9568,7 @@ def admin_delivery_worker_status(token: str = ""):
         "delivery_worker_started": DELIVERY_WORKER_STARTED,
         "delivery_worker_interval_seconds": DELIVERY_WORKER_INTERVAL_SECONDS,
         "pending_order_ids": list_pending_scheduled_deliveries(),
+        "pending_reaction_recovery_ids": list_pending_reaction_recovery_orders(),
         "pending_sender_notification_ids": list_pending_sender_notifications(),
         "pending_payout_order_ids": list_pending_payout_orders(),
     })
@@ -9346,15 +9580,18 @@ def admin_process_all_due_deliveries(token: str = ""):
         raise HTTPException(status_code=403, detail="No autorizado")
 
     delivery_results = process_all_due_scheduled_deliveries()
+    recovery_results = process_all_pending_reaction_recoveries()
     sender_results = process_all_due_sender_notifications()
     payout_results = process_all_due_payouts()
 
     return JSONResponse({
         "ok": True,
         "delivery_count": len(delivery_results),
+        "recovery_count": len(recovery_results),
         "sender_count": len(sender_results),
         "payout_count": len(payout_results),
         "delivery_results": delivery_results,
+        "recovery_results": recovery_results,
         "sender_results": sender_results,
         "payout_results": payout_results,
     })
@@ -9410,6 +9647,12 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     try:
+        # Si el destinatario llegó aquí justo después del vídeo pero el JS no alcanzó a cerrar
+        # /finish-reaction-upload, intentamos rescatar los chunks ya subidos antes de continuar.
+        if not reaction_is_safe(order):
+            recover_reaction_from_chunks_if_possible(order, min_idle_seconds=0, source="finalizar_experiencia_recovery")
+            order = get_order_by_id(order["id"])
+
         update_order(
             order["id"],
             experience_completed=1,
