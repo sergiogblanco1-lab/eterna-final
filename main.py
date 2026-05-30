@@ -3829,7 +3829,7 @@ def render_create_form() -> str:
 
         <div class="payment-overlay" id="paymentOverlay" aria-hidden="true">
             <div class="payment-card">
-                <div class="payment-mark">∞</div>
+                <div class="payment-mark">♥</div>
                 <h2 class="payment-title">Preparando tu ETERNA</h2>
                 <p class="payment-sub">
                     Estamos guardando tus recuerdos y abriendo el pago seguro.<br>
@@ -4618,7 +4618,7 @@ def render_create_intro() -> HTMLResponse:
             <section class="phone">
                 <div class="content">
                     <div class="brand">ETERNA</div>
-                    <div class="orb">∞</div>
+                    <div class="orb">♥</div>
                     <h1 class="line">No todo lo importante</h1>
                     <h2 class="line two">debería desaparecer.</h2>
                     <h2 class="line three">Haz que vuelva.</h2>
@@ -4840,10 +4840,10 @@ def home(request: Request):
 <body>
     <main class="page">
         <section class="hero" aria-label="ETERNA">
-            <div class="symbol">∞</div>
+            <div class="symbol">♥</div>
             <h1 class="brand">ETERNA</h1>
             <div class="tag">Hay momentos que merecen quedarse para siempre</div>
-            <div class="divider">∞</div>
+            <div class="divider">♥</div>
             <div class="copy">
                 No es un vídeo.<br>
                 Es un momento.
@@ -5722,11 +5722,11 @@ def checkout_exito(order_id: str):
 <body>
     <main class="card">
         <div class="brand">ETERNA</div>
-        <div class="mark">∞</div>
+        <div class="mark">♥</div>
         <h1>{title}</h1>
         <div class="subtitle">{subtitle}</div>
         <div class="detail">{detail}</div>
-        <div class="divider">∞</div>
+        <div class="divider">♥</div>
         <div class="promise">
             Lo que das<br>
             se queda en alguien.<br>
@@ -6053,11 +6053,11 @@ def resumen(order_id: str):
 <body>
     <main class="card">
         <div class="brand">ETERNA</div>
-        <div class="mark">∞</div>
+        <div class="mark">♥</div>
         <h1>{title}</h1>
         <div class="subtitle">{subtitle}</div>
         <div class="detail">{detail}</div>
-        <div class="divider">∞</div>
+        <div class="divider">♥</div>
         <div class="promise">
             Lo que das<br>
             se queda en alguien.<br>
@@ -6148,7 +6148,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         eyebrow = "PASO 1 DE 3"
         title = "Busca tu lugar"
         subtitle = "Antes de abrirlo, elige un sitio tranquilo."
-        body = "No lo vivas en la ducha, en el baño, conduciendo o en un momento íntimo. Este recuerdo puede quedar guardado."
+        body = "Elige un lugar tranquilo, con algo de luz y donde puedas vivir este momento sin prisas."
         icon = "⌖"
         button = "Ya estoy en un lugar tranquilo"
         href = f"/guia/2/{safe_attr(recipient_token)}"
@@ -6164,15 +6164,25 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         href = f"/guia/3/{safe_attr(recipient_token)}"
         note = "No hace falta posar. Solo estar presente."
     else:
-        insert_order_event(order["id"], "guide_consent_opened", "ok", "El destinatario ha abierto la guía: consentimiento cámara y micrófono")
+        insert_order_event(order["id"], "guide_consent_opened", "ok", "El destinatario ha abierto la guía: consentimiento único y permisos")
         eyebrow = "PASO 3 DE 3"
-        title = "Cámara y micrófono"
-        subtitle = "Se usarán para guardar este momento."
-        body = "Al continuar, aceptas que durante la experiencia se grabe tu imagen y tu voz para crear un recuerdo privado que recibirá la persona que te lo ha enviado."
-        icon = "✓"
-        button = "Acepto y vivir la experiencia"
+        title = "Antes de comenzar"
+        subtitle = "Esta experiencia forma parte de ETERNA."
+        body = """
+            <label class="consent-box">
+                <input type="checkbox" id="consentCheck">
+                <span>Acepto que mi reacción pueda ser grabada durante esta experiencia y enviada a la persona que creó esta ETERNA.</span>
+            </label>
+        """
+        icon = "♥"
+        button = "Continuar"
         href = f"/experiencia/{safe_attr(recipient_token)}"
-        note = "Si no quieres ser grabado, puedes cerrar esta pantalla ahora."
+        note = "Al pulsar Continuar, el navegador te pedirá permiso para usar cámara y micrófono. Si aceptas, ETERNA comenzará."
+
+    if step == 3:
+        action_html = f'<button class="btn" id="consentContinue" type="button">{button}</button>'
+    else:
+        action_html = f'<a class="btn" href="{href}">{button}</a>'
 
     dot1 = "on" if step == 1 else ""
     dot2 = "on" if step == 2 else ""
@@ -6300,6 +6310,31 @@ h1 {{
     max-width: 430px;
     margin: 0 auto;
 }}
+.consent-box {{
+    display: flex;
+    gap: 13px;
+    align-items: flex-start;
+    text-align: left;
+    padding: 16px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(224,171,80,0.24);
+    color: rgba(255,247,230,0.84);
+}}
+.consent-box input {{
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    margin-top: 4px;
+    accent-color: #e6b761;
+}}
+.consent-error {{
+    margin-top: 14px;
+    color: #ffd28a;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 18px;
+}}
 .warning {{
     margin: 20px auto 0;
     padding: 15px 16px;
@@ -6359,7 +6394,7 @@ h1 {{
 </head>
 <body>
     <main class="wrap">
-        <div class="logo-mark">∞</div>
+        <div class="logo-mark">♥</div>
         <div class="brand">ETERNA</div>
         <div class="line"></div>
         <section class="card">
@@ -6369,7 +6404,8 @@ h1 {{
             <div class="subtitle">{subtitle}</div>
             <div class="body">{body}</div>
             <div class="warning">{note}</div>
-            <div class="actions"><a class="btn" href="{href}">{button}</a></div>
+            <div class="actions">{action_html}</div>
+            <div class="consent-error" id="consentError"></div>
             <div class="progress">
                 <span class="dot {dot1}"></span>
                 <span class="dot {dot2}"></span>
@@ -6378,6 +6414,44 @@ h1 {{
         </section>
         <div class="footer">ETERNA</div>
     </main>
+<script>
+(function () {{
+    const btn = document.getElementById("consentContinue");
+    if (!btn) return;
+
+    const check = document.getElementById("consentCheck");
+    const error = document.getElementById("consentError");
+
+    btn.addEventListener("click", async function () {{
+        if (!check || !check.checked) {{
+            if (error) error.textContent = "Para continuar, acepta que tu reacción pueda ser grabada y enviada a la persona que creó esta ETERNA.";
+            return;
+        }}
+
+        btn.disabled = true;
+        btn.textContent = "Preparando ETERNA...";
+
+        try {{
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {{
+                throw new Error("media_devices_not_supported");
+            }}
+
+            const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
+            try {{
+                stream.getTracks().forEach(function (track) {{ track.stop(); }});
+            }} catch (_) {{}}
+
+            window.location.href = "{href}";
+        }} catch (err) {{
+            btn.disabled = false;
+            btn.textContent = "Continuar";
+            if (error) {{
+                error.textContent = "ETERNA necesita acceso a cámara y micrófono para poder continuar.";
+            }}
+        }}
+    }});
+}})();
+</script>
 </body>
 </html>
     """
@@ -8372,7 +8446,7 @@ def sender_pack(sender_token: str):
             </div>
 
             <div id="eterna-final-signature" class="final-signature" aria-hidden="true">
-                <div class="final-orb">∞</div>
+                <div class="final-orb">♥</div>
                 <div class="final-brand">ETERNA</div>
                 <h2>Lo que das se queda en alguien.</h2>
                 <p>Y un día, vuelve.</p>
