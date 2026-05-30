@@ -6359,7 +6359,10 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         eyebrow = "PASO 2 DE 3"
         title = "Coloca el teléfono"
         subtitle = "Ponlo en vertical y busca buena luz."
-        body = "Apóyalo si puedes, deja la cámara frente a ti y mantén esta pantalla abierta hasta el final."
+        body = """
+            Apóyalo si puedes, deja la cámara frente a ti y vive esta experiencia de principio a fin.<br><br>
+            Para asegurar que todo quede guardado correctamente, intenta mantener esta pantalla abierta hasta el final.
+        """
         icon = "▯"
         button = "Ya estoy colocado"
         href = f"/guia/3/{safe_attr(recipient_token)}"
@@ -6714,11 +6717,11 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
     next_ritual_step = min(ritual_step + 1, 7)
 
     if gift_amount > 0:
-        payoff_title = "Esto no termina aquí."
-        payoff_text = "Este momento ha sido guardado."
+        payoff_title = "Espere un momento…"
+        payoff_text = "Estamos generando su regalo."
     else:
-        payoff_title = "Esto ya es tuyo."
-        payoff_text = "Y lo será para siempre."
+        payoff_title = "Espere un momento…"
+        payoff_text = "Estamos guardando este vídeo para que pueda volver a verlo."
 
     # =========================================================
     # EXPERIENCIA FUNCIONAL RECUPERADA DEL MAIN ESTABLE
@@ -6878,6 +6881,48 @@ video {
     margin: 0 auto;
 }
 
+.payoff-mark {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 24px auto;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f2c878;
+    font-size: 34px;
+    background: rgba(242,200,120,0.08);
+    border: 1px solid rgba(242,200,120,0.30);
+    box-shadow: 0 0 42px rgba(242,200,120,0.18);
+}
+
+.eterna-progress {
+    position: relative;
+    overflow: hidden;
+    width: min(280px, 70vw);
+    height: 2px;
+    margin: 28px auto 0 auto;
+    border-radius: 999px;
+    background: rgba(242,200,120,0.16);
+}
+
+.eterna-progress::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -45%;
+    width: 45%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, #f2c878, transparent);
+    animation: eternaLine 1.8s ease-in-out infinite;
+}
+
+@keyframes eternaLine {
+    0% { left: -45%; }
+    100% { left: 100%; }
+}
+
 .payoff-title {
     font-size: 46px;
     line-height: 1.12;
@@ -6998,9 +7043,11 @@ video {
 
     <div class="payoff" id="payoff">
         <div class="payoff-card">
+            <div class="payoff-mark">♥</div>
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="loader" id="payoffLoader">Guardando este momento…</div>
+            <div class="eterna-progress" aria-hidden="true"></div>
+            <div class="loader" id="payoffLoader"></div>
 
             <div class="retry-actions" id="retryActions">
                 <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
@@ -7021,6 +7068,11 @@ const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
 const recipientToken = "__RECIPIENT_TOKEN__";
+const hasGift = __HAS_GIFT__;
+const finalWaitingTitle = "Espere un momento…";
+const finalWaitingText = hasGift
+    ? "Estamos generando su regalo."
+    : "Estamos guardando este vídeo para que pueda volver a verlo.";
 
 let stream = null;
 let mediaRecorder = null;
@@ -7128,6 +7180,16 @@ function hideRetryActions() {
     if (retryActions) {
         retryActions.classList.remove("show");
     }
+}
+
+function showFinalWaitingScreen() {
+    const titleEl = document.getElementById("payoffTitle");
+    const textEl = document.getElementById("payoffText");
+    if (titleEl) titleEl.innerText = finalWaitingTitle;
+    if (textEl) textEl.innerText = finalWaitingText;
+    if (payoffLoader) payoffLoader.innerText = "";
+    payoff.classList.add("show");
+    hideRetryActions();
 }
 
 function buildFriendlyUploadMessage(errorCode) {
@@ -7381,7 +7443,7 @@ async function finishLiveUploadIfPossible() {
         return null;
     }
 
-    payoffLoader.innerText = "Terminando de guardar… no cierres todavía.";
+    if (payoffLoader) payoffLoader.innerText = "";
     await liveUploadChain;
 
     if (liveUploadFailed) {
@@ -7403,7 +7465,7 @@ async function finishLiveUploadIfPossible() {
         throw new Error(finishJson.detail || "finish_live_upload_failed");
     }
 
-    payoffLoader.innerText = "Momento guardado.";
+    if (payoffLoader) payoffLoader.innerText = "";
     logClientStep("reaction_live_upload_finished", "ok", "Reacción ensamblada desde subida progresiva", { chunks: liveChunkIndex });
     return finishJson;
 }
@@ -7413,7 +7475,7 @@ async function uploadReactionChunked(blob) {
     const totalChunks = Math.max(1, Math.ceil(blob.size / chunkSize));
     const sessionId = String(Date.now()) + "_" + Math.random().toString(16).slice(2);
 
-    payoffLoader.innerText = "Guardando este momento… 0%";
+    if (payoffLoader) payoffLoader.innerText = "";
 
     for (let index = 0; index < totalChunks; index++) {
         const start = index * chunkSize;
@@ -7453,7 +7515,7 @@ async function uploadReactionChunked(blob) {
         }
 
         const pct = Math.min(99, Math.round(((index + 1) / totalChunks) * 100));
-        payoffLoader.innerText = "Guardando este momento… " + pct + "%";
+        if (payoffLoader) payoffLoader.innerText = "";
     }
 
     const finishData = new FormData();
@@ -7471,7 +7533,7 @@ async function uploadReactionChunked(blob) {
         throw new Error(finishJson.detail || "finish_chunk_upload_failed");
     }
 
-    payoffLoader.innerText = "Momento guardado.";
+    if (payoffLoader) payoffLoader.innerText = "";
     return finishJson;
 }
 
@@ -7494,7 +7556,7 @@ async function finalizeExperienceFlow() {
     finishing = true;
 
     payoff.classList.add("show");
-    payoffLoader.innerText = "Guardando tu emoción… no cierres esta pantalla.";
+    showFinalWaitingScreen();
 
     try {
         if (finishTimeout) {
@@ -7794,6 +7856,7 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
+    html_page = html_page.replace("__HAS_GIFT__", "true" if gift_amount > 0 else "false")
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
