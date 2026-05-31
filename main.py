@@ -12,6 +12,7 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
+print("🎬 ETERNA DEFINITIVA: SALVAVIDAS + CINEMATIC + NO OVERLAY VIDEO + AUDIO ENGINE ONLY 🎬")
 
 import html
 import json
@@ -7490,12 +7491,47 @@ video {
     z-index: 5;
 }
 
-body.video-clean-mode [data-eterna-cinematic-scene] {
-    display: none !important;
+body.video-clean-mode,
+body.video-clean-mode .wrap {
+    background: #000 !important;
 }
 
-body.video-clean-mode video {
-    z-index: 5;
+body.video-clean-mode::before,
+body.video-clean-mode::after,
+body.video-clean-mode [data-eterna-cinematic-scene],
+body.video-clean-mode .cinematic-bg,
+body.video-clean-mode .cinematic-scene,
+body.video-clean-mode .cinematic-layer,
+body.video-clean-mode .butterfly-layer,
+body.video-clean-mode .magic-layer,
+body.video-clean-mode .light-trail,
+body.video-clean-mode .particle-layer {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    animation: none !important;
+    transition: none !important;
+    pointer-events: none !important;
+}
+
+body.video-clean-mode .overlay,
+body.video-clean-mode .payoff:not(.show) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+body.video-clean-mode video#video {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 999 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: #000 !important;
+    filter: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
 }
 
 .overlay {
@@ -7862,13 +7898,28 @@ const cinematicLayers = Array.from(document.querySelectorAll("[data-eterna-cinem
 function hideCinematicLayersForVideo() {
     try {
         document.body.classList.add("video-clean-mode");
-        cinematicLayers.forEach((el) => { el.style.display = "none"; });
+        cinematicLayers.forEach((el) => {
+            el.dataset.eternalPrevDisplay = el.style.display || "";
+            el.dataset.eternalPrevVisibility = el.style.visibility || "";
+            el.dataset.eternalPrevOpacity = el.style.opacity || "";
+            el.style.setProperty("display", "none", "important");
+            el.style.setProperty("visibility", "hidden", "important");
+            el.style.setProperty("opacity", "0", "important");
+            el.style.setProperty("animation", "none", "important");
+            el.style.setProperty("pointer-events", "none", "important");
+        });
     } catch (_) {}
 }
 
 function showCinematicLayersAfterVideo() {
     try {
-        cinematicLayers.forEach((el) => { el.style.display = ""; });
+        cinematicLayers.forEach((el) => {
+            el.style.display = el.dataset.eternalPrevDisplay || "";
+            el.style.visibility = el.dataset.eternalPrevVisibility || "";
+            el.style.opacity = el.dataset.eternalPrevOpacity || "";
+            el.style.animation = "";
+            el.style.pointerEvents = "none";
+        });
         document.body.classList.remove("video-clean-mode");
     } catch (_) {}
 }
@@ -7879,6 +7930,22 @@ const finalWaitingTitle = "Espere un momento…";
 const finalWaitingText = hasGift
     ? "Estamos generando su regalo."
     : "Estamos guardando este vídeo para que pueda volver a verlo.";
+
+
+// REGLA SAGRADA ETERNA:
+// Cuando se reproduce el vídeo del video engine, no puede haber ninguna capa visual encima.
+try {
+    video.addEventListener("play", hideCinematicLayersForVideo);
+    video.addEventListener("playing", hideCinematicLayersForVideo);
+    video.addEventListener("waiting", hideCinematicLayersForVideo);
+    video.addEventListener("seeking", hideCinematicLayersForVideo);
+    video.addEventListener("ended", showCinematicLayersAfterVideo);
+    video.addEventListener("pause", function () {
+        if (experienceStarted && !finishing && !video.ended) {
+            hideCinematicLayersForVideo();
+        }
+    });
+} catch (_) {}
 
 let stream = null;
 let mediaRecorder = null;
@@ -9664,6 +9731,7 @@ def sender_pack(sender_token: str):
                 <video
                     id="eterna-bg-reaction"
                     muted
+                    defaultMuted
                     playsinline
                     webkit-playsinline
                     preload="metadata"
@@ -9676,6 +9744,7 @@ def sender_pack(sender_token: str):
                     <video
                         id="eterna-reaction-player"
                         muted
+                        defaultMuted
                         playsinline
                         webkit-playsinline
                         preload="metadata"
@@ -9739,16 +9808,45 @@ def sender_pack(sender_token: str):
         const replayFinal = document.getElementById("eterna-replay-final");
         const cinematicSceneLayers = Array.from(document.querySelectorAll("[data-eterna-cinematic-scene]"));
 
+        // Guardia dura: Android/Safari no pueden reactivar el sonido ambiente.
+        function enforceSenderAudioPolicy() {{
+            try {{
+                if (reaction) {{ reaction.muted = true; reaction.defaultMuted = true; reaction.volume = 0; }}
+                if (bgReaction) {{ bgReaction.muted = true; bgReaction.defaultMuted = true; bgReaction.volume = 0; }}
+                if (mini) {{ mini.muted = false; mini.defaultMuted = false; mini.volume = 0.90; }}
+            }} catch (e) {{}}
+        }}
+
+        try {{
+            window.setInterval(enforceSenderAudioPolicy, 700);
+        }} catch (e) {{}}
+
+
         function senderCleanVideoModeOn() {{
             try {{
                 document.body.classList.add("sender-video-clean-mode");
-                cinematicSceneLayers.forEach((el) => {{ el.style.display = "none"; }});
+                cinematicSceneLayers.forEach((el) => {{
+                    el.dataset.eternalPrevDisplay = el.style.display || "";
+                    el.dataset.eternalPrevVisibility = el.style.visibility || "";
+                    el.dataset.eternalPrevOpacity = el.style.opacity || "";
+                    el.style.setProperty("display", "none", "important");
+                    el.style.setProperty("visibility", "hidden", "important");
+                    el.style.setProperty("opacity", "0", "important");
+                    el.style.setProperty("animation", "none", "important");
+                    el.style.setProperty("pointer-events", "none", "important");
+                }});
             }} catch (e) {{}}
         }}
 
         function senderCleanVideoModeOff() {{
             try {{
-                cinematicSceneLayers.forEach((el) => {{ el.style.display = ""; }});
+                cinematicSceneLayers.forEach((el) => {{
+                    el.style.display = el.dataset.eternalPrevDisplay || "";
+                    el.style.visibility = el.dataset.eternalPrevVisibility || "";
+                    el.style.opacity = el.dataset.eternalPrevOpacity || "";
+                    el.style.animation = "";
+                    el.style.pointerEvents = "none";
+                }});
                 document.body.classList.remove("sender-video-clean-mode");
             }} catch (e) {{}}
         }}
@@ -9756,6 +9854,19 @@ def sender_pack(sender_token: str):
         function stopDecorativeVideo() {{
             try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
         }}
+
+
+        // REGLA SAGRADA ETERNA SENDER PACK:
+        // Mientras se reproduce vídeo, cero capas cinematográficas encima.
+        try {{
+            [reaction, mini].forEach((player) => {{
+                if (!player) return;
+                player.addEventListener("play", senderCleanVideoModeOn);
+                player.addEventListener("playing", senderCleanVideoModeOn);
+                player.addEventListener("waiting", senderCleanVideoModeOn);
+                player.addEventListener("seeking", senderCleanVideoModeOn);
+            }});
+        }} catch (e) {{}}
 
         function showView() {{
             if (intro) intro.classList.remove("active");
@@ -9804,6 +9915,7 @@ def sender_pack(sender_token: str):
                 mini.muted = false;
                 mini.volume = 0.90;
             }}
+            if (typeof enforceSenderAudioPolicy === 'function') enforceSenderAudioPolicy();
         }}
 
         function playAllFromStart() {{
@@ -9934,13 +10046,37 @@ def sender_pack(sender_token: str):
                     radial-gradient(circle at 10% 85%, rgba(160,116,43,.13), transparent 38%),
                     #020817;
             }}
+            body.sender-video-clean-mode,
+            body.sender-video-clean-mode .return-view,
+            body.sender-video-clean-mode .call-shell {{
+                background:#000 !important;
+            }}
+            body.sender-video-clean-mode::before,
+            body.sender-video-clean-mode::after,
             body.sender-video-clean-mode [data-eterna-cinematic-scene],
+            body.sender-video-clean-mode .cinematic-bg,
+            body.sender-video-clean-mode .cinematic-scene,
+            body.sender-video-clean-mode .cinematic-layer,
+            body.sender-video-clean-mode .butterfly-layer,
+            body.sender-video-clean-mode .magic-layer,
+            body.sender-video-clean-mode .light-trail,
+            body.sender-video-clean-mode .particle-layer,
             body.sender-video-clean-mode #eterna-bg-reaction,
             body.sender-video-clean-mode .call-glow {{
                 display:none !important;
+                visibility:hidden !important;
+                opacity:0 !important;
+                animation:none !important;
+                transition:none !important;
+                pointer-events:none !important;
+            }}
+            body.sender-video-clean-mode .reaction-frame,
+            body.sender-video-clean-mode #eterna-reaction-player,
+            body.sender-video-clean-mode #eterna-mini-original {{
+                animation:none !important;
+                filter:none !important;
             }}
             body.sender-video-clean-mode .reaction-frame {{
-                animation:none !important;
                 box-shadow:0 20px 70px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.055) inset !important;
             }}
             .sender-experience {{
