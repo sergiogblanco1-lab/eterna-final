@@ -11,6 +11,7 @@ print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION �
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
+print("🦋 VISUAL SUAVE MARIPOSAS + AUDIO SOLO VIDEO ENGINE EN SENDER PACK 🦋")
 
 import html
 import json
@@ -2127,7 +2128,7 @@ def render_viral_block_page() -> HTMLResponse:
                 background:
                     radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
                     linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
-                color: #f8fbff;
+                color: #fff7e6;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
                 display: flex;
                 align-items: center;
@@ -4665,17 +4666,21 @@ def render_create_intro() -> HTMLResponse:
         <title>Crear ETERNA</title>
         <style>
             * {{ box-sizing: border-box; }}
-            html, body {{ margin:0; min-height:100%; background:#030303; }}
+            html, body {{ margin:0; min-height:100%; background:#030712; }}
             body {{
                 min-height:100vh;
                 color:#fff7e6;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                 overflow-x:hidden;
                 background:
-                    radial-gradient(circle at 50% -10%, rgba(218,178,92,.22), transparent 36%),
-                    radial-gradient(circle at 20% 90%, rgba(218,178,92,.10), transparent 30%),
-                    linear-gradient(180deg,#050403,#000 58%,#050403);
+                    radial-gradient(circle at 74% 18%, rgba(96,165,250,.20), transparent 30%),
+                    radial-gradient(circle at 18% 82%, rgba(255,220,150,.10), transparent 28%),
+                    linear-gradient(180deg,#07111f 0%, #020617 52%, #000 100%);
             }}
+            .magic-butterfly {{ position:absolute; z-index:1; pointer-events:none; font-size:30px; opacity:.74; filter:drop-shadow(0 0 16px rgba(96,165,250,.55)); animation:butterflyFloat 13s ease-in-out infinite; }}
+            .magic-butterfly.b1 {{ top:18%; right:16%; animation-delay:.2s; }}
+            .magic-butterfly.b2 {{ bottom:20%; left:10%; font-size:22px; opacity:.46; animation-delay:3.7s; }}
+            @keyframes butterflyFloat {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-8deg) scale(.96); opacity:.42; }} 45% {{ transform:translate3d(14px,-24px,0) rotate(8deg) scale(1.06); opacity:.86; }} 70% {{ transform:translate3d(-8px,-14px,0) rotate(-3deg) scale(1); opacity:.62; }} }}
             .stage {{
                 min-height:100vh;
                 display:flex;
@@ -4816,6 +4821,8 @@ def render_create_intro() -> HTMLResponse:
     <body>
         <main class="stage">
             <section class="phone">
+                <div class="magic-butterfly b1">🦋</div>
+                <div class="magic-butterfly b2">🦋</div>
                 <div class="content">
                     <div class="brand">ETERNA</div>
                     <div class="orb">♥</div>
@@ -5556,8 +5563,9 @@ body {{
     min-height: 100vh;
     min-height: 100dvh;
     background:
-        radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+        radial-gradient(circle at 72% 20%, rgba(96,165,250,0.22), transparent 30%),
+        radial-gradient(circle at 18% 85%, rgba(255,220,150,0.10), transparent 28%),
+        linear-gradient(180deg, #07111f 0%, #020617 58%, #000000 100%);
     color: #fff7e6;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
@@ -5566,7 +5574,12 @@ body {{
     text-align: center;
     padding: max(24px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom)) 24px;
     touch-action: manipulation;
+    overflow:hidden;
 }}
+.magic-butterfly {{ position:fixed; z-index:1; pointer-events:none; font-size:32px; opacity:.72; filter:drop-shadow(0 0 18px rgba(96,165,250,.62)); animation:giftButterflyFloat 14s ease-in-out infinite; }}
+.magic-butterfly.b1 {{ top:17%; right:18%; }}
+.magic-butterfly.b2 {{ bottom:17%; left:12%; font-size:23px; opacity:.42; animation-delay:4s; }}
+@keyframes giftButterflyFloat {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-8deg) scale(.96); opacity:.38; }} 48% {{ transform:translate3d(18px,-28px,0) rotate(8deg) scale(1.08); opacity:.88; }} 74% {{ transform:translate3d(-10px,-15px,0) rotate(-3deg) scale(1); opacity:.58; }} }}
 .wrap {{
     width: 100%;
     max-width: 720px;
@@ -5631,15 +5644,17 @@ h1 {{
 </style>
 </head>
 <body>
+    <div class="magic-butterfly b1">🦋</div>
+    <div class="magic-butterfly b2">🦋</div>
     <div class="wrap">
         <div class="brand">ETERNA</div>
-        <h1>Hay algo para ti</h1>
+        <h1>Tienes un regalo ETERNA</h1>
         <div class="main">
-            Alguien quiso dejarte un momento<br>
-            que no se olvida.
+            Alguien ha creado algo único<br>
+            para ti.
         </div>
         <div class="soft">
-            Busca un sitio tranquilo. Cuando pulses, empezará una experiencia privada creada para ti.
+            Busca un sitio tranquilo. Cuando pulses, empezará una experiencia privada e inolvidable.
         </div>
         <div class="actions">
             <a class="btn" id="liveExperienceBtn" href="{experience_href}">Vivir la experiencia</a>
@@ -6740,7 +6755,7 @@ html, body {
     padding: 0;
     width: 100%;
     height: 100%;
-    background: #020814;
+    background: black;
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
@@ -6748,10 +6763,7 @@ html, body {
 body {
     position: fixed;
     inset: 0;
-    background:
-        radial-gradient(circle at 50% -12%, rgba(96,165,250,0.18), transparent 42%),
-        radial-gradient(circle at 12% 92%, rgba(255,255,255,0.05), transparent 34%),
-        linear-gradient(180deg, #06101f 0%, #020814 54%, #000000 100%);
+    background: black;
 }
 
 .wrap {
@@ -6870,9 +6882,8 @@ video {
     text-align: center;
     padding: 28px;
     background:
-        radial-gradient(circle at 50% 18%, rgba(96,165,250,0.16), transparent 36%),
-        radial-gradient(circle at 12% 88%, rgba(255,255,255,0.05), transparent 30%),
-        linear-gradient(180deg, rgba(3,10,24,0.88) 0%, rgba(0,0,0,0.98) 100%);
+        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
+        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
 }
 
 .payoff.show {
@@ -6893,11 +6904,11 @@ video {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #eef6ff;
+    color: #f2c878;
     font-size: 34px;
-    background: rgba(96,165,250,0.08);
-    border: 1px solid rgba(186,218,255,0.28);
-    box-shadow: 0 0 42px rgba(96,165,250,0.18);
+    background: rgba(242,200,120,0.08);
+    border: 1px solid rgba(242,200,120,0.30);
+    box-shadow: 0 0 42px rgba(242,200,120,0.18);
 }
 
 .eterna-progress {
@@ -6907,7 +6918,7 @@ video {
     height: 2px;
     margin: 28px auto 0 auto;
     border-radius: 999px;
-    background: rgba(147,197,253,0.18);
+    background: rgba(242,200,120,0.16);
 }
 
 .eterna-progress::before {
@@ -6918,7 +6929,7 @@ video {
     width: 45%;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, transparent, #f8fbff, #60a5fa, transparent);
+    background: linear-gradient(90deg, transparent, #f2c878, transparent);
     animation: eternaLine 1.8s ease-in-out infinite;
 }
 
@@ -6979,37 +6990,6 @@ video {
     background: rgba(255,255,255,0.10);
     color: #fff7e6;
     border: 1px solid rgba(218,178,92,0.22);
-}
-
-.magic-butterflies {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 1;
-}
-.magic-butterfly {
-    position: absolute;
-    display: block;
-    font-size: 20px;
-    opacity: 0;
-    filter: grayscale(1) brightness(1.9) drop-shadow(0 0 10px rgba(96,165,250,0.34));
-    animation: eternaButterflyFloat 16s ease-in-out infinite;
-}
-.magic-butterfly.b1 { left: 17%; bottom: 18%; animation-delay: 0.2s; transform: scale(0.72); }
-.magic-butterfly.b2 { right: 16%; bottom: 26%; animation-delay: 5.4s; transform: scale(0.58); }
-.magic-butterfly.b3 { left: 50%; bottom: 10%; animation-delay: 9.2s; transform: scale(0.46); }
-@keyframes eternaButterflyFloat {
-    0% { opacity: 0; transform: translate3d(0, 22px, 0) scale(0.55) rotate(-8deg); }
-    18% { opacity: .52; }
-    50% { opacity: .78; transform: translate3d(10px, -22px, 0) scale(0.82) rotate(7deg); }
-    82% { opacity: .42; }
-    100% { opacity: 0; transform: translate3d(-8px, -68px, 0) scale(0.96) rotate(-5deg); }
-}
-.payoff-card { position: relative; z-index: 2; }
-@media (prefers-reduced-motion: reduce) {
-    .magic-butterfly,
-    .eterna-progress::before { animation: none; opacity: .28; }
 }
 
 @media (max-width: 720px) {
@@ -7077,11 +7057,6 @@ video {
     </div>
 
     <div class="payoff" id="payoff">
-        <div class="magic-butterflies" aria-hidden="true">
-            <span class="magic-butterfly b1">🦋</span>
-            <span class="magic-butterfly b2">🦋</span>
-            <span class="magic-butterfly b3">🦋</span>
-        </div>
         <div class="payoff-card">
             <div class="payoff-mark">♥</div>
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
@@ -8678,18 +8653,18 @@ def sender_pack(sender_token: str):
     <main class="sender-experience" aria-label="Sender pack ETERNA">
 
         <section id="return-intro" class="sender-stage active" data-stage="intro">
-            <div class="sender-magic" aria-hidden="true"><span class="sender-butterfly sb1">🦋</span><span class="sender-butterfly sb2">🦋</span></div>
             <div class="brand-mark">ETERNA</div>
+            <div class="sender-butterfly sb1">🦋</div>
+            <div class="sender-butterfly sb2">🦋</div>
             <div class="intro-card">
-                <div class="gold-dot"></div>
-                <h1>Ya ha pasado.</h1>
-                <p>Respira. Tu ETERNA ha vuelto.</p>
-                <button id="open-return" class="gold-button" type="button">Estoy preparado</button>
+                <div class="gold-dot">🎁</div>
+                <h1>Tu regalo ha vuelto.</h1>
+                <p>Respira. El momento ya forma parte de esta historia.</p>
+                <button id="open-return" class="gold-button" type="button">Abrir Sender Pack</button>
             </div>
         </section>
 
         <section id="return-bridge" class="sender-stage" data-stage="bridge">
-            <div class="sender-magic" aria-hidden="true"><span class="sender-butterfly sb3">🦋</span></div>
             <div class="brand-mark">ETERNA</div>
             <div class="bridge-copy sender-return-sequence">
                 <p class="seq-line seq-one">Sube el volumen.</p>
@@ -8699,7 +8674,6 @@ def sender_pack(sender_token: str):
         </section>
 
         <section id="return-view" class="return-view" data-stage="view">
-            <div class="sender-magic sender-magic-view" aria-hidden="true"><span class="sender-butterfly sb1">🦋</span><span class="sender-butterfly sb4">🦋</span></div>
             <div class="top-bar">
                 <div>
                     <div class="eyebrow">ETERNA</div>
@@ -8719,17 +8693,18 @@ def sender_pack(sender_token: str):
                     preload="metadata"
                     aria-hidden="true"
                 >
-                    <source src="{reaction_url_safe}">
+                    <source src="{reaction_url_safe}" type="video/mp4">
                 </video>
 
                 <div class="reaction-frame">
                     <video
                         id="eterna-reaction-player"
+                        muted
                         playsinline
                         webkit-playsinline
                         preload="metadata"
                     >
-                        <source src="{reaction_url_safe}">
+                        <source src="{reaction_url_safe}" type="video/mp4">
                     </video>
                 </div>
 
@@ -8741,7 +8716,7 @@ def sender_pack(sender_token: str):
                         webkit-playsinline
                         preload="metadata"
                     >
-                        <source src="{original_video_url_safe}">
+                        <source src="{original_video_url_safe}" type="video/mp4">
                     </video>
                 </div>
             </div>
@@ -8752,7 +8727,6 @@ def sender_pack(sender_token: str):
             </div>
 
             <div id="eterna-final-signature" class="final-signature" aria-hidden="true">
-                <div class="final-butterfly">🦋</div>
                 <div class="final-orb">♥</div>
                 <div class="final-brand">ETERNA</div>
                 <h2>Lo que das se queda en alguien.</h2>
@@ -8825,16 +8799,16 @@ def sender_pack(sender_token: str):
             try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
 
-            // Sender Pack: la reacción debe escucharse y el vídeo original conserva su música de fondo.
+            // Sender Pack seguro: solo se escucha la música/audio del vídeo original generado por el video engine.
+            // La reacción y el fondo quedan silenciados para evitar mezcla rara, eco o pérdida de música.
             if (reaction) {{
-                reaction.muted = false;
-                reaction.volume = 1;
-                try {{ reaction.removeAttribute("muted"); }} catch (e) {{}}
+                reaction.muted = true;
+                try {{ reaction.setAttribute("muted", ""); }} catch (e) {{}}
             }}
             if (bgReaction) bgReaction.muted = true;
             if (mini) {{
                 mini.muted = false;
-                mini.volume = 0.32;
+                mini.volume = 0.90;
                 try {{ mini.removeAttribute("muted"); }} catch (e) {{}}
             }}
         }}
@@ -8948,14 +8922,14 @@ def sender_pack(sender_token: str):
         <title>ETERNA</title>
         <style>
             * {{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }}
-            html, body {{ margin:0; min-height:100%; background:#020814; color:#fff; }}
+            html, body {{ margin:0; min-height:100%; background:#050403; color:#fff; }}
             body {{
                 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;
                 overflow-x:hidden;
                 background:
-                    radial-gradient(circle at 50% -10%, rgba(96,165,250,.20), transparent 42%),
-                    radial-gradient(circle at 10% 85%, rgba(255,255,255,.055), transparent 36%),
-                    linear-gradient(180deg, #06101f 0%, #020814 54%, #000 100%);
+                    radial-gradient(circle at 70% 14%, rgba(96,165,250,.20), transparent 34%),
+                    radial-gradient(circle at 12% 88%, rgba(255,220,150,.09), transparent 32%),
+                    linear-gradient(180deg,#07111f 0%, #020617 52%, #000 100%);
             }}
             .sender-experience {{
                 min-height:100svh;
@@ -8963,50 +8937,6 @@ def sender_pack(sender_token: str):
                 position:relative;
                 overflow:hidden;
             }}
-            .sender-magic {{
-                position:absolute;
-                inset:0;
-                overflow:hidden;
-                pointer-events:none;
-                z-index:1;
-            }}
-            .sender-magic-view {{ z-index:1; }}
-            .sender-butterfly {{
-                position:absolute;
-                display:block;
-                font-size:20px;
-                opacity:0;
-                filter:grayscale(1) brightness(1.9) drop-shadow(0 0 12px rgba(96,165,250,.36));
-                animation:senderButterflyFloat 17s ease-in-out infinite;
-            }}
-            .sender-butterfly.sb1 {{ left:14%; bottom:18%; animation-delay:.4s; transform:scale(.66); }}
-            .sender-butterfly.sb2 {{ right:15%; bottom:28%; animation-delay:5.8s; transform:scale(.52); }}
-            .sender-butterfly.sb3 {{ left:50%; bottom:16%; animation-delay:1.1s; transform:scale(.70); }}
-            .sender-butterfly.sb4 {{ right:10%; top:20%; animation-delay:8.4s; transform:scale(.48); }}
-            .final-butterfly {{
-                font-size:32px;
-                line-height:1;
-                margin:0 auto 18px;
-                opacity:.92;
-                filter:grayscale(1) brightness(2) drop-shadow(0 0 18px rgba(96,165,250,.42));
-                animation:finalButterflyBreath 5.8s ease-in-out infinite;
-            }}
-            @keyframes senderButterflyFloat {{
-                0% {{ opacity:0; transform:translate3d(0, 26px, 0) scale(.52) rotate(-7deg); }}
-                20% {{ opacity:.50; }}
-                52% {{ opacity:.78; transform:translate3d(12px, -18px, 0) scale(.78) rotate(8deg); }}
-                84% {{ opacity:.38; }}
-                100% {{ opacity:0; transform:translate3d(-10px, -72px, 0) scale(.94) rotate(-4deg); }}
-            }}
-            @keyframes finalButterflyBreath {{
-                0%,100% {{ opacity:.62; transform:translateY(0) scale(.94); }}
-                50% {{ opacity:1; transform:translateY(-8px) scale(1.04); }}
-            }}
-            @media (prefers-reduced-motion: reduce) {{
-                .sender-butterfly,
-                .final-butterfly {{ animation:none; opacity:.34; }}
-            }}
-
             .brand-mark {{
                 position:fixed;
                 top:calc(env(safe-area-inset-top) + 22px);
@@ -9030,27 +8960,32 @@ def sender_pack(sender_token: str):
                 padding:32px 22px;
                 text-align:center;
                 background:
-                    radial-gradient(circle at 50% 18%, rgba(96,165,250,.16), transparent 36%),
-                    linear-gradient(180deg, #06101f 0%, #01040a 100%);
+                    radial-gradient(circle at 74% 20%, rgba(96,165,250,.22), transparent 34%),
+                    radial-gradient(circle at 12% 84%, rgba(255,220,150,.10), transparent 30%),
+                    linear-gradient(180deg, #07111f 0%, #020617 64%, #000 100%);
                 z-index:10;
             }}
             .sender-stage.active {{ display:flex; }}
+            .sender-butterfly {{ position:absolute; z-index:11; pointer-events:none; font-size:34px; opacity:.76; filter:drop-shadow(0 0 18px rgba(96,165,250,.62)); animation:senderButterflyFloat 14s ease-in-out infinite; }}
+            .sender-butterfly.sb1 {{ top:19%; right:17%; }}
+            .sender-butterfly.sb2 {{ bottom:18%; left:12%; font-size:24px; opacity:.44; animation-delay:4.2s; }}
+            @keyframes senderButterflyFloat {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-8deg) scale(.96); opacity:.40; }} 46% {{ transform:translate3d(18px,-30px,0) rotate(8deg) scale(1.08); opacity:.88; }} 72% {{ transform:translate3d(-8px,-14px,0) rotate(-3deg) scale(1); opacity:.58; }} }}
             .intro-card {{
                 width:100%;
                 max-width:430px;
                 padding:42px 26px 30px;
                 border-radius:34px;
                 background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-                border:1px solid rgba(147,197,253,.20);
-                box-shadow:0 38px 110px rgba(0,0,0,.72), 0 0 52px rgba(96,165,250,.08), inset 0 1px 0 rgba(255,255,255,.09);
+                border:1px solid rgba(96,165,250,.22);
+                box-shadow:0 38px 110px rgba(0,0,0,.72), 0 0 54px rgba(96,165,250,.10), inset 0 1px 0 rgba(255,255,255,.09);
             }}
             .gold-dot {{
                 width:54px;
                 height:54px;
                 margin:0 auto 24px;
                 border-radius:50%;
-                background:radial-gradient(circle, #f8fbff 0%, #60a5fa 58%, rgba(96,165,250,.15) 100%);
-                box-shadow:0 0 46px rgba(96,165,250,.34);
+                background:radial-gradient(circle, rgba(96,165,250,.28) 0%, rgba(255,220,150,.18) 55%, rgba(96,165,250,.06) 100%);
+                box-shadow:0 0 46px rgba(96,165,250,.38);
             }}
             .intro-card h1 {{
                 margin:0 0 10px;
@@ -9097,7 +9032,7 @@ def sender_pack(sender_token: str):
                 display:block;
                 margin-top:26px;
                 font-size:20px;
-                color:#bfdbfe;
+                color:#d7b46a;
                 opacity:0;
                 animation:bridgePhrase 2.2s ease both 2.8s;
             }}
@@ -9142,7 +9077,7 @@ def sender_pack(sender_token: str):
                 display:none;
                 position:relative;
                 overflow:hidden;
-                background:linear-gradient(180deg, #06101f 0%, #020814 48%, #000 100%);
+                background:#020202;
             }}
             .return-view.active {{ display:block; }}
             .top-bar {{
@@ -9189,7 +9124,7 @@ def sender_pack(sender_token: str):
                 position:absolute;
                 inset:0;
                 overflow:hidden;
-                background:linear-gradient(180deg, #06101f 0%, #020814 48%, #000 100%);
+                background:#020202;
                 border:0;
                 border-radius:0;
                 box-shadow:none;
@@ -9224,12 +9159,12 @@ def sender_pack(sender_token: str):
                 border-radius:34px;
                 overflow:hidden;
                 background:#000;
-                border:1px solid rgba(147,197,253,.24);
+                border:1px solid rgba(255,224,154,.28);
                 box-shadow:
                     0 26px 100px rgba(0,0,0,.76),
                     0 0 0 1px rgba(255,255,255,.075) inset,
-                    0 0 34px rgba(96,165,250,.16),
-                    0 0 88px rgba(255,255,255,.055);
+                    0 0 34px rgba(215,180,106,.18),
+                    0 0 88px rgba(215,180,106,.11);
                 animation:eternaFrameBreath 9.5s ease-in-out infinite;
             }}
             .reaction-frame::after {{
@@ -9240,25 +9175,25 @@ def sender_pack(sender_token: str):
                 pointer-events:none;
                 border-radius:34px;
                 background:
-                    linear-gradient(120deg, rgba(255,255,255,.16), transparent 18%, transparent 72%, rgba(147,197,253,.11)),
-                    radial-gradient(circle at 50% 0%, rgba(96,165,250,.16), transparent 38%);
+                    linear-gradient(120deg, rgba(255,255,255,.16), transparent 18%, transparent 72%, rgba(255,224,154,.10)),
+                    radial-gradient(circle at 50% 0%, rgba(255,224,154,.16), transparent 38%);
                 mix-blend-mode:screen;
                 opacity:.62;
             }}
             @keyframes eternaFrameBreath {{
-                0%,100% {{ box-shadow:0 26px 100px rgba(0,0,0,.76), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 28px rgba(96,165,250,.13), 0 0 70px rgba(147,197,253,.07); }}
-                50% {{ box-shadow:0 30px 112px rgba(0,0,0,.82), 0 0 0 1px rgba(255,255,255,.095) inset, 0 0 46px rgba(96,165,250,.24), 0 0 105px rgba(147,197,253,.12); }}
+                0%,100% {{ box-shadow:0 26px 100px rgba(0,0,0,.76), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 28px rgba(215,180,106,.13), 0 0 70px rgba(215,180,106,.08); }}
+                50% {{ box-shadow:0 30px 112px rgba(0,0,0,.82), 0 0 0 1px rgba(255,255,255,.095) inset, 0 0 46px rgba(215,180,106,.25), 0 0 105px rgba(215,180,106,.14); }}
             }}
             #eterna-reaction-player {{
                 width:100%;
                 height:100%;
-                object-fit:contain;
+                object-fit:cover;
                 background:#000;
-                transform:scale(.94);
+                animation:eternaSlowZoom 46s ease-in-out forwards;
             }}
             @keyframes eternaSlowZoom {{
-                from {{ transform:scale(.94); }}
-                to {{ transform:scale(.94); }}
+                from {{ transform:scale(1.000); }}
+                to {{ transform:scale(1.055); }}
             }}
             .mini-original-wrap {{
                 position:absolute;
