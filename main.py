@@ -11,6 +11,7 @@ print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION �
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
+print("🦋 ETERNA PREMIUM SVG BUTTERFLY THEME + SENDER MIME FIX 🦋")
 
 import html
 import json
@@ -2183,11 +2184,41 @@ def render_viral_block_page() -> HTMLResponse:
     <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
         <div class="wrap">
@@ -2392,11 +2423,41 @@ p { opacity:0.85; }
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
 
@@ -3653,11 +3714,41 @@ def render_create_form() -> str:
     <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
         <div class="wrap">
@@ -4843,11 +4934,41 @@ def render_create_intro() -> HTMLResponse:
     <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
         <main class="stage" style="position:relative;z-index:2;">
@@ -5076,11 +5197,41 @@ def home(request: Request):
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <main class="page" style="position:relative;z-index:2;">
@@ -5508,11 +5659,41 @@ h1 {
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <div class="wrap">
@@ -5583,11 +5764,41 @@ h1 {
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <div class="wrap">
@@ -5696,11 +5907,41 @@ h1 {{
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <div class="wrap">
@@ -5807,11 +6048,41 @@ h1 {{
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <div class="wrap">
@@ -6004,11 +6275,41 @@ def checkout_exito(order_id: str):
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <main class="card" style="position:relative;z-index:2;">
@@ -6344,11 +6645,41 @@ def resumen(order_id: str):
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <main class="card" style="position:relative;z-index:2;">
@@ -6698,11 +7029,41 @@ h1 {{
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <main class="wrap">
@@ -7107,11 +7468,41 @@ video {
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
 <div class="wrap">
@@ -8442,11 +8833,41 @@ h1 {{
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
 
@@ -8637,11 +9058,41 @@ h1 {{
 <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
     <div class="wrap">
@@ -8731,11 +9182,13 @@ def sender_pack(sender_token: str):
 
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
+    reaction_video_type = guess_media_type_from_url(reaction_url) if reaction_url else "video/mp4"
 
     if not reaction_url:
         local_path = (order.get("reaction_video_local") or "").strip()
         if local_path and os.path.exists(local_path):
             reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
+            reaction_video_type = guess_media_type_from_path(local_path)
 
     if not reaction_url:
         return HTMLResponse("""
@@ -8758,11 +9211,41 @@ def sender_pack(sender_token: str):
         <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
             <div class="card" style="position:relative;z-index:2;">
@@ -8775,6 +9258,7 @@ def sender_pack(sender_token: str):
         """)
 
     reaction_url_safe = safe_attr(reaction_url)
+    reaction_video_type_safe = safe_attr(reaction_video_type or "video/mp4")
     original_video_url_safe = safe_attr(original_video_url)
     sender_status = "Tu ETERNA ha vuelto."
 
@@ -8820,7 +9304,7 @@ def sender_pack(sender_token: str):
                     preload="metadata"
                     aria-hidden="true"
                 >
-                    <source src="{reaction_url_safe}" type="video/mp4">
+                    <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
                 </video>
 
                 <div class="reaction-frame">
@@ -8831,7 +9315,7 @@ def sender_pack(sender_token: str):
                         webkit-playsinline
                         preload="metadata"
                     >
-                        <source src="{reaction_url_safe}" type="video/mp4">
+                        <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
                     </video>
                 </div>
 
@@ -9509,11 +9993,41 @@ def sender_pack(sender_token: str):
     <body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
         {body_content}
@@ -9620,11 +10134,41 @@ td, th {{ border-bottom:1px solid rgba(255,255,255,.10); padding:10px; text-alig
 </style></head><body>
 
 <div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
-    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
-    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
-    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
-    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
+            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
+            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+        </defs>
+        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
+            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
+        </circle>
+        <g>
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
+            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
+            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
+            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
+            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
+            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
+            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
+            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
+            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
+            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
+        </g>
+    </svg>
+    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
+        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
+        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
+        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
+    </svg>
 </div>
 
 <h1>Estado ETERNA</h1>
