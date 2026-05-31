@@ -2127,7 +2127,7 @@ def render_viral_block_page() -> HTMLResponse:
                 background:
                     radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
                     linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
-                color: #fff7e6;
+                color: #f8fbff;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
                 display: flex;
                 align-items: center;
@@ -6740,7 +6740,7 @@ html, body {
     padding: 0;
     width: 100%;
     height: 100%;
-    background: black;
+    background: #020814;
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
@@ -6748,7 +6748,10 @@ html, body {
 body {
     position: fixed;
     inset: 0;
-    background: black;
+    background:
+        radial-gradient(circle at 50% -12%, rgba(96,165,250,0.18), transparent 42%),
+        radial-gradient(circle at 12% 92%, rgba(255,255,255,0.05), transparent 34%),
+        linear-gradient(180deg, #06101f 0%, #020814 54%, #000000 100%);
 }
 
 .wrap {
@@ -6867,8 +6870,9 @@ video {
     text-align: center;
     padding: 28px;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
+        radial-gradient(circle at 50% 18%, rgba(96,165,250,0.16), transparent 36%),
+        radial-gradient(circle at 12% 88%, rgba(255,255,255,0.05), transparent 30%),
+        linear-gradient(180deg, rgba(3,10,24,0.88) 0%, rgba(0,0,0,0.98) 100%);
 }
 
 .payoff.show {
@@ -6889,11 +6893,11 @@ video {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #f2c878;
+    color: #eef6ff;
     font-size: 34px;
-    background: rgba(242,200,120,0.08);
-    border: 1px solid rgba(242,200,120,0.30);
-    box-shadow: 0 0 42px rgba(242,200,120,0.18);
+    background: rgba(96,165,250,0.08);
+    border: 1px solid rgba(186,218,255,0.28);
+    box-shadow: 0 0 42px rgba(96,165,250,0.18);
 }
 
 .eterna-progress {
@@ -6903,7 +6907,7 @@ video {
     height: 2px;
     margin: 28px auto 0 auto;
     border-radius: 999px;
-    background: rgba(242,200,120,0.16);
+    background: rgba(147,197,253,0.18);
 }
 
 .eterna-progress::before {
@@ -6914,7 +6918,7 @@ video {
     width: 45%;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, transparent, #f2c878, transparent);
+    background: linear-gradient(90deg, transparent, #f8fbff, #60a5fa, transparent);
     animation: eternaLine 1.8s ease-in-out infinite;
 }
 
@@ -6975,6 +6979,37 @@ video {
     background: rgba(255,255,255,0.10);
     color: #fff7e6;
     border: 1px solid rgba(218,178,92,0.22);
+}
+
+.magic-butterflies {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+}
+.magic-butterfly {
+    position: absolute;
+    display: block;
+    font-size: 20px;
+    opacity: 0;
+    filter: grayscale(1) brightness(1.9) drop-shadow(0 0 10px rgba(96,165,250,0.34));
+    animation: eternaButterflyFloat 16s ease-in-out infinite;
+}
+.magic-butterfly.b1 { left: 17%; bottom: 18%; animation-delay: 0.2s; transform: scale(0.72); }
+.magic-butterfly.b2 { right: 16%; bottom: 26%; animation-delay: 5.4s; transform: scale(0.58); }
+.magic-butterfly.b3 { left: 50%; bottom: 10%; animation-delay: 9.2s; transform: scale(0.46); }
+@keyframes eternaButterflyFloat {
+    0% { opacity: 0; transform: translate3d(0, 22px, 0) scale(0.55) rotate(-8deg); }
+    18% { opacity: .52; }
+    50% { opacity: .78; transform: translate3d(10px, -22px, 0) scale(0.82) rotate(7deg); }
+    82% { opacity: .42; }
+    100% { opacity: 0; transform: translate3d(-8px, -68px, 0) scale(0.96) rotate(-5deg); }
+}
+.payoff-card { position: relative; z-index: 2; }
+@media (prefers-reduced-motion: reduce) {
+    .magic-butterfly,
+    .eterna-progress::before { animation: none; opacity: .28; }
 }
 
 @media (max-width: 720px) {
@@ -7042,6 +7077,11 @@ video {
     </div>
 
     <div class="payoff" id="payoff">
+        <div class="magic-butterflies" aria-hidden="true">
+            <span class="magic-butterfly b1">🦋</span>
+            <span class="magic-butterfly b2">🦋</span>
+            <span class="magic-butterfly b3">🦋</span>
+        </div>
         <div class="payoff-card">
             <div class="payoff-mark">♥</div>
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
@@ -8638,6 +8678,7 @@ def sender_pack(sender_token: str):
     <main class="sender-experience" aria-label="Sender pack ETERNA">
 
         <section id="return-intro" class="sender-stage active" data-stage="intro">
+            <div class="sender-magic" aria-hidden="true"><span class="sender-butterfly sb1">🦋</span><span class="sender-butterfly sb2">🦋</span></div>
             <div class="brand-mark">ETERNA</div>
             <div class="intro-card">
                 <div class="gold-dot"></div>
@@ -8648,6 +8689,7 @@ def sender_pack(sender_token: str):
         </section>
 
         <section id="return-bridge" class="sender-stage" data-stage="bridge">
+            <div class="sender-magic" aria-hidden="true"><span class="sender-butterfly sb3">🦋</span></div>
             <div class="brand-mark">ETERNA</div>
             <div class="bridge-copy sender-return-sequence">
                 <p class="seq-line seq-one">Sube el volumen.</p>
@@ -8657,6 +8699,7 @@ def sender_pack(sender_token: str):
         </section>
 
         <section id="return-view" class="return-view" data-stage="view">
+            <div class="sender-magic sender-magic-view" aria-hidden="true"><span class="sender-butterfly sb1">🦋</span><span class="sender-butterfly sb4">🦋</span></div>
             <div class="top-bar">
                 <div>
                     <div class="eyebrow">ETERNA</div>
@@ -8709,6 +8752,7 @@ def sender_pack(sender_token: str):
             </div>
 
             <div id="eterna-final-signature" class="final-signature" aria-hidden="true">
+                <div class="final-butterfly">🦋</div>
                 <div class="final-orb">♥</div>
                 <div class="final-brand">ETERNA</div>
                 <h2>Lo que das se queda en alguien.</h2>
@@ -8781,7 +8825,7 @@ def sender_pack(sender_token: str):
             try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
 
-            // Sender Pack: la reacción debe escucharse. El fondo queda silenciado para no duplicar audio.
+            // Sender Pack: la reacción debe escucharse y el vídeo original conserva su música de fondo.
             if (reaction) {{
                 reaction.muted = false;
                 reaction.volume = 1;
@@ -8789,8 +8833,9 @@ def sender_pack(sender_token: str):
             }}
             if (bgReaction) bgReaction.muted = true;
             if (mini) {{
-                mini.muted = true;
-                mini.volume = 0;
+                mini.muted = false;
+                mini.volume = 0.32;
+                try {{ mini.removeAttribute("muted"); }} catch (e) {{}}
             }}
         }}
 
@@ -8903,14 +8948,14 @@ def sender_pack(sender_token: str):
         <title>ETERNA</title>
         <style>
             * {{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }}
-            html, body {{ margin:0; min-height:100%; background:#050403; color:#fff; }}
+            html, body {{ margin:0; min-height:100%; background:#020814; color:#fff; }}
             body {{
                 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;
                 overflow-x:hidden;
                 background:
-                    radial-gradient(circle at 50% -10%, rgba(218,177,83,.22), transparent 38%),
-                    radial-gradient(circle at 10% 85%, rgba(160,116,43,.13), transparent 38%),
-                    #050403;
+                    radial-gradient(circle at 50% -10%, rgba(96,165,250,.20), transparent 42%),
+                    radial-gradient(circle at 10% 85%, rgba(255,255,255,.055), transparent 36%),
+                    linear-gradient(180deg, #06101f 0%, #020814 54%, #000 100%);
             }}
             .sender-experience {{
                 min-height:100svh;
@@ -8918,6 +8963,50 @@ def sender_pack(sender_token: str):
                 position:relative;
                 overflow:hidden;
             }}
+            .sender-magic {{
+                position:absolute;
+                inset:0;
+                overflow:hidden;
+                pointer-events:none;
+                z-index:1;
+            }}
+            .sender-magic-view {{ z-index:1; }}
+            .sender-butterfly {{
+                position:absolute;
+                display:block;
+                font-size:20px;
+                opacity:0;
+                filter:grayscale(1) brightness(1.9) drop-shadow(0 0 12px rgba(96,165,250,.36));
+                animation:senderButterflyFloat 17s ease-in-out infinite;
+            }}
+            .sender-butterfly.sb1 {{ left:14%; bottom:18%; animation-delay:.4s; transform:scale(.66); }}
+            .sender-butterfly.sb2 {{ right:15%; bottom:28%; animation-delay:5.8s; transform:scale(.52); }}
+            .sender-butterfly.sb3 {{ left:50%; bottom:16%; animation-delay:1.1s; transform:scale(.70); }}
+            .sender-butterfly.sb4 {{ right:10%; top:20%; animation-delay:8.4s; transform:scale(.48); }}
+            .final-butterfly {{
+                font-size:32px;
+                line-height:1;
+                margin:0 auto 18px;
+                opacity:.92;
+                filter:grayscale(1) brightness(2) drop-shadow(0 0 18px rgba(96,165,250,.42));
+                animation:finalButterflyBreath 5.8s ease-in-out infinite;
+            }}
+            @keyframes senderButterflyFloat {{
+                0% {{ opacity:0; transform:translate3d(0, 26px, 0) scale(.52) rotate(-7deg); }}
+                20% {{ opacity:.50; }}
+                52% {{ opacity:.78; transform:translate3d(12px, -18px, 0) scale(.78) rotate(8deg); }}
+                84% {{ opacity:.38; }}
+                100% {{ opacity:0; transform:translate3d(-10px, -72px, 0) scale(.94) rotate(-4deg); }}
+            }}
+            @keyframes finalButterflyBreath {{
+                0%,100% {{ opacity:.62; transform:translateY(0) scale(.94); }}
+                50% {{ opacity:1; transform:translateY(-8px) scale(1.04); }}
+            }}
+            @media (prefers-reduced-motion: reduce) {{
+                .sender-butterfly,
+                .final-butterfly {{ animation:none; opacity:.34; }}
+            }}
+
             .brand-mark {{
                 position:fixed;
                 top:calc(env(safe-area-inset-top) + 22px);
@@ -8941,8 +9030,8 @@ def sender_pack(sender_token: str):
                 padding:32px 22px;
                 text-align:center;
                 background:
-                    radial-gradient(circle at 50% 18%, rgba(219,180,91,.18), transparent 34%),
-                    linear-gradient(180deg, #070503 0%, #010101 100%);
+                    radial-gradient(circle at 50% 18%, rgba(96,165,250,.16), transparent 36%),
+                    linear-gradient(180deg, #06101f 0%, #01040a 100%);
                 z-index:10;
             }}
             .sender-stage.active {{ display:flex; }}
@@ -8952,16 +9041,16 @@ def sender_pack(sender_token: str):
                 padding:42px 26px 30px;
                 border-radius:34px;
                 background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-                border:1px solid rgba(215,180,106,.25);
-                box-shadow:0 38px 110px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.09);
+                border:1px solid rgba(147,197,253,.20);
+                box-shadow:0 38px 110px rgba(0,0,0,.72), 0 0 52px rgba(96,165,250,.08), inset 0 1px 0 rgba(255,255,255,.09);
             }}
             .gold-dot {{
                 width:54px;
                 height:54px;
                 margin:0 auto 24px;
                 border-radius:50%;
-                background:radial-gradient(circle, #f3d78f 0%, #b8872f 55%, rgba(184,135,47,.2) 100%);
-                box-shadow:0 0 46px rgba(218,177,83,.46);
+                background:radial-gradient(circle, #f8fbff 0%, #60a5fa 58%, rgba(96,165,250,.15) 100%);
+                box-shadow:0 0 46px rgba(96,165,250,.34);
             }}
             .intro-card h1 {{
                 margin:0 0 10px;
@@ -9008,7 +9097,7 @@ def sender_pack(sender_token: str):
                 display:block;
                 margin-top:26px;
                 font-size:20px;
-                color:#d7b46a;
+                color:#bfdbfe;
                 opacity:0;
                 animation:bridgePhrase 2.2s ease both 2.8s;
             }}
@@ -9053,7 +9142,7 @@ def sender_pack(sender_token: str):
                 display:none;
                 position:relative;
                 overflow:hidden;
-                background:#020202;
+                background:linear-gradient(180deg, #06101f 0%, #020814 48%, #000 100%);
             }}
             .return-view.active {{ display:block; }}
             .top-bar {{
@@ -9100,7 +9189,7 @@ def sender_pack(sender_token: str):
                 position:absolute;
                 inset:0;
                 overflow:hidden;
-                background:#020202;
+                background:linear-gradient(180deg, #06101f 0%, #020814 48%, #000 100%);
                 border:0;
                 border-radius:0;
                 box-shadow:none;
@@ -9135,12 +9224,12 @@ def sender_pack(sender_token: str):
                 border-radius:34px;
                 overflow:hidden;
                 background:#000;
-                border:1px solid rgba(255,224,154,.28);
+                border:1px solid rgba(147,197,253,.24);
                 box-shadow:
                     0 26px 100px rgba(0,0,0,.76),
                     0 0 0 1px rgba(255,255,255,.075) inset,
-                    0 0 34px rgba(215,180,106,.18),
-                    0 0 88px rgba(215,180,106,.11);
+                    0 0 34px rgba(96,165,250,.16),
+                    0 0 88px rgba(255,255,255,.055);
                 animation:eternaFrameBreath 9.5s ease-in-out infinite;
             }}
             .reaction-frame::after {{
@@ -9151,14 +9240,14 @@ def sender_pack(sender_token: str):
                 pointer-events:none;
                 border-radius:34px;
                 background:
-                    linear-gradient(120deg, rgba(255,255,255,.16), transparent 18%, transparent 72%, rgba(255,224,154,.10)),
-                    radial-gradient(circle at 50% 0%, rgba(255,224,154,.16), transparent 38%);
+                    linear-gradient(120deg, rgba(255,255,255,.16), transparent 18%, transparent 72%, rgba(147,197,253,.11)),
+                    radial-gradient(circle at 50% 0%, rgba(96,165,250,.16), transparent 38%);
                 mix-blend-mode:screen;
                 opacity:.62;
             }}
             @keyframes eternaFrameBreath {{
-                0%,100% {{ box-shadow:0 26px 100px rgba(0,0,0,.76), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 28px rgba(215,180,106,.13), 0 0 70px rgba(215,180,106,.08); }}
-                50% {{ box-shadow:0 30px 112px rgba(0,0,0,.82), 0 0 0 1px rgba(255,255,255,.095) inset, 0 0 46px rgba(215,180,106,.25), 0 0 105px rgba(215,180,106,.14); }}
+                0%,100% {{ box-shadow:0 26px 100px rgba(0,0,0,.76), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 28px rgba(96,165,250,.13), 0 0 70px rgba(147,197,253,.07); }}
+                50% {{ box-shadow:0 30px 112px rgba(0,0,0,.82), 0 0 0 1px rgba(255,255,255,.095) inset, 0 0 46px rgba(96,165,250,.24), 0 0 105px rgba(147,197,253,.12); }}
             }}
             #eterna-reaction-player {{
                 width:100%;
