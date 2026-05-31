@@ -11,7 +11,7 @@ print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION �
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
-print("🦋 ETERNA PREMIUM SVG BUTTERFLY THEME + SENDER MIME FIX 🦋")
+print("🎬 ETERNA CINEMATIC UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
 
 import html
 import json
@@ -9260,6 +9260,7 @@ def sender_pack(sender_token: str):
     reaction_url_safe = safe_attr(reaction_url)
     reaction_video_type_safe = safe_attr(reaction_video_type or "video/mp4")
     original_video_url_safe = safe_attr(original_video_url)
+    original_video_type_safe = safe_attr(guess_media_type_from_url(original_video_url) if original_video_url else "video/mp4")
     sender_status = "Tu ETERNA ha vuelto."
 
     body_content = f"""
@@ -9327,7 +9328,7 @@ def sender_pack(sender_token: str):
                         webkit-playsinline
                         preload="metadata"
                     >
-                        <source src="{original_video_url_safe}" type="video/mp4">
+                        <source src="{original_video_url_safe}" type="{original_video_type_safe}">
                     </video>
                 </div>
             </div>
@@ -9411,15 +9412,21 @@ def sender_pack(sender_token: str):
             try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
 
             // La reacción va sin sonido ambiente. La música/piano vive desde el vídeo original.
+            // REGLA ETERNA SENDER PACK:
+            // La reacción se ve, pero NO se escucha.
+            // El único audio permitido es el del vídeo original generado por el video engine.
             if (reaction) reaction.muted = true;
             if (bgReaction) bgReaction.muted = true;
             if (mini) {{
                 mini.muted = false;
-                mini.volume = 0.65;
+                mini.volume = 0.90;
             }}
         }}
 
         function playAllFromStart() {{
+            if (reaction) reaction.muted = true;
+            if (bgReaction) bgReaction.muted = true;
+            if (mini) {{ mini.muted = false; mini.volume = 0.90; }}
             if (shareWrap) shareWrap.style.display = "none";
             if (replay) replay.style.display = "";
             if (finalSignature) {{
@@ -9438,6 +9445,9 @@ def sender_pack(sender_token: str):
         }}
 
         function replayEmotionFreely() {{
+            if (reaction) reaction.muted = true;
+            if (bgReaction) bgReaction.muted = true;
+            if (mini) {{ mini.muted = false; mini.volume = 0.90; }}
             if (shareWrap) shareWrap.style.display = "grid";
             if (replay) replay.style.display = "";
             if (finalSignature) {{
