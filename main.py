@@ -11,7 +11,7 @@ print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION �
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
-print("🎬 ETERNA CINEMATIC UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
+print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
 
 import html
 import json
@@ -2183,43 +2183,64 @@ def render_viral_block_page() -> HTMLResponse:
     </head>
     <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
         <div class="wrap">
             <h1>Esto no era para ti</h1>
@@ -2422,43 +2443,64 @@ p { opacity:0.85; }
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
 
 <h1>Condiciones de uso — Tu ETERNA</h1>
@@ -3713,43 +3755,64 @@ def render_create_form() -> str:
     </head>
     <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
         <div class="wrap">
             <div class="card" style="position:relative;z-index:2;">
@@ -4933,43 +4996,64 @@ def render_create_intro() -> HTMLResponse:
     </head>
     <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
         <main class="stage" style="position:relative;z-index:2;">
             <section class="phone">
@@ -5196,43 +5280,64 @@ def home(request: Request):
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <main class="page" style="position:relative;z-index:2;">
         <section class="hero" aria-label="ETERNA">
@@ -5658,43 +5763,64 @@ h1 {
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <div class="wrap">
         <h1>Este enlace ya no está disponible</h1>
@@ -5763,43 +5889,64 @@ h1 {
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <div class="wrap">
         <h1>Aún no está listo</h1>
@@ -5906,43 +6053,64 @@ h1 {{
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <div class="wrap">
         <div class="brand">ETERNA</div>
@@ -6047,43 +6215,64 @@ h1 {{
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <div class="wrap">
         <div class="brand">ETERNA</div>
@@ -6274,43 +6463,64 @@ def checkout_exito(order_id: str):
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <main class="card" style="position:relative;z-index:2;">
         <div class="brand">ETERNA</div>
@@ -6644,43 +6854,64 @@ def resumen(order_id: str):
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <main class="card" style="position:relative;z-index:2;">
         <div class="brand">ETERNA</div>
@@ -7028,43 +7259,64 @@ h1 {{
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <main class="wrap">
         <div class="logo-mark">♥</div>
@@ -7467,43 +7719,64 @@ video {
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
 <div class="wrap">
     <video
@@ -8832,43 +9105,64 @@ h1 {{
 
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
 
 <div class="container" style="position:relative;z-index:2;">
@@ -9057,43 +9351,64 @@ h1 {{
 </head>
 <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
     <div class="wrap">
         <h1>{safe_text(title)}</h1>
@@ -9210,43 +9525,64 @@ def sender_pack(sender_token: str):
         </head>
         <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
             <div class="card" style="position:relative;z-index:2;">
                 <div class="logo">ETERNA</div>
@@ -10002,43 +10338,64 @@ def sender_pack(sender_token: str):
     </head>
     <body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
         {body_content}
     </body>
@@ -10143,43 +10500,64 @@ td, th {{ border-bottom:1px solid rgba(255,255,255,.10); padding:10px; text-alig
 .small {{ color:rgba(255,255,255,.62); line-height:1.6; }}
 </style></head><body>
 
-<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <svg viewBox="0 0 420 420" width="230" height="230" style="position:absolute;right:5%;top:6%;opacity:.96;filter:drop-shadow(0 0 22px rgba(75,175,255,.92)) drop-shadow(0 0 54px rgba(37,99,235,.62));transform:rotate(-10deg);" xmlns="http://www.w3.org/2000/svg">
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <radialGradient id="et_blue_glow" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"/><stop offset="30%" stop-color="#9ed8ff" stop-opacity=".96"/><stop offset="68%" stop-color="#297cff" stop-opacity=".62"/><stop offset="100%" stop-color="#041326" stop-opacity="0"/></radialGradient>
-            <linearGradient id="et_blue_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7fbff"/><stop offset="28%" stop-color="#a9dcff"/><stop offset="62%" stop-color="#3f8cff"/><stop offset="100%" stop-color="#071c52"/></linearGradient>
-            <linearGradient id="et_gold_wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff3c4"/><stop offset="55%" stop-color="#d9a64f"/><stop offset="100%" stop-color="#6f4110"/></linearGradient>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
-        <circle cx="210" cy="210" r="150" fill="url(#et_blue_glow)" opacity=".28">
-            <animate attributeName="opacity" values=".18;.34;.18" dur="7s" repeatCount="indefinite" />
-        </circle>
-        <g>
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="8s" repeatCount="indefinite" />
-            <path d="M203 214 C137 121 128 55 181 38 C234 21 242 118 214 207 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M217 207 C247 109 309 38 353 73 C397 108 319 187 225 216 Z" fill="url(#et_blue_wing)" opacity=".96"/>
-            <path d="M201 222 C126 220 83 255 111 295 C140 336 189 293 210 229 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M223 225 C291 217 337 249 315 291 C292 333 241 294 218 231 Z" fill="url(#et_blue_wing)" opacity=".82"/>
-            <path d="M209 173 C214 192 216 219 214 260" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" opacity=".95"/>
-            <path d="M171 78 C190 105 200 136 207 180 M257 82 C239 111 226 141 217 181 M130 253 C159 242 185 236 210 229 M295 250 C268 241 244 235 220 229" stroke="#ffffff" stroke-opacity=".48" stroke-width="3" fill="none"/>
-            <circle cx="214" cy="213" r="10" fill="#ffffff" opacity=".96"/>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
         </g>
     </svg>
-    <svg viewBox="0 0 220 220" width="86" height="86" style="position:absolute;left:7%;top:43%;opacity:.78;filter:drop-shadow(0 0 12px rgba(255,205,112,.65));transform:rotate(17deg);" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="et_gold_small" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4c8"/><stop offset="55%" stop-color="#d59c43"/><stop offset="100%" stop-color="#5c350e"/></linearGradient></defs>
-        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="9s" repeatCount="indefinite" />
-            <path d="M104 113 C68 65 66 31 93 22 C124 12 130 72 111 111 Z" fill="url(#et_gold_small)"/>
-            <path d="M116 111 C134 62 169 25 193 44 C218 65 172 104 122 116 Z" fill="url(#et_gold_small)"/>
-            <path d="M104 120 C65 119 43 136 58 158 C75 181 101 156 111 124 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M120 122 C154 118 180 134 168 158 C155 181 130 157 116 125 Z" fill="url(#et_gold_small)" opacity=".82"/>
-            <path d="M110 91 C115 109 115 125 113 150" stroke="#fff7dd" stroke-width="5" stroke-linecap="round"/>
-        </g>
-    </svg>
-    <svg viewBox="0 0 520 320" width="430" height="270" style="position:absolute;right:2%;top:18%;opacity:.82;filter:drop-shadow(0 0 16px rgba(64,156,255,.45));" xmlns="http://www.w3.org/2000/svg">
-        <path d="M472 28 C349 72 315 156 247 201 C178 247 107 238 48 287" stroke="#4db4ff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".38"/>
-        <path d="M454 54 C346 93 307 170 244 211 C180 254 117 248 68 289" stroke="#e4b96a" stroke-width="2" stroke-linecap="round" fill="none" opacity=".28"/>
-        <circle cx="434" cy="70" r="2.8" fill="#bde8ff" opacity=".95"/><circle cx="378" cy="103" r="2.2" fill="#6ec1ff" opacity=".82"/><circle cx="322" cy="145" r="2.1" fill="#ffd488" opacity=".78"/><circle cx="258" cy="199" r="1.8" fill="#92d6ff" opacity=".74"/><circle cx="194" cy="232" r="1.7" fill="#ffd488" opacity=".66"/><circle cx="122" cy="254" r="1.5" fill="#78c7ff" opacity=".62"/>
-    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
 </div>
+
 
 <h1>Estado ETERNA</h1>
 <div class="small">Pedido: {safe_text(order_id)} · Destinatario: {safe_text(order.get('recipient_name'))} · Regalante: {safe_text(order.get('sender_name'))}</div>
