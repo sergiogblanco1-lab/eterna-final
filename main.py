@@ -13,6 +13,7 @@ print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
 print("🎬 ETERNA DEFINITIVA: SALVAVIDAS + CINEMATIC + NO OVERLAY VIDEO + AUDIO ENGINE ONLY 🎬")
+print("🦋 ETERNA LUXURY REBRAND V2: HOME + CREAR CINEMATIC CHAPTERS 🦋")
 
 import html
 import json
@@ -3752,6 +3753,123 @@ def render_create_form() -> str:
                 .phone-code {{ min-width: 96px; flex-basis: 96px; }}
                 .intro-line {{ font-size: 18px; }}
             }}
+            /* =========================================================
+               ETERNA CINEMATIC V2 — BLUE BUTTERFLY LUXURY LAYER
+               Solo visual. No toca backend, pagos, SMS ni video engine.
+            ========================================================= */
+            :root {{
+                --eterna-black: #05070B;
+                --eterna-night: #0B1120;
+                --eterna-gold: #C7A15B;
+                --eterna-gold-light: #E5C98A;
+                --eterna-ivory: #F4EAD7;
+                --eterna-blue: #63A8FF;
+                --eterna-blue-deep: #2C63F2;
+            }}
+            body {{
+                background:
+                    radial-gradient(circle at 76% 8%, rgba(99,168,255,.22), transparent 25%),
+                    radial-gradient(circle at 12% 28%, rgba(44,99,242,.12), transparent 28%),
+                    radial-gradient(circle at 50% -8%, rgba(199,161,91,.20), transparent 32%),
+                    linear-gradient(180deg, #05070B 0%, #02040A 54%, #000 100%) !important;
+            }}
+            .card {{
+                max-width: 1040px;
+                margin-inline: auto;
+                background:
+                    radial-gradient(circle at 78% 4%, rgba(99,168,255,.13), transparent 28%),
+                    radial-gradient(circle at 50% -8%, rgba(229,201,138,.14), transparent 34%),
+                    linear-gradient(180deg, rgba(11,17,32,.88), rgba(2,4,10,.94)) !important;
+                border-color: rgba(199,161,91,.28) !important;
+            }}
+            .card::after {{
+                content: "🦋";
+                position: absolute;
+                right: clamp(20px, 5vw, 58px);
+                top: clamp(18px, 4vw, 44px);
+                font-size: clamp(38px, 7vw, 76px);
+                color: #dff7ff;
+                opacity: .62;
+                filter: drop-shadow(0 0 22px rgba(99,168,255,.68)) drop-shadow(0 0 70px rgba(44,99,242,.38));
+                pointer-events: none;
+                animation: eternaButterflyBreath 9s ease-in-out infinite;
+                z-index: 1;
+            }}
+            @keyframes eternaButterflyBreath {{
+                0%,100% {{ transform: translate3d(0,0,0) rotate(-4deg) scale(1); opacity:.48; }}
+                50% {{ transform: translate3d(-10px,-12px,0) rotate(3deg) scale(1.06); opacity:.78; }}
+            }}
+            h1::after {{
+                content: "";
+                display: block;
+                width: min(220px, 42vw);
+                height: 1px;
+                margin: 18px auto 0;
+                background: linear-gradient(90deg, transparent, rgba(99,168,255,.85), rgba(229,201,138,.75), transparent);
+                box-shadow: 0 0 24px rgba(99,168,255,.35);
+            }}
+            .subtitle {{
+                color: rgba(244,234,215,.82) !important;
+                letter-spacing: .04em;
+            }}
+            .intro {{
+                border: 1px solid rgba(99,168,255,.10);
+                border-radius: 28px;
+                background: radial-gradient(circle at 50% 0%, rgba(99,168,255,.08), transparent 48%);
+            }}
+            .section {{
+                counter-increment: eternaChapter;
+                border-color: rgba(199,161,91,.16) !important;
+                background:
+                    radial-gradient(circle at 100% 0%, rgba(99,168,255,.08), transparent 40%),
+                    linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.019)) !important;
+            }}
+            .section-title {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: var(--eterna-gold-light) !important;
+            }}
+            .section-title::before {{
+                content: "CAPÍTULO " counter(eternaChapter);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 88px;
+                padding: 6px 9px;
+                border-radius: 999px;
+                font-size: 10px;
+                letter-spacing: .14em;
+                color: rgba(223,247,255,.92);
+                background: rgba(99,168,255,.08);
+                border: 1px solid rgba(99,168,255,.20);
+                box-shadow: 0 0 20px rgba(99,168,255,.10);
+            }}
+            .section.s1 .section-title::after {{ content: "La persona"; color: rgba(255,255,255,.38); font-size: 11px; letter-spacing:.12em; }}
+            .section.s2 .section-title::after {{ content: "Los recuerdos"; color: rgba(255,255,255,.38); font-size: 11px; letter-spacing:.12em; }}
+            .section.s3 .section-title::after {{ content: "Las palabras"; color: rgba(255,255,255,.38); font-size: 11px; letter-spacing:.12em; }}
+            .section.s4 .section-title::after {{ content: "La entrega"; color: rgba(255,255,255,.38); font-size: 11px; letter-spacing:.12em; }}
+            .photo-card:hover, .emotion-card:hover, .delivery-option:hover {{
+                border-color: rgba(99,168,255,.24) !important;
+                box-shadow: 0 22px 58px rgba(0,0,0,.34), 0 0 32px rgba(99,168,255,.08) !important;
+                transform: translateY(-1px);
+            }}
+            input:focus, select:focus, textarea:focus {{
+                border-color: rgba(99,168,255,.46) !important;
+                box-shadow: 0 0 0 4px rgba(99,168,255,.08), 0 0 32px rgba(99,168,255,.13) !important;
+            }}
+            .ghost {{
+                background: rgba(99,168,255,.055) !important;
+                border-color: rgba(99,168,255,.18) !important;
+            }}
+            @media (prefers-reduced-motion: reduce) {{
+                *, *::before, *::after {{ animation: none !important; transition: none !important; scroll-behavior: auto !important; }}
+            }}
+            @media (max-width: 760px) {{
+                .card::after {{ opacity: .34; right: 18px; top: 18px; }}
+                .section-title {{ flex-wrap: wrap; }}
+                .section-title::before {{ min-width: auto; }}
+            }}
 </style>
     </head>
     <body>
@@ -5147,20 +5265,25 @@ def home(request: Request):
             z-index: 1;
         }
         .symbol {
-            width: 150px;
-            height: 150px;
+            width: 178px;
+            height: 178px;
             margin: 0 auto 18px;
             border-radius: 999px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #ffd98b;
-            font-size: 96px;
+            color: #dff7ff;
+            font-size: 104px;
             line-height: 1;
-            text-shadow: 0 0 28px rgba(255,204,111,.65), 0 0 64px rgba(255,164,57,.38);
-            background: radial-gradient(circle, rgba(255,225,159,.19), transparent 68%);
-            border: 1px solid rgba(255,220,150,.18);
-            box-shadow: 0 0 72px rgba(255,177,68,.18);
+            text-shadow: 0 0 32px rgba(111,213,255,.78), 0 0 88px rgba(44,99,242,.52);
+            background: radial-gradient(circle, rgba(99,168,255,.18), transparent 68%);
+            border: 1px solid rgba(125,210,255,.22);
+            box-shadow: 0 0 92px rgba(99,168,255,.20), inset 0 0 38px rgba(255,217,139,.06);
+            animation: butterflyFloat 8s ease-in-out infinite;
+        }
+        @keyframes butterflyFloat {
+            0%,100% { transform: translateY(0) rotate(-1deg); filter: brightness(1); }
+            50% { transform: translateY(-10px) rotate(1deg); filter: brightness(1.12); }
         }
         .brand {
             margin: 0;
@@ -5342,15 +5465,16 @@ def home(request: Request):
 
     <main class="page" style="position:relative;z-index:2;">
         <section class="hero" aria-label="ETERNA">
-            <div class="symbol">♥</div>
+            <div class="symbol">🦋</div>
             <h1 class="brand">ETERNA</h1>
-            <div class="tag">Hay momentos que merecen quedarse para siempre</div>
+            <div class="tag">Una experiencia privada para convertir recuerdos en emoción real</div>
             <div class="divider">♥</div>
             <div class="copy">
-                No es un vídeo.<br>
-                Es un momento.
+                No envíes un vídeo.<br>
+                Entrega un momento.
             </div>
             <a class="btn" href="/crear">Crear mi ETERNA</a>
+            <div style="margin-top:14px;color:rgba(255,255,255,.46);font-size:13px;letter-spacing:.18em;text-transform:uppercase;">6 fotos · 3 frases · una emoción que vuelve</div>
 
             <div class="pillars">
                 <div class="pillar">
