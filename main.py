@@ -9633,16 +9633,7 @@ def sender_pack(sender_token: str):
             <div class="call-shell">
                 <div class="call-glow"></div>
 
-                <video
-                    id="eterna-bg-reaction"
-                    muted
-                    playsinline
-                    webkit-playsinline
-                    preload="metadata"
-                    aria-hidden="true"
-                >
-                    <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
-                </video>
+                <div id="eterna-bg-reaction" aria-hidden="true"></div>
 
                 <div class="reaction-frame">
                     <video
@@ -9650,7 +9641,9 @@ def sender_pack(sender_token: str):
                         muted
                         playsinline
                         webkit-playsinline
-                        preload="metadata"
+                        preload="auto"
+                        controlslist="nodownload noplaybackrate noremoteplayback"
+                        disablepictureinpicture
                     >
                         <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
                     </video>
@@ -9658,14 +9651,10 @@ def sender_pack(sender_token: str):
 
                 <div class="mini-original-wrap" aria-label="Vídeo original enviado">
                     <div class="mini-label">Lo que enviaste</div>
-                    <video
-                        id="eterna-mini-original"
-                        playsinline
-                        webkit-playsinline
-                        preload="metadata"
-                    >
+                    <div class="mini-original-static">Vídeo ETERNA</div>
+                    <audio id="eterna-engine-audio" preload="auto">
                         <source src="{original_video_url_safe}" type="{original_video_type_safe}">
-                    </video>
+                    </audio>
                 </div>
             </div>
 
@@ -9703,7 +9692,7 @@ def sender_pack(sender_token: str):
 
         const reaction = document.getElementById("eterna-reaction-player");
         const bgReaction = document.getElementById("eterna-bg-reaction");
-        const mini = document.getElementById("eterna-mini-original");
+        const mini = document.getElementById("eterna-engine-audio");
         const replay = document.getElementById("eterna-replay-all");
         const finalSignature = document.getElementById("eterna-final-signature");
         const shareWrap = document.getElementById("eterna-share-wrap");
@@ -9715,6 +9704,7 @@ def sender_pack(sender_token: str):
             if (bridge) bridge.classList.remove("active");
             if (view) view.classList.add("active");
             document.body.classList.add("return-started");
+            document.body.classList.add("sender-performance-mode");
             playAllFromStart();
         }}
 
@@ -9735,16 +9725,13 @@ def sender_pack(sender_token: str):
         }}
 
         function syncBackground() {{
-            if (!reaction || !bgReaction) return;
-            try {{
-                const diff = Math.abs((bgReaction.currentTime || 0) - (reaction.currentTime || 0));
-                if (diff > 0.35) bgReaction.currentTime = reaction.currentTime || 0;
-            }} catch (e) {{}}
+            // En Sender Pack solo debe decodificarse un vídeo real en Android.
+            // El fondo cinematográfico es estático para evitar trompicones.
+            return;
         }}
 
         function preparePlayersForStart() {{
             try {{ if (reaction) reaction.currentTime = 0; }} catch (e) {{}}
-            try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
 
             // La reacción va sin sonido ambiente. La música/piano vive desde el vídeo original.
@@ -9752,16 +9739,43 @@ def sender_pack(sender_token: str):
             // La reacción se ve, pero NO se escucha.
             // El único audio permitido es el del vídeo original generado por el video engine.
             if (reaction) reaction.muted = true;
-            if (bgReaction) bgReaction.muted = true;
             if (mini) {{
                 mini.muted = false;
                 mini.volume = 0.90;
             }}
         }}
 
+        function waitUntilPlayable(media, timeoutMs) {{
+            return new Promise(function(resolve) {{
+                if (!media) return resolve(false);
+                if (media.readyState >= 3) return resolve(true);
+                let done = false;
+                const finish = function(ok) {{
+                    if (done) return;
+                    done = true;
+                    media.removeEventListener("canplay", onReady);
+                    media.removeEventListener("loadeddata", onReady);
+                    resolve(ok);
+                }};
+                const onReady = function() {{ finish(true); }};
+                media.addEventListener("canplay", onReady, {{ once:true }});
+                media.addEventListener("loadeddata", onReady, {{ once:true }});
+                try {{ media.load(); }} catch (e) {{}}
+                window.setTimeout(function() {{ finish(false); }}, timeoutMs || 1800);
+            }});
+        }}
+
+        async function safeStartPlayback() {{
+            await Promise.race([
+                Promise.all([waitUntilPlayable(reaction, 2200), waitUntilPlayable(mini, 2200)]),
+                new Promise(resolve => window.setTimeout(resolve, 2400))
+            ]);
+            try {{ if (mini) await mini.play(); }} catch (e) {{}}
+            try {{ if (reaction) await reaction.play(); }} catch (e) {{}}
+        }}
+
         function playAllFromStart() {{
             if (reaction) reaction.muted = true;
-            if (bgReaction) bgReaction.muted = true;
             if (mini) {{ mini.muted = false; mini.volume = 0.90; }}
             if (shareWrap) shareWrap.style.display = "none";
             if (replay) replay.style.display = "";
@@ -9775,14 +9789,11 @@ def sender_pack(sender_token: str):
 
             preparePlayersForStart();
 
-            if (bgReaction) bgReaction.play().catch(() => {{}});
-            if (mini) mini.play().catch(() => {{}});
-            if (reaction) reaction.play().catch(() => {{}});
+            safeStartPlayback();
         }}
 
         function replayEmotionFreely() {{
             if (reaction) reaction.muted = true;
-            if (bgReaction) bgReaction.muted = true;
             if (mini) {{ mini.muted = false; mini.volume = 0.90; }}
             if (shareWrap) shareWrap.style.display = "grid";
             if (replay) replay.style.display = "";
@@ -9791,14 +9802,13 @@ def sender_pack(sender_token: str):
                 finalSignature.setAttribute("aria-hidden", "true");
             }}
 
-            if (reaction) reaction.controls = true;
-            if (mini) mini.controls = true;
+            // No activar controles nativos en replay: en Android se quedaban encima.
+            if (reaction) reaction.controls = false;
+            if (mini) mini.controls = false;
 
             preparePlayersForStart();
 
-            if (bgReaction) bgReaction.play().catch(() => {{}});
-            if (mini) mini.play().catch(() => {{}});
-            if (reaction) reaction.play().catch(() => {{}});
+            safeStartPlayback();
         }}
 
         if (openBtn) {{
@@ -9811,17 +9821,14 @@ def sender_pack(sender_token: str):
             reaction.addEventListener("play", function () {{
                 syncMini();
                 syncBackground();
-                if (bgReaction) bgReaction.play().catch(() => {{}});
-                if (mini) mini.play().catch(() => {{}});
+                    if (mini) mini.play().catch(() => {{}});
             }});
             reaction.addEventListener("pause", function () {{
-                if (bgReaction) bgReaction.pause();
                 if (mini) mini.pause();
             }});
             reaction.addEventListener("seeking", function () {{ syncMini(); syncBackground(); }});
             reaction.addEventListener("timeupdate", function () {{ syncMini(); syncBackground(); }});
             reaction.addEventListener("ended", function () {{
-                try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
                 try {{ if (mini) mini.pause(); }} catch (e) {{}}
                 if (finalSignature) {{
                     finalSignature.classList.add("active");
@@ -10085,17 +10092,24 @@ def sender_pack(sender_token: str):
                 pointer-events:none;
                 z-index:1;
             }}
-            #eterna-bg-reaction {{
+            #eterna-bg-reaction {
                 position:absolute;
                 inset:0;
                 width:100%;
                 height:100%;
-                object-fit:cover;
-                filter:blur(36px) brightness(.25) saturate(1.08);
-                transform:scale(1.22);
-                opacity:.76;
                 z-index:0;
-            }}
+                background:
+                    radial-gradient(circle at 50% 20%, rgba(218,177,83,.20), transparent 34%),
+                    radial-gradient(circle at 16% 80%, rgba(90,191,255,.10), transparent 38%),
+                    linear-gradient(180deg, #050505 0%, #000 100%);
+                opacity:.95;
+            }
+            body.sender-performance-mode [data-eterna-cinematic-scene="1"] { display:none !important; }
+            body.sender-performance-mode .call-glow,
+            body.sender-performance-mode .reaction-frame::after { display:none !important; }
+            body.sender-performance-mode .reaction-frame,
+            body.sender-performance-mode #eterna-reaction-player { animation:none !important; }
+            body.sender-performance-mode * { backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
             .reaction-frame {{
                 position:absolute;
                 inset:76px 10px 104px 10px;
@@ -10168,13 +10182,22 @@ def sender_pack(sender_token: str):
                 font-weight:800;
                 letter-spacing:.02em;
             }}
-            #eterna-mini-original {{
+            .mini-original-static {
                 width:100%;
                 height:100%;
-                object-fit:cover;
-                display:block;
-                background:#000;
-            }}
+                display:grid;
+                place-items:center;
+                padding:18px 10px 10px;
+                text-align:center;
+                color:rgba(255,240,190,.86);
+                background:
+                    radial-gradient(circle at 50% 30%, rgba(216,183,109,.16), transparent 44%),
+                    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
+                font-size:11px;
+                font-weight:850;
+                letter-spacing:.08em;
+            }
+            #eterna-engine-audio { display:none; }
             .return-copy {{
                 position:absolute;
                 left:18px;
