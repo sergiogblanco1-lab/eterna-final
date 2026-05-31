@@ -11,7 +11,6 @@ print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION �
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
-print("🦋 VISUAL SUAVE MARIPOSAS + AUDIO SOLO VIDEO ENGINE EN SENDER PACK 🦋")
 
 import html
 import json
@@ -2127,7 +2126,7 @@ def render_viral_block_page() -> HTMLResponse:
                 min-height: 100vh;
                 background:
                     radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-                    linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+                    linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
                 color: #fff7e6;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
                 display: flex;
@@ -2182,6 +2181,15 @@ def render_viral_block_page() -> HTMLResponse:
         </style>
     </head>
     <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
         <div class="wrap">
             <h1>Esto no era para ti</h1>
             <div class="main">
@@ -2382,6 +2390,15 @@ p { opacity:0.85; }
 </style>
 </head>
 <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
 
 <h1>Condiciones de uso — Tu ETERNA</h1>
 
@@ -2776,7 +2793,7 @@ def render_create_form() -> str:
                     radial-gradient(circle at 50% -12%, rgba(225,180,92,0.24), transparent 34%),
                     radial-gradient(circle at 12% 18%, rgba(255,230,170,0.08), transparent 26%),
                     radial-gradient(circle at 90% 78%, rgba(204,140,44,0.10), transparent 34%),
-                    linear-gradient(180deg, #050403 0%, #000000 48%, #050403 100%);
+                    linear-gradient(180deg, #020817 0%, #000000 48%, #020817 100%);
                 color: #fff7e6;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
                 padding: 24px;
@@ -3634,8 +3651,17 @@ def render_create_form() -> str:
 </style>
     </head>
     <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
         <div class="wrap">
-            <div class="card">
+            <div class="card" style="position:relative;z-index:2;">
                 <h1>ETERNA</h1>
                 <div class="subtitle">Crea algo que no se abra. Se viva.</div>
 
@@ -4666,21 +4692,17 @@ def render_create_intro() -> HTMLResponse:
         <title>Crear ETERNA</title>
         <style>
             * {{ box-sizing: border-box; }}
-            html, body {{ margin:0; min-height:100%; background:#030712; }}
+            html, body {{ margin:0; min-height:100%; background:#020817; }}
             body {{
                 min-height:100vh;
                 color:#fff7e6;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                 overflow-x:hidden;
                 background:
-                    radial-gradient(circle at 74% 18%, rgba(96,165,250,.20), transparent 30%),
-                    radial-gradient(circle at 18% 82%, rgba(255,220,150,.10), transparent 28%),
-                    linear-gradient(180deg,#07111f 0%, #020617 52%, #000 100%);
+                    radial-gradient(circle at 50% -10%, rgba(218,178,92,.22), transparent 36%),
+                    radial-gradient(circle at 20% 90%, rgba(64,156,255,.12), transparent 30%),
+                    linear-gradient(180deg,#020817,#000 58%,#020817);
             }}
-            .magic-butterfly {{ position:absolute; z-index:1; pointer-events:none; font-size:30px; opacity:.74; filter:drop-shadow(0 0 16px rgba(96,165,250,.55)); animation:butterflyFloat 13s ease-in-out infinite; }}
-            .magic-butterfly.b1 {{ top:18%; right:16%; animation-delay:.2s; }}
-            .magic-butterfly.b2 {{ bottom:20%; left:10%; font-size:22px; opacity:.46; animation-delay:3.7s; }}
-            @keyframes butterflyFloat {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-8deg) scale(.96); opacity:.42; }} 45% {{ transform:translate3d(14px,-24px,0) rotate(8deg) scale(1.06); opacity:.86; }} 70% {{ transform:translate3d(-8px,-14px,0) rotate(-3deg) scale(1); opacity:.62; }} }}
             .stage {{
                 min-height:100vh;
                 display:flex;
@@ -4706,7 +4728,7 @@ def render_create_intro() -> HTMLResponse:
                 content:"";
                 position:absolute;
                 inset:-30%;
-                background: radial-gradient(circle, rgba(218,178,92,.08), transparent 28%);
+                background: radial-gradient(circle, rgba(64,156,255,.10), transparent 28%);
                 animation: breathe 9s ease-in-out infinite;
                 pointer-events:none;
             }}
@@ -4819,10 +4841,17 @@ def render_create_intro() -> HTMLResponse:
         </style>
     </head>
     <body>
-        <main class="stage">
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
+        <main class="stage" style="position:relative;z-index:2;">
             <section class="phone">
-                <div class="magic-butterfly b1">🦋</div>
-                <div class="magic-butterfly b2">🦋</div>
                 <div class="content">
                     <div class="brand">ETERNA</div>
                     <div class="orb">♥</div>
@@ -4856,16 +4885,16 @@ def home(request: Request):
     <title>ETERNA</title>
     <style>
         * { box-sizing: border-box; }
-        html, body { margin: 0; min-height: 100%; background: #030201; }
+        html, body { margin: 0; min-height: 100%; background: #020817; }
         body {
             min-height: 100vh;
             color: #fff7e6;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             overflow-x: hidden;
             background:
-                radial-gradient(circle at 50% 8%, rgba(255,213,139,0.28), transparent 23%),
-                radial-gradient(circle at 50% 44%, rgba(218,146,58,0.12), transparent 32%),
-                linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+                radial-gradient(circle at 50% 8%, rgba(59,130,246,0.24), transparent 23%),
+                radial-gradient(circle at 50% 44%, rgba(37,99,235,0.13), transparent 32%),
+                linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
         }
         .page {
             position: relative;
@@ -5045,7 +5074,16 @@ def home(request: Request):
     </style>
 </head>
 <body>
-    <main class="page">
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
+    <main class="page" style="position:relative;z-index:2;">
         <section class="hero" aria-label="ETERNA">
             <div class="symbol">♥</div>
             <h1 class="brand">ETERNA</h1>
@@ -5409,8 +5447,8 @@ html, body {
 body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(218,178,92,0.14), transparent 34%),
-        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+        radial-gradient(circle at top, rgba(59,130,246,0.16), transparent 34%),
+        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
     color: #fff7e6;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
@@ -5468,6 +5506,15 @@ h1 {
 </style>
 </head>
 <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
     <div class="wrap">
         <h1>Este enlace ya no está disponible</h1>
         <div class="main">Puede que este acceso haya caducado o no sea válido.</div>
@@ -5500,8 +5547,8 @@ html, body {
 body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(218,178,92,0.14), transparent 34%),
-        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+        radial-gradient(circle at top, rgba(59,130,246,0.16), transparent 34%),
+        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
     color: #fff7e6;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
@@ -5534,6 +5581,15 @@ h1 {
 </style>
 </head>
 <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
     <div class="wrap">
         <h1>Aún no está listo</h1>
         <div class="main">Este momento todavía no puede abrirse.</div>
@@ -5563,9 +5619,8 @@ body {{
     min-height: 100vh;
     min-height: 100dvh;
     background:
-        radial-gradient(circle at 72% 20%, rgba(96,165,250,0.22), transparent 30%),
-        radial-gradient(circle at 18% 85%, rgba(255,220,150,0.10), transparent 28%),
-        linear-gradient(180deg, #07111f 0%, #020617 58%, #000000 100%);
+        radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
+        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
     color: #fff7e6;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
@@ -5574,12 +5629,7 @@ body {{
     text-align: center;
     padding: max(24px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom)) 24px;
     touch-action: manipulation;
-    overflow:hidden;
 }}
-.magic-butterfly {{ position:fixed; z-index:1; pointer-events:none; font-size:32px; opacity:.72; filter:drop-shadow(0 0 18px rgba(96,165,250,.62)); animation:giftButterflyFloat 14s ease-in-out infinite; }}
-.magic-butterfly.b1 {{ top:17%; right:18%; }}
-.magic-butterfly.b2 {{ bottom:17%; left:12%; font-size:23px; opacity:.42; animation-delay:4s; }}
-@keyframes giftButterflyFloat {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-8deg) scale(.96); opacity:.38; }} 48% {{ transform:translate3d(18px,-28px,0) rotate(8deg) scale(1.08); opacity:.88; }} 74% {{ transform:translate3d(-10px,-15px,0) rotate(-3deg) scale(1); opacity:.58; }} }}
 .wrap {{
     width: 100%;
     max-width: 720px;
@@ -5644,17 +5694,24 @@ h1 {{
 </style>
 </head>
 <body>
-    <div class="magic-butterfly b1">🦋</div>
-    <div class="magic-butterfly b2">🦋</div>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
     <div class="wrap">
         <div class="brand">ETERNA</div>
-        <h1>Tienes un regalo ETERNA</h1>
+        <h1>Hay algo para ti</h1>
         <div class="main">
-            Alguien ha creado algo único<br>
-            para ti.
+            Alguien quiso dejarte un momento<br>
+            que no se olvida.
         </div>
         <div class="soft">
-            Busca un sitio tranquilo. Cuando pulses, empezará una experiencia privada e inolvidable.
+            Busca un sitio tranquilo. Cuando pulses, empezará una experiencia privada creada para ti.
         </div>
         <div class="actions">
             <a class="btn" id="liveExperienceBtn" href="{experience_href}">Vivir la experiencia</a>
@@ -5688,8 +5745,8 @@ html, body {{
 body {{
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(218,178,92,0.14), transparent 34%),
-        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+        radial-gradient(circle at top, rgba(59,130,246,0.16), transparent 34%),
+        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
     color: #fff7e6;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
@@ -5748,6 +5805,15 @@ h1 {{
 </style>
 </head>
 <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
     <div class="wrap">
         <div class="brand">ETERNA</div>
         <h1>Hay algo para ti</h1>
@@ -5812,7 +5878,7 @@ def checkout_exito(order_id: str):
     <title>Pago confirmado — ETERNA</title>
     <style>
         * {{ box-sizing: border-box; }}
-        html, body {{ margin: 0; min-height: 100%; background: #030201; }}
+        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
         body {{
             min-height: 100vh;
             color: #fff7e6;
@@ -5823,9 +5889,9 @@ def checkout_exito(order_id: str):
             text-align: center;
             padding: 24px;
             background:
-                radial-gradient(circle at 50% 14%, rgba(255,213,139,0.25), transparent 28%),
-                radial-gradient(circle at 50% 76%, rgba(218,146,58,0.10), transparent 32%),
-                linear-gradient(180deg, #050403 0%, #000000 62%, #050403 100%);
+                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
+                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
+                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
         }}
         .card {{
             width: min(100%, 760px);
@@ -5936,7 +6002,16 @@ def checkout_exito(order_id: str):
     </style>
 </head>
 <body>
-    <main class="card">
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
+    <main class="card" style="position:relative;z-index:2;">
         <div class="brand">ETERNA</div>
         <div class="mark">♥</div>
         <h1>{title}</h1>
@@ -6228,7 +6303,7 @@ def resumen(order_id: str):
     <title>Pago confirmado — ETERNA</title>
     <style>
         * {{ box-sizing: border-box; }}
-        html, body {{ margin: 0; min-height: 100%; background: #030201; }}
+        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
         body {{
             min-height: 100vh;
             color: #fff7e6;
@@ -6239,9 +6314,9 @@ def resumen(order_id: str):
             text-align: center;
             padding: 24px;
             background:
-                radial-gradient(circle at 50% 14%, rgba(255,213,139,0.25), transparent 28%),
-                radial-gradient(circle at 50% 76%, rgba(218,146,58,0.10), transparent 32%),
-                linear-gradient(180deg, #050403 0%, #000000 62%, #050403 100%);
+                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
+                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
+                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
         }}
         .card {{
             width: min(100%, 760px);
@@ -6267,7 +6342,16 @@ def resumen(order_id: str):
     </style>
 </head>
 <body>
-    <main class="card">
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
+    <main class="card" style="position:relative;z-index:2;">
         <div class="brand">ETERNA</div>
         <div class="mark">♥</div>
         <h1>{title}</h1>
@@ -6612,11 +6696,20 @@ h1 {{
 </style>
 </head>
 <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
     <main class="wrap">
         <div class="logo-mark">♥</div>
         <div class="brand">ETERNA</div>
         <div class="line"></div>
-        <section class="card">
+        <section class="card" style="position:relative;z-index:2;">
             <div class="eyebrow">{eyebrow}</div>
             <div class="step-icon">{icon}</div>
             <h1>{title}</h1>
@@ -7012,6 +7105,15 @@ video {
 </style>
 </head>
 <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
 <div class="wrap">
     <video
     id="video"
@@ -8339,7 +8441,16 @@ h1 {{
 
 <body>
 
-<div class="container">
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
+
+<div class="container" style="position:relative;z-index:2;">
 
     <video controls playsinline>
         <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
@@ -8465,7 +8576,7 @@ body {{
     min-height: 100vh;
     background:
         radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-        linear-gradient(180deg, #050403 0%, #000000 58%, #050403 100%);
+        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
     color: #fff7e6;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
@@ -8524,6 +8635,15 @@ h1 {{
 </style>
 </head>
 <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
     <div class="wrap">
         <h1>{safe_text(title)}</h1>
         <div class="main">{safe_text(main_text)}</div>
@@ -8627,8 +8747,8 @@ def sender_pack(sender_token: str):
             <title>ETERNA</title>
             <style>
                 * { box-sizing: border-box; }
-                html, body { margin:0; min-height:100%; background:#050403; color:#fff7e6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
-                body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; text-align:center; background:radial-gradient(circle at top, rgba(212,175,92,.18), transparent 34%), #050403; }
+                html, body { margin:0; min-height:100%; background:#020817; color:#fff7e6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+                body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; text-align:center; background:radial-gradient(circle at top, rgba(59,130,246,.17), transparent 34%), #020817; }
                 .card { width:100%; max-width:460px; border:1px solid rgba(212,175,92,.24); border-radius:32px; padding:34px 24px; background:rgba(255,255,255,.05); box-shadow:0 30px 90px rgba(0,0,0,.65); }
                 .logo { letter-spacing:.34em; color:#d8b76d; font-size:12px; font-weight:800; margin-bottom:22px; }
                 h1 { font-size:34px; line-height:1.12; margin:0 0 14px; }
@@ -8636,7 +8756,16 @@ def sender_pack(sender_token: str):
             </style>
         </head>
         <body>
-            <div class="card">
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
+            <div class="card" style="position:relative;z-index:2;">
                 <div class="logo">ETERNA</div>
                 <h1>Tu ETERNA todavía está volviendo.</h1>
                 <p>La reacción aún se está guardando. Vuelve a abrir este enlace en unos segundos.</p>
@@ -8650,17 +8779,15 @@ def sender_pack(sender_token: str):
     sender_status = "Tu ETERNA ha vuelto."
 
     body_content = f"""
-    <main class="sender-experience" aria-label="Sender pack ETERNA">
+    <main class="sender-experience" style="position:relative;z-index:2;" aria-label="Sender pack ETERNA">
 
         <section id="return-intro" class="sender-stage active" data-stage="intro">
             <div class="brand-mark">ETERNA</div>
-            <div class="sender-butterfly sb1">🦋</div>
-            <div class="sender-butterfly sb2">🦋</div>
             <div class="intro-card">
-                <div class="gold-dot">🎁</div>
-                <h1>Tu regalo ha vuelto.</h1>
-                <p>Respira. El momento ya forma parte de esta historia.</p>
-                <button id="open-return" class="gold-button" type="button">Abrir Sender Pack</button>
+                <div class="gold-dot"></div>
+                <h1>Ya ha pasado.</h1>
+                <p>Respira. Tu ETERNA ha vuelto.</p>
+                <button id="open-return" class="gold-button" type="button">Estoy preparado</button>
             </div>
         </section>
 
@@ -8799,17 +8926,12 @@ def sender_pack(sender_token: str):
             try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
             try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
 
-            // Sender Pack seguro: solo se escucha la música/audio del vídeo original generado por el video engine.
-            // La reacción y el fondo quedan silenciados para evitar mezcla rara, eco o pérdida de música.
-            if (reaction) {{
-                reaction.muted = true;
-                try {{ reaction.setAttribute("muted", ""); }} catch (e) {{}}
-            }}
+            // La reacción va sin sonido ambiente. La música/piano vive desde el vídeo original.
+            if (reaction) reaction.muted = true;
             if (bgReaction) bgReaction.muted = true;
             if (mini) {{
                 mini.muted = false;
-                mini.volume = 0.90;
-                try {{ mini.removeAttribute("muted"); }} catch (e) {{}}
+                mini.volume = 0.65;
             }}
         }}
 
@@ -8922,14 +9044,14 @@ def sender_pack(sender_token: str):
         <title>ETERNA</title>
         <style>
             * {{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }}
-            html, body {{ margin:0; min-height:100%; background:#050403; color:#fff; }}
+            html, body {{ margin:0; min-height:100%; background:#020817; color:#fff; }}
             body {{
                 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;
                 overflow-x:hidden;
                 background:
-                    radial-gradient(circle at 70% 14%, rgba(96,165,250,.20), transparent 34%),
-                    radial-gradient(circle at 12% 88%, rgba(255,220,150,.09), transparent 32%),
-                    linear-gradient(180deg,#07111f 0%, #020617 52%, #000 100%);
+                    radial-gradient(circle at 50% -10%, rgba(218,177,83,.22), transparent 38%),
+                    radial-gradient(circle at 10% 85%, rgba(160,116,43,.13), transparent 38%),
+                    #020817;
             }}
             .sender-experience {{
                 min-height:100svh;
@@ -8960,32 +9082,27 @@ def sender_pack(sender_token: str):
                 padding:32px 22px;
                 text-align:center;
                 background:
-                    radial-gradient(circle at 74% 20%, rgba(96,165,250,.22), transparent 34%),
-                    radial-gradient(circle at 12% 84%, rgba(255,220,150,.10), transparent 30%),
-                    linear-gradient(180deg, #07111f 0%, #020617 64%, #000 100%);
+                    radial-gradient(circle at 50% 18%, rgba(219,180,91,.18), transparent 34%),
+                    linear-gradient(180deg, #070503 0%, #010101 100%);
                 z-index:10;
             }}
             .sender-stage.active {{ display:flex; }}
-            .sender-butterfly {{ position:absolute; z-index:11; pointer-events:none; font-size:34px; opacity:.76; filter:drop-shadow(0 0 18px rgba(96,165,250,.62)); animation:senderButterflyFloat 14s ease-in-out infinite; }}
-            .sender-butterfly.sb1 {{ top:19%; right:17%; }}
-            .sender-butterfly.sb2 {{ bottom:18%; left:12%; font-size:24px; opacity:.44; animation-delay:4.2s; }}
-            @keyframes senderButterflyFloat {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-8deg) scale(.96); opacity:.40; }} 46% {{ transform:translate3d(18px,-30px,0) rotate(8deg) scale(1.08); opacity:.88; }} 72% {{ transform:translate3d(-8px,-14px,0) rotate(-3deg) scale(1); opacity:.58; }} }}
             .intro-card {{
                 width:100%;
                 max-width:430px;
                 padding:42px 26px 30px;
                 border-radius:34px;
                 background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-                border:1px solid rgba(96,165,250,.22);
-                box-shadow:0 38px 110px rgba(0,0,0,.72), 0 0 54px rgba(96,165,250,.10), inset 0 1px 0 rgba(255,255,255,.09);
+                border:1px solid rgba(215,180,106,.25);
+                box-shadow:0 38px 110px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.09);
             }}
             .gold-dot {{
                 width:54px;
                 height:54px;
                 margin:0 auto 24px;
                 border-radius:50%;
-                background:radial-gradient(circle, rgba(96,165,250,.28) 0%, rgba(255,220,150,.18) 55%, rgba(96,165,250,.06) 100%);
-                box-shadow:0 0 46px rgba(96,165,250,.38);
+                background:radial-gradient(circle, #f3d78f 0%, #b8872f 55%, rgba(184,135,47,.2) 100%);
+                box-shadow:0 0 46px rgba(218,177,83,.46);
             }}
             .intro-card h1 {{
                 margin:0 0 10px;
@@ -9369,7 +9486,7 @@ def sender_pack(sender_token: str):
                 body {{
                     display:flex;
                     justify-content:center;
-                    background:#050403;
+                    background:#020817;
                 }}
                 .sender-experience {{
                     max-width:430px;
@@ -9390,6 +9507,15 @@ def sender_pack(sender_token: str):
         </style>
     </head>
     <body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
         {body_content}
     </body>
     </html>
@@ -9492,10 +9618,19 @@ table {{ width:100%; border-collapse:collapse; font-size:14px; }}
 td, th {{ border-bottom:1px solid rgba(255,255,255,.10); padding:10px; text-align:left; vertical-align:top; }}
 .small {{ color:rgba(255,255,255,.62); line-height:1.6; }}
 </style></head><body>
+
+<div aria-hidden="true" data-eterna-butterfly-layer="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;right:8%;top:10%;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(68,168,255,.24),rgba(68,168,255,.08) 34%,transparent 68%);filter:blur(2px);"></div>
+    <div style="position:absolute;right:9%;top:10%;font-size:76px;line-height:1;filter:drop-shadow(0 0 18px rgba(72,170,255,.95)) drop-shadow(0 0 38px rgba(37,99,235,.72));opacity:.96;transform:rotate(-16deg);">🦋</div>
+    <div style="position:absolute;left:7%;top:44%;font-size:34px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,207,126,.75));opacity:.70;transform:rotate(18deg);">🦋</div>
+    <div style="position:absolute;right:12%;top:24%;width:330px;height:330px;border-radius:50%;border-right:2px solid rgba(80,170,255,.33);border-bottom:1px solid rgba(232,185,96,.20);transform:rotate(24deg);filter:drop-shadow(0 0 14px rgba(64,156,255,.42));"></div>
+    <div style="position:absolute;right:7%;top:22%;width:260px;height:180px;background:radial-gradient(circle at 82% 8%,rgba(105,190,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 70% 30%,rgba(255,208,118,.75) 0 2px,transparent 3px),radial-gradient(circle at 54% 48%,rgba(110,190,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 42% 60%,rgba(255,205,120,.45) 0 1px,transparent 2px);opacity:.72;"></div>
+</div>
+
 <h1>Estado ETERNA</h1>
 <div class="small">Pedido: {safe_text(order_id)} · Destinatario: {safe_text(order.get('recipient_name'))} · Regalante: {safe_text(order.get('sender_name'))}</div>
-<div class="card"><h2>Proceso sencillo</h2><table><tbody>{rows}</tbody></table></div>
-<div class="card"><h2>Eventos técnicos</h2><table><thead><tr><th>Hora</th><th>Paso</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>{raw_rows}</tbody></table></div>
+<div class="card" style="position:relative;z-index:2;"><h2>Proceso sencillo</h2><table><tbody>{rows}</tbody></table></div>
+<div class="card" style="position:relative;z-index:2;"><h2>Eventos técnicos</h2><table><thead><tr><th>Hora</th><th>Paso</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>{raw_rows}</tbody></table></div>
 </body></html>
     """)
 
