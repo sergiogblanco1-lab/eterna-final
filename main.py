@@ -5086,299 +5086,132 @@ def home(request: Request):
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>ETERNA</title>
     <style>
         * { box-sizing: border-box; }
-        html, body { margin: 0; min-height: 100%; background: #020817; }
+        html, body {
+            margin: 0;
+            width: 100%;
+            min-height: 100%;
+            background: #02050a;
+        }
         body {
             min-height: 100vh;
-            color: #fff7e6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
             overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             background:
-                radial-gradient(circle at 50% 8%, rgba(59,130,246,0.24), transparent 23%),
-                radial-gradient(circle at 50% 44%, rgba(37,99,235,0.13), transparent 32%),
-                linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
+                radial-gradient(circle at 50% 10%, rgba(61,169,255,.18), transparent 35%),
+                radial-gradient(circle at 50% 100%, rgba(212,175,55,.10), transparent 38%),
+                #02050a;
         }
-        .page {
-            position: relative;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 42px 20px;
-            text-align: center;
-            isolation: isolate;
-        }
-        .page::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: .26;
-            background-image:
-                radial-gradient(circle at 20% 18%, rgba(255,255,255,.18) 0 1px, transparent 1.5px),
-                radial-gradient(circle at 74% 28%, rgba(255,214,142,.20) 0 1px, transparent 1.7px),
-                radial-gradient(circle at 44% 76%, rgba(255,214,142,.14) 0 1px, transparent 1.5px);
-            background-size: 160px 160px, 220px 220px, 190px 190px;
-        }
-        .page::after {
-            content: "";
-            position: fixed;
-            left: -12%;
-            right: -12%;
-            bottom: -12%;
-            height: 34%;
-            pointer-events: none;
-            opacity: .48;
-            background:
-                radial-gradient(ellipse at 50% 100%, rgba(255,190,82,.42), transparent 56%),
-                linear-gradient(90deg, transparent 0%, rgba(255,195,94,.18) 30%, rgba(255,236,183,.20) 50%, rgba(255,195,94,.18) 70%, transparent 100%);
-            filter: blur(16px);
-        }
-        .hero {
+        .phone-frame {
             width: 100%;
-            max-width: 780px;
+            max-width: 430px;
+            min-height: 100vh;
             margin: 0 auto;
-            padding: 28px 0 8px;
+            background: #02050a;
             position: relative;
-            z-index: 1;
         }
-        .symbol {
-            width: 150px;
-            height: 150px;
-            margin: 0 auto 18px;
-            border-radius: 999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffd98b;
-            font-size: 96px;
-            line-height: 1;
-            text-shadow: 0 0 28px rgba(255,204,111,.65), 0 0 64px rgba(255,164,57,.38);
-            background: radial-gradient(circle, rgba(255,225,159,.19), transparent 68%);
-            border: 1px solid rgba(255,220,150,.18);
-            box-shadow: 0 0 72px rgba(255,177,68,.18);
+        .hero-img {
+            width: 100%;
+            max-width: 430px;
+            min-height: 100vh;
+            height: auto;
+            display: block;
+            object-fit: cover;
+            object-position: top center;
         }
-        .brand {
-            margin: 0;
-            letter-spacing: .22em;
-            padding-left: .22em;
-            font-size: clamp(54px, 10vw, 104px);
-            line-height: .92;
-            font-weight: 800;
-            color: #ffd98b;
-            text-shadow: 0 0 24px rgba(255,220,155,.52), 0 18px 50px rgba(0,0,0,.6);
+        .cta-overlay {
+            position: fixed;
+            left: 50%;
+            bottom: max(18px, env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            width: min(360px, calc(100vw - 34px));
+            z-index: 10;
+            pointer-events: none;
         }
-        .tag {
-            margin: 28px auto 0;
-            max-width: 660px;
-            font-size: clamp(17px, 2.8vw, 24px);
-            line-height: 1.55;
-            letter-spacing: .28em;
-            padding-left: .28em;
-            text-transform: uppercase;
-            color: rgba(255,224,164,.92);
-        }
-        .divider {
-            margin: 26px auto 0;
-            width: 260px;
-            max-width: 70%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            color: #f0c46c;
-            opacity: .9;
-        }
-        .divider::before,
-        .divider::after {
-            content: "";
-            height: 1px;
-            flex: 1;
-            background: linear-gradient(90deg, transparent, rgba(240,196,108,.74));
-        }
-        .divider::after { background: linear-gradient(90deg, rgba(240,196,108,.74), transparent); }
-        .copy {
-            margin: 34px auto 0;
-            font-size: clamp(18px, 3.4vw, 23px);
-            line-height: 1.7;
-            color: rgba(255,255,255,.90);
-        }
-        .btn {
-            margin: 36px auto 0;
-            width: min(100%, 430px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 72px;
-            padding: 18px 28px;
+        .cta-overlay a {
+            pointer-events: auto;
+            min-height: 56px;
             border-radius: 18px;
-            background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%);
-            color: #150d03;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            font-size: 16px;
+            color: #120b03;
+            font-size: 14px;
             font-weight: 900;
-            letter-spacing: .34em;
-            padding-left: calc(28px + .34em);
+            letter-spacing: .12em;
             text-transform: uppercase;
-            box-shadow: 0 18px 60px rgba(255,172,62,.24), inset 0 1px 0 rgba(255,255,255,.55);
+            background: linear-gradient(135deg, #fff1b8 0%, #e4b84f 48%, #b87422 100%);
+            box-shadow: 0 18px 58px rgba(212,175,55,.30), inset 0 1px 0 rgba(255,255,255,.60);
         }
-        .pillars {
-            width: min(100%, 760px);
-            margin: 58px auto 0;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+        .fallback {
+            min-height: 100vh;
+            padding: 42px 24px;
+            color: #f6f1e8;
+            font-family: Georgia, 'Times New Roman', serif;
+            text-align: center;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
             gap: 18px;
         }
-        .pillar {
-            min-height: 132px;
-            padding: 18px 12px;
-            border-radius: 22px;
-            border: 1px solid rgba(255,215,142,.15);
-            background: rgba(255,255,255,.035);
+        .fallback .mark {
+            width: 54px;
+            height: 54px;
+            border: 1px solid rgba(212,175,55,.72);
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            margin: 0 auto 8px auto;
+            color: #d4af37;
+            font-size: 28px;
         }
-        .pillar .ico {
-            font-size: 30px;
-            color: #f0c46c;
-            margin-bottom: 10px;
-        }
-        .pillar .title {
-            color: #f6d18b;
-            font-size: 13px;
-            letter-spacing: .24em;
-            padding-left: .24em;
-            font-weight: 800;
+        .fallback h1 { margin: 0; font-size: clamp(42px, 12vw, 68px); line-height: .92; }
+        .fallback p { margin: 0 auto; max-width: 330px; color: rgba(246,241,232,.78); font: 15px/1.7 Arial, sans-serif; }
+        .fallback a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 12px auto 0 auto;
+            min-height: 56px;
+            padding: 0 24px;
+            border-radius: 18px;
+            color: #070707;
+            background: linear-gradient(135deg, #f3d98b, #d4af37);
+            font: 800 13px/1 Arial, sans-serif;
+            text-decoration: none;
+            letter-spacing: .12em;
             text-transform: uppercase;
-        }
-        .pillar p {
-            margin: 10px 0 0;
-            color: rgba(255,255,255,.70);
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        .promise {
-            margin: 54px auto 0;
-            color: rgba(255,224,164,.88);
-            font-size: clamp(14px, 2.4vw, 18px);
-            line-height: 1.8;
-            letter-spacing: .24em;
-            padding-left: .24em;
-            text-transform: uppercase;
-        }
-        @media (max-width: 720px) {
-            .page { align-items: flex-start; padding: 28px 18px 42px; }
-            .symbol { width: 108px; height: 108px; font-size: 72px; margin-bottom: 12px; }
-            .tag { letter-spacing: .16em; padding-left: .16em; }
-            .btn { border-radius: 999px; min-height: 64px; letter-spacing: .20em; padding-left: calc(22px + .20em); }
-            .pillars { grid-template-columns: 1fr; margin-top: 36px; gap: 12px; }
-            .pillar { min-height: 0; }
-            .promise { letter-spacing: .16em; padding-left: .16em; margin-top: 36px; }
         }
     </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <main class="page" style="position:relative;z-index:2;">
-        <section class="hero" aria-label="ETERNA">
-            <div class="symbol">♥</div>
-            <h1 class="brand">ETERNA</h1>
-            <div class="tag">Hay momentos que merecen quedarse para siempre</div>
-            <div class="divider">♥</div>
-            <div class="copy">
-                No es un vídeo.<br>
-                Es un momento.
-            </div>
-            <a class="btn" href="/crear">Crear mi ETERNA</a>
-
-            <div class="pillars">
-                <div class="pillar">
-                    <div class="ico">🔒</div>
-                    <div class="title">Privado</div>
-                    <p>Solo el destinatario puede vivirlo.</p>
-                </div>
-                <div class="pillar">
-                    <div class="ico">♡</div>
-                    <div class="title">Emocional</div>
-                    <p>Un mensaje que se siente, no que se ve.</p>
-                </div>
-                <div class="pillar">
-                    <div class="ico">◷</div>
-                    <div class="title">Eterno</div>
-                    <p>Se entrega en el momento justo.</p>
-                </div>
-            </div>
-
-            <div class="promise">
-                Lo que das, se queda en alguien.<br>
-                Y un día, vuelve.
-            </div>
+    <main class="phone-frame">
+        <img
+            class="hero-img"
+            src="/static/eterna-cinematic/backgrounds/home-mobile-v1.png?v=eterna-blue-butterfly-1"
+            alt="ETERNA — Hay momentos que merecen quedarse para siempre"
+            onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex'; document.getElementById('cta-home').style.display='none';"
+        >
+        <section id="fallback-home" class="fallback">
+            <div class="mark">E</div>
+            <h1>ETERNA</h1>
+            <p>No envíes un vídeo. Entrega un momento.</p>
+            <a href="/crear">Crear mi ETERNA</a>
         </section>
     </main>
+    <div id="cta-home" class="cta-overlay">
+        <a href="/crear">Crear mi ETERNA</a>
+    </div>
 </body>
 </html>
     """)
-
 
 @app.get("/crear", response_class=HTMLResponse)
 def crear_get():
@@ -11251,80 +11084,9 @@ def admin_test_order_message(
 # =========================================================
 
 @app.get("/home-v2", response_class=HTMLResponse)
-def home_v2_safe_preview():
-    """Ruta aislada para probar la Home visual nueva sin tocar la Home real ni el flujo de compra."""
-    return """
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>ETERNA · Home V2</title>
-        <style>
-            * { box-sizing: border-box; }
-            html, body {
-                margin: 0;
-                min-height: 100%;
-                background: #02050a;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            }
-            body {
-                min-height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: flex-start;
-                overflow-x: hidden;
-            }
-            .wrap {
-                width: 100%;
-                min-height: 100vh;
-                display: flex;
-                justify-content: center;
-                background:
-                    radial-gradient(circle at 50% 15%, rgba(59,167,255,.16), transparent 34%),
-                    radial-gradient(circle at 50% 70%, rgba(212,175,55,.08), transparent 38%),
-                    #02050a;
-            }
-            .home-shot {
-                width: 100%;
-                max-width: 430px;
-                min-height: 100vh;
-                object-fit: cover;
-                display: block;
-                background: #02050a;
-            }
-            .fallback {
-                display: none;
-                width: 100%;
-                max-width: 430px;
-                min-height: 100vh;
-                padding: 42px 24px;
-                color: #fff7e6;
-                text-align: center;
-                align-items: center;
-                justify-content: center;
-                flex-direction: column;
-            }
-            .fallback h1 { font-size: 34px; margin: 0 0 14px; }
-            .fallback p { opacity: .72; line-height: 1.7; margin: 0; }
-        </style>
-    </head>
-    <body>
-        <main class="wrap">
-            <img
-                class="home-shot"
-                src="/static/eterna-cinematic/backgrounds/home-mobile-v1.png"
-                alt="ETERNA Home V2"
-                onerror="this.style.display='none'; document.getElementById('fallback').style.display='flex';"
-            >
-            <section id="fallback" class="fallback">
-                <h1>ETERNA</h1>
-                <p>No encuentro la imagen <strong>home-mobile-v1.png</strong> en <br>/static/eterna-cinematic/backgrounds/</p>
-            </section>
-        </main>
-    </body>
-    </html>
-    """
+def home_v2_safe_preview(request: Request):
+    """Alias seguro: muestra la misma Home cinematográfica nueva sin duplicar HTML."""
+    return home(request)
 
 
 @app.get("/admin/debug-photos/{order_id}", response_class=HTMLResponse)
