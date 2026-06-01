@@ -6211,6 +6211,10 @@ def render_eterna_image_screen(
         <i class="particle gold p4" aria-hidden="true"></i>
         <div class="soft-halo" aria-hidden="true"></div>
     """
+    if fallback_src:
+        onerror_attr = "this.onerror=null; this.src=" + json.dumps(fallback_src) + ";"
+    else:
+        onerror_attr = "this.style.display='none'; document.getElementById('fallback-visual').style.display='flex';"
     return HTMLResponse(f"""
 <!DOCTYPE html>
 <html lang="es">
@@ -6248,7 +6252,7 @@ def render_eterna_image_screen(
 <body>
     <main class="screen">
         <section class="phone">
-            <img class="img" src="{image_src}" alt="ETERNA" onerror="{('this.onerror=null; this.src=\'' + fallback_src + '\';' if fallback_src else 'this.style.display=\'none\'; document.getElementById(\'fallback-visual\').style.display=\'flex\';')}">
+            <img class="img" src="{image_src}" alt="ETERNA" onerror="{safe_attr(onerror_attr)}">
             {calm_layers}
             {loading_layers}
             {button_html}
