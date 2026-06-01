@@ -5088,6 +5088,7 @@ def home(request: Request):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>ETERNA</title>
+    <meta name="theme-color" content="#02050a">
     <style>
         * { box-sizing: border-box; }
         html, body {
@@ -5104,19 +5105,27 @@ def home(request: Request):
             overflow-x: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             background:
-                radial-gradient(circle at 50% 10%, rgba(61,169,255,.18), transparent 35%),
-                radial-gradient(circle at 50% 100%, rgba(212,175,55,.10), transparent 38%),
+                radial-gradient(circle at 50% 12%, rgba(57,166,255,.20), transparent 36%),
+                radial-gradient(circle at 50% 92%, rgba(212,175,55,.14), transparent 42%),
                 #02050a;
         }
-        .phone-frame {
+        .eterna-home-shell {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            background: #02050a;
+        }
+        .eterna-home-link {
+            position: relative;
+            display: block;
             width: 100%;
             max-width: 430px;
             min-height: 100vh;
-            margin: 0 auto;
             background: #02050a;
-            position: relative;
+            text-decoration: none;
         }
-        .hero-img {
+        .eterna-home-img {
             width: 100%;
             max-width: 430px;
             min-height: 100vh;
@@ -5124,91 +5133,86 @@ def home(request: Request):
             display: block;
             object-fit: cover;
             object-position: top center;
+            background: #02050a;
         }
-        .cta-overlay {
-            position: fixed;
-            left: 50%;
-            bottom: max(18px, env(safe-area-inset-bottom));
-            transform: translateX(-50%);
-            width: min(360px, calc(100vw - 34px));
-            z-index: 10;
-            pointer-events: none;
-        }
-        .cta-overlay a {
-            pointer-events: auto;
-            min-height: 56px;
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            color: #120b03;
-            font-size: 14px;
-            font-weight: 900;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            background: linear-gradient(135deg, #fff1b8 0%, #e4b84f 48%, #b87422 100%);
-            box-shadow: 0 18px 58px rgba(212,175,55,.30), inset 0 1px 0 rgba(255,255,255,.60);
-        }
-        .fallback {
+        .eterna-home-fallback {
+            display: none;
+            width: 100%;
+            max-width: 430px;
             min-height: 100vh;
             padding: 42px 24px;
             color: #f6f1e8;
-            font-family: Georgia, 'Times New Roman', serif;
             text-align: center;
-            display: none;
             flex-direction: column;
             justify-content: center;
             gap: 18px;
+            background:
+                radial-gradient(circle at 50% 22%, rgba(59,167,255,.18), transparent 32%),
+                radial-gradient(circle at 50% 80%, rgba(212,175,55,.14), transparent 36%),
+                #02050a;
         }
-        .fallback .mark {
-            width: 54px;
-            height: 54px;
-            border: 1px solid rgba(212,175,55,.72);
+        .eterna-home-fallback .mark {
+            width: 58px;
+            height: 58px;
+            border: 1px solid rgba(212,175,55,.75);
             border-radius: 50%;
             display: grid;
             place-items: center;
-            margin: 0 auto 8px auto;
+            margin: 0 auto 4px;
             color: #d4af37;
-            font-size: 28px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 30px;
         }
-        .fallback h1 { margin: 0; font-size: clamp(42px, 12vw, 68px); line-height: .92; }
-        .fallback p { margin: 0 auto; max-width: 330px; color: rgba(246,241,232,.78); font: 15px/1.7 Arial, sans-serif; }
-        .fallback a {
+        .eterna-home-fallback h1 {
+            margin: 0;
+            color: #f3d98b;
+            font-size: clamp(42px, 12vw, 68px);
+            letter-spacing: .18em;
+            font-weight: 600;
+        }
+        .eterna-home-fallback p {
+            margin: 0 auto;
+            max-width: 320px;
+            line-height: 1.7;
+            color: rgba(246,241,232,.78);
+        }
+        .eterna-home-fallback .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin: 12px auto 0 auto;
+            margin: 10px auto 0;
             min-height: 56px;
-            padding: 0 24px;
+            padding: 0 26px;
             border-radius: 18px;
-            color: #070707;
-            background: linear-gradient(135deg, #f3d98b, #d4af37);
-            font: 800 13px/1 Arial, sans-serif;
-            text-decoration: none;
+            color: #120b02;
+            background: linear-gradient(135deg, #fff0bd 0%, #e7bd61 52%, #b87927 100%);
+            font-weight: 900;
+            font-size: 13px;
             letter-spacing: .12em;
             text-transform: uppercase;
+            text-decoration: none;
+            box-shadow: 0 18px 58px rgba(212,175,55,.24);
         }
     </style>
 </head>
 <body>
-    <main class="phone-frame">
-        <img
-            class="hero-img"
-            src="/static/eterna-cinematic/backgrounds/home-mobile-v1.png?v=eterna-blue-butterfly-1"
-            alt="ETERNA — Hay momentos que merecen quedarse para siempre"
-            onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex'; document.getElementById('cta-home').style.display='none';"
-        >
-        <section id="fallback-home" class="fallback">
-            <div class="mark">E</div>
-            <h1>ETERNA</h1>
-            <p>No envíes un vídeo. Entrega un momento.</p>
-            <a href="/crear">Crear mi ETERNA</a>
-        </section>
+    <!-- ETERNA_BLUE_BUTTERFLY_HOME_V3 -->
+    <main class="eterna-home-shell">
+        <a class="eterna-home-link" href="/crear" aria-label="Crear mi ETERNA">
+            <img
+                class="eterna-home-img"
+                src="/static/eterna-cinematic/backgrounds/home-mobile-v1.png?v=eterna-blue-butterfly-v3"
+                alt="ETERNA · Hay momentos que merecen quedarse para siempre"
+                onerror="this.style.display='none'; document.getElementById('eterna-home-fallback').style.display='flex';"
+            >
+            <section id="eterna-home-fallback" class="eterna-home-fallback">
+                <div class="mark">E</div>
+                <h1>ETERNA</h1>
+                <p>Hay momentos que merecen quedarse para siempre.</p>
+                <span class="btn">Crear mi ETERNA</span>
+            </section>
+        </a>
     </main>
-    <div id="cta-home" class="cta-overlay">
-        <a href="/crear">Crear mi ETERNA</a>
-    </div>
 </body>
 </html>
     """)
@@ -9488,6 +9492,7 @@ def sender_pack(sender_token: str):
                     <div class="eyebrow">ETERNA</div>
                     <h1>{sender_status}</h1>
                 </div>
+                <button id="eterna-replay-all" class="small-action" type="button">Volver a sentirlo</button>
             </div>
 
             <div class="call-shell">
@@ -9537,10 +9542,6 @@ def sender_pack(sender_token: str):
                 </div>
             </div>
 
-            <div class="sender-controls">
-                <button id="eterna-play-pause" class="replay-emotion-button" type="button">▶️ Reproducir emoción</button>
-            </div>
-
             <div class="return-copy">
                 <h2>Aquí vuelve lo que provocaste.</h2>
                 
@@ -9558,8 +9559,8 @@ def sender_pack(sender_token: str):
                 <a class="download-link" href="{reaction_url_safe}" download>Guardar este regreso</a>
                 <button id="eterna-share-reaction" class="share-button" type="button">Compartir su reacción</button>
                 <div class="share-note">
-                    Guardas la reacción de esta primera versión.<br>
-                    Próximo paso: pack social silencioso con vídeo original + reacción.
+                    Comparte solo la emoción.<br>
+                    El vídeo original se queda aquí para no romper la magia de ETERNA.
                 </div>
             </div>
         </section>
@@ -9577,7 +9578,6 @@ def sender_pack(sender_token: str):
         const bgReaction = document.getElementById("eterna-bg-reaction");
         const mini = document.getElementById("eterna-mini-original");
         const replay = document.getElementById("eterna-replay-all");
-        const playPause = document.getElementById("eterna-play-pause");
         const finalSignature = document.getElementById("eterna-final-signature");
         const shareWrap = document.getElementById("eterna-share-wrap");
         const shareBtn = document.getElementById("eterna-share-reaction");
@@ -9585,13 +9585,6 @@ def sender_pack(sender_token: str):
         const cinematicSceneLayers = Array.from(document.querySelectorAll("[data-eterna-cinematic-scene]"));
 
         let eternaMuteGuard = null;
-        let senderPackPlaying = false;
-
-        function setPlayPauseLabel(isPlaying) {{
-            senderPackPlaying = !!isPlaying;
-            if (!playPause) return;
-            playPause.textContent = senderPackPlaying ? "⏸️ Pausar emoción" : "▶️ Reproducir emoción";
-        }}
 
         function forceReactionSilent() {{
             // REGLA SAGRADA ETERNA SENDER PACK:
@@ -9666,10 +9659,7 @@ def sender_pack(sender_token: str):
             if (bridge) bridge.classList.remove("active");
             if (view) view.classList.add("active");
             document.body.classList.add("return-started");
-            enforceSenderPackAudioPolicy();
-            preparePlayersForStart();
-            senderCleanVideoModeOn();
-            setPlayPauseLabel(false);
+            playAllFromStart();
         }}
 
         function openReturn() {{
@@ -9721,42 +9711,8 @@ def sender_pack(sender_token: str):
             senderCleanVideoModeOn();
             stopDecorativeVideo();
             startMuteGuard();
-            const miniPlay = mini ? mini.play().catch(() => {{}}) : null;
-            const reactionPlay = reaction ? reaction.play().catch(() => {{}}) : null;
-            setPlayPauseLabel(true);
-        }}
-
-        function pauseAllSenderPack() {{
-            try {{ if (reaction) reaction.pause(); }} catch (e) {{}}
-            try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
-            try {{ if (mini) mini.pause(); }} catch (e) {{}}
-            stopMuteGuard();
-            setPlayPauseLabel(false);
-        }}
-
-        function resumeAllSenderPack() {{
-            enforceSenderPackAudioPolicy();
-            senderCleanVideoModeOn();
-            stopDecorativeVideo();
-            startMuteGuard();
-            syncMini();
-            syncBackground();
             if (mini) mini.play().catch(() => {{}});
             if (reaction) reaction.play().catch(() => {{}});
-            setPlayPauseLabel(true);
-        }}
-
-        function togglePlayPause() {{
-            if (!reaction) return;
-            if (senderPackPlaying && !reaction.paused) {{
-                pauseAllSenderPack();
-                return;
-            }}
-            if ((reaction.currentTime || 0) <= 0.05 || reaction.ended) {{
-                playAllFromStart();
-                return;
-            }}
-            resumeAllSenderPack();
         }}
 
         function replayEmotionFreely() {{
@@ -9778,7 +9734,6 @@ def sender_pack(sender_token: str):
             startMuteGuard();
             if (mini) mini.play().catch(() => {{}});
             if (reaction) reaction.play().catch(() => {{}});
-            setPlayPauseLabel(true);
         }}
 
         if (openBtn) {{
@@ -9801,7 +9756,6 @@ def sender_pack(sender_token: str):
                 forceReactionSilent();
                 if (bgReaction) bgReaction.pause();
                 if (mini) mini.pause();
-                if (!reaction.ended) setPlayPauseLabel(false);
             }});
             reaction.addEventListener("seeking", function () {{ enforceSenderPackAudioPolicy(); syncMini(); syncBackground(); }});
             reaction.addEventListener("volumechange", function () {{ forceReactionSilent(); }});
@@ -9812,7 +9766,6 @@ def sender_pack(sender_token: str):
                 try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
                 try {{ if (mini) mini.pause(); }} catch (e) {{}}
                 stopMuteGuard();
-                setPlayPauseLabel(false);
                 senderCleanVideoModeOff();
                 if (finalSignature) {{
                     finalSignature.classList.add("active");
@@ -9821,11 +9774,6 @@ def sender_pack(sender_token: str):
                 if (replay) replay.style.display = "none";
                 if (shareWrap) shareWrap.style.display = "grid";
             }});
-        }}
-
-        if (playPause) {{
-            playPause.addEventListener("click", togglePlayPause);
-            playPause.addEventListener("touchend", function(ev) {{ ev.preventDefault(); togglePlayPause(); }}, {{ passive:false }});
         }}
 
         if (replay) {{
@@ -10025,28 +9973,25 @@ def sender_pack(sender_token: str):
 
             .return-view {{
                 min-height:100svh;
-                height:auto;
+                height:100svh;
                 display:none;
                 position:relative;
-                overflow-y:auto;
-                overflow-x:hidden;
-                padding-bottom:calc(env(safe-area-inset-bottom) + 24px);
+                overflow:hidden;
                 background:#020202;
             }}
             .return-view.active {{ display:block; }}
             .top-bar {{
-                position:relative;
-                left:auto;
-                right:auto;
-                top:auto;
+                position:absolute;
+                top:calc(env(safe-area-inset-top) + 18px);
+                left:20px;
+                right:20px;
                 display:flex;
                 align-items:flex-start;
-                justify-content:center;
+                justify-content:space-between;
                 gap:12px;
-                padding:calc(env(safe-area-inset-top) + 24px) 20px 14px;
+                padding:0;
                 z-index:8;
-                pointer-events:auto;
-                text-align:center;
+                pointer-events:none;
             }}
             .top-bar .small-action {{ pointer-events:auto; }}
             .eyebrow {{
@@ -10076,10 +10021,8 @@ def sender_pack(sender_token: str):
                 -webkit-backdrop-filter:blur(14px);
             }}
             .call-shell {{
-                position:relative;
-                width:100%;
-                height:min(62svh, 620px);
-                min-height:420px;
+                position:absolute;
+                inset:0;
                 overflow:hidden;
                 background:#020202;
                 border:0;
@@ -10108,7 +10051,7 @@ def sender_pack(sender_token: str):
             }}
             .reaction-frame {{
                 position:absolute;
-                inset:14px 10px 14px 10px;
+                inset:76px 10px 104px 10px;
                 z-index:2;
                 display:flex;
                 align-items:center;
@@ -10155,7 +10098,7 @@ def sender_pack(sender_token: str):
             .mini-original-wrap {{
                 position:absolute;
                 right:18px;
-                bottom:24px;
+                bottom:calc(env(safe-area-inset-bottom) + 104px);
                 z-index:5;
                 width:min(27vw, 112px);
                 aspect-ratio:9/16;
@@ -10185,20 +10128,14 @@ def sender_pack(sender_token: str):
                 display:block;
                 background:#000;
             }}
-            .sender-controls {{
-                position:relative;
-                z-index:11;
-                padding:16px 18px 8px;
-                background:#020202;
-            }}
             .return-copy {{
-                position:relative;
-                left:auto;
-                right:auto;
-                bottom:auto;
+                position:absolute;
+                left:18px;
+                right:18px;
+                bottom:calc(env(safe-area-inset-bottom) + 30px);
                 z-index:6;
                 text-align:center;
-                padding:8px 18px 10px;
+                padding:0;
                 pointer-events:none;
             }}
             .return-copy h2 {{
@@ -10289,15 +10226,14 @@ def sender_pack(sender_token: str):
             }}
 
             .share-wrap {{
-                position:relative;
-                left:auto;
-                right:auto;
-                bottom:auto;
+                position:absolute;
+                left:18px;
+                right:18px;
+                bottom:calc(env(safe-area-inset-bottom) + 22px);
                 z-index:10;
                 display:grid;
                 gap:10px;
-                padding:10px 18px 24px;
-                background:#020202;
+                padding:0;
             }}
             .download-link, .share-button, .replay-emotion-button {{
                 display:block;
@@ -11085,9 +11021,8 @@ def admin_test_order_message(
 
 @app.get("/home-v2", response_class=HTMLResponse)
 def home_v2_safe_preview(request: Request):
-    """Alias seguro: muestra la misma Home cinematográfica nueva sin duplicar HTML."""
+    """Alias seguro: muestra exactamente la misma Home azul nueva."""
     return home(request)
-
 
 @app.get("/admin/debug-photos/{order_id}", response_class=HTMLResponse)
 def admin_debug_photos(order_id: str, token: str = ""):
