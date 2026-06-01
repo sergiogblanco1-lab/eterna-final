@@ -8,10 +8,6 @@ print("🔥 GLOBAL PHONE READY VERSION 🔥")
 print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
-print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
-print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
-print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
-print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
 
 import html
 import json
@@ -101,11 +97,7 @@ SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
-# Reacción móvil blindada:
-# antes estaba limitado a 15MB y en móvil/Safari una emoción real puede superar ese tamaño.
-# Si supera el límite, no se marca reaction_uploaded y por tanto NO vuelve el sender pack.
-MAX_VIDEO_SIZE_MB = int(os.getenv("MAX_REACTION_VIDEO_MB", "100"))
-MAX_VIDEO_SIZE = MAX_VIDEO_SIZE_MB * 1024 * 1024
+MAX_VIDEO_SIZE = 15 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {
     "video/webm",
     "video/mp4",
@@ -159,111 +151,19 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 
 
 # =========================================================
-# LOG HUMANO ETERNA (ESPAÑOL)
+# LOG
 # =========================================================
 
-LOG_TRANSLATIONS = {
-    "ORDER_CREATED": "Pedido creado",
-    "PAYMENT_COMPLETED": "Pago recibido",
-    "VIDEO_REQUESTED": "Vídeo solicitado al motor",
-    "VIDEO_READY": "Vídeo terminado",
-    "RECIPIENT_SENT": "Mensaje enviado al destinatario",
-    "EXPERIENCE_STARTED": "Experiencia iniciada",
-    "REACTION_UPLOADED": "Reacción recibida",
-    "PAYOUT_COMPLETED": "Regalo entregado",
-    "SENDER_NOTIFIED": "Regalante avisado",
-    "ETERNA_COMPLETED": "ETERNA completada",
-
-    "order_created": "Pedido creado",
-    "payment_completed": "Pago recibido",
-    "checkout_completed": "Pago recibido",
-    "video_requested": "Vídeo solicitado al motor",
-    "video_ready": "Vídeo terminado",
-    "recipient_sms_sent": "Mensaje enviado al destinatario",
-    "recipient_sms_failed": "No se pudo enviar el mensaje al destinatario",
-    "sender_sms_attempt": "Aviso al regalante",
-    "sender_sms_error": "Error avisando al regalante",
-    "reaction_saved_local": "Reacción guardada en local",
-    "reaction_r2_uploaded": "Reacción subida a la nube",
-    "reaction_r2_skipped": "Reacción guardada solo en local",
-    "reaction_r2_pending": "Reacción pendiente de subir a la nube",
-    "payout_attempt": "Intento de entrega del regalo",
-    "payout_error": "Error en la entrega del regalo",
-    "eterna_completed": "ETERNA completada",
-    "video_engine_requested": "Vídeo enviado al motor",
-    "video_engine_error": "Error del motor de vídeo",
-    "video_callback_received": "Callback recibido del motor",
-    "admin_retry": "Reintento manual desde admin",
-
-    "ok": "correcto",
-    "warning": "aviso",
-    "error": "error",
-    "pending": "pendiente",
-}
-
-STATUS_ICONS = {
-    "ok": "✅",
-    "warning": "⚠️",
-    "error": "🚨",
-    "pending": "⏳",
-}
-
-STEP_ICONS = {
-    "order": "🧾",
-    "payment": "💳",
-    "checkout": "💳",
-    "video": "🎬",
-    "recipient": "📩",
-    "sender": "📱",
-    "reaction": "🎥",
-    "payout": "💸",
-    "transfer": "💸",
-    "eterna": "✨",
-    "admin": "🛠️",
-}
-
-
-def human_label(value: str) -> str:
-    raw = str(value or "").strip()
-    if not raw:
-        return "Paso sin nombre"
-    if raw in LOG_TRANSLATIONS:
-        return LOG_TRANSLATIONS[raw]
-    lowered = raw.lower()
-    if lowered in LOG_TRANSLATIONS:
-        return LOG_TRANSLATIONS[lowered]
-    return lowered.replace("_", " ").replace("-", " ").strip().capitalize()
-
-
-def icon_for_step(step: str, status: str = "ok") -> str:
-    status = str(status or "ok").strip().lower()
-    if status == "error":
-        return "🚨"
-    step_raw = str(step or "").strip().lower()
-    for key, icon in STEP_ICONS.items():
-        if key in step_raw:
-            return icon
-    return STATUS_ICONS.get(status, "ℹ️")
-
-
 def log_info(label: str, value=None):
-    title = human_label(label)
-    print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print(f"ℹ️ INFO ETERNA: {title}")
-    if value is not None and str(value).strip():
-        print(f"📌 Detalle: {value}")
-    print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    if value is None:
+        print(f"[INFO] {label}")
+    else:
+        print(f"[INFO] {label}: {value}")
 
 
 def log_error(label: str, error: Exception):
-    title = human_label(label)
-    print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print(f"🚨 ERROR ETERNA: {title}")
-    print(f"❌ Qué ha pasado: {error}")
-    print("🔎 Detalle técnico debajo para poder arreglarlo:")
-    print("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"[ERROR] {label}: {error}")
     traceback.print_exc()
-    print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
 
 def mask_email(email: str) -> str:
@@ -283,10 +183,8 @@ def mask_phone(phone: str) -> str:
 
 
 def log_human(title: str, *lines):
-    readable_title = human_label(title)
-    icon = icon_for_step(title)
     print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print(f"{icon} {readable_title.upper()}")
+    print(f"🎬 {title}")
     for line in lines:
         if line is not None and str(line).strip():
             print(str(line))
@@ -828,19 +726,6 @@ def insert_asset(order_id: str, asset_type: str, file_url: str, storage_provider
 def insert_order_event(order_id: str, step: str, status: str = "ok", message: str = "", meta: Optional[dict] = None):
     """Log humano por pedido: permite saber exactamente dónde se queda ETERNA."""
     try:
-        readable_step = human_label(step)
-        readable_status = human_label(status)
-        icon = icon_for_step(step, status)
-        clean_message = str(message or "").strip()
-
-        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(f"{icon} PASO ETERNA: {readable_step}")
-        print(f"🆔 Pedido: {order_id or 'sin pedido'}")
-        print(f"📍 Estado: {readable_status}")
-        if clean_message:
-            print(f"📝 Detalle: {clean_message}")
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
-
         conn = db_conn()
         cur = conn.cursor()
         cur.execute("""
@@ -868,11 +753,7 @@ def insert_order_event(order_id: str, step: str, status: str = "ok", message: st
         conn.commit()
         conn.close()
     except Exception as e:
-        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print("⚠️ AVISO ETERNA: no pude guardar un evento del pedido")
-        print(f"🧩 Paso: {step}")
-        print(f"❌ Error: {e}")
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+        print("[WARN] insert_order_event failed:", step, e)
 
 
 def list_order_events(order_id: str, limit: int = 80):
@@ -1413,18 +1294,10 @@ def try_send_sender_sms(order: dict) -> dict:
 
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
-
-    # Regla clara de precios ETERNA:
-    # - Si NO hay regalo económico: solo BASE_PRICE.
-    # - Si hay regalo económico: +2€ gestión segura + 5% del importe regalado.
-    # - Si entrega programada: +2€ SOLO por programación.
-    has_gift = gift_amount > 0
-    fixed_fee = round(FIXED_PLATFORM_FEE if has_gift else 0.0, 2)
-    variable_fee = round(gift_amount * GIFT_COMMISSION_RATE if has_gift else 0.0, 2)
-
+    fixed_fee = round(FIXED_PLATFORM_FEE, 2)
+    variable_fee = round(gift_amount * GIFT_COMMISSION_RATE, 2)
     delivery_mode = (delivery_mode or "instant").strip().lower()
     scheduled_fee = round(SCHEDULED_DELIVERY_FEE if delivery_mode == "scheduled" else 0.0, 2)
-
     total_fee = round(fixed_fee + variable_fee, 2)
     total_amount = round(BASE_PRICE + gift_amount + total_fee + scheduled_fee, 2)
     return {
@@ -1454,41 +1327,6 @@ def get_phrases_by_type(message_type: str):
             "Todo vuelve a ti.",
             "Gracias por tanto.",
         ],
-        "amistad": [
-            "Hay personas que aparecen",
-            "y se quedan para siempre.",
-            "Gracias por estar.",
-        ],
-        "madre": [
-            "Nunca podré devolverte todo.",
-            "Pero sí recordarte lo importante que eres.",
-            "Gracias por ser hogar.",
-        ],
-        "padre": [
-            "Aunque no siempre lo diga,",
-            "muchas cosas que soy empezaron contigo.",
-            "Gracias por todo.",
-        ],
-        "distancia": [
-            "Aunque hoy no estés cerca,",
-            "hay algo de ti que sigue aquí.",
-            "Y eso no se va.",
-        ],
-        "perdon": [
-            "A veces cuesta decirlo.",
-            "Pero hay cosas que merecen sanar.",
-            "Ojalá esto llegue donde mis palabras no llegaron.",
-        ],
-        "reencuentro": [
-            "Hay caminos que se separan,",
-            "pero hay recuerdos que vuelven.",
-            "Y este vuelve para ti.",
-        ],
-        "gratitud": [
-            "A veces no sabemos cómo decirlo.",
-            "Pero hay personas que cambian la vida.",
-            "Y tú eres una de ellas.",
-        ],
         "superacion": [
             "Nunca dejaste de intentarlo.",
             "Y eso lo cambia todo.",
@@ -1503,11 +1341,6 @@ def get_phrases_by_type(message_type: str):
             "Pensabas que hoy era un día normal…",
             "Pero alguien ha estado pensando en ti.",
             "Mucho más de lo que imaginas.",
-        ],
-        "no_se_decirlo": [
-            "No siempre encuentro las palabras.",
-            "Pero sí sé lo que siento.",
-            "Y quería que lo vivieras así.",
         ],
     }
     return phrase_templates.get(message_type, phrase_templates["sorpresa"])
@@ -1764,206 +1597,6 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     }
     
 # =========================================================
-# RESCATE AUTOMÁTICO DE REACCIÓN POR CHUNKS
-# =========================================================
-
-def _chunk_session_info(session_folder: Path) -> dict:
-    chunk_files = sorted(session_folder.glob("chunk_*.part"))
-    manifest_path = session_folder / "manifest.json"
-    extension = "webm"
-    mode = "unknown"
-    updated_ts = 0.0
-
-    try:
-        updated_ts = max([p.stat().st_mtime for p in chunk_files] + ([manifest_path.stat().st_mtime] if manifest_path.exists() else [session_folder.stat().st_mtime]))
-    except Exception:
-        updated_ts = 0.0
-
-    if manifest_path.exists():
-        try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            extension = (manifest.get("extension") or "webm").lower().strip()
-            mode = (manifest.get("mode") or "unknown").strip()
-        except Exception:
-            pass
-
-    if extension not in {"webm", "mp4"}:
-        extension = "webm"
-
-    size = 0
-    for part in chunk_files:
-        try:
-            size += part.stat().st_size
-        except Exception:
-            pass
-
-    return {
-        "folder": session_folder,
-        "chunk_files": chunk_files,
-        "chunks": len(chunk_files),
-        "extension": extension,
-        "mode": mode,
-        "updated_ts": updated_ts,
-        "size": size,
-    }
-
-
-def find_latest_reaction_chunk_session(order_id: str) -> Optional[dict]:
-    base = REACTION_CHUNKS_FOLDER / str(order_id)
-    if not base.exists():
-        return None
-
-    sessions = []
-    try:
-        for session_folder in base.iterdir():
-            if not session_folder.is_dir():
-                continue
-            info = _chunk_session_info(session_folder)
-            if info.get("chunks", 0) > 0 and info.get("size", 0) > 0:
-                sessions.append(info)
-    except Exception as e:
-        log_error("find_latest_reaction_chunk_session", e)
-        return None
-
-    if not sessions:
-        return None
-
-    sessions.sort(key=lambda item: item.get("updated_ts", 0), reverse=True)
-    return sessions[0]
-
-
-def recover_reaction_from_chunks_if_possible(order_or_id, min_idle_seconds: int = 0, source: str = "auto_recovery") -> dict:
-    """
-    Rescate final ETERNA:
-    Si el destinatario corta justo al final y no llega a ejecutar /finish-reaction-upload,
-    pero ya hay chunks progresivos en /data/reaction_chunks, ensamblamos lo recibido,
-    marcamos reaction_uploaded=1 y disparamos el SMS del sender pack.
-    """
-    order = get_order_by_id(order_or_id) if isinstance(order_or_id, str) else dict(order_or_id)
-
-    if reaction_is_safe(order):
-        return {"ok": True, "reason": "already_safe", "order_id": order.get("id")}
-
-    if not bool(order.get("paid")):
-        return {"ok": False, "reason": "order_not_paid", "order_id": order.get("id")}
-
-    if not original_video_ready(order):
-        return {"ok": False, "reason": "original_video_not_ready", "order_id": order.get("id")}
-
-    session = find_latest_reaction_chunk_session(order["id"])
-    if not session:
-        return {"ok": False, "reason": "no_chunks_found", "order_id": order.get("id")}
-
-    if int(min_idle_seconds or 0) > 0:
-        age = max(0.0, time.time() - float(session.get("updated_ts") or 0))
-        if age < int(min_idle_seconds):
-            return {
-                "ok": False,
-                "reason": "chunks_still_active",
-                "order_id": order.get("id"),
-                "seconds_since_last_chunk": round(age, 2),
-                "required_idle_seconds": int(min_idle_seconds),
-            }
-
-    chunk_files = session.get("chunk_files") or []
-    if not chunk_files:
-        return {"ok": False, "reason": "no_chunk_files", "order_id": order.get("id")}
-
-    extension = session.get("extension") or "webm"
-    local_path = reaction_video_path(order["id"], extension)
-
-    try:
-        insert_order_event(
-            order["id"],
-            "reaction_auto_recovery_started",
-            "warning",
-            "Rescate automático: había trozos de grabación pero no se había cerrado la reacción",
-            {
-                "source": source,
-                "session_folder": str(session.get("folder")),
-                "chunks": len(chunk_files),
-                "bytes": session.get("size"),
-                "extension": extension,
-            },
-        )
-
-        with open(local_path, "wb") as out:
-            for part_path in chunk_files:
-                with open(part_path, "rb") as part:
-                    out.write(part.read())
-
-        saved_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
-        if saved_size <= 0:
-            raise Exception("auto_recovery_empty_file")
-
-        if saved_size > MAX_VIDEO_SIZE:
-            update_order(order["id"], reaction_upload_pending=1, reaction_upload_error="auto_recovery_video_too_large")
-            insert_order_event(order["id"], "reaction_auto_recovery_too_large", "error", "El rescate ensamblado pesa demasiado", {"bytes": saved_size, "max_bytes": MAX_VIDEO_SIZE})
-            return {"ok": False, "reason": "video_too_large", "order_id": order.get("id"), "bytes": saved_size}
-
-        updated_order = complete_reaction_from_local_file(order, local_path, extension=extension, source=source)
-
-        insert_order_event(
-            order["id"],
-            "reaction_auto_recovery_completed",
-            "ok",
-            "Reacción rescatada automáticamente y sender pack desbloqueado",
-            {"bytes": saved_size, "chunks": len(chunk_files), "source": source},
-        )
-
-        return {
-            "ok": True,
-            "reason": "recovered",
-            "order_id": order.get("id"),
-            "bytes": saved_size,
-            "chunks": len(chunk_files),
-            "sender_sms_sent_at": updated_order.get("sender_sms_sent_at"),
-            "sender_sms_attempts": int(updated_order.get("sender_sms_attempts") or 0),
-            "sender_sms_error": updated_order.get("sender_sms_error"),
-        }
-
-    except Exception as e:
-        update_order(order["id"], reaction_upload_pending=1, reaction_upload_error=str(e))
-        insert_order_event(order["id"], "reaction_auto_recovery_failed", "error", str(e), {"source": source})
-        log_error("recover_reaction_from_chunks_if_possible", e)
-        return {"ok": False, "reason": str(e), "order_id": order.get("id")}
-
-
-def list_pending_reaction_recovery_orders(limit: int = 25) -> list[str]:
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id
-        FROM orders
-        WHERE COALESCE(paid, 0) = 1
-          AND COALESCE(reaction_uploaded, 0) = 0
-          AND COALESCE(experience_started, 0) = 1
-          AND COALESCE(reaction_upload_pending, 0) = 1
-          AND experience_video_url IS NOT NULL
-          AND TRIM(experience_video_url) != ''
-        ORDER BY updated_at ASC
-        LIMIT ?
-    """, (int(limit or 25),))
-    rows = cur.fetchall()
-    conn.close()
-    return [str(r["id"]) for r in rows]
-
-
-def process_all_pending_reaction_recoveries() -> list[dict]:
-    results = []
-    for order_id in list_pending_reaction_recovery_orders():
-        try:
-            result = recover_reaction_from_chunks_if_possible(order_id, min_idle_seconds=20, source="worker_auto_recovery")
-            if result.get("ok"):
-                print("🎥 Worker reaction recovery:", order_id, result)
-            results.append({"order_id": order_id, "result": result})
-        except Exception as e:
-            log_error("reaction_recovery_worker_process", e)
-            results.append({"order_id": order_id, "result": {"ok": False, "reason": str(e)}})
-    return results
-
-
-# =========================================================
 # HELPERS EXTRA
 # =========================================================
 
@@ -2126,10 +1759,10 @@ def render_viral_block_page() -> HTMLResponse:
             body {
                 min-height: 100vh;
                 background:
-                    radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-                    linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-                color: #fff7e6;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -2168,80 +1801,20 @@ def render_viral_block_page() -> HTMLResponse:
                 width: 100%;
                 padding: 17px 22px;
                 border-radius: 999px;
-                background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-                color: #120b02;
+                background: white;
+                color: black;
                 text-decoration: none;
                 font-weight: bold;
                 font-size: 15px;
             }
             .ghost {
-                background: rgba(218,178,92,0.10);
-                color: #fff7e6;
-                border: 1px solid rgba(218,178,92,0.22);
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
             }
         </style>
     </head>
     <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
         <div class="wrap">
             <h1>Esto no era para ti</h1>
             <div class="main">
@@ -2432,7 +2005,7 @@ body {
     margin:0;
     background:#000;
     color:#fff;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:Arial,sans-serif;
     padding:24px;
     line-height:1.7;
 }
@@ -2442,66 +2015,6 @@ p { opacity:0.85; }
 </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
 
 <h1>Condiciones de uso — Tu ETERNA</h1>
 
@@ -2850,7 +2363,7 @@ async def create_order_and_redirect(
                             "description": (
                                 f"Base {money(BASE_PRICE)}€ + "
                                 f"regalo {money(fees['gift_amount'])}€ + "
-                                f"gestión regalo {money(fees['total_fee'])}€ + "
+                                f"comisión {money(fees['total_fee'])}€ + "
                                 f"programación {money(fees['scheduled_delivery_fee'])}€"
                             ),
                         },
@@ -2889,56 +2402,29 @@ def render_create_form() -> str:
         <title>Crear ETERNA</title>
         <style>
             * {{ box-sizing: border-box; }}
-            html, body {{ margin: 0; min-height: 100%; background: #020202; }}
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
             body {{
                 min-height: 100vh;
                 background:
-                    radial-gradient(circle at 50% -12%, rgba(225,180,92,0.24), transparent 34%),
-                    radial-gradient(circle at 12% 18%, rgba(255,230,170,0.08), transparent 26%),
-                    radial-gradient(circle at 90% 78%, rgba(204,140,44,0.10), transparent 34%),
-                    linear-gradient(180deg, #020817 0%, #000000 48%, #020817 100%);
-                color: #fff7e6;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
                 padding: 24px;
-                overflow-x: hidden;
             }}
-            body::before {{
-                content: "";
-                position: fixed;
-                inset: 0;
-                pointer-events: none;
-                background:
-                    radial-gradient(circle at 50% 32%, rgba(255,213,130,0.12), transparent 18%),
-                    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-                background-size: auto, 92px 92px;
-                opacity: .72;
-            }}
-            body::after {{
-                content: "";
-                position: fixed;
-                inset: 0;
-                pointer-events: none;
-                background: radial-gradient(circle at center, transparent 42%, rgba(0,0,0,.72) 100%);
-            }}
-            .wrap {{ width: 100%; max-width: 900px; margin: 0 auto; position: relative; z-index: 2; }}
+            .wrap {{ width: 100%; max-width: 860px; margin: 0 auto; }}
             .card {{
-                background:
-                    linear-gradient(180deg, rgba(18,15,10,0.92), rgba(4,4,4,0.96)),
-                    radial-gradient(circle at 50% 0%, rgba(225,180,92,.14), transparent 42%);
-                border: 1px solid rgba(225,180,92,0.18);
-                border-radius: 32px;
-                padding: 30px;
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 28px;
+                padding: 28px;
                 overflow: hidden;
-                box-shadow: 0 30px 120px rgba(0,0,0,.75), 0 0 80px rgba(225,180,92,.08);
-                backdrop-filter: blur(18px);
             }}
             h1 {{
                 margin: 0 0 12px 0;
-                font-size: clamp(34px, 6vw, 62px);
+                font-size: 34px;
                 text-align: center;
-                letter-spacing: 8px;
-                color: #f7dfaa;
-                text-shadow: 0 0 24px rgba(225,180,92,.40);
+                letter-spacing: 2px;
             }}
             .subtitle {{
                 text-align: center;
@@ -3005,9 +2491,9 @@ def render_create_form() -> str:
                 padding: 15px 16px;
                 margin: 8px 0;
                 border-radius: 16px;
-                border: 1px solid rgba(218,178,92,0.22);
+                border: 1px solid rgba(255,255,255,0.10);
                 background: rgba(255,255,255,0.05);
-                color: #fff7e6;
+                color: white;
                 outline: none;
                 font-size: 15px;
             }}
@@ -3043,62 +2529,24 @@ def render_create_form() -> str:
             .phone-input {{
                 flex: 1;
             }}
-            .photo-picker-main {{
-                margin: 14px 0 18px;
-                border-radius: 26px;
-                padding: 18px;
-                background: linear-gradient(180deg, rgba(218,178,92,0.11), rgba(255,255,255,0.035));
-                border: 1px solid rgba(218,178,92,0.20);
-                text-align: center;
-            }}
-            .photo-picker-title {{
-                font-size: 18px;
-                font-weight: 700;
-                margin-bottom: 8px;
-            }}
-            .photo-picker-sub {{
-                color: rgba(255,255,255,0.54);
-                font-size: 13px;
-                line-height: 1.7;
-                margin-bottom: 14px;
-            }}
-            .photo-picker-btn {{
-                display: block;
-                width: 100%;
-                padding: 16px 18px;
-                border-radius: 999px;
-                background: rgba(255,255,255,0.92);
-                color: #050505;
-                font-weight: 800;
-                cursor: pointer;
-                position: relative;
-                overflow: hidden;
-            }}
-            .photo-picker-btn input {{
-                position:absolute;
-                inset:0;
-                opacity:0;
-                cursor:pointer;
-            }}
             .photo-grid {{
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 12px;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
                 margin-top: 12px;
             }}
             .photo-card {{
                 background: rgba(255,255,255,0.04);
                 border: 1px solid rgba(255,255,255,0.08);
                 border-radius: 22px;
-                padding: 10px;
+                padding: 16px;
             }}
             .photo-label {{
                 font-size: 12px;
                 text-transform: uppercase;
                 letter-spacing: 1.2px;
-                color: rgba(218,178,92,0.82);
+                color: rgba(255,255,255,0.45);
                 margin-bottom: 8px;
-                text-align: center;
             }}
             .photo-guide {{
                 font-size: 15px;
@@ -3111,15 +2559,14 @@ def render_create_form() -> str:
                 position: relative;
                 border: 1px dashed rgba(255,255,255,0.18);
                 border-radius: 18px;
-                aspect-ratio: 9 / 16;
-                min-height: 0;
+                min-height: 210px;
                 overflow: hidden;
                 background: rgba(255,255,255,0.03);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 text-align: center;
-                padding: 10px;
+                padding: 16px;
                 cursor: pointer;
             }}
             .photo-box input[type="file"] {{
@@ -3134,13 +2581,13 @@ def render_create_form() -> str:
                 z-index: 3;
             }}
             .photo-placeholder {{
-                color: rgba(255,255,255,0.50);
-                line-height: 1.45;
-                font-size: 12px;
+                color: rgba(255,255,255,0.58);
+                line-height: 1.7;
+                font-size: 14px;
                 position: relative;
                 z-index: 1;
                 pointer-events: none;
-                max-width: 110px;
+                max-width: 180px;
             }}
             .photo-preview {{
                 position: absolute;
@@ -3153,12 +2600,11 @@ def render_create_form() -> str:
                 border-radius: 18px;
             }}
             .photo-status {{
-                margin-top: 8px;
+                margin-top: 10px;
                 color: rgba(255,255,255,0.48);
-                font-size: 11px;
-                line-height: 1.45;
-                min-height: 16px;
-                text-align: center;
+                font-size: 12px;
+                line-height: 1.6;
+                min-height: 20px;
             }}
             .mini-note {{
                 margin-top: 12px;
@@ -3170,7 +2616,7 @@ def render_create_form() -> str:
             .emotion-grid {{
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
+                gap: 14px;
                 margin-top: 12px;
             }}
             .emotion-card {{
@@ -3221,14 +2667,6 @@ def render_create_form() -> str:
             }}
             .phrases-manual.hidden {{
                 display: none;
-            }}
-            textarea {{
-                width: 100%;
-                min-height: 96px;
-                resize: none;
-                overflow: hidden;
-                line-height: 1.55;
-                font-family: inherit;
             }}
             .delivery-box {{
                 margin-top: 12px;
@@ -3321,8 +2759,8 @@ def render_create_form() -> str:
                 cursor: pointer;
             }}
             button {{
-                background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-                color: #120b02;
+                background: white;
+                color: black;
             }}
             button:disabled {{
                 opacity: 0.7;
@@ -3330,9 +2768,9 @@ def render_create_form() -> str:
             }}
             .ghost {{
                 display: inline-block;
-                background: rgba(218,178,92,0.10);
-                color: #fff7e6;
-                border: 1px solid rgba(218,178,92,0.22);
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
             }}
             .error-box {{
                 display: none;
@@ -3340,19 +2778,16 @@ def render_create_form() -> str:
                 padding: 14px 16px;
                 border-radius: 16px;
                 background: rgba(255,255,255,0.06);
-                border: 1px solid rgba(218,178,92,0.22);
+                border: 1px solid rgba(255,255,255,0.10);
                 color: rgba(255,255,255,0.82);
                 font-size: 14px;
                 line-height: 1.7;
             }}
             @media (max-width: 760px) {{
+                .photo-grid,
                 .emotion-grid,
                 .delivery-grid {{
                     grid-template-columns: 1fr;
-                }}
-                .photo-grid {{
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 10px;
                 }}
                 .phone-row {{
                     flex-direction: row;
@@ -3370,468 +2805,24 @@ def render_create_form() -> str:
                     font-size: 18px;
                 }}
             }}
-        
-            /* =========================================================
-               ETERNA LUXURY CINEMATIC UI — ONE PAGE FLOW
-               Solo capa visual: no toca backend, pagos ni rutas.
-            ========================================================= */
-            body {{
-                padding: clamp(14px, 3vw, 28px);
-                background:
-                    radial-gradient(circle at 50% 0%, rgba(255, 211, 125, 0.20), transparent 28%),
-                    radial-gradient(circle at 8% 22%, rgba(189, 133, 47, 0.13), transparent 28%),
-                    radial-gradient(circle at 88% 58%, rgba(255, 222, 159, 0.08), transparent 34%),
-                    radial-gradient(circle at 50% 115%, rgba(189, 133, 47, 0.12), transparent 34%),
-                    linear-gradient(180deg, #020202 0%, #080603 46%, #000 100%);
-            }}
-            body::before {{
-                background:
-                    radial-gradient(circle at 50% 28%, rgba(246, 204, 120, 0.11), transparent 22%),
-                    radial-gradient(circle at 35% 82%, rgba(246, 204, 120, 0.055), transparent 24%),
-                    linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px),
-                    linear-gradient(0deg, rgba(255,255,255,0.008) 1px, transparent 1px);
-                background-size: auto, auto, 96px 96px, 96px 96px;
-                opacity: .9;
-                animation: eternaAura 12s ease-in-out infinite;
-            }}
-            body::after {{
-                background:
-                    radial-gradient(circle at center, transparent 38%, rgba(0,0,0,.82) 100%),
-                    linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.42));
-            }}
-            @keyframes eternaAura {{
-                0%,100% {{ opacity: .58; transform: scale(1); }}
-                50% {{ opacity: 1; transform: scale(1.035); }}
-            }}
-            .wrap {{ max-width: 980px; }}
-            .card {{
-                position: relative;
-                border-radius: 36px;
-                padding: clamp(22px, 4vw, 44px);
-                background:
-                    radial-gradient(circle at 50% -8%, rgba(255, 218, 146, .17), transparent 34%),
-                    radial-gradient(circle at 4% 36%, rgba(220, 164, 74, .07), transparent 26%),
-                    radial-gradient(circle at 96% 72%, rgba(220, 164, 74, .06), transparent 30%),
-                    linear-gradient(180deg, rgba(18,15,9,.82), rgba(3,3,3,.92));
-                border: 1px solid rgba(231, 183, 92, .24);
-                box-shadow:
-                    0 38px 140px rgba(0,0,0,.86),
-                    0 0 90px rgba(221, 169, 72,.12),
-                    inset 0 0 0 1px rgba(255,255,255,.035);
-            }}
-            .card::before {{
-                content:"";
-                position:absolute;
-                inset:0;
-                border-radius:inherit;
-                pointer-events:none;
-                background:
-                    linear-gradient(135deg, rgba(255,255,255,.12), transparent 28%, transparent 70%, rgba(255,214,134,.08)),
-                    radial-gradient(circle at 50% 0%, rgba(255,226,166,.18), transparent 38%);
-                opacity:.55;
-            }}
-            .card > * {{ position: relative; z-index: 2; }}
-            h1 {{
-                font-size: clamp(36px, 7vw, 68px);
-                letter-spacing: clamp(4px, 1.4vw, 10px);
-                color: #ffe2a3;
-                text-shadow:
-                    0 0 18px rgba(255,226,163,.42),
-                    0 0 54px rgba(212,160,68,.30);
-                margin-top: 4px;
-            }}
-            .subtitle {{
-                font-size: clamp(15px, 2.4vw, 19px);
-                color: rgba(255,245,222,.78);
-                text-shadow: 0 0 24px rgba(255,224,158,.14);
-            }}
-            .intro {{
-                min-height: unset;
-                margin-bottom: 26px;
-                padding: 20px 16px 4px;
-            }}
-            .intro-line {{
-                font-family: Georgia, "Times New Roman", serif;
-                font-size: clamp(20px, 3vw, 28px);
-                color: rgba(255,255,255,.92);
-                text-shadow: 0 0 26px rgba(255,217,140,.12);
-            }}
-            .intro-line.l4 {{
-                color: #ffd985;
-                text-shadow: 0 0 30px rgba(255,202,98,.35);
-            }}
-            .form-progress,
-            .step-actions,
-            #backStep1,
-            .atmosphere-title {{ display: none !important; }}
-            .form-step {{ display: block !important; opacity: 1 !important; }}
-            .section {{
-                margin-top: 26px;
-                padding: clamp(16px, 2.6vw, 24px);
-                border-radius: 28px;
-                background:
-                    linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
-                    radial-gradient(circle at 50% 0%, rgba(230,176,83,.08), transparent 56%);
-                border: 1px solid rgba(231,183,92,.13);
-                box-shadow:
-                    0 18px 50px rgba(0,0,0,.26),
-                    inset 0 0 0 1px rgba(255,255,255,.025);
-            }}
-            .section-title {{
-                color: #e9c06f;
-                letter-spacing: 1.8px;
-                font-size: 12px;
-                margin: 0 0 14px 0;
-                text-shadow: 0 0 18px rgba(233,192,111,.18);
-            }}
-            input, select, textarea {{
-                border-radius: 18px;
-                border: 1px solid rgba(233,192,111,.16);
-                background: rgba(255,255,255,.055);
-                box-shadow: inset 0 0 0 1px rgba(255,255,255,.018);
-                transition: border-color .25s ease, box-shadow .25s ease, background .25s ease, transform .25s ease;
-            }}
-            input:focus, select:focus, textarea:focus {{
-                border-color: rgba(255,218,143,.56);
-                box-shadow: 0 0 0 4px rgba(233,192,111,.08), 0 0 28px rgba(233,192,111,.12);
-                background: rgba(255,255,255,.075);
-            }}
-            .photo-picker-main {{
-                border-radius: 30px;
-                background:
-                    radial-gradient(circle at 50% 0%, rgba(255,218,143,.18), transparent 48%),
-                    linear-gradient(180deg, rgba(233,192,111,.10), rgba(255,255,255,.030));
-                border: 1px solid rgba(233,192,111,.28);
-                box-shadow: 0 18px 55px rgba(0,0,0,.34), 0 0 38px rgba(233,192,111,.08);
-            }}
-            .photo-picker-title {{ color: #ffe3a3; text-shadow: 0 0 18px rgba(233,192,111,.20); }}
-            .photo-picker-btn, button {{
-                background: linear-gradient(135deg, #fff0bd 0%, #e6bb62 46%, #b77d2d 100%);
-                color: #130d05;
-                box-shadow:
-                    0 14px 36px rgba(212,157,63,.25),
-                    inset 0 1px 0 rgba(255,255,255,.35);
-                transition: transform .22s ease, box-shadow .22s ease, filter .22s ease;
-            }}
-            .photo-picker-btn:hover, button:hover {{
-                transform: translateY(-1px);
-                box-shadow:
-                    0 20px 46px rgba(212,157,63,.34),
-                    inset 0 1px 0 rgba(255,255,255,.42);
-                filter: brightness(1.03);
-            }}
-            .photo-grid {{ gap: clamp(10px, 2vw, 16px); }}
-            .photo-card {{
-                position: relative;
-                border-radius: 26px;
-                background: linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.022));
-                border: 1px solid rgba(233,192,111,.14);
-                box-shadow: 0 16px 42px rgba(0,0,0,.28);
-                overflow: hidden;
-            }}
-            .photo-card::before {{
-                content:"";
-                position:absolute;
-                inset:0;
-                pointer-events:none;
-                background: radial-gradient(circle at 50% 0%, rgba(233,192,111,.12), transparent 46%);
-                opacity:.6;
-            }}
-            .photo-label {{ color:#f4c975; text-shadow: 0 0 18px rgba(244,201,117,.18); }}
-            .photo-box {{
-                border: 1px dashed rgba(233,192,111,.30);
-                background:
-                    radial-gradient(circle at 50% 30%, rgba(233,192,111,.08), transparent 48%),
-                    rgba(255,255,255,.025);
-            }}
-            .photo-preview {{ filter: saturate(1.08) contrast(1.03); }}
-            .emotion-grid {{ gap: clamp(12px, 2vw, 18px); }}
-            .emotion-card {{
-                position: relative;
-                min-height: 104px;
-                padding: 20px 19px;
-                border-radius: 26px;
-                border: 1px solid rgba(233,192,111,.14);
-                background:
-                    radial-gradient(circle at 20% 0%, rgba(233,192,111,.10), transparent 44%),
-                    linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.022));
-                box-shadow: 0 18px 48px rgba(0,0,0,.24);
-                overflow: hidden;
-            }}
-            .emotion-card::before {{
-                content:"";
-                position:absolute;
-                inset:0;
-                opacity:0;
-                background:
-                    radial-gradient(circle at 50% 0%, rgba(255,221,151,.25), transparent 48%),
-                    linear-gradient(135deg, rgba(255,255,255,.09), transparent 42%);
-                transition: opacity .28s ease;
-                pointer-events:none;
-            }}
-            .emotion-card::after {{
-                content:"";
-                position:absolute;
-                right:18px;
-                top:18px;
-                width:8px;
-                height:8px;
-                border-radius:999px;
-                background: rgba(233,192,111,.38);
-                box-shadow: 0 0 18px rgba(233,192,111,.26);
-                transition: transform .28s ease, opacity .28s ease;
-            }}
-            .emotion-card:hover {{
-                transform: translateY(-2px);
-                border-color: rgba(233,192,111,.34);
-                box-shadow: 0 24px 60px rgba(0,0,0,.32), 0 0 34px rgba(233,192,111,.09);
-            }}
-            .emotion-card:hover::before,
-            .emotion-card.selected::before {{ opacity:1; }}
-            .emotion-card.selected {{
-                border-color: rgba(255,219,146,.72);
-                background:
-                    radial-gradient(circle at 50% 0%, rgba(255,219,146,.22), transparent 52%),
-                    linear-gradient(180deg, rgba(233,192,111,.13), rgba(255,255,255,.045));
-                box-shadow:
-                    0 26px 70px rgba(0,0,0,.38),
-                    0 0 38px rgba(233,192,111,.20),
-                    inset 0 0 0 1px rgba(255,255,255,.05);
-            }}
-            .emotion-card.selected::after {{
-                transform: scale(1.65);
-                opacity:1;
-                background:#ffe3a3;
-                box-shadow: 0 0 28px rgba(255,227,163,.62);
-            }}
-            .emotion-title {{
-                position:relative;
-                z-index:2;
-                color: rgba(255,247,230,.96);
-                font-size: 18px;
-                font-weight: 800;
-                letter-spacing: -.2px;
-            }}
-            .emotion-sub {{
-                position:relative;
-                z-index:2;
-                color: rgba(255,255,255,.58);
-                font-size: 13px;
-            }}
-            .mode-box, .delivery-box, .delivery-option, .price-box {{
-                border-color: rgba(233,192,111,.15);
-                background:
-                    radial-gradient(circle at 50% 0%, rgba(233,192,111,.075), transparent 56%),
-                    rgba(255,255,255,.04);
-                box-shadow: inset 0 0 0 1px rgba(255,255,255,.018);
-            }}
-            .delivery-option {{ transition: border-color .22s ease, box-shadow .22s ease, background .22s ease; }}
-            .delivery-option:has(input:checked) {{
-                border-color: rgba(255,219,146,.58);
-                background:
-                    radial-gradient(circle at 50% 0%, rgba(255,219,146,.16), transparent 56%),
-                    rgba(255,255,255,.055);
-                box-shadow: 0 0 30px rgba(233,192,111,.10);
-            }}
-            .price-box {{ color: rgba(255,244,220,.82); }}
-            .buttons {{ margin-top: 28px; }}
-            #submitBtn {{ font-size: 16px; padding: 19px 22px; }}
-            .ghost {{ display:none !important; }}
-            .error-box {{
-                border-color: rgba(255,210,130,.20);
-                background: rgba(233,192,111,.07);
-            }}
-            a {{ color:#ffe3a3 !important; }}
-            /* ETERNA POLISH SAFE: capa visual sin tocar lógica */
-            .payment-overlay {{
-                position: fixed;
-                inset: 0;
-                z-index: 99999;
-                display: none;
-                align-items: center;
-                justify-content: center;
-                padding: 24px;
-                background:
-                    radial-gradient(circle at 50% 35%, rgba(232,186,94,.22), transparent 34%),
-                    radial-gradient(circle at 50% 80%, rgba(255,232,178,.08), transparent 36%),
-                    rgba(0,0,0,.84);
-                backdrop-filter: blur(18px);
-                -webkit-backdrop-filter: blur(18px);
-            }}
-            .payment-overlay.show {{ display: flex; }}
-            .payment-card {{
-                width: min(430px, 92vw);
-                border-radius: 34px;
-                padding: 34px 24px;
-                text-align: center;
-                border: 1px solid rgba(239,197,112,.30);
-                background:
-                    radial-gradient(circle at 50% 0%, rgba(239,197,112,.18), transparent 54%),
-                    linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.024));
-                box-shadow:
-                    0 30px 90px rgba(0,0,0,.64),
-                    0 0 70px rgba(219,169,75,.16),
-                    inset 0 0 0 1px rgba(255,255,255,.045);
-            }}
-            .payment-mark {{
-                width: 76px;
-                height: 76px;
-                margin: 0 auto 22px;
-                border-radius: 999px;
-                border: 1px solid rgba(255,222,150,.55);
-                display: grid;
-                place-items: center;
-                color: #ffe3a3;
-                font-size: 34px;
-                letter-spacing: -8px;
-                padding-right: 8px;
-                text-shadow: 0 0 24px rgba(255,219,146,.55);
-                box-shadow: 0 0 46px rgba(233,192,111,.22), inset 0 0 28px rgba(233,192,111,.08);
-                animation: eternaPulse 1.9s ease-in-out infinite;
-            }}
-            .payment-title {{
-                font-family: Georgia, "Times New Roman", serif;
-                font-size: clamp(26px, 7vw, 40px);
-                margin: 0 0 10px;
-                color: rgba(255,248,232,.96);
-                text-shadow: 0 0 30px rgba(255,223,158,.20);
-            }}
-            .payment-sub {{
-                font-size: 15px;
-                line-height: 1.75;
-                color: rgba(255,255,255,.66);
-                margin: 0 auto;
-                max-width: 330px;
-            }}
-            .payment-loader {{
-                width: 190px;
-                height: 4px;
-                border-radius: 999px;
-                overflow: hidden;
-                margin: 26px auto 0;
-                background: rgba(255,255,255,.08);
-                box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
-            }}
-            .payment-loader::before {{
-                content: "";
-                display: block;
-                height: 100%;
-                width: 42%;
-                border-radius: inherit;
-                background: linear-gradient(90deg, transparent, #ffe3a3, #c58a35, transparent);
-                animation: eternaLoad 1.25s ease-in-out infinite;
-            }}
-            @keyframes eternaPulse {{
-                0%,100% {{ transform: scale(1); opacity: .88; }}
-                50% {{ transform: scale(1.045); opacity: 1; }}
-            }}
-            @keyframes eternaLoad {{
-                0% {{ transform: translateX(-120%); }}
-                100% {{ transform: translateX(260%); }}
-            }}
-            #submitBtn.is-loading {{
-                pointer-events: none;
-                opacity: .92;
-                filter: saturate(.94) brightness(.98);
-            }}
-
-            @media (max-width: 760px) {{
-                .card {{ border-radius: 30px; }}
-                h1 {{ letter-spacing: 5px; }}
-                .emotion-grid {{ grid-template-columns: 1fr; }}
-                .emotion-card {{ min-height: 96px; }}
-                .section {{ padding: 16px; border-radius: 24px; }}
-                .photo-grid {{ grid-template-columns: repeat(2, 1fr); }}
-            }}
-            @media (max-width: 430px) {{
-                body {{ padding: 10px; }}
-                .card {{ padding: 18px; }}
-                .photo-grid {{ grid-template-columns: repeat(2, 1fr); }}
-                .phone-row {{ gap: 8px; }}
-                .phone-code {{ min-width: 96px; flex-basis: 96px; }}
-                .intro-line {{ font-size: 18px; }}
-            }}
-</style>
+        </style>
     </head>
     <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
         <div class="wrap">
-            <div class="card" style="position:relative;z-index:2;">
-                <h1>ETERNA</h1>
-                <div class="subtitle">Crea algo que no se abra. Se viva.</div>
+            <div class="card">
+                <h1>CREAR ETERNA</h1>
+                <div class="subtitle">Hay momentos que merecen llegar exactamente cuando deben llegar</div>
 
                 <div class="intro">
-                    <p class="intro-line l1">No todo lo importante</p>
-                    <p class="intro-line l2">debería desaparecer.</p>
-                    <p class="intro-line l3">Haz que vuelva convertido</p>
-                    <p class="intro-line l4">en emoción real.</p>
+                    <p class="intro-line l1">Esto no es un vídeo…</p>
+                    <p class="intro-line l2">No es solo un recuerdo…</p>
+                    <p class="intro-line l3">Es una espera hecha con intención…</p>
+                    <p class="intro-line l4">MAGIA.</p>
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
-                    <div class="form-step active" id="formStep1">
-                        <div class="atmosphere-title">Primero construimos el recuerdo. Luego decidimos cómo vuelve.</div>
-
                     <div class="section s1">
-                        <div class="section-title">Quién lo crea</div>
+                        <div class="section-title">Quién quiere hacer eterno este momento</div>
                         <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
                         <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
 
@@ -3860,7 +2851,7 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s2">
-                        <div class="section-title">Quién lo va a vivir</div>
+                        <div class="section-title">Para quién es esto</div>
                         <input name="recipient_name" id="recipient_name" placeholder="Su nombre" required>
 
                         <div class="phone-row" style="align-items: stretch;">
@@ -3906,162 +2897,119 @@ def render_create_form() -> str:
                     </div>
 
                     <div class="section s3">
-                        <div class="section-title">Los recuerdos</div>
+                        <div class="section-title">Los recuerdos que lo harán volver</div>
                         <div class="soft-copy">
-                            Elige 6 fotos directamente desde tu galería. ETERNA las colocará como Foto 1, Foto 2, Foto 3...
-                        </div>
-
-                        <div class="photo-picker-main">
-                            <div class="photo-picker-title">Seleccionar 6 recuerdos</div>
-                            <div class="photo-picker-sub">
-                                Puedes elegir las 6 fotos de una vez. Después podrás cambiar cualquiera individualmente.
-                            </div>
-                            <label class="photo-picker-btn">
-                                Abrir galería
-                                <input type="file" id="multi_photo_picker" accept="image/*" multiple data-max-files="6">
-                            </label>
+                            Elige 6 fotos que merezcan volver a sentirse.
                         </div>
 
                         <div class="photo-grid">
                             <div class="photo-card">
                                 <div class="photo-label">Foto 1</div>
+                                <div class="photo-guide">Una foto suya que diga quién es.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo1">
-                                    <div class="photo-placeholder" id="placeholder_photo1">Cambiar</div>
+                                    <div class="photo-placeholder" id="placeholder_photo1">Toca para elegir una foto de tu galería</div>
                                     <input type="file" name="photo1" id="photo1" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo1">Pendiente</div>
+                                <div class="photo-status" id="status_photo1">Aún no has elegido esta foto.</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 2</div>
+                                <div class="photo-guide">Un instante que te lleve directo a ella.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo2">
-                                    <div class="photo-placeholder" id="placeholder_photo2">Cambiar</div>
+                                    <div class="photo-placeholder" id="placeholder_photo2">Toca para elegir una foto de tu galería</div>
                                     <input type="file" name="photo2" id="photo2" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo2">Pendiente</div>
+                                <div class="photo-status" id="status_photo2">Aún no has elegido esta foto.</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 3</div>
+                                <div class="photo-guide">Algo que os una sin necesidad de explicarlo.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo3">
-                                    <div class="photo-placeholder" id="placeholder_photo3">Cambiar</div>
+                                    <div class="photo-placeholder" id="placeholder_photo3">Toca para elegir una foto de tu galería</div>
                                     <input type="file" name="photo3" id="photo3" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo3">Pendiente</div>
+                                <div class="photo-status" id="status_photo3">Aún no has elegido esta foto.</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 4</div>
+                                <div class="photo-guide">Un recuerdo que todavía vive dentro.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo4">
-                                    <div class="photo-placeholder" id="placeholder_photo4">Cambiar</div>
+                                    <div class="photo-placeholder" id="placeholder_photo4">Toca para elegir una foto de tu galería</div>
                                     <input type="file" name="photo4" id="photo4" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo4">Pendiente</div>
+                                <div class="photo-status" id="status_photo4">Aún no has elegido esta foto.</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 5</div>
+                                <div class="photo-guide">Una imagen que solo vosotros entendéis.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo5">
-                                    <div class="photo-placeholder" id="placeholder_photo5">Cambiar</div>
+                                    <div class="photo-placeholder" id="placeholder_photo5">Toca para elegir una foto de tu galería</div>
                                     <input type="file" name="photo5" id="photo5" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo5">Pendiente</div>
+                                <div class="photo-status" id="status_photo5">Aún no has elegido esta foto.</div>
                             </div>
 
                             <div class="photo-card">
                                 <div class="photo-label">Foto 6</div>
+                                <div class="photo-guide">La foto que jamás querrías perder.</div>
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo6">
-                                    <div class="photo-placeholder" id="placeholder_photo6">Cambiar</div>
+                                    <div class="photo-placeholder" id="placeholder_photo6">Toca para elegir una foto de tu galería</div>
                                     <input type="file" name="photo6" id="photo6" accept="image/*" required>
                                 </label>
-                                <div class="photo-status" id="status_photo6">Pendiente</div>
+                                <div class="photo-status" id="status_photo6">Aún no has elegido esta foto.</div>
                             </div>
-
                         </div>
 
                         <div class="mini-note">
-                            Recomendación: formato vertical. Lo importante es que sean recuerdos que de verdad tengan sentido.
+                            Recomendación: mejor verticales. Idealmente 2 fotos suyas, 2 juntos y 2 finales suyas.
                         </div>
                     </div>
 
                     <div class="section s4">
-                        <div class="section-title">Qué quieres provocar</div>
+                        <div class="section-title">La emoción que quieres dejar</div>
 
                         <div class="emotion-grid">
                             <div class="emotion-card" data-type="cumpleanos">
                                 <div class="emotion-title">Cumpleaños</div>
-                                <div class="emotion-sub">Un día que merece quedarse.</div>
+                                <div class="emotion-sub">Un día que merece quedarse para siempre.</div>
                             </div>
                             <div class="emotion-card" data-type="amor">
                                 <div class="emotion-title">Amor</div>
                                 <div class="emotion-sub">Cuando lo que sientes ya no cabe dentro.</div>
                             </div>
-                            <div class="emotion-card" data-type="madre">
-                                <div class="emotion-title">Mamá</div>
-                                <div class="emotion-sub">Para quien siempre fue hogar.</div>
-                            </div>
-                            <div class="emotion-card" data-type="padre">
-                                <div class="emotion-title">Papá</div>
-                                <div class="emotion-sub">Para quien dejó huella sin hacer ruido.</div>
-                            </div>
                             <div class="emotion-card" data-type="familia">
                                 <div class="emotion-title">Familia</div>
-                                <div class="emotion-sub">Para quienes siempre vuelven a ti.</div>
-                            </div>
-                            <div class="emotion-card" data-type="amistad">
-                                <div class="emotion-title">Amistad</div>
-                                <div class="emotion-sub">Para esa persona que se quedó.</div>
-                            </div>
-                            <div class="emotion-card" data-type="distancia">
-                                <div class="emotion-title">Distancia</div>
-                                <div class="emotion-sub">Cuando alguien está lejos, pero sigue cerca.</div>
-                            </div>
-                            <div class="emotion-card" data-type="perdon">
-                                <div class="emotion-title">Perdón</div>
-                                <div class="emotion-sub">Para decir algo que cuesta decir.</div>
-                            </div>
-                            <div class="emotion-card" data-type="reencuentro">
-                                <div class="emotion-title">Reencuentro</div>
-                                <div class="emotion-sub">Cuando algo vuelve después del tiempo.</div>
-                            </div>
-                            <div class="emotion-card" data-type="gratitud">
-                                <div class="emotion-title">Gracias</div>
-                                <div class="emotion-sub">Para agradecer de verdad.</div>
+                                <div class="emotion-sub">Para quien siempre ha estado.</div>
                             </div>
                             <div class="emotion-card" data-type="superacion">
                                 <div class="emotion-title">Superación</div>
                                 <div class="emotion-sub">Para recordarle todo lo que vale.</div>
                             </div>
-                            <div class="emotion-card" data-type="sorpresa">
-                                <div class="emotion-title">Sorpresa</div>
-                                <div class="emotion-sub">Cuando quieres tocar el corazón sin avisar.</div>
-                            </div>
                             <div class="emotion-card" data-type="esfuerzo">
                                 <div class="emotion-title">Esfuerzo</div>
                                 <div class="emotion-sub">Para reconocer lo que a veces no se dice.</div>
                             </div>
-                            <div class="emotion-card selected" data-type="no_se_decirlo">
-                                <div class="emotion-title">No sé cómo decirlo</div>
-                                <div class="emotion-sub">Cuando ETERNA debe decirlo por ti.</div>
+                            <div class="emotion-card" data-type="sorpresa">
+                                <div class="emotion-title">Sorpresa</div>
+                                <div class="emotion-sub">Cuando quieres tocar el corazón sin avisar.</div>
                             </div>
                         </div>
 
-                        <input type="hidden" name="message_type" id="messageType" value="no_se_decirlo" required>
+                        <input type="hidden" name="message_type" id="messageType" required>
                     </div>
-
-                    </div>
-
-                    <div class="form-step active" id="formStep2">
-                        <div class="atmosphere-title">Ahora dale intención: palabras, momento de entrega y pago seguro.</div>
 
                     <div class="section s5">
-                        <div class="section-title">Las palabras</div>
+                        <div class="section-title">Las palabras que quieres dejar</div>
 
                         <div class="mode-box">
                             <div class="radio-row">
@@ -4079,14 +3027,14 @@ def render_create_form() -> str:
                         </div>
 
                         <div class="phrases-manual hidden" id="manualPhrases">
-                            <textarea name="phrase_1" id="phrase_1" placeholder="Lo que nunca quieres que olvide" maxlength="220"></textarea>
-                            <textarea name="phrase_2" id="phrase_2" placeholder="Eso que sientes y a veces no dices" maxlength="220"></textarea>
-                            <textarea name="phrase_3" id="phrase_3" placeholder="La frase que quieres dejarle para siempre" maxlength="220"></textarea>
+                            <input name="phrase_1" id="phrase_1" placeholder="Lo que nunca quieres que olvide" maxlength="160">
+                            <input name="phrase_2" id="phrase_2" placeholder="Eso que sientes y a veces no dices" maxlength="160">
+                            <input name="phrase_3" id="phrase_3" placeholder="La frase que quieres dejarle para siempre" maxlength="160">
                         </div>
                     </div>
 
                     <div class="section s6">
-                        <div class="section-title">El momento exacto</div>
+                        <div class="section-title">Cuándo debe llegar</div>
 
                         <div class="delivery-box">
                             <div class="delivery-copy">
@@ -4155,7 +3103,7 @@ def render_create_form() -> str:
 
                         <div class="price-box">
                             Precio base ETERNA: {money(BASE_PRICE)}€<br>
-                            Si añades regalo económico: +{money(FIXED_PLATFORM_FEE)}€ gestión segura + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado<br>
+                            Comisión regalo: {money(FIXED_PLATFORM_FEE)}€ + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado<br>
                             Entrega programada: +{money(SCHEDULED_DELIVERY_FEE)}€ solo si eliges guardarlo y entregarlo en un momento exacto
                         </div>
 
@@ -4173,7 +3121,7 @@ def render_create_form() -> str:
                             padding:16px;
                             border-radius:18px;
                             background:rgba(255,255,255,0.055);
-                            border:1px solid rgba(218,178,92,0.22);
+                            border:1px solid rgba(255,255,255,0.10);
                             color:rgba(255,255,255,0.78);
                             font-size:13px;
                             line-height:1.65;
@@ -4193,31 +3141,18 @@ def render_create_form() -> str:
 
                         <div style="margin-top:14px;font-size:13px;line-height:1.7;color:rgba(255,255,255,0.58);text-align:center;">
                             Al continuar, aceptas las
-                            <a href="/condiciones" target="_blank" style="color:#fff7e6;text-decoration:underline;">condiciones</a>
+                            <a href="/condiciones" target="_blank" style="color:white;text-decoration:underline;">condiciones</a>
                             y la
-                            <a href="/privacidad" target="_blank" style="color:#fff7e6;text-decoration:underline;">política de privacidad</a>.
+                            <a href="/privacidad" target="_blank" style="color:white;text-decoration:underline;">política de privacidad</a>.
                         </div>
 
                         <div class="buttons">
-                        <button type="submit" id="submitBtn">Crear y pasar al pago seguro</button>
+                        <button type="submit" id="submitBtn">SEGUIR CREANDO</button>
+                        <a class="btn ghost" href="/">Volver</a>
                         </div>
                         </div>
                     </div>
                 </form>
-            </div>
-        </div>
-
-
-        <div class="payment-overlay" id="paymentOverlay" aria-hidden="true">
-            <div class="payment-card">
-                <div class="payment-mark">♥</div>
-                <h2 class="payment-title">Preparando tu ETERNA</h2>
-                <p class="payment-sub">
-                    Estamos guardando tus recuerdos y abriendo el pago seguro.<br>
-                    Esto puede tardar unos segundos.<br>
-                    No cierres esta pantalla.
-                </p>
-                <div class="payment-loader"></div>
             </div>
         </div>
 
@@ -4240,47 +3175,6 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     const recipientCountryCode = document.getElementById("recipient_country_code");
     const recipientPhoneInput = document.getElementById("recipient_phone");
-    const formStep1 = document.getElementById("formStep1");
-    const formStep2 = document.getElementById("formStep2");
-    const progressStep1 = document.getElementById("progressStep1");
-    const progressStep2 = document.getElementById("progressStep2");
-    const goStep2 = document.getElementById("goStep2");
-    const backStep1 = document.getElementById("backStep1");
-
-    function setCreateStep(step) {{
-        const first = step === 1;
-        if (formStep1) formStep1.classList.toggle("active", first);
-        if (formStep2) formStep2.classList.toggle("active", !first);
-        if (progressStep1) progressStep1.classList.toggle("active", first);
-        if (progressStep2) progressStep2.classList.toggle("active", !first);
-        window.scrollTo({{ top: 0, behavior: "smooth" }});
-    }}
-
-    function validateFirstStep() {{
-        const requiredIds = ["customer_name", "customer_phone", "recipient_name", "recipient_phone"];
-        for (const id of requiredIds) {{
-            const el = document.getElementById(id);
-            if (el && !String(el.value || "").trim()) {{
-                showError("Falta completar los datos principales antes de continuar.");
-                try {{ el.focus(); }} catch (e) {{}}
-                return false;
-            }}
-        }}
-        const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
-        if (!messageType) {{
-            showError("Selecciona una emoción para continuar.");
-            scrollToEmotionChoice();
-            return false;
-        }}
-        if (!allPhotosPresent()) {{
-            showError("Necesitas elegir las 6 fotos antes de continuar.");
-            return false;
-        }}
-        clearError();
-        return true;
-    }}
-
-    // Flujo one-page: sin botón intermedio ni saltos arriba.
 
     function showError(message) {{
         if (!errorBox) return;
@@ -4292,29 +3186,6 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (!errorBox) return;
         errorBox.style.display = "none";
         errorBox.innerText = "";
-    }}
-
-    function applyDefaultEmotionIfNeeded() {{
-        if (!messageTypeInput) return;
-        const current = String(messageTypeInput.value || "").trim();
-        if (current) return;
-
-        const defaultType = "no_se_decirlo";
-        messageTypeInput.value = defaultType;
-
-        cards.forEach((card) => {{
-            const isDefault = (card.dataset.type || "") === defaultType;
-            card.classList.toggle("selected", isDefault);
-        }});
-
-        saveFormState();
-    }}
-
-    function scrollToEmotionChoice() {{
-        try {{
-            const selected = document.querySelector('.emotion-card.selected') || document.querySelector('.emotion-card');
-            if (selected) selected.scrollIntoView({{ behavior: "smooth", block: "center" }});
-        }} catch (e) {{}}
     }}
 
     function getPersistableData() {{
@@ -4605,56 +3476,6 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
     }}
 
-
-    function setInputFile(input, file) {{
-        if (!input || !file) return false;
-        try {{
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
-            input.dispatchEvent(new Event("change", {{ bubbles: true }}));
-            return true;
-        }} catch (e) {{
-            console.error("No se pudo asignar la foto", e);
-            return false;
-        }}
-    }}
-
-    const multiPhotoPicker = document.getElementById("multi_photo_picker");
-    if (multiPhotoPicker) {{
-        multiPhotoPicker.addEventListener("change", function () {{
-            clearError();
-            const files = Array.from(multiPhotoPicker.files || []).filter((file) => (file.type || "").startsWith("image/"));
-            if (!files.length) return;
-            if (files.length < 6) {{
-                showError("Elige 6 fotos para crear ETERNA.");
-            }}
-            files.slice(0, 6).forEach((file, index) => {{
-                const input = document.getElementById("photo" + (index + 1));
-                setInputFile(input, file);
-            }});
-            if ((multiPhotoPicker.files || []).length > 6) {{
-                clearError();
-                const status6 = document.getElementById("status_photo6");
-                if (status6) status6.innerText = "He usado solo las 6 primeras. Puedes cambiar cualquiera una a una.";
-            }}
-            saveFormState();
-        }});
-    }}
-
-    function autoGrowTextarea(el) {{
-        if (!el) return;
-        el.style.height = "auto";
-        el.style.height = Math.max(96, el.scrollHeight) + "px";
-    }}
-
-    ["phrase_1", "phrase_2", "phrase_3"].forEach((id) => {{
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("input", function () {{ autoGrowTextarea(el); saveFormState(); }});
-        autoGrowTextarea(el);
-    }});
-
     function bindPreview(inputId) {{
         const fileInput = document.getElementById(inputId);
         if (!fileInput) return;
@@ -4713,8 +3534,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
         if (!messageType) {{
-            showError("Selecciona una emoción para continuar.");
-            scrollToEmotionChoice();
+            showError("Elige la emoción que quieres dejar.");
             return false;
         }}
 
@@ -4724,9 +3544,9 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
 
         if (manualRadio && manualRadio.checked) {{
-            const phrase1 = form.querySelector('[name="phrase_1"]')?.value.trim();
-            const phrase2 = form.querySelector('[name="phrase_2"]')?.value.trim();
-            const phrase3 = form.querySelector('[name="phrase_3"]')?.value.trim();
+            const phrase1 = form.querySelector('input[name="phrase_1"]')?.value.trim();
+            const phrase2 = form.querySelector('input[name="phrase_2"]')?.value.trim();
+            const phrase3 = form.querySelector('input[name="phrase_3"]')?.value.trim();
 
             if (!phrase1 || !phrase2 || !phrase3) {{
                 showError("Escribe tus 3 frases.");
@@ -4770,32 +3590,11 @@ document.addEventListener("DOMContentLoaded", function () {{
     if (!form) return;
 
     restoreFormState();
-    applyDefaultEmotionIfNeeded();
     bindAutosave();
     updatePhraseMode();
     updateDeliveryMode();
 
-    let eternaSubmitting = false;
-
-    function showPaymentLoadingNow() {{
-        if (button) {{
-            button.disabled = true;
-            button.classList.add("is-loading");
-            button.innerText = "Preparando tu ETERNA...";
-        }}
-
-        const paymentOverlay = document.getElementById("paymentOverlay");
-        if (paymentOverlay) {{
-            paymentOverlay.classList.add("show");
-            paymentOverlay.setAttribute("aria-hidden", "false");
-        }}
-    }}
-
     form.addEventListener("submit", function (e) {{
-        if (eternaSubmitting) {{
-            return;
-        }}
-
         if (recipientPhoneInput && recipientPhoneInput.value) {{
             applyRecipientPhoneValue(recipientPhoneInput.value);
         }}
@@ -4805,24 +3604,18 @@ document.addEventListener("DOMContentLoaded", function () {{
             return;
         }}
 
-        e.preventDefault();
-        eternaSubmitting = true;
         clearError();
-        showPaymentLoadingNow();
+
+        if (button) {{
+            button.disabled = true;
+            button.innerText = "Entrando a pago...";
+        }}
 
         try {{
             localStorage.removeItem(STORAGE_KEY);
         }} catch (err) {{
             console.error("localStorage remove error", err);
         }}
-
-        // Importante en móvil: dejamos que el navegador pinte la pantalla
-        // "Preparando tu ETERNA" antes de empezar la subida pesada de las 6 fotos.
-        window.requestAnimationFrame(function () {{
-            window.setTimeout(function () {{
-                form.submit();
-            }}, 140);
-        }});
     }});
 
 }});
@@ -4835,563 +3628,123 @@ document.addEventListener("DOMContentLoaded", function () {{
 # HOME / CREATE
 # =========================================================
 
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
 
-def render_create_intro() -> HTMLResponse:
-    return HTMLResponse(f"""
+
+@app.get("/home-v2", response_class=HTMLResponse)
+def home_v2():
+    """Ruta visual aislada para probar la Home cinematográfica sin tocar la Home real ni el flujo ETERNA."""
+    return HTMLResponse("""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>Crear ETERNA</title>
+        <title>ETERNA — Home Cinematic V2</title>
         <style>
-            * {{ box-sizing: border-box; }}
-            html, body {{ margin:0; min-height:100%; background:#020817; }}
-            body {{
-                min-height:100vh;
-                color:#fff7e6;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-                overflow-x:hidden;
+            * { box-sizing: border-box; }
+            html, body { margin: 0; min-height: 100%; background: #02050a; }
+            body {
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
                 background:
-                    radial-gradient(circle at 50% -10%, rgba(218,178,92,.22), transparent 36%),
-                    radial-gradient(circle at 20% 90%, rgba(64,156,255,.12), transparent 30%),
-                    linear-gradient(180deg,#020817,#000 58%,#020817);
-            }}
-            .stage {{
-                min-height:100vh;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
-            }}
-            .phone {{
-                width:100%;
-                max-width:430px;
-                min-height: min(820px, 94vh);
-                border-radius:38px;
-                padding:26px 22px;
-                position:relative;
-                overflow:hidden;
-                border:1px solid rgba(218,178,92,.20);
-                background:
-                    linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),
-                    rgba(0,0,0,.68);
-                box-shadow:0 30px 90px rgba(0,0,0,.72), inset 0 0 0 1px rgba(255,255,255,.035);
-            }}
-            .phone:before {{
-                content:"";
-                position:absolute;
-                inset:-30%;
-                background: radial-gradient(circle, rgba(64,156,255,.10), transparent 28%);
-                animation: breathe 9s ease-in-out infinite;
-                pointer-events:none;
-            }}
-            @keyframes breathe {{ 0%,100% {{ transform:scale(1); opacity:.55; }} 50% {{ transform:scale(1.12); opacity:1; }} }}
-            .content {{ position:relative; z-index:2; min-height: calc(min(820px, 94vh) - 52px); display:flex; flex-direction:column; }}
-            .brand {{
-                letter-spacing:5px;
-                font-size:13px;
-                color:rgba(218,178,92,.92);
-                text-align:center;
-                margin-top:8px;
-            }}
-            .orb {{
-                width:86px;
-                height:86px;
-                margin:42px auto 34px;
-                border-radius:999px;
-                border:1px solid rgba(218,178,92,.35);
-                box-shadow:0 0 44px rgba(218,178,92,.22), inset 0 0 28px rgba(218,178,92,.10);
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                color:rgba(218,178,92,.92);
-                font-size:34px;
-                animation: pulse 4.8s ease-in-out infinite;
-            }}
-            @keyframes pulse {{ 0%,100% {{ transform:scale(1); }} 50% {{ transform:scale(1.045); }} }}
-            .line {{
-                font-family: Georgia, "Times New Roman", serif;
-                font-size: clamp(31px, 8vw, 43px);
-                line-height:1.08;
-                text-align:center;
-                letter-spacing:-.7px;
-                margin:0;
-                opacity:0;
-                transform:translateY(18px);
-                animation: reveal 1.6s ease forwards;
-            }}
-            .line.two {{ animation-delay:1.25s; color:rgba(255,255,255,.88); }}
-            .line.three {{ animation-delay:2.65s; color:rgba(218,178,92,.95); }}
-            @keyframes reveal {{ to {{ opacity:1; transform:translateY(0); }} }}
-            .copy {{
-                margin:30px auto 0;
-                max-width:330px;
-                text-align:center;
-                color:rgba(255,255,255,.58);
-                line-height:1.8;
-                font-size:15px;
-                opacity:0;
-                animation: reveal 1.4s ease forwards;
-                animation-delay:4.1s;
-            }}
-            .mock {{
-                margin:34px auto 0;
-                width:76%;
-                max-width:250px;
-                aspect-ratio:9/16;
-                border-radius:30px;
-                border:1px solid rgba(218,178,92,.26);
-                background:
-                    radial-gradient(circle at 50% 25%, rgba(255,255,255,.16), transparent 34%),
-                    linear-gradient(180deg, rgba(218,178,92,.10), rgba(0,0,0,.55));
-                box-shadow:0 22px 60px rgba(0,0,0,.58);
-                position:relative;
-                overflow:hidden;
-                opacity:0;
-                transform:translateY(20px) scale(.98);
-                animation: revealMock 1.7s ease forwards;
-                animation-delay:5.2s;
-            }}
-            @keyframes revealMock {{ to {{ opacity:1; transform:translateY(0) scale(1); }} }}
-            .mock:after {{
-                content:"Tu ETERNA ha vuelto";
-                position:absolute;
-                left:18px;
-                right:18px;
-                bottom:22px;
-                text-align:center;
-                font-family:Georgia,"Times New Roman",serif;
-                font-size:20px;
-                color:rgba(255,255,255,.9);
-            }}
-            .actions {{ margin-top:auto; padding-top:30px; display:grid; gap:12px; }}
-            .btn {{
-                display:block;
-                width:100%;
-                padding:18px 22px;
-                border-radius:999px;
-                text-align:center;
-                text-decoration:none;
-                font-weight:800;
-                letter-spacing:.3px;
-                background:linear-gradient(135deg,#f6e1a8,#c89d45);
-                color:#120d05;
-                box-shadow:0 14px 34px rgba(218,178,92,.22);
-            }}
-            .ghost {{
-                background:rgba(255,255,255,.055);
-                color:rgba(255,255,255,.78);
-                border:1px solid rgba(255,255,255,.08);
-                box-shadow:none;
-            }}
-            .tiny {{
-                text-align:center;
-                margin-top:12px;
-                color:rgba(255,255,255,.35);
-                font-size:12px;
-                line-height:1.5;
-            }}
+                    radial-gradient(circle at 50% 0%, rgba(72, 158, 255, 0.20), transparent 34%),
+                    radial-gradient(circle at 50% 100%, rgba(212, 175, 55, 0.10), transparent 38%),
+                    #02050a;
+                overflow-x: hidden;
+            }
+            .phone-frame {
+                width: 100%;
+                max-width: 430px;
+                min-height: 100vh;
+                margin: 0 auto;
+                background: #02050a;
+            }
+            .hero-img {
+                width: 100%;
+                max-width: 430px;
+                min-height: 100vh;
+                height: auto;
+                display: block;
+                object-fit: cover;
+                object-position: top center;
+            }
+            .fallback {
+                min-height: 100vh;
+                padding: 42px 24px;
+                color: #f6f1e8;
+                font-family: Georgia, 'Times New Roman', serif;
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 18px;
+            }
+            .fallback .mark {
+                width: 54px;
+                height: 54px;
+                border: 1px solid rgba(212,175,55,.72);
+                border-radius: 50%;
+                display: grid;
+                place-items: center;
+                margin: 0 auto 8px auto;
+                color: #d4af37;
+                font-size: 28px;
+                letter-spacing: .02em;
+            }
+            .fallback h1 {
+                margin: 0;
+                font-size: clamp(42px, 12vw, 68px);
+                line-height: .92;
+                letter-spacing: -.05em;
+            }
+            .fallback p {
+                margin: 0 auto;
+                max-width: 330px;
+                color: rgba(246,241,232,.78);
+                font: 15px/1.7 Arial, sans-serif;
+            }
+            .fallback a {
+                display: inline-block;
+                margin: 12px auto 0 auto;
+                padding: 15px 22px;
+                border-radius: 999px;
+                color: #070707;
+                background: linear-gradient(135deg, #f3d98b, #d4af37);
+                font: 800 13px/1 Arial, sans-serif;
+                text-decoration: none;
+                letter-spacing: .12em;
+                text-transform: uppercase;
+                box-shadow: 0 18px 60px rgba(212,175,55,.22);
+            }
         </style>
     </head>
     <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-        <main class="stage" style="position:relative;z-index:2;">
-            <section class="phone">
-                <div class="content">
-                    <div class="brand">ETERNA</div>
-                    <div class="orb">♥</div>
-                    <h1 class="line">No todo lo importante</h1>
-                    <h2 class="line two">debería desaparecer.</h2>
-                    <h2 class="line three">Haz que vuelva.</h2>
-                    <p class="copy">
-                        Crea una experiencia íntima con fotos, palabras y un momento que volverá a ti convertido en emoción real.
-                    </p>
-                    
-                    <div class="actions">
-                        <a class="btn" href="/crear">Crear mi ETERNA</a>
-                        
-                    </div>
-                    <div class="tiny">6 fotos. 3 frases. Un recuerdo que vuelve.</div>
-                </div>
+        <main class="phone-frame">
+            <img
+                class="hero-img"
+                src="/static/eterna-cinematic/backgrounds/home-mobile-v1.png"
+                alt="ETERNA — No envíes un vídeo. Entrega un momento."
+                onerror="this.style.display='none'; document.getElementById('fallback-home-v2').style.display='flex';"
+            >
+            <section id="fallback-home-v2" class="fallback" style="display:none;">
+                <div class="mark">E</div>
+                <h1>ETERNA</h1>
+                <p>No envíes un vídeo. Entrega un momento.</p>
+                <a href="/crear">Crear mi ETERNA</a>
             </section>
         </main>
     </body>
     </html>
     """)
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return HTMLResponse("""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ETERNA</title>
-    <style>
-        * { box-sizing: border-box; }
-        html, body { margin: 0; min-height: 100%; background: #020817; }
-        body {
-            min-height: 100vh;
-            color: #fff7e6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            overflow-x: hidden;
-            background:
-                radial-gradient(circle at 50% 8%, rgba(59,130,246,0.24), transparent 23%),
-                radial-gradient(circle at 50% 44%, rgba(37,99,235,0.13), transparent 32%),
-                linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-        }
-        .page {
-            position: relative;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 42px 20px;
-            text-align: center;
-            isolation: isolate;
-        }
-        .page::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: .26;
-            background-image:
-                radial-gradient(circle at 20% 18%, rgba(255,255,255,.18) 0 1px, transparent 1.5px),
-                radial-gradient(circle at 74% 28%, rgba(255,214,142,.20) 0 1px, transparent 1.7px),
-                radial-gradient(circle at 44% 76%, rgba(255,214,142,.14) 0 1px, transparent 1.5px);
-            background-size: 160px 160px, 220px 220px, 190px 190px;
-        }
-        .page::after {
-            content: "";
-            position: fixed;
-            left: -12%;
-            right: -12%;
-            bottom: -12%;
-            height: 34%;
-            pointer-events: none;
-            opacity: .48;
-            background:
-                radial-gradient(ellipse at 50% 100%, rgba(255,190,82,.42), transparent 56%),
-                linear-gradient(90deg, transparent 0%, rgba(255,195,94,.18) 30%, rgba(255,236,183,.20) 50%, rgba(255,195,94,.18) 70%, transparent 100%);
-            filter: blur(16px);
-        }
-        .hero {
-            width: 100%;
-            max-width: 780px;
-            margin: 0 auto;
-            padding: 28px 0 8px;
-            position: relative;
-            z-index: 1;
-        }
-        .symbol {
-            width: 150px;
-            height: 150px;
-            margin: 0 auto 18px;
-            border-radius: 999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffd98b;
-            font-size: 96px;
-            line-height: 1;
-            text-shadow: 0 0 28px rgba(255,204,111,.65), 0 0 64px rgba(255,164,57,.38);
-            background: radial-gradient(circle, rgba(255,225,159,.19), transparent 68%);
-            border: 1px solid rgba(255,220,150,.18);
-            box-shadow: 0 0 72px rgba(255,177,68,.18);
-        }
-        .brand {
-            margin: 0;
-            letter-spacing: .22em;
-            padding-left: .22em;
-            font-size: clamp(54px, 10vw, 104px);
-            line-height: .92;
-            font-weight: 800;
-            color: #ffd98b;
-            text-shadow: 0 0 24px rgba(255,220,155,.52), 0 18px 50px rgba(0,0,0,.6);
-        }
-        .tag {
-            margin: 28px auto 0;
-            max-width: 660px;
-            font-size: clamp(17px, 2.8vw, 24px);
-            line-height: 1.55;
-            letter-spacing: .28em;
-            padding-left: .28em;
-            text-transform: uppercase;
-            color: rgba(255,224,164,.92);
-        }
-        .divider {
-            margin: 26px auto 0;
-            width: 260px;
-            max-width: 70%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            color: #f0c46c;
-            opacity: .9;
-        }
-        .divider::before,
-        .divider::after {
-            content: "";
-            height: 1px;
-            flex: 1;
-            background: linear-gradient(90deg, transparent, rgba(240,196,108,.74));
-        }
-        .divider::after { background: linear-gradient(90deg, rgba(240,196,108,.74), transparent); }
-        .copy {
-            margin: 34px auto 0;
-            font-size: clamp(18px, 3.4vw, 23px);
-            line-height: 1.7;
-            color: rgba(255,255,255,.90);
-        }
-        .btn {
-            margin: 36px auto 0;
-            width: min(100%, 430px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 72px;
-            padding: 18px 28px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%);
-            color: #150d03;
-            text-decoration: none;
-            font-size: 16px;
-            font-weight: 900;
-            letter-spacing: .34em;
-            padding-left: calc(28px + .34em);
-            text-transform: uppercase;
-            box-shadow: 0 18px 60px rgba(255,172,62,.24), inset 0 1px 0 rgba(255,255,255,.55);
-        }
-        .pillars {
-            width: min(100%, 760px);
-            margin: 58px auto 0;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-        }
-        .pillar {
-            min-height: 132px;
-            padding: 18px 12px;
-            border-radius: 22px;
-            border: 1px solid rgba(255,215,142,.15);
-            background: rgba(255,255,255,.035);
-        }
-        .pillar .ico {
-            font-size: 30px;
-            color: #f0c46c;
-            margin-bottom: 10px;
-        }
-        .pillar .title {
-            color: #f6d18b;
-            font-size: 13px;
-            letter-spacing: .24em;
-            padding-left: .24em;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-        .pillar p {
-            margin: 10px 0 0;
-            color: rgba(255,255,255,.70);
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        .promise {
-            margin: 54px auto 0;
-            color: rgba(255,224,164,.88);
-            font-size: clamp(14px, 2.4vw, 18px);
-            line-height: 1.8;
-            letter-spacing: .24em;
-            padding-left: .24em;
-            text-transform: uppercase;
-        }
-        @media (max-width: 720px) {
-            .page { align-items: flex-start; padding: 28px 18px 42px; }
-            .symbol { width: 108px; height: 108px; font-size: 72px; margin-bottom: 12px; }
-            .tag { letter-spacing: .16em; padding-left: .16em; }
-            .btn { border-radius: 999px; min-height: 64px; letter-spacing: .20em; padding-left: calc(22px + .20em); }
-            .pillars { grid-template-columns: 1fr; margin-top: 36px; gap: 12px; }
-            .pillar { min-height: 0; }
-            .promise { letter-spacing: .16em; padding-left: .16em; margin-top: 36px; }
-        }
-    </style>
-</head>
-<body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <main class="page" style="position:relative;z-index:2;">
-        <section class="hero" aria-label="ETERNA">
-            <div class="symbol">♥</div>
-            <h1 class="brand">ETERNA</h1>
-            <div class="tag">Hay momentos que merecen quedarse para siempre</div>
-            <div class="divider">♥</div>
-            <div class="copy">
-                No es un vídeo.<br>
-                Es un momento.
-            </div>
-            <a class="btn" href="/crear">Crear mi ETERNA</a>
-
-            <div class="pillars">
-                <div class="pillar">
-                    <div class="ico">🔒</div>
-                    <div class="title">Privado</div>
-                    <p>Solo el destinatario puede vivirlo.</p>
-                </div>
-                <div class="pillar">
-                    <div class="ico">♡</div>
-                    <div class="title">Emocional</div>
-                    <p>Un mensaje que se siente, no que se ve.</p>
-                </div>
-                <div class="pillar">
-                    <div class="ico">◷</div>
-                    <div class="title">Eterno</div>
-                    <p>Se entrega en el momento justo.</p>
-                </div>
-            </div>
-
-            <div class="promise">
-                Lo que das, se queda en alguien.<br>
-                Y un día, vuelve.
-            </div>
-        </section>
-    </main>
-</body>
-</html>
-    """)
-
 
 @app.get("/crear", response_class=HTMLResponse)
 def crear_get():
-    return render_create_form()
-
-
-@app.get("/crear/entrada", response_class=HTMLResponse)
-def crear_entrada_get():
-    return render_create_intro()
-
-
-@app.get("/crear/formulario", response_class=HTMLResponse)
-def crear_formulario_get():
     return render_create_form()
 
 
@@ -5486,33 +3839,16 @@ def list_pending_scheduled_deliveries():
 
 
 def list_pending_sender_notifications():
-    """
-    Worker blindado para avisar al regalante.
-
-    Regla importante:
-    después de un deploy NO debe volver a procesar pedidos antiguos agotados.
-    Solo trae pedidos realmente pendientes:
-    - pagados
-    - con reacción recibida
-    - sin SMS/WhatsApp enviado al regalante
-    - sin sender_notified
-    - con menos de 3 intentos
-
-    Esto evita el ruido infinito tipo:
-    max_attempts_reached / sms_disabled_by_config / whatsapp_disabled
-    en cada arranque o ciclo del worker.
-    """
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
         SELECT id
         FROM orders
         WHERE
-            COALESCE(paid, 0) = 1
-            AND COALESCE(reaction_uploaded, 0) = 1
+            paid = 1
             AND COALESCE(sender_sms_sent_at, '') = ''
-            AND COALESCE(sender_notified, 0) = 0
-            AND COALESCE(sender_sms_attempts, 0) < 3
+            AND COALESCE(reaction_uploaded, 0) = 1
+            AND 1 = 1
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -5628,7 +3964,6 @@ def delivery_worker_loop():
     while True:
         try:
             process_all_due_scheduled_deliveries()
-            process_all_pending_reaction_recoveries()
             process_all_due_sender_notifications()
             process_all_due_payouts()
         except Exception as e:
@@ -5703,10 +4038,10 @@ html, body {
 body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(59,130,246,0.16), transparent 34%),
-        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5748,80 +4083,20 @@ h1 {
     text-decoration: none;
     font-weight: bold;
     font-size: 15px;
-    border: 1px solid rgba(218,178,92,0.22);
+    border: 1px solid rgba(255,255,255,0.10);
 }
 .btn.primary {
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
+    background: white;
+    color: black;
     border: none;
 }
 .btn.secondary {
     background: rgba(255,255,255,0.10);
-    color: #fff7e6;
+    color: white;
 }
 </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
     <div class="wrap">
         <h1>Este enlace ya no está disponible</h1>
         <div class="main">Puede que este acceso haya caducado o no sea válido.</div>
@@ -5854,10 +4129,10 @@ html, body {
 body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(59,130,246,0.16), transparent 34%),
-        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5888,66 +4163,6 @@ h1 {
 </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
     <div class="wrap">
         <h1>Aún no está listo</h1>
         <div class="main">Este momento todavía no puede abrirse.</div>
@@ -5958,7 +4173,7 @@ h1 {
         """)
 
     if original_video_ready(order) and delivery_is_unlocked(order):
-        experience_href = f"/guia/1/{safe_attr(recipient_token)}"
+        experience_href = f"/experiencia/{safe_attr(recipient_token)}"
         html_page = f"""
 <!DOCTYPE html>
 <html lang="es">
@@ -5977,10 +4192,10 @@ body {{
     min-height: 100vh;
     min-height: 100dvh;
     background:
-        radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 32%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6031,8 +4246,8 @@ h1 {{
     width: 100%;
     padding: 19px 24px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
+    background: #fff;
+    color: #000;
     text-decoration: none;
     font-weight: 900;
     font-size: 17px;
@@ -6052,66 +4267,6 @@ h1 {{
 </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
     <div class="wrap">
         <div class="brand">ETERNA</div>
         <h1>Hay algo para ti</h1>
@@ -6154,10 +4309,10 @@ html, body {{
 body {{
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(59,130,246,0.16), transparent 34%),
-        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6204,8 +4359,8 @@ h1 {{
     width: 100%;
     padding: 18px 24px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
+    background: white;
+    color: black;
     text-decoration: none;
     font-weight: 700;
     font-size: 17px;
@@ -6214,66 +4369,6 @@ h1 {{
 </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
     <div class="wrap">
         <div class="brand">ETERNA</div>
         <h1>Hay algo para ti</h1>
@@ -6314,231 +4409,108 @@ h1 {{
 def checkout_exito(order_id: str):
     order = get_order_by_id(order_id)
     is_paid = bool(order.get("paid"))
-    refresh = '<meta http-equiv="refresh" content="6">' if not is_paid else ""
 
-    title = "Pago confirmado" if is_paid else "Confirmando pago"
-    subtitle = (
-        "Tu ETERNA ya está en marcha."
-        if is_paid else
-        "Estamos esperando la confirmación segura del pago."
-    )
-    detail = (
-        "Estamos preparando algo que pronto llegará a alguien importante."
-        if is_paid else
-        "No cierres esta pantalla. Esto puede tardar unos segundos."
-    )
+    refresh = '<meta http-equiv="refresh" content="6">' if not is_paid else ""
+    redirect_script = f"""
+        setTimeout(function() {{
+            window.location.href = "/post-pago/{safe_attr(order_id)}";
+        }}, 5000);
+    """ if is_paid else ""
 
     return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    {refresh}
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pago confirmado — ETERNA</title>
-    <style>
-        * {{ box-sizing: border-box; }}
-        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
-        body {{
-            min-height: 100vh;
-            color: #fff7e6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 24px;
-            background:
-                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
-                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
-                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
-        }}
-        .card {{
-            width: min(100%, 760px);
-            border-radius: 34px;
-            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
-            border: 1px solid rgba(255,220,150,.20);
-            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
-            backdrop-filter: blur(12px);
-        }}
-        .mark {{
-            width: 88px;
-            height: 88px;
-            margin: 0 auto 22px;
-            border-radius: 999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255,220,150,.28);
-            color: #ffd98b;
-            font-size: 44px;
-            text-shadow: 0 0 26px rgba(255,204,111,.62);
-            background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%);
-        }}
-        .brand {{
-            color: #ffd98b;
-            letter-spacing: .38em;
-            padding-left: .38em;
-            text-transform: uppercase;
-            font-size: 14px;
-            font-weight: 900;
-            margin-bottom: 18px;
-        }}
-        h1 {{
-            margin: 0;
-            font-size: clamp(42px, 8vw, 76px);
-            line-height: .98;
-            color: #fff7e6;
-            text-shadow: 0 0 30px rgba(255,255,255,.20);
-        }}
-        .subtitle {{
-            margin: 24px auto 0;
-            max-width: 620px;
-            font-size: clamp(20px, 3.8vw, 28px);
-            line-height: 1.5;
-            font-weight: 800;
-            color: rgba(255,255,255,.92);
-        }}
-        .detail {{
-            margin: 18px auto 0;
-            max-width: 620px;
-            font-size: clamp(16px, 2.7vw, 20px);
-            line-height: 1.7;
-            color: rgba(255,255,255,.68);
-        }}
-        .divider {{
-            width: min(320px, 78%);
-            margin: 34px auto 0;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            color: #f0c46c;
-        }}
-        .divider::before,
-        .divider::after {{
-            content: "";
-            height: 1px;
-            flex: 1;
-            background: linear-gradient(90deg, transparent, rgba(240,196,108,.72));
-        }}
-        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
-        .promise {{
-            margin: 28px auto 0;
-            max-width: 560px;
-            font-size: clamp(23px, 4.6vw, 38px);
-            line-height: 1.45;
-            font-family: Georgia, "Times New Roman", serif;
-            color: #fff7e6;
-        }}
-        .promise span {{
-            display: inline-block;
-            color: #ffd98b;
-            text-shadow: 0 0 24px rgba(255,204,111,.34);
-        }}
-        .btn {{
-            margin: 38px auto 0;
-            width: min(100%, 440px);
-            min-height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%);
-            color: #150d03;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 900;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55);
-        }}
-        .soft {{
-            margin-top: 16px;
-            color: rgba(255,255,255,.42);
-            font-size: 13px;
-            line-height: 1.5;
-        }}
-    </style>
-</head>
-<body>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        {refresh}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ETERNA</title>
+        <style>
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin: 0; min-height: 100%; background: #000; }}
+            body {{
+                min-height: 100vh;
+                background:
+                    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+                    linear-gradient(180deg, #050505 0%, #000000 100%);
+                color: white;
+                font-family: Arial, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 24px;
+            }}
+            .wrap {{
+                width: 100%;
+                max-width: 720px;
+                margin: 0 auto;
+            }}
+            .main {{
+                font-size: 22px;
+                line-height: 1.8;
+                color: rgba(255,255,255,0.92);
+            }}
+            .eterna-text {{
+                max-width: 600px;
+                margin: 0 auto;
+            }}
+            .eterna-heart {{
+                display: inline-block;
+                animation: eternaHeartbeat 3.6s ease-in-out infinite;
+            }}
+            @keyframes eternaHeartbeat {{
+                0%   {{ transform: scale(1); opacity: 0.9; }}
+                10%  {{ transform: scale(1.12); opacity: 1; }}
+                20%  {{ transform: scale(1); opacity: 0.95; }}
+                35%  {{ transform: scale(1.08); opacity: 1; }}
+                50%  {{ transform: scale(1); opacity: 0.9; }}
+                100% {{ transform: scale(1); opacity: 0.9; }}
+            }}
+            .buttons {{
+                margin-top: 34px;
+                display: grid;
+                gap: 12px;
+                max-width: 420px;
+                margin-left: auto;
+                margin-right: auto;
+            }}
+            .btn {{
+                display: block;
+                width: 100%;
+                padding: 17px 22px;
+                border-radius: 999px;
+                background: white;
+                color: black;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 15px;
+            }}
+            .ghost {{
+                background: rgba(255,255,255,0.10);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="main eterna-text">
+                Lo que das<br>
+                se queda en alguien.<br><br>
+                Y un día,<br>
+                <span class="eterna-heart">vuelve</span>
+            </div>
 
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <main class="card" style="position:relative;z-index:2;">
-        <div class="brand">ETERNA</div>
-        <div class="mark">♥</div>
-        <h1>{title}</h1>
-        <div class="subtitle">{subtitle}</div>
-        <div class="detail">{detail}</div>
-        <div class="divider">♥</div>
-        <div class="promise">
-            Lo que das<br>
-            se queda en alguien.<br>
-            <span>Y un día, vuelve.</span>
+            <div class="buttons">
+                <a class="btn" href="/crear">Crear otra experiencia</a>
+                <a class="btn ghost" href="/">Volver</a>
+            </div>
         </div>
-        <a class="btn" href="/crear">Volver al inicio</a>
-        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
-    </main>
-</body>
-</html>
+
+        <script>{redirect_script}</script>
+    </body>
+    </html>
     """)
 
 
@@ -6783,155 +4755,141 @@ def post_pago(order_id: str):
 @app.get("/resumen/{order_id}", response_class=HTMLResponse)
 def resumen(order_id: str):
     order = get_order_by_id(order_id)
-    is_paid = bool(order.get("paid"))
-    video_ready = original_video_ready(order)
-    delivery_mode = (order.get("delivery_mode") or "instant").strip()
-    delivery_display = safe_text(scheduled_delivery_display(order))
 
-    if not is_paid:
-        title = "Confirmando pago"
-        subtitle = "Todavía estamos esperando la confirmación segura."
-        detail = "No cierres esta pantalla. ETERNA actualizará el estado cuando el pago quede confirmado."
+    recipient_name = safe_text(order.get("recipient_name") or "esa persona")
+    video_ready = original_video_ready(order)
+    delivery_sent_flag = bool(order.get("delivery_sent"))
+    delivery_display = safe_text(scheduled_delivery_display(order))
+    delivery_mode = (order.get("delivery_mode") or "instant").strip()
+
+    sender_code, sender_number = split_phone_for_form(order.get("sender_phone") or "")
+    recipient_code, recipient_number = split_phone_for_form(order.get("recipient_phone") or "")
+
+    if delivery_sent_flag:
+        status_line = "Tu ETERNA ya ha salido"
+        sub_line = f"{recipient_name} ya tiene su mensaje."
+        soft_line = "El momento ya está ocurriendo exactamente cuando debía ocurrir."
     elif video_ready and delivery_mode == "scheduled":
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está guardada."
-        detail = f"Llegará en el momento elegido: {delivery_display}."
-    elif video_ready:
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está lista."
-        detail = "La entregaremos automáticamente en cuanto termine el proceso seguro."
+        status_line = "Tu ETERNA ya está guardada"
+        sub_line = f"Todo quedará listo para llegar el {delivery_display}."
+        soft_line = "No se enviará antes. Llegará exactamente cuando debe llegar."
+    elif video_ready and delivery_mode == "instant":
+        status_line = "Tu ETERNA está lista"
+        sub_line = "En cuanto quede procesada del todo, saldrá automáticamente."
+        soft_line = "No hace falta esperar una fecha concreta: se enviará en cuanto esté lista."
     else:
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está en marcha."
-        detail = "Estamos preparando algo que pronto llegará a alguien importante."
+        if delivery_mode == "scheduled":
+            status_line = "Pago confirmado"
+            sub_line = "ETERNA ya se está preparando."
+            soft_line = (
+                f"Cuando todo esté listo, quedará guardada para llegar el {delivery_display}. "
+                "No se enviará antes."
+            )
+        else:
+            status_line = "Pago confirmado"
+            sub_line = "ETERNA ya se está preparando."
+            soft_line = (
+                "En cuanto el vídeo esté terminado de verdad, se enviará automáticamente."
+            )
+
+    refresh = ""
+
+    preload_data = {
+        "customer_name": order.get("sender_name") or "",
+        "customer_email": order.get("sender_email") or "",
+        "customer_country_code": sender_code,
+        "customer_phone": sender_number,
+        "recipient_name": order.get("recipient_name") or "",
+        "recipient_country_code": recipient_code,
+        "recipient_phone": recipient_number,
+        "message_type": order.get("message_type") or "",
+        "phrase_mode": order.get("phrase_mode") or "auto",
+        "phrase_1": order.get("phrase_1") or "",
+        "phrase_2": order.get("phrase_2") or "",
+        "phrase_3": order.get("phrase_3") or "",
+        "delivery_mode": order.get("delivery_mode") or "instant",
+        "gift_amount": str(order.get("gift_amount") or "0"),
+    }
+
+    preload_json = html.escape(json.dumps(preload_data), quote=True)
+
+    extra_fee_line = ""
+    if float(order.get("scheduled_delivery_fee") or 0) > 0:
+        extra_fee_line = f"""
+            <div style="margin-top:10px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.56);">
+                Programación y guardado del momento: {safe_text(format_amount_display(order.get("scheduled_delivery_fee") or 0))}
+            </div>
+        """
 
     return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pago confirmado — ETERNA</title>
-    <style>
-        * {{ box-sizing: border-box; }}
-        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
-        body {{
-            min-height: 100vh;
-            color: #fff7e6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 24px;
-            background:
-                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
-                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
-                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
-        }}
-        .card {{
-            width: min(100%, 760px);
-            border-radius: 34px;
-            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
-            border: 1px solid rgba(255,220,150,.20);
-            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
-            backdrop-filter: blur(12px);
-        }}
-        .brand {{ color: #ffd98b; letter-spacing: .38em; padding-left: .38em; text-transform: uppercase; font-size: 14px; font-weight: 900; margin-bottom: 18px; }}
-        .mark {{ width: 88px; height: 88px; margin: 0 auto 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,220,150,.28); color: #ffd98b; font-size: 44px; text-shadow: 0 0 26px rgba(255,204,111,.62); background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%); }}
-        h1 {{ margin: 0; font-size: clamp(42px, 8vw, 76px); line-height: .98; color: #fff7e6; text-shadow: 0 0 30px rgba(255,255,255,.20); }}
-        .subtitle {{ margin: 24px auto 0; max-width: 620px; font-size: clamp(20px, 3.8vw, 28px); line-height: 1.5; font-weight: 800; color: rgba(255,255,255,.92); }}
-        .detail {{ margin: 18px auto 0; max-width: 620px; font-size: clamp(16px, 2.7vw, 20px); line-height: 1.7; color: rgba(255,255,255,.68); }}
-        .divider {{ width: min(320px, 78%); margin: 34px auto 0; display: flex; align-items: center; gap: 16px; color: #f0c46c; }}
-        .divider::before, .divider::after {{ content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, rgba(240,196,108,.72)); }}
-        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
-        .promise {{ margin: 28px auto 0; max-width: 560px; font-size: clamp(23px, 4.6vw, 38px); line-height: 1.45; font-family: Georgia, "Times New Roman", serif; color: #fff7e6; }}
-        .promise span {{ display: inline-block; color: #ffd98b; text-shadow: 0 0 24px rgba(255,204,111,.34); }}
-        .btn {{ margin: 38px auto 0; width: min(100%, 440px); min-height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%); color: #150d03; text-decoration: none; font-size: 15px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55); }}
-        .soft {{ margin-top: 16px; color: rgba(255,255,255,.42); font-size: 13px; line-height: 1.5; }}
-    </style>
-</head>
-<body>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        {refresh}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ETERNA</title>
+    </head>
+    <body style="margin:0;min-height:100vh;background:#000;color:white;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;text-align:center;padding:24px;box-sizing:border-box;">
+        <div style="max-width:760px;width:100%;">
+            <h1 style="font-size:42px;line-height:1.2;margin:0 0 22px 0;font-weight:700;">
+                {status_line}
+            </h1>
 
+            <div style="font-size:22px;line-height:1.8;color:rgba(255,255,255,0.86);">
+                {sub_line}
+            </div>
 
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
+            <div style="margin-top:24px;font-size:17px;line-height:1.8;color:rgba(255,255,255,0.62);">
+                Modo de entrega: {"momento exacto" if delivery_mode == "scheduled" else "en cuanto esté lista"}
+            </div>
 
+            {extra_fee_line}
 
-    <main class="card" style="position:relative;z-index:2;">
-        <div class="brand">ETERNA</div>
-        <div class="mark">♥</div>
-        <h1>{title}</h1>
-        <div class="subtitle">{subtitle}</div>
-        <div class="detail">{detail}</div>
-        <div class="divider">♥</div>
-        <div class="promise">
-            Lo que das<br>
-            se queda en alguien.<br>
-            <span>Y un día, vuelve.</span>
+            <div style="margin-top:28px;font-size:16px;line-height:1.7;color:rgba(255,255,255,0.45);">
+                {soft_line}
+            </div>
+
+            <div style="margin-top:34px;display:grid;gap:12px;max-width:420px;margin-left:auto;margin-right:auto;">
+                <a
+                    href="#"
+                    id="createAgainBtn"
+                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:white;color:black;text-decoration:none;font-weight:bold;font-size:15px;"
+                >
+                    Crear otra ETERNA
+                </a>
+
+                <a
+                    href="/"
+                    style="display:block;width:100%;padding:17px 22px;border-radius:999px;background:rgba(255,255,255,0.10);color:white;text-decoration:none;font-weight:bold;font-size:15px;border:1px solid rgba(255,255,255,0.10);"
+                >
+                    Volver al inicio
+                </a>
+            </div>
         </div>
-        <a class="btn" href="/crear">Volver al inicio</a>
-        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
-    </main>
-</body>
-</html>
-    """)
 
+        <script>
+            const STORAGE_KEY = "eterna_create_form_v4";
+            const preloadData = JSON.parse("{preload_json}");
+            const btn = document.getElementById("createAgainBtn");
+
+            if (btn) {{
+                btn.addEventListener("click", function (e) {{
+                    e.preventDefault();
+
+                    try {{
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(preloadData));
+                    }} catch (err) {{
+                        console.error("preload eterna error", err);
+                    }}
+
+                    window.location.href = "/crear";
+                }});
+            }}
+        </script>
+    </body>
+    </html>
+    """)
 
 # =========================================================
 # START EXPERIENCE (FIX CRÍTICO)
@@ -6972,417 +4930,6 @@ async def start_experience(recipient_token: str = Form(...)):
         raise HTTPException(status_code=500, detail="start_experience_failed")
 
 
-
-
-# =========================================================
-# GUÍA PREVIA A LA EXPERIENCIA — CAPA DELANTE, SIN TOCAR /experiencia
-# =========================================================
-
-@app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
-def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
-    """
-    Pantallas previas de preparación y consentimiento.
-    IMPORTANTE: no toca la experiencia, no toca MediaRecorder, no toca chunks.
-    Solo guía a la persona y después entrega a /experiencia/{token}.
-    """
-    order = get_order_by_recipient_token_or_404(recipient_token)
-
-    if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not delivery_is_unlocked(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if bool(order.get("experience_completed")):
-        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
-
-    try:
-        step = int(step or 1)
-    except Exception:
-        step = 1
-    step = max(1, min(step, 3))
-
-    if step == 1:
-        insert_order_event(order["id"], "guide_place_opened", "ok", "El destinatario ha abierto la guía: lugar tranquilo")
-        eyebrow = "PASO 1 DE 3"
-        title = "Busca tu lugar"
-        subtitle = "Antes de abrirlo, elige un sitio tranquilo."
-        body = "Elige un lugar tranquilo, con algo de luz y donde puedas vivir este momento sin prisas."
-        icon = "⌖"
-        button = "Ya estoy en un lugar tranquilo"
-        href = f"/guia/2/{safe_attr(recipient_token)}"
-        note = "Tómate unos segundos. ETERNA empieza mejor cuando tú estás preparado."
-    elif step == 2:
-        insert_order_event(order["id"], "guide_position_opened", "ok", "El destinatario ha abierto la guía: teléfono vertical")
-        eyebrow = "PASO 2 DE 3"
-        title = "Coloca el teléfono"
-        subtitle = "Ponlo en vertical y busca buena luz."
-        body = """
-            Apóyalo si puedes, deja la cámara frente a ti y vive esta experiencia de principio a fin.<br><br>
-            Para asegurar que todo quede guardado correctamente, intenta mantener esta pantalla abierta hasta el final.
-        """
-        icon = "▯"
-        button = "Ya estoy colocado"
-        href = f"/guia/3/{safe_attr(recipient_token)}"
-        note = "No hace falta posar. Solo estar presente."
-    else:
-        insert_order_event(order["id"], "guide_consent_opened", "ok", "El destinatario ha abierto la guía: consentimiento único y permisos")
-        eyebrow = "PASO 3 DE 3"
-        title = "Antes de comenzar"
-        subtitle = "Esta experiencia forma parte de ETERNA."
-        body = """
-            <label class="consent-box">
-                <input type="checkbox" id="consentCheck">
-                <span>Acepto que mi reacción pueda ser grabada durante esta experiencia y enviada a la persona que creó esta ETERNA.</span>
-            </label>
-        """
-        icon = "♥"
-        button = "Continuar"
-        href = f"/experiencia/{safe_attr(recipient_token)}"
-        note = "Al pulsar Continuar, el navegador te pedirá permiso para usar cámara y micrófono. Si aceptas, ETERNA comenzará."
-
-    if step == 3:
-        action_html = f'<button class="btn" id="consentContinue" type="button">{button}</button>'
-    else:
-        action_html = f'<a class="btn" href="{href}">{button}</a>'
-
-    dot1 = "on" if step == 1 else ""
-    dot2 = "on" if step == 2 else ""
-    dot3 = "on" if step == 3 else ""
-
-    html_page = f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA</title>
-<style>
-* {{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }}
-html, body {{
-    margin: 0;
-    min-height: 100%;
-    background: #030405;
-}}
-body {{
-    min-height: 100vh;
-    min-height: 100dvh;
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: max(22px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)) 20px;
-    background:
-        radial-gradient(circle at 50% 5%, rgba(245,188,92,0.22), transparent 24%),
-        radial-gradient(circle at 85% 38%, rgba(197,135,43,0.14), transparent 28%),
-        linear-gradient(180deg, #070809 0%, #020202 100%);
-    overflow-x: hidden;
-}}
-body::before {{
-    content: "";
-    position: fixed;
-    inset: -30%;
-    background:
-        radial-gradient(circle, rgba(255,214,135,0.09) 0 1px, transparent 2px),
-        radial-gradient(circle, rgba(255,214,135,0.05) 0 1px, transparent 2px);
-    background-size: 90px 90px, 140px 140px;
-    opacity: .45;
-    pointer-events: none;
-}}
-.wrap {{
-    width: 100%;
-    max-width: 520px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
-    text-align: center;
-}}
-.logo-mark {{
-    margin: 0 auto 10px auto;
-    font-size: 44px;
-    line-height: 1;
-    color: #e8b75c;
-    text-shadow: 0 0 26px rgba(232,183,92,0.55);
-}}
-.brand {{
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(54px, 16vw, 82px);
-    letter-spacing: .17em;
-    color: #d9a64e;
-    margin: 0 0 2px 0;
-    text-indent: .17em;
-    text-shadow: 0 2px 16px rgba(214,160,67,0.26);
-}}
-.line {{
-    width: min(72%, 360px);
-    height: 1px;
-    margin: 12px auto 26px auto;
-    background: linear-gradient(90deg, transparent, rgba(224,171,80,0.65), transparent);
-}}
-.card {{
-    border: 1px solid rgba(224,171,80,0.34);
-    background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025));
-    border-radius: 32px;
-    padding: 28px 22px 24px;
-    box-shadow:
-        0 28px 70px rgba(0,0,0,0.55),
-        0 0 42px rgba(211,151,55,0.10),
-        inset 0 1px 0 rgba(255,255,255,0.08);
-}}
-.eyebrow {{
-    font-size: 12px;
-    letter-spacing: .26em;
-    text-transform: uppercase;
-    color: rgba(236,190,108,0.78);
-    margin-bottom: 18px;
-}}
-.step-icon {{
-    width: 76px;
-    height: 76px;
-    border-radius: 999px;
-    margin: 0 auto 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 38px;
-    color: #f0bd62;
-    border: 1px solid rgba(240,189,98,0.38);
-    background: rgba(255,255,255,0.055);
-    box-shadow: 0 0 28px rgba(240,189,98,0.13);
-}}
-h1 {{
-    margin: 0 0 12px 0;
-    font-family: Georgia, "Times New Roman", serif;
-    font-weight: 500;
-    font-size: clamp(34px, 10vw, 54px);
-    line-height: 1.04;
-    color: #fff5df;
-}}
-.subtitle {{
-    font-size: clamp(19px, 5.4vw, 24px);
-    line-height: 1.45;
-    color: rgba(255,247,230,0.88);
-    margin-bottom: 16px;
-}}
-.body {{
-    font-size: 15.5px;
-    line-height: 1.75;
-    color: rgba(255,247,230,0.66);
-    max-width: 430px;
-    margin: 0 auto;
-}}
-.consent-box {{
-    display: flex;
-    gap: 13px;
-    align-items: flex-start;
-    text-align: left;
-    padding: 16px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.055);
-    border: 1px solid rgba(224,171,80,0.24);
-    color: rgba(255,247,230,0.84);
-}}
-.consent-box input {{
-    width: 20px;
-    height: 20px;
-    flex: 0 0 auto;
-    margin-top: 4px;
-    accent-color: #e6b761;
-}}
-.consent-error {{
-    margin-top: 14px;
-    color: #ffd28a;
-    font-size: 13px;
-    line-height: 1.5;
-    min-height: 18px;
-}}
-.warning {{
-    margin: 20px auto 0;
-    padding: 15px 16px;
-    border-radius: 20px;
-    border: 1px solid rgba(224,171,80,0.20);
-    background: rgba(0,0,0,0.25);
-    color: rgba(255,247,230,0.58);
-    font-size: 13px;
-    line-height: 1.55;
-}}
-.actions {{ margin-top: 26px; }}
-.btn {{
-    appearance: none;
-    -webkit-appearance: none;
-    display: block;
-    width: 100%;
-    padding: 19px 22px;
-    border-radius: 20px;
-    text-decoration: none;
-    font-size: 16px;
-    font-weight: 900;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: #171006;
-    background: linear-gradient(135deg, #b57928 0%, #f7d27c 48%, #b87928 100%);
-    border: 1px solid rgba(255,230,169,0.70);
-    box-shadow:
-        0 18px 38px rgba(209,151,53,0.24),
-        0 0 24px rgba(232,183,92,0.28),
-        inset 0 1px 0 rgba(255,255,255,0.45);
-    position: relative;
-    z-index: 5;
-    touch-action: manipulation;
-}}
-.btn:active {{ transform: scale(0.99); }}
-.progress {{
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin: 24px 0 0;
-}}
-.dot {{
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.20);
-}}
-.dot.on {{ background: #e6b761; box-shadow: 0 0 12px rgba(230,183,97,0.7); }}
-.footer {{
-    margin-top: 24px;
-    font-size: 11px;
-    letter-spacing: .42em;
-    color: rgba(224,171,80,0.58);
-    text-indent: .42em;
-}}
-</style>
-</head>
-<body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <main class="wrap">
-        <div class="logo-mark">♥</div>
-        <div class="brand">ETERNA</div>
-        <div class="line"></div>
-        <section class="card" style="position:relative;z-index:2;">
-            <div class="eyebrow">{eyebrow}</div>
-            <div class="step-icon">{icon}</div>
-            <h1>{title}</h1>
-            <div class="subtitle">{subtitle}</div>
-            <div class="body">{body}</div>
-            <div class="warning">{note}</div>
-            <div class="actions">{action_html}</div>
-            <div class="consent-error" id="consentError"></div>
-            <div class="progress">
-                <span class="dot {dot1}"></span>
-                <span class="dot {dot2}"></span>
-                <span class="dot {dot3}"></span>
-            </div>
-        </section>
-        <div class="footer">ETERNA</div>
-    </main>
-<script>
-(function () {{
-    const btn = document.getElementById("consentContinue");
-    if (!btn) return;
-
-    const check = document.getElementById("consentCheck");
-    const error = document.getElementById("consentError");
-
-    btn.addEventListener("click", async function () {{
-        if (!check || !check.checked) {{
-            if (error) error.textContent = "Para continuar, acepta que tu reacción pueda ser grabada y enviada a la persona que creó esta ETERNA.";
-            return;
-        }}
-
-        btn.disabled = true;
-        btn.textContent = "Preparando ETERNA...";
-
-        try {{
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {{
-                throw new Error("media_devices_not_supported");
-            }}
-
-            const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
-            try {{
-                stream.getTracks().forEach(function (track) {{ track.stop(); }});
-            }} catch (_) {{}}
-
-            window.location.href = "{href}";
-        }} catch (err) {{
-            btn.disabled = false;
-            btn.textContent = "Continuar";
-            if (error) {{
-                error.textContent = "ETERNA necesita acceso a cámara y micrófono para poder continuar.";
-            }}
-        }}
-    }});
-}})();
-</script>
-</body>
-</html>
-    """
-    response = HTMLResponse(html_page)
-    attach_recipient_session_if_needed(order, request, response)
-    return response
 
 # =========================================================
 # EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
@@ -7438,11 +4985,11 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
     next_ritual_step = min(ritual_step + 1, 7)
 
     if gift_amount > 0:
-        payoff_title = "Espere un momento…"
-        payoff_text = "Estamos generando su regalo."
+        payoff_title = "Esto no termina aquí."
+        payoff_text = "Este momento ha sido guardado."
     else:
-        payoff_title = "Espere un momento…"
-        payoff_text = "Estamos guardando este vídeo para que pueda volver a verlo."
+        payoff_title = "Esto ya es tuyo."
+        payoff_text = "Y lo será para siempre."
 
     # =========================================================
     # EXPERIENCIA FUNCIONAL RECUPERADA DEL MAIN ESTABLE
@@ -7463,7 +5010,7 @@ html, body {
     height: 100%;
     background: black;
     overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-family: Arial, sans-serif;
 }
 
 body {
@@ -7487,15 +5034,6 @@ video {
     height: 100%;
     object-fit: contain;
     background: black;
-    z-index: 5;
-}
-
-body.video-clean-mode [data-eterna-cinematic-scene] {
-    display: none !important;
-}
-
-body.video-clean-mode video {
-    z-index: 5;
 }
 
 .overlay {
@@ -7535,7 +5073,7 @@ body.video-clean-mode video {
     line-height: 1.06;
     font-weight: 700;
     margin: 0 0 22px 0;
-    color: #fff7e6;
+    color: white;
 }
 
 .text {
@@ -7560,8 +5098,8 @@ body.video-clean-mode video {
     padding: 18px 26px;
     border-radius: 999px;
     border: 0;
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
+    background: white;
+    color: black;
     font-weight: 700;
     font-size: 17px;
     cursor: pointer;
@@ -7611,54 +5149,12 @@ body.video-clean-mode video {
     margin: 0 auto;
 }
 
-.payoff-mark {
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 24px auto;
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #f2c878;
-    font-size: 34px;
-    background: rgba(242,200,120,0.08);
-    border: 1px solid rgba(242,200,120,0.30);
-    box-shadow: 0 0 42px rgba(242,200,120,0.18);
-}
-
-.eterna-progress {
-    position: relative;
-    overflow: hidden;
-    width: min(280px, 70vw);
-    height: 2px;
-    margin: 28px auto 0 auto;
-    border-radius: 999px;
-    background: rgba(242,200,120,0.16);
-}
-
-.eterna-progress::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -45%;
-    width: 45%;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, transparent, #f2c878, transparent);
-    animation: eternaLine 1.8s ease-in-out infinite;
-}
-
-@keyframes eternaLine {
-    0% { left: -45%; }
-    100% { left: 100%; }
-}
-
 .payoff-title {
     font-size: 46px;
     line-height: 1.12;
     font-weight: 700;
     margin: 0 0 18px 0;
-    color: #fff7e6;
+    color: white;
 }
 
 .payoff-text {
@@ -7694,8 +5190,8 @@ body.video-clean-mode video {
     padding: 16px 22px;
     border-radius: 999px;
     border: 0;
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
+    background: white;
+    color: black;
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
@@ -7703,8 +5199,8 @@ body.video-clean-mode video {
 
 .retry-btn.secondary {
     background: rgba(255,255,255,0.10);
-    color: #fff7e6;
-    border: 1px solid rgba(218,178,92,0.22);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.10);
 }
 
 @media (max-width: 720px) {
@@ -7727,66 +5223,6 @@ body.video-clean-mode video {
 </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
 <div class="wrap">
     <video
     id="video"
@@ -7833,11 +5269,9 @@ body.video-clean-mode video {
 
     <div class="payoff" id="payoff">
         <div class="payoff-card">
-            <div class="payoff-mark">♥</div>
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
-            <div class="eterna-progress" aria-hidden="true"></div>
-            <div class="loader" id="payoffLoader"></div>
+            <div class="loader" id="payoffLoader">Guardando este momento…</div>
 
             <div class="retry-actions" id="retryActions">
                 <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
@@ -7857,28 +5291,7 @@ const retryActions = document.getElementById("retryActions");
 const retryExperienceBtn = document.getElementById("retryExperienceBtn");
 const backToStartBtn = document.getElementById("backToStartBtn");
 const errorNote = document.getElementById("errorNote");
-const cinematicLayers = Array.from(document.querySelectorAll("[data-eterna-cinematic-scene]"));
-
-function hideCinematicLayersForVideo() {
-    try {
-        document.body.classList.add("video-clean-mode");
-        cinematicLayers.forEach((el) => { el.style.display = "none"; });
-    } catch (_) {}
-}
-
-function showCinematicLayersAfterVideo() {
-    try {
-        cinematicLayers.forEach((el) => { el.style.display = ""; });
-        document.body.classList.remove("video-clean-mode");
-    } catch (_) {}
-}
-
 const recipientToken = "__RECIPIENT_TOKEN__";
-const hasGift = __HAS_GIFT__;
-const finalWaitingTitle = "Espere un momento…";
-const finalWaitingText = hasGift
-    ? "Estamos generando su regalo."
-    : "Estamos guardando este vídeo para que pueda volver a verlo.";
 
 let stream = null;
 let mediaRecorder = null;
@@ -7986,17 +5399,6 @@ function hideRetryActions() {
     if (retryActions) {
         retryActions.classList.remove("show");
     }
-}
-
-function showFinalWaitingScreen() {
-    showCinematicLayersAfterVideo();
-    const titleEl = document.getElementById("payoffTitle");
-    const textEl = document.getElementById("payoffText");
-    if (titleEl) titleEl.innerText = finalWaitingTitle;
-    if (textEl) textEl.innerText = finalWaitingText;
-    if (payoffLoader) payoffLoader.innerText = "";
-    payoff.classList.add("show");
-    hideRetryActions();
 }
 
 function buildFriendlyUploadMessage(errorCode) {
@@ -8250,7 +5652,7 @@ async function finishLiveUploadIfPossible() {
         return null;
     }
 
-    if (payoffLoader) payoffLoader.innerText = "";
+    payoffLoader.innerText = "Terminando de guardar…";
     await liveUploadChain;
 
     if (liveUploadFailed) {
@@ -8272,7 +5674,7 @@ async function finishLiveUploadIfPossible() {
         throw new Error(finishJson.detail || "finish_live_upload_failed");
     }
 
-    if (payoffLoader) payoffLoader.innerText = "";
+    payoffLoader.innerText = "Momento guardado.";
     logClientStep("reaction_live_upload_finished", "ok", "Reacción ensamblada desde subida progresiva", { chunks: liveChunkIndex });
     return finishJson;
 }
@@ -8282,7 +5684,7 @@ async function uploadReactionChunked(blob) {
     const totalChunks = Math.max(1, Math.ceil(blob.size / chunkSize));
     const sessionId = String(Date.now()) + "_" + Math.random().toString(16).slice(2);
 
-    if (payoffLoader) payoffLoader.innerText = "";
+    payoffLoader.innerText = "Guardando este momento… 0%";
 
     for (let index = 0; index < totalChunks; index++) {
         const start = index * chunkSize;
@@ -8322,7 +5724,7 @@ async function uploadReactionChunked(blob) {
         }
 
         const pct = Math.min(99, Math.round(((index + 1) / totalChunks) * 100));
-        if (payoffLoader) payoffLoader.innerText = "";
+        payoffLoader.innerText = "Guardando este momento… " + pct + "%";
     }
 
     const finishData = new FormData();
@@ -8340,7 +5742,7 @@ async function uploadReactionChunked(blob) {
         throw new Error(finishJson.detail || "finish_chunk_upload_failed");
     }
 
-    if (payoffLoader) payoffLoader.innerText = "";
+    payoffLoader.innerText = "Momento guardado.";
     return finishJson;
 }
 
@@ -8363,7 +5765,7 @@ async function finalizeExperienceFlow() {
     finishing = true;
 
     payoff.classList.add("show");
-    showFinalWaitingScreen();
+    payoffLoader.innerText = "Guardando este momento…";
 
     try {
         if (finishTimeout) {
@@ -8544,7 +5946,6 @@ startBtn.addEventListener("click", async () => {
         video.load();
         await waitForVideoReady();
 
-        hideCinematicLayersForVideo();
         overlay.classList.add("hidden");
         experienceStarted = true;
         logClientStep("experience_started_client", "ok", "La persona empezó a vivir la experiencia");
@@ -8558,7 +5959,6 @@ startBtn.addEventListener("click", async () => {
 
             showStartError("No hemos podido iniciar el vídeo. Vuelve a intentarlo.");
             experienceStarted = false;
-            showCinematicLayersAfterVideo();
             overlay.classList.remove("hidden");
             startBtn.disabled = false;
 
@@ -8665,7 +6065,6 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_URL__", safe_attr(experience_video_url))
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
-    html_page = html_page.replace("__HAS_GIFT__", "true" if gift_amount > 0 else "false")
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
 
@@ -8906,7 +6305,7 @@ async def finish_reaction_upload(
         if saved_size > MAX_VIDEO_SIZE:
             # Último blindaje: no borramos nada; dejamos pendiente y visible.
             update_order(order["id"], reaction_upload_pending=1, reaction_upload_error="video_too_large_after_assembly")
-            insert_order_event(order["id"], "🚫 reaction_too_large", "error", "La reacción ensamblada pesa demasiado", {"bytes": saved_size, "max_bytes": MAX_VIDEO_SIZE, "max_mb": MAX_VIDEO_SIZE_MB})
+            insert_order_event(order["id"], "🚫 reaction_too_large", "error", "La reacción ensamblada pesa demasiado", {"bytes": saved_size})
             raise HTTPException(status_code=400, detail="video_too_large")
 
         insert_order_event(
@@ -9074,8 +6473,8 @@ html, body {{
     margin: 0;
     padding: 0;
     background: black;
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: white;
+    font-family: Arial, sans-serif;
 }}
 
 .container {{
@@ -9120,80 +6519,20 @@ h1 {{
 }}
 
 .btn.primary {{
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
+    background: white;
+    color: black;
 }}
 
 .btn.secondary {{
     background: rgba(255,255,255,0.12);
-    color: #fff7e6;
+    color: white;
 }}
 </style>
 </head>
 
 <body>
 
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-
-<div class="container" style="position:relative;z-index:2;">
+<div class="container">
 
     <video controls playsinline>
         <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
@@ -9318,10 +6657,10 @@ html, body {{
 body {{
     min-height: 100vh;
     background:
-        radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+    color: white;
+    font-family: Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -9363,81 +6702,21 @@ h1 {{
     text-decoration: none;
     font-weight: bold;
     font-size: 15px;
-    border: 1px solid rgba(218,178,92,0.22);
+    border: 1px solid rgba(255,255,255,0.10);
     cursor: pointer;
 }}
 .btn.primary {{
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
+    background: white;
+    color: black;
     border: none;
 }}
 .btn.secondary {{
     background: rgba(255,255,255,0.10);
-    color: #fff7e6;
+    color: white;
 }}
 </style>
 </head>
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
     <div class="wrap">
         <h1>{safe_text(title)}</h1>
         <div class="main">{safe_text(main_text)}</div>
@@ -9525,431 +6804,179 @@ def sender_pack(sender_token: str):
 
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
-    reaction_video_type = guess_media_type_from_url(reaction_url) if reaction_url else "video/mp4"
 
     if not reaction_url:
         local_path = (order.get("reaction_video_local") or "").strip()
         if local_path and os.path.exists(local_path):
             reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
-            reaction_video_type = guess_media_type_from_path(local_path)
 
-    if not reaction_url:
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                * { box-sizing: border-box; }
-                html, body { margin:0; min-height:100%; background:#020817; color:#fff7e6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
-                body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; text-align:center; background:radial-gradient(circle at top, rgba(59,130,246,.17), transparent 34%), #020817; }
-                .card { width:100%; max-width:460px; border:1px solid rgba(212,175,92,.24); border-radius:32px; padding:34px 24px; background:rgba(255,255,255,.05); box-shadow:0 30px 90px rgba(0,0,0,.65); }
-                .logo { letter-spacing:.34em; color:#d8b76d; font-size:12px; font-weight:800; margin-bottom:22px; }
-                h1 { font-size:34px; line-height:1.12; margin:0 0 14px; }
-                p { color:rgba(255,255,255,.72); line-height:1.7; font-size:17px; margin:0; }
-            </style>
-        </head>
-        <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-            <div class="card" style="position:relative;z-index:2;">
-                <div class="logo">ETERNA</div>
-                <h1>Tu ETERNA todavía está volviendo.</h1>
-                <p>La reacción aún se está guardando. Vuelve a abrir este enlace en unos segundos.</p>
-            </div>
-        </body>
-        </html>
-        """)
-
-    reaction_url_safe = safe_attr(reaction_url)
-    reaction_video_type_safe = safe_attr(reaction_video_type or "video/mp4")
-    original_video_url_safe = safe_attr(original_video_url)
-    original_video_type_safe = safe_attr(guess_media_type_from_url(original_video_url) if original_video_url else "video/mp4")
     sender_status = "Tu ETERNA ha vuelto."
 
     body_content = f"""
-    <main class="sender-experience" style="position:relative;z-index:2;" aria-label="Sender pack ETERNA">
+    <div style="max-width:760px;margin:0 auto;padding:40px 20px 80px;text-align:center;color:white;">
 
-        <section id="return-intro" class="sender-stage active" data-stage="intro">
-            <div class="brand-mark">ETERNA</div>
-            <div class="intro-card">
-                <div class="gold-dot"></div>
-                <h1>Ya ha pasado.</h1>
-                <p>Respira. Tu ETERNA ha vuelto.</p>
-                <button id="open-return" class="gold-button" type="button">Estoy preparado</button>
-            </div>
-        </section>
+        <h1 style="font-size:46px;font-weight:800;margin-bottom:18px;">
+            {sender_status}
+        </h1>
 
-        <section id="return-bridge" class="sender-stage" data-stage="bridge">
-            <div class="brand-mark">ETERNA</div>
-            <div class="bridge-copy sender-return-sequence">
-                <p class="seq-line seq-one">Sube el volumen.</p>
-                <h2 class="seq-line seq-two">Tu ETERNA<br>ha vuelto.</h2>
-                <span class="seq-line seq-three">Aquí vuelve lo que provocaste.</span>
-            </div>
-        </section>
+        <p style="font-size:22px;opacity:.9;margin-bottom:30px;">
+            Lo que diste… ha encontrado el camino de vuelta.
+        </p>
 
-        <section id="return-view" class="return-view" data-stage="view">
-            <div class="top-bar">
-                <div>
-                    <div class="eyebrow">ETERNA</div>
-                    <h1>{sender_status}</h1>
-                </div>
-                <button id="eterna-replay-all" class="small-action" type="button">Volver a sentirlo</button>
-            </div>
+        <div style="position:relative;width:100%;background:#000;border-radius:28px;overflow:hidden;">
 
-            <div class="call-shell">
-                <div class="call-glow"></div>
+            <!-- VIDEO REACCIÓN -->
+            <video
+                id="eterna-reaction-player"
+                playsinline
+                webkit-playsinline
+                controls
+                preload="metadata"
+                style="width:100%;display:block;background:black;"
+            >
+                <source src="{reaction_url}" type="video/mp4">
+            </video>
 
-                <video
-                    id="eterna-bg-reaction"
-                    muted
-                    defaultMuted
-                    playsinline
-                    webkit-playsinline
-                    preload="metadata"
-                    aria-hidden="true"
-                    disablepictureinpicture
-                    controlslist="nodownload noplaybackrate noremoteplayback"
-                >
-                    <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
-                </video>
+            <!-- VIDEO ORIGINAL MINI -->
+            <video
+                id="eterna-mini-original"
+                muted
+                playsinline
+                webkit-playsinline
+                preload="metadata"
+                style="
+                    position:absolute;
+                    right:14px;
+                    bottom:14px;
+                    width:30%;
+                    max-width:140px;
+                    border-radius:16px;
+                    background:black;
+                "
+            >
+                <source src="{original_video_url}" type="video/mp4">
+            </video>
 
-                <div class="reaction-frame">
-                    <video
-                        id="eterna-reaction-player"
-                        muted
-                        defaultMuted
-                        playsinline
-                        webkit-playsinline
-                        preload="metadata"
-                        disablepictureinpicture
-                        controlslist="nodownload noplaybackrate noremoteplayback"
-                    >
-                        <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
-                    </video>
-                </div>
+        </div>
 
-                <div class="mini-original-wrap" aria-label="Vídeo original enviado">
-                    <div class="mini-label">Lo que enviaste</div>
-                    <video
-                        id="eterna-mini-original"
-                        playsinline
-                        webkit-playsinline
-                        preload="auto"
-                        disablepictureinpicture
-                        controlslist="nodownload noplaybackrate noremoteplayback"
-                    >
-                        <source src="{original_video_url_safe}" type="{original_video_type_safe}">
-                    </video>
-                </div>
-            </div>
+        <div style="margin-top:14px;font-size:15px;opacity:.55;">
+            Aquí vuelve lo que provocaste.
+        </div>
 
-            <div class="return-copy">
-                <h2>Aquí vuelve lo que provocaste.</h2>
-                
+        <div style="margin-top:34px;">
+            <button
+                id="eterna-replay-all"
+                style="width:100%;border:none;border-radius:999px;padding:22px;font-size:22px;font-weight:700;background:#f3f3f3;color:#000;">
+                Volver a sentirlo
+            </button>
+        </div>
+
+        <div id="eterna-share-wrap" style="display:none;margin-top:22px;">
+
+            <a
+                href="{reaction_url}"
+                download
+                style="display:block;width:100%;border-radius:999px;padding:20px;font-size:20px;font-weight:700;background:#fff;color:#000;text-decoration:none;">
+                Descargar su reacción
+            </a>
+
+            <button
+                id="eterna-share-reaction"
+                style="margin-top:12px;width:100%;border:none;border-radius:999px;padding:18px;font-size:18px;font-weight:700;background:#111;color:#fff;">
+                Compartir su reacción
+            </button>
+
+            <div style="margin-top:14px;font-size:14px;color:rgba(255,255,255,0.5);">
+                Comparte solo la emoción.<br>
+                El vídeo original se queda aquí para no romper la magia de ETERNA.
             </div>
 
-            <div id="eterna-final-signature" class="final-signature" aria-hidden="true">
-                <div class="final-orb">♥</div>
-                <div class="final-brand">ETERNA</div>
-                <h2>Lo que das se queda en alguien.</h2>
-                <p>Y un día, vuelve.</p>
-            </div>
+        </div>
 
-            <div id="eterna-share-wrap" class="share-wrap" style="display:none;">
-                <button id="eterna-replay-final" class="replay-emotion-button" type="button">▶️ Volver a ver esta emoción</button>
-                <a class="download-link" href="{reaction_url_safe}" download>Guardar este regreso</a>
-                <button id="eterna-share-reaction" class="share-button" type="button">Compartir su reacción</button>
-                <div class="share-note">
-                    Comparte solo la emoción.<br>
-                    El vídeo original se queda aquí para no romper la magia de ETERNA.
-                </div>
-            </div>
-        </section>
-
-    </main>
+    </div>
 
     <script>
     (function () {{
-        const intro = document.getElementById("return-intro");
-        const bridge = document.getElementById("return-bridge");
-        const view = document.getElementById("return-view");
-        const openBtn = document.getElementById("open-return");
 
         const reaction = document.getElementById("eterna-reaction-player");
-        const bgReaction = document.getElementById("eterna-bg-reaction");
         const mini = document.getElementById("eterna-mini-original");
         const replay = document.getElementById("eterna-replay-all");
-        const finalSignature = document.getElementById("eterna-final-signature");
         const shareWrap = document.getElementById("eterna-share-wrap");
         const shareBtn = document.getElementById("eterna-share-reaction");
-        const replayFinal = document.getElementById("eterna-replay-final");
-        const cinematicSceneLayers = Array.from(document.querySelectorAll("[data-eterna-cinematic-scene]"));
-
-        let eternaMuteGuard = null;
-
-        function forceReactionSilent() {{
-            // REGLA SAGRADA ETERNA SENDER PACK:
-            // La reacción se ve, pero JAMÁS se escucha.
-            // El único sonido permitido es el del vídeo original generado por el video engine.
-            try {{
-                [reaction, bgReaction].forEach((player) => {{
-                    if (!player) return;
-                    player.muted = true;
-                    player.defaultMuted = true;
-                    player.volume = 0;
-                    player.setAttribute("muted", "");
-                    player.setAttribute("defaultMuted", "");
-                    player.removeAttribute("controls");
-                    player.controls = false;
-                }});
-            }} catch (e) {{}}
-        }}
-
-        function forceEngineAudioOn() {{
-            try {{
-                if (!mini) return;
-                mini.muted = false;
-                mini.defaultMuted = false;
-                mini.volume = 0.95;
-                mini.removeAttribute("muted");
-                mini.removeAttribute("defaultMuted");
-                mini.removeAttribute("controls");
-                mini.controls = false;
-            }} catch (e) {{}}
-        }}
-
-        function enforceSenderPackAudioPolicy() {{
-            forceReactionSilent();
-            forceEngineAudioOn();
-        }}
-
-        function startMuteGuard() {{
-            try {{ if (eternaMuteGuard) window.clearInterval(eternaMuteGuard); }} catch (e) {{}}
-            enforceSenderPackAudioPolicy();
-            eternaMuteGuard = window.setInterval(enforceSenderPackAudioPolicy, 350);
-        }}
-
-        function stopMuteGuard() {{
-            try {{ if (eternaMuteGuard) window.clearInterval(eternaMuteGuard); }} catch (e) {{}}
-            eternaMuteGuard = null;
-            forceReactionSilent();
-        }}
-
-        forceReactionSilent();
-
-        function senderCleanVideoModeOn() {{
-            try {{
-                document.body.classList.add("sender-video-clean-mode");
-                cinematicSceneLayers.forEach((el) => {{ el.style.display = "none"; }});
-            }} catch (e) {{}}
-        }}
-
-        function senderCleanVideoModeOff() {{
-            try {{
-                cinematicSceneLayers.forEach((el) => {{ el.style.display = ""; }});
-                document.body.classList.remove("sender-video-clean-mode");
-            }} catch (e) {{}}
-        }}
-
-        function stopDecorativeVideo() {{
-            try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
-        }}
-
-        function showView() {{
-            if (intro) intro.classList.remove("active");
-            if (bridge) bridge.classList.remove("active");
-            if (view) view.classList.add("active");
-            document.body.classList.add("return-started");
-            playAllFromStart();
-        }}
-
-        function openReturn() {{
-            if (intro) intro.classList.remove("active");
-            if (bridge) bridge.classList.add("active");
-            window.setTimeout(showView, 7200);
-        }}
 
         function syncMini() {{
             if (!reaction || !mini) return;
+
             try {{
                 const reactionTime = reaction.currentTime || 0;
                 const miniTime = mini.currentTime || 0;
                 const diff = Math.abs(miniTime - reactionTime);
-                if (diff > 0.30) mini.currentTime = reactionTime;
-            }} catch (e) {{}}
-        }}
 
-        function syncBackground() {{
-            if (!reaction || !bgReaction) return;
-            try {{
-                const diff = Math.abs((bgReaction.currentTime || 0) - (reaction.currentTime || 0));
-                if (diff > 0.35) bgReaction.currentTime = reaction.currentTime || 0;
-            }} catch (e) {{}}
-        }}
-
-        function preparePlayersForStart() {{
-            try {{ if (reaction) reaction.currentTime = 0; }} catch (e) {{}}
-            try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
-            try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
-
-            enforceSenderPackAudioPolicy();
-        }}
-
-        function playAllFromStart() {{
-            enforceSenderPackAudioPolicy();
-            if (shareWrap) shareWrap.style.display = "none";
-            if (replay) replay.style.display = "";
-            if (finalSignature) {{
-                finalSignature.classList.remove("active");
-                finalSignature.setAttribute("aria-hidden", "true");
-            }}
-
-            if (reaction) reaction.controls = false;
-            if (mini) mini.controls = false;
-
-            preparePlayersForStart();
-
-            senderCleanVideoModeOn();
-            stopDecorativeVideo();
-            startMuteGuard();
-            if (mini) mini.play().catch(() => {{}});
-            if (reaction) reaction.play().catch(() => {{}});
-        }}
-
-        function replayEmotionFreely() {{
-            enforceSenderPackAudioPolicy();
-            if (shareWrap) shareWrap.style.display = "grid";
-            if (replay) replay.style.display = "";
-            if (finalSignature) {{
-                finalSignature.classList.remove("active");
-                finalSignature.setAttribute("aria-hidden", "true");
-            }}
-
-            if (reaction) reaction.controls = false;
-            if (mini) mini.controls = false;
-
-            preparePlayersForStart();
-
-            senderCleanVideoModeOn();
-            stopDecorativeVideo();
-            startMuteGuard();
-            if (mini) mini.play().catch(() => {{}});
-            if (reaction) reaction.play().catch(() => {{}});
-        }}
-
-        if (openBtn) {{
-            openBtn.addEventListener("click", openReturn);
-            openBtn.addEventListener("touchend", function (ev) {{ ev.preventDefault(); openReturn(); }}, {{ passive:false }});
-        }}
-
-        if (reaction) {{
-            reaction.addEventListener("loadedmetadata", function () {{ forceReactionSilent(); syncMini(); syncBackground(); }});
-            reaction.addEventListener("play", function () {{
-                startMuteGuard();
-                forceReactionSilent();
-                syncMini();
-                syncBackground();
-                senderCleanVideoModeOn();
-                stopDecorativeVideo();
-                if (mini) mini.play().catch(() => {{}});
-            }});
-            reaction.addEventListener("pause", function () {{
-                forceReactionSilent();
-                if (bgReaction) bgReaction.pause();
-                if (mini) mini.pause();
-            }});
-            reaction.addEventListener("seeking", function () {{ enforceSenderPackAudioPolicy(); syncMini(); syncBackground(); }});
-            reaction.addEventListener("volumechange", function () {{ forceReactionSilent(); }});
-            if (bgReaction) bgReaction.addEventListener("volumechange", function () {{ forceReactionSilent(); }});
-            if (mini) mini.addEventListener("volumechange", function () {{ forceEngineAudioOn(); }});
-            reaction.addEventListener("timeupdate", function () {{ enforceSenderPackAudioPolicy(); syncMini(); syncBackground(); }});
-            reaction.addEventListener("ended", function () {{
-                try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
-                try {{ if (mini) mini.pause(); }} catch (e) {{}}
-                stopMuteGuard();
-                senderCleanVideoModeOff();
-                if (finalSignature) {{
-                    finalSignature.classList.add("active");
-                    finalSignature.setAttribute("aria-hidden", "false");
+                if (diff > 0.20) {{
+                    mini.currentTime = reactionTime;
                 }}
-                if (replay) replay.style.display = "none";
-                if (shareWrap) shareWrap.style.display = "grid";
+            }} catch (e) {{}}
+        }}
+
+        if (reaction && mini) {{
+            reaction.addEventListener("loadedmetadata", function () {{
+                syncMini();
+            }});
+
+            reaction.addEventListener("play", function () {{
+                syncMini();
+            }});
+
+            reaction.addEventListener("seeking", function () {{
+                syncMini();
+            }});
+
+            reaction.addEventListener("timeupdate", function () {{
+                syncMini();
+            }});
+
+            reaction.addEventListener("ended", function () {{
+                try {{
+                    mini.currentTime = reaction.duration || mini.currentTime || 0;
+                }} catch (e) {{}}
+
+                if (shareWrap) {{
+                    shareWrap.style.display = "block";
+                }}
+            }});
+        }} else if (reaction) {{
+            reaction.addEventListener("ended", function () {{
+                if (shareWrap) {{
+                    shareWrap.style.display = "block";
+                }}
             }});
         }}
 
-        if (replay) {{
-            replay.addEventListener("click", playAllFromStart);
-        }}
+        if (replay && reaction) {{
+            replay.addEventListener("click", function () {{
+                try {{
+                    reaction.currentTime = 0;
+                }} catch (e) {{}}
 
-        if (replayFinal) {{
-            replayFinal.addEventListener("click", replayEmotionFreely);
+                if (mini) {{
+                    try {{
+                        mini.currentTime = 0;
+                    }} catch (e) {{}}
+                }}
+
+                if (shareWrap) {{
+                    shareWrap.style.display = "none";
+                }}
+
+                reaction.play().catch(() => {{}});
+            }});
         }}
 
         if (shareBtn) {{
             shareBtn.addEventListener("click", async function () {{
-                const url = "{reaction_url_safe}";
+
+                const url = "{reaction_url}";
+
                 if (navigator.share) {{
                     try {{
                         await navigator.share({{
@@ -9960,559 +6987,36 @@ def sender_pack(sender_token: str):
                         return;
                     }} catch (e) {{}}
                 }}
+
                 try {{
                     await navigator.clipboard.writeText(url);
                     alert("Link copiado");
                 }} catch (e) {{
                     alert(url);
                 }}
+
             }});
         }}
+
     }})();
     </script>
     """
 
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
+    <html>
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>ETERNA</title>
         <style>
-            * {{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }}
-            html, body {{ margin:0; min-height:100%; background:#020817; color:#fff; }}
             body {{
-                font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;
-                overflow-x:hidden;
-                background:
-                    radial-gradient(circle at 50% -10%, rgba(218,177,83,.22), transparent 38%),
-                    radial-gradient(circle at 10% 85%, rgba(160,116,43,.13), transparent 38%),
-                    #020817;
-            }}
-            body.sender-video-clean-mode [data-eterna-cinematic-scene],
-            body.sender-video-clean-mode #eterna-bg-reaction,
-            body.sender-video-clean-mode .call-glow {{
-                display:none !important;
-            }}
-            body.sender-video-clean-mode .reaction-frame {{
-                animation:none !important;
-                box-shadow:0 20px 70px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.055) inset !important;
-            }}
-            .sender-experience {{
-                min-height:100svh;
-                width:100%;
-                position:relative;
-                overflow:hidden;
-            }}
-            .brand-mark {{
-                position:fixed;
-                top:calc(env(safe-area-inset-top) + 22px);
-                left:0;
-                right:0;
-                text-align:center;
-                letter-spacing:.42em;
-                font-size:12px;
-                font-weight:800;
-                color:#d7b46a;
-                z-index:20;
-                text-shadow:0 0 24px rgba(215,180,106,.32);
-            }}
-            .sender-stage {{
-                position:fixed;
-                inset:0;
-                min-height:100svh;
-                display:none;
-                align-items:center;
-                justify-content:center;
-                padding:32px 22px;
-                text-align:center;
-                background:
-                    radial-gradient(circle at 50% 18%, rgba(219,180,91,.18), transparent 34%),
-                    linear-gradient(180deg, #070503 0%, #010101 100%);
-                z-index:10;
-            }}
-            .sender-stage.active {{ display:flex; }}
-            .intro-card {{
-                width:100%;
-                max-width:430px;
-                padding:42px 26px 30px;
-                border-radius:34px;
-                background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-                border:1px solid rgba(215,180,106,.25);
-                box-shadow:0 38px 110px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.09);
-            }}
-            .gold-dot {{
-                width:54px;
-                height:54px;
-                margin:0 auto 24px;
-                border-radius:50%;
-                background:radial-gradient(circle, #f3d78f 0%, #b8872f 55%, rgba(184,135,47,.2) 100%);
-                box-shadow:0 0 46px rgba(218,177,83,.46);
-            }}
-            .intro-card h1 {{
-                margin:0 0 10px;
-                font-size:46px;
-                line-height:1.02;
-                letter-spacing:-.05em;
-            }}
-            .intro-card p {{
-                margin:0 0 32px;
-                font-size:21px;
-                line-height:1.48;
-                color:rgba(255,255,255,.78);
-            }}
-            .gold-button {{
-                width:100%;
-                border:none;
-                border-radius:999px;
-                padding:20px 24px;
-                color:#14100a;
-                background:linear-gradient(135deg, #fff0ba, #d2a649 45%, #a56f22);
-                font-size:20px;
-                font-weight:850;
-                box-shadow:0 16px 44px rgba(198,148,55,.32);
-                cursor:pointer;
-            }}
-            .bridge-copy {{
-                animation:bridgeIn 1.6s ease both;
-            }}
-            .bridge-copy p {{
-                margin:0 0 16px;
-                font-size:28px;
-                color:rgba(255,255,255,.70);
-            }}
-            .bridge-copy h2 {{
                 margin:0;
-                font-size:43px;
-                line-height:1.08;
-                letter-spacing:-.045em;
+                background:#000;
                 color:#fff;
-                text-shadow:0 0 34px rgba(215,180,106,.24);
-                animation:bridgePhrase 2.2s ease both .55s;
-            }}
-            .bridge-copy span {{
-                display:block;
-                margin-top:26px;
-                font-size:20px;
-                color:#d7b46a;
-                opacity:0;
-                animation:bridgePhrase 2.2s ease both 2.8s;
-            }}
-            @keyframes bridgePhrase {{
-                from {{ opacity:0; transform:translateY(14px); filter:blur(8px); }}
-                to {{ opacity:1; transform:translateY(0); filter:blur(0); }}
-            }}
-            @keyframes bridgeIn {{
-                from {{ opacity:0; transform:translateY(18px) scale(.98); filter:blur(10px); }}
-                to {{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); }}
-            }}
-
-            .sender-return-sequence {{
-                width:100%;
-                max-width:420px;
-                min-height:260px;
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                justify-content:center;
-                gap:16px;
-            }}
-            .seq-line {{
-                opacity:0;
-                filter:blur(12px);
-                transform:translateY(18px);
-                animation:senderBlackFade 2.4s ease both;
-            }}
-            .seq-one {{ animation-delay:.25s; }}
-            .seq-two {{ animation-delay:2.05s; }}
-            .seq-three {{ animation-delay:4.25s; }}
-            @keyframes senderBlackFade {{
-                0% {{ opacity:0; transform:translateY(18px); filter:blur(14px); }}
-                38% {{ opacity:1; transform:translateY(0); filter:blur(0); }}
-                78% {{ opacity:1; transform:translateY(0); filter:blur(0); }}
-                100% {{ opacity:0; transform:translateY(-8px); filter:blur(10px); }}
-            }}
-
-            .return-view {{
-                min-height:100svh;
-                height:100svh;
-                display:none;
-                position:relative;
-                overflow:hidden;
-                background:#020202;
-            }}
-            .return-view.active {{ display:block; }}
-            .top-bar {{
-                position:absolute;
-                top:calc(env(safe-area-inset-top) + 18px);
-                left:20px;
-                right:20px;
-                display:flex;
-                align-items:flex-start;
-                justify-content:space-between;
-                gap:12px;
-                padding:0;
-                z-index:8;
-                pointer-events:none;
-            }}
-            .top-bar .small-action {{ pointer-events:auto; }}
-            .eyebrow {{
-                font-size:11px;
-                letter-spacing:.34em;
-                color:#d7b46a;
-                font-weight:800;
-                margin-bottom:7px;
-            }}
-            .top-bar h1 {{
-                margin:0;
-                font-size:25px;
-                line-height:1.05;
-                letter-spacing:-.045em;
-                text-shadow:0 8px 28px rgba(0,0,0,.9);
-            }}
-            .small-action {{
-                border:1px solid rgba(215,180,106,.26);
-                background:rgba(0,0,0,.34);
-                color:#fff;
-                border-radius:999px;
-                padding:10px 12px;
-                font-size:12px;
-                font-weight:750;
-                white-space:nowrap;
-                backdrop-filter:blur(14px);
-                -webkit-backdrop-filter:blur(14px);
-            }}
-            .call-shell {{
-                position:absolute;
-                inset:0;
-                overflow:hidden;
-                background:#020202;
-                border:0;
-                border-radius:0;
-                box-shadow:none;
-            }}
-            .call-glow {{
-                position:absolute;
-                inset:-30%;
-                background:
-                    radial-gradient(circle at 50% 22%, rgba(218,177,83,.22), transparent 30%),
-                    radial-gradient(circle at 80% 80%, rgba(150,102,35,.12), transparent 36%);
-                pointer-events:none;
-                z-index:1;
-            }}
-            #eterna-bg-reaction {{
-                position:absolute;
-                inset:0;
-                width:100%;
-                height:100%;
-                object-fit:cover;
-                filter:blur(36px) brightness(.25) saturate(1.08);
-                transform:scale(1.22);
-                opacity:.76;
-                z-index:0;
-            }}
-            .reaction-frame {{
-                position:absolute;
-                inset:76px 10px 104px 10px;
-                z-index:2;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                border-radius:34px;
-                overflow:hidden;
-                background:#000;
-                border:1px solid rgba(255,224,154,.28);
-                box-shadow:
-                    0 26px 100px rgba(0,0,0,.76),
-                    0 0 0 1px rgba(255,255,255,.075) inset,
-                    0 0 34px rgba(215,180,106,.18),
-                    0 0 88px rgba(215,180,106,.11);
-                animation:eternaFrameBreath 9.5s ease-in-out infinite;
-            }}
-            .reaction-frame::after {{
-                content:"";
-                position:absolute;
-                inset:0;
-                z-index:3;
-                pointer-events:none;
-                border-radius:34px;
-                background:
-                    linear-gradient(120deg, rgba(255,255,255,.16), transparent 18%, transparent 72%, rgba(255,224,154,.10)),
-                    radial-gradient(circle at 50% 0%, rgba(255,224,154,.16), transparent 38%);
-                mix-blend-mode:screen;
-                opacity:.62;
-            }}
-            @keyframes eternaFrameBreath {{
-                0%,100% {{ box-shadow:0 26px 100px rgba(0,0,0,.76), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 28px rgba(215,180,106,.13), 0 0 70px rgba(215,180,106,.08); }}
-                50% {{ box-shadow:0 30px 112px rgba(0,0,0,.82), 0 0 0 1px rgba(255,255,255,.095) inset, 0 0 46px rgba(215,180,106,.25), 0 0 105px rgba(215,180,106,.14); }}
-            }}
-            #eterna-reaction-player {{
-                width:100%;
-                height:100%;
-                object-fit:cover;
-                background:#000;
-                animation:eternaSlowZoom 46s ease-in-out forwards;
-            }}
-            @keyframes eternaSlowZoom {{
-                from {{ transform:scale(1.000); }}
-                to {{ transform:scale(1.055); }}
-            }}
-            .mini-original-wrap {{
-                position:absolute;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 104px);
-                z-index:5;
-                width:min(27vw, 112px);
-                aspect-ratio:9/16;
-                border-radius:22px;
-                overflow:hidden;
-                background:#000;
-                border:1px solid rgba(255,226,158,.32);
-                box-shadow:0 18px 58px rgba(0,0,0,.72), 0 0 28px rgba(215,180,106,.15);
-            }}
-            .mini-label {{
-                position:absolute;
-                left:7px;
-                top:7px;
-                z-index:2;
-                padding:5px 7px;
-                border-radius:999px;
-                background:rgba(0,0,0,.54);
-                color:rgba(255,255,255,.86);
-                font-size:9px;
-                font-weight:800;
-                letter-spacing:.02em;
-            }}
-            #eterna-mini-original {{
-                width:100%;
-                height:100%;
-                object-fit:cover;
-                display:block;
-                background:#000;
-            }}
-            .return-copy {{
-                position:absolute;
-                left:18px;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 30px);
-                z-index:6;
-                text-align:center;
-                padding:0;
-                pointer-events:none;
-            }}
-            .return-copy h2 {{
-                margin:0;
-                font-size:20px;
-                line-height:1.14;
-                letter-spacing:-.035em;
-                text-shadow:0 8px 28px rgba(0,0,0,.9);
-                color:rgba(255,255,255,.86);
-            }}
-            .return-copy p {{ display:none; }}
-            .final-signature {{
-                position:absolute;
-                inset:0;
-                z-index:9;
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                justify-content:center;
-                padding:30px 24px calc(env(safe-area-inset-bottom) + 120px);
-                text-align:center;
-                background:
-                    radial-gradient(circle at 50% 30%, rgba(218,177,83,.20), transparent 34%),
-                    linear-gradient(180deg, rgba(0,0,0,.76), #020202 72%);
-                opacity:0;
-                pointer-events:none;
-                filter:blur(10px);
-                transform:scale(1.015);
-                transition:opacity 1.4s ease, filter 1.4s ease, transform 1.4s ease;
-            }}
-            .final-signature.active {{
-                opacity:1;
-                pointer-events:auto;
-                filter:blur(0);
-                transform:scale(1);
-            }}
-            .final-orb {{
-                width:82px;
-                height:82px;
-                border-radius:50%;
-                display:grid;
-                place-items:center;
-                margin-bottom:22px;
-                color:#f3d78f;
-                font-size:46px;
-                line-height:1;
-                border:1px solid rgba(255,224,154,.26);
-                background:radial-gradient(circle, rgba(243,215,143,.20), rgba(184,135,47,.08) 58%, rgba(0,0,0,.25));
-                box-shadow:0 0 58px rgba(218,177,83,.28);
-                animation:finalOrbBreath 7s ease-in-out infinite;
-            }}
-            .final-brand {{
-                letter-spacing:.42em;
-                font-size:12px;
-                font-weight:850;
-                color:#d7b46a;
-                margin-bottom:20px;
-                text-shadow:0 0 22px rgba(215,180,106,.26);
-            }}
-            .final-signature h2 {{
-                margin:0;
-                font-size:34px;
-                line-height:1.08;
-                letter-spacing:-.055em;
-                max-width:340px;
-            }}
-            .final-signature p {{
-                margin:16px 0 0;
-                font-size:22px;
-                color:rgba(255,255,255,.72);
-            }}
-            .final-replay {{
-                margin-top:30px;
-                border:1px solid rgba(255,224,154,.30);
-                color:#fff;
-                background:rgba(255,255,255,.08);
-                border-radius:999px;
-                padding:14px 18px;
-                font-size:15px;
-                font-weight:800;
-                backdrop-filter:blur(16px);
-                -webkit-backdrop-filter:blur(16px);
-                box-shadow:0 18px 54px rgba(0,0,0,.42), 0 0 30px rgba(215,180,106,.10);
-            }}
-            @keyframes finalOrbBreath {{
-                0%,100% {{ transform:scale(1); opacity:.92; }}
-                50% {{ transform:scale(1.045); opacity:1; }}
-            }}
-
-            .share-wrap {{
-                position:absolute;
-                left:18px;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 22px);
-                z-index:10;
-                display:grid;
-                gap:10px;
-                padding:0;
-            }}
-            .download-link, .share-button, .replay-emotion-button {{
-                display:block;
-                width:100%;
-                border:none;
-                border-radius:999px;
-                padding:16px 18px;
-                text-align:center;
-                font-size:17px;
-                font-weight:800;
-                text-decoration:none;
-            }}
-            .replay-emotion-button {{
-                background:linear-gradient(135deg, #d8b76d, #fff0b8);
-                color:#070503;
-                border:1px solid rgba(255,228,164,.72);
-                box-shadow:0 18px 54px rgba(215,180,106,.24), inset 0 1px 0 rgba(255,255,255,.42);
-            }}
-            .replay-emotion-button:focus,
-            .replay-emotion-button:active {{
-                outline:none;
-                box-shadow:0 0 0 3px rgba(216,183,109,.22), 0 18px 54px rgba(215,180,106,.24);
-            }}
-            .download-link {{ background:linear-gradient(135deg,#fff0bd,#d2a649 45%,#a56f22); color:#120b02; }}
-            .share-button {{ background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.12); }}
-            .share-note {{
-                font-size:12px;
-                line-height:1.45;
-                text-align:center;
-                color:rgba(255,255,255,.45);
-            }}
-            @media (min-width: 760px) {{
-                body {{
-                    display:flex;
-                    justify-content:center;
-                    background:#020817;
-                }}
-                .sender-experience {{
-                    max-width:430px;
-                    min-height:100svh;
-                    box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 0 80px rgba(0,0,0,.7);
-                }}
-                .return-view {{
-                    width:430px;
-                    max-width:430px;
-                    margin:0 auto;
-                }}
-                .sender-stage {{
-                    left:50%;
-                    width:430px;
-                    transform:translateX(-50%);
-                }}
+                font-family:sans-serif;
             }}
         </style>
     </head>
     <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
         {body_content}
     </body>
     </html>
@@ -10608,77 +7112,17 @@ def admin_order_status(order_id: str, token: str):
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Estado ETERNA</title>
 <style>
-body {{ background:#050505; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; padding:22px; }}
+body {{ background:#050505; color:#fff; font-family:Arial,sans-serif; padding:22px; }}
 h1 {{ margin:0 0 10px; }}
 .card {{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:18px; margin:16px 0; }}
 table {{ width:100%; border-collapse:collapse; font-size:14px; }}
 td, th {{ border-bottom:1px solid rgba(255,255,255,.10); padding:10px; text-align:left; vertical-align:top; }}
 .small {{ color:rgba(255,255,255,.62); line-height:1.6; }}
 </style></head><body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
 <h1>Estado ETERNA</h1>
 <div class="small">Pedido: {safe_text(order_id)} · Destinatario: {safe_text(order.get('recipient_name'))} · Regalante: {safe_text(order.get('sender_name'))}</div>
-<div class="card" style="position:relative;z-index:2;"><h2>Proceso sencillo</h2><table><tbody>{rows}</tbody></table></div>
-<div class="card" style="position:relative;z-index:2;"><h2>Eventos técnicos</h2><table><thead><tr><th>Hora</th><th>Paso</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>{raw_rows}</tbody></table></div>
+<div class="card"><h2>Proceso sencillo</h2><table><tbody>{rows}</tbody></table></div>
+<div class="card"><h2>Eventos técnicos</h2><table><thead><tr><th>Hora</th><th>Paso</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>{raw_rows}</tbody></table></div>
 </body></html>
     """)
 
@@ -10763,57 +7207,10 @@ def admin_retry_recipient_message(order_id: str, request: Request):
     return result
 
 
-@app.get("/admin/recover-reaction/{order_id}")
-def admin_recover_reaction(order_id: str, token: str = "", force: int = 0):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="No autorizado")
-
-    result = recover_reaction_from_chunks_if_possible(
-        order_id,
-        min_idle_seconds=0 if int(force or 0) == 1 else 20,
-        source="admin_manual_recovery",
-    )
-    updated = get_order_by_id(order_id)
-
-    return JSONResponse({
-        "ok": result.get("ok", False),
-        "result": result,
-        "order_id": order_id,
-        "reaction_uploaded": bool(updated.get("reaction_uploaded")),
-        "reaction_upload_pending": bool(updated.get("reaction_upload_pending")),
-        "reaction_upload_error": updated.get("reaction_upload_error"),
-        "reaction_video_local": updated.get("reaction_video_local"),
-        "reaction_video_public_url": updated.get("reaction_video_public_url"),
-        "sender_sms_sent_at": updated.get("sender_sms_sent_at"),
-        "sender_sms_attempts": int(updated.get("sender_sms_attempts") or 0),
-        "sender_sms_error": updated.get("sender_sms_error"),
-        "eterna_completed": bool(updated.get("eterna_completed")),
-    })
-
-
 @app.get("/admin/retry-sender-message/{order_id}")
-def admin_retry_sender_message(order_id: str, token: str = "", force: int = 0):
+def admin_retry_sender_message(order_id: str, token: str = ""):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
-
-    # Modo rescate: si un pedido agotó 3 intentos cuando SMS/WhatsApp estaba sin saldo
-    # o mal configurado, permitimos resetear SOLO desde admin y SOLO bajo petición explícita.
-    # Uso:
-    # /admin/retry-sender-message/ORDER_ID?token=ADMIN_TOKEN&force=1
-    if int(force or 0) == 1:
-        update_order(
-            order_id,
-            sender_sms_attempts=0,
-            sender_sms_error=None,
-            sender_sms_sent_at=None,
-            sender_sms_sid=None,
-            sender_notified=0,
-        )
-        insert_order_event(order_id, "admin_sender_retry_forced", "warning", "Reintento forzado del aviso al regalante: intentos reseteados por admin")
-
-    # Si el problema real fue que el destinatario cortó justo al final, antes de reenviar
-    # intentamos convertir los chunks pendientes en reacción final.
-    recover_reaction_from_chunks_if_possible(order_id, min_idle_seconds=0, source="admin_retry_sender_recovery")
 
     order = maybe_mark_eterna_completed(order_id)
     result = try_send_sender_sms(order)
@@ -10827,7 +7224,6 @@ def admin_retry_sender_message(order_id: str, token: str = "", force: int = 0):
         "sender_sms_attempts": updated.get("sender_sms_attempts"),
         "sender_sms_error": updated.get("sender_sms_error"),
         "eterna_completed": bool(updated.get("eterna_completed")),
-        "force_used": bool(int(force or 0) == 1),
     })
 
 
@@ -10841,7 +7237,6 @@ def admin_delivery_worker_status(token: str = ""):
         "delivery_worker_started": DELIVERY_WORKER_STARTED,
         "delivery_worker_interval_seconds": DELIVERY_WORKER_INTERVAL_SECONDS,
         "pending_order_ids": list_pending_scheduled_deliveries(),
-        "pending_reaction_recovery_ids": list_pending_reaction_recovery_orders(),
         "pending_sender_notification_ids": list_pending_sender_notifications(),
         "pending_payout_order_ids": list_pending_payout_orders(),
     })
@@ -10853,18 +7248,15 @@ def admin_process_all_due_deliveries(token: str = ""):
         raise HTTPException(status_code=403, detail="No autorizado")
 
     delivery_results = process_all_due_scheduled_deliveries()
-    recovery_results = process_all_pending_reaction_recoveries()
     sender_results = process_all_due_sender_notifications()
     payout_results = process_all_due_payouts()
 
     return JSONResponse({
         "ok": True,
         "delivery_count": len(delivery_results),
-        "recovery_count": len(recovery_results),
         "sender_count": len(sender_results),
         "payout_count": len(payout_results),
         "delivery_results": delivery_results,
-        "recovery_results": recovery_results,
         "sender_results": sender_results,
         "payout_results": payout_results,
     })
@@ -10920,12 +7312,6 @@ def finalizar_experiencia(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     try:
-        # Si el destinatario llegó aquí justo después del vídeo pero el JS no alcanzó a cerrar
-        # /finish-reaction-upload, intentamos rescatar los chunks ya subidos antes de continuar.
-        if not reaction_is_safe(order):
-            recover_reaction_from_chunks_if_possible(order, min_idle_seconds=0, source="finalizar_experiencia_recovery")
-            order = get_order_by_id(order["id"])
-
         update_order(
             order["id"],
             experience_completed=1,
