@@ -9655,7 +9655,6 @@ def sender_pack(sender_token: str):
                     <div class="eyebrow">ETERNA</div>
                     <h1>{sender_status}</h1>
                 </div>
-                <button id="eterna-replay-all" class="small-action" type="button">Volver a sentirlo</button>
             </div>
 
             <div class="call-shell">
@@ -9705,6 +9704,10 @@ def sender_pack(sender_token: str):
                 </div>
             </div>
 
+            <div class="sender-controls">
+                <button id="eterna-play-pause" class="replay-emotion-button" type="button">▶️ Reproducir emoción</button>
+            </div>
+
             <div class="return-copy">
                 <h2>Aquí vuelve lo que provocaste.</h2>
                 
@@ -9722,8 +9725,8 @@ def sender_pack(sender_token: str):
                 <a class="download-link" href="{reaction_url_safe}" download>Guardar este regreso</a>
                 <button id="eterna-share-reaction" class="share-button" type="button">Compartir su reacción</button>
                 <div class="share-note">
-                    Comparte solo la emoción.<br>
-                    El vídeo original se queda aquí para no romper la magia de ETERNA.
+                    Guardas la reacción de esta primera versión.<br>
+                    Próximo paso: pack social silencioso con vídeo original + reacción.
                 </div>
             </div>
         </section>
@@ -9741,6 +9744,7 @@ def sender_pack(sender_token: str):
         const bgReaction = document.getElementById("eterna-bg-reaction");
         const mini = document.getElementById("eterna-mini-original");
         const replay = document.getElementById("eterna-replay-all");
+        const playPause = document.getElementById("eterna-play-pause");
         const finalSignature = document.getElementById("eterna-final-signature");
         const shareWrap = document.getElementById("eterna-share-wrap");
         const shareBtn = document.getElementById("eterna-share-reaction");
@@ -9748,6 +9752,13 @@ def sender_pack(sender_token: str):
         const cinematicSceneLayers = Array.from(document.querySelectorAll("[data-eterna-cinematic-scene]"));
 
         let eternaMuteGuard = null;
+        let senderPackPlaying = false;
+
+        function setPlayPauseLabel(isPlaying) {{
+            senderPackPlaying = !!isPlaying;
+            if (!playPause) return;
+            playPause.textContent = senderPackPlaying ? "⏸️ Pausar emoción" : "▶️ Reproducir emoción";
+        }}
 
         function forceReactionSilent() {{
             // REGLA SAGRADA ETERNA SENDER PACK:
@@ -9822,7 +9833,10 @@ def sender_pack(sender_token: str):
             if (bridge) bridge.classList.remove("active");
             if (view) view.classList.add("active");
             document.body.classList.add("return-started");
-            playAllFromStart();
+            enforceSenderPackAudioPolicy();
+            preparePlayersForStart();
+            senderCleanVideoModeOn();
+            setPlayPauseLabel(false);
         }}
 
         function openReturn() {{
@@ -9874,8 +9888,42 @@ def sender_pack(sender_token: str):
             senderCleanVideoModeOn();
             stopDecorativeVideo();
             startMuteGuard();
+            const miniPlay = mini ? mini.play().catch(() => {{}}) : null;
+            const reactionPlay = reaction ? reaction.play().catch(() => {{}}) : null;
+            setPlayPauseLabel(true);
+        }}
+
+        function pauseAllSenderPack() {{
+            try {{ if (reaction) reaction.pause(); }} catch (e) {{}}
+            try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
+            try {{ if (mini) mini.pause(); }} catch (e) {{}}
+            stopMuteGuard();
+            setPlayPauseLabel(false);
+        }}
+
+        function resumeAllSenderPack() {{
+            enforceSenderPackAudioPolicy();
+            senderCleanVideoModeOn();
+            stopDecorativeVideo();
+            startMuteGuard();
+            syncMini();
+            syncBackground();
             if (mini) mini.play().catch(() => {{}});
             if (reaction) reaction.play().catch(() => {{}});
+            setPlayPauseLabel(true);
+        }}
+
+        function togglePlayPause() {{
+            if (!reaction) return;
+            if (senderPackPlaying && !reaction.paused) {{
+                pauseAllSenderPack();
+                return;
+            }}
+            if ((reaction.currentTime || 0) <= 0.05 || reaction.ended) {{
+                playAllFromStart();
+                return;
+            }}
+            resumeAllSenderPack();
         }}
 
         function replayEmotionFreely() {{
@@ -9897,6 +9945,7 @@ def sender_pack(sender_token: str):
             startMuteGuard();
             if (mini) mini.play().catch(() => {{}});
             if (reaction) reaction.play().catch(() => {{}});
+            setPlayPauseLabel(true);
         }}
 
         if (openBtn) {{
@@ -9919,6 +9968,7 @@ def sender_pack(sender_token: str):
                 forceReactionSilent();
                 if (bgReaction) bgReaction.pause();
                 if (mini) mini.pause();
+                if (!reaction.ended) setPlayPauseLabel(false);
             }});
             reaction.addEventListener("seeking", function () {{ enforceSenderPackAudioPolicy(); syncMini(); syncBackground(); }});
             reaction.addEventListener("volumechange", function () {{ forceReactionSilent(); }});
@@ -9929,6 +9979,7 @@ def sender_pack(sender_token: str):
                 try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
                 try {{ if (mini) mini.pause(); }} catch (e) {{}}
                 stopMuteGuard();
+                setPlayPauseLabel(false);
                 senderCleanVideoModeOff();
                 if (finalSignature) {{
                     finalSignature.classList.add("active");
@@ -9937,6 +9988,11 @@ def sender_pack(sender_token: str):
                 if (replay) replay.style.display = "none";
                 if (shareWrap) shareWrap.style.display = "grid";
             }});
+        }}
+
+        if (playPause) {{
+            playPause.addEventListener("click", togglePlayPause);
+            playPause.addEventListener("touchend", function(ev) {{ ev.preventDefault(); togglePlayPause(); }}, {{ passive:false }});
         }}
 
         if (replay) {{
@@ -10136,25 +10192,28 @@ def sender_pack(sender_token: str):
 
             .return-view {{
                 min-height:100svh;
-                height:100svh;
+                height:auto;
                 display:none;
                 position:relative;
-                overflow:hidden;
+                overflow-y:auto;
+                overflow-x:hidden;
+                padding-bottom:calc(env(safe-area-inset-bottom) + 24px);
                 background:#020202;
             }}
             .return-view.active {{ display:block; }}
             .top-bar {{
-                position:absolute;
-                top:calc(env(safe-area-inset-top) + 18px);
-                left:20px;
-                right:20px;
+                position:relative;
+                left:auto;
+                right:auto;
+                top:auto;
                 display:flex;
                 align-items:flex-start;
-                justify-content:space-between;
+                justify-content:center;
                 gap:12px;
-                padding:0;
+                padding:calc(env(safe-area-inset-top) + 24px) 20px 14px;
                 z-index:8;
-                pointer-events:none;
+                pointer-events:auto;
+                text-align:center;
             }}
             .top-bar .small-action {{ pointer-events:auto; }}
             .eyebrow {{
@@ -10184,8 +10243,10 @@ def sender_pack(sender_token: str):
                 -webkit-backdrop-filter:blur(14px);
             }}
             .call-shell {{
-                position:absolute;
-                inset:0;
+                position:relative;
+                width:100%;
+                height:min(62svh, 620px);
+                min-height:420px;
                 overflow:hidden;
                 background:#020202;
                 border:0;
@@ -10214,7 +10275,7 @@ def sender_pack(sender_token: str):
             }}
             .reaction-frame {{
                 position:absolute;
-                inset:76px 10px 104px 10px;
+                inset:14px 10px 14px 10px;
                 z-index:2;
                 display:flex;
                 align-items:center;
@@ -10261,7 +10322,7 @@ def sender_pack(sender_token: str):
             .mini-original-wrap {{
                 position:absolute;
                 right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 104px);
+                bottom:24px;
                 z-index:5;
                 width:min(27vw, 112px);
                 aspect-ratio:9/16;
@@ -10291,14 +10352,20 @@ def sender_pack(sender_token: str):
                 display:block;
                 background:#000;
             }}
+            .sender-controls {{
+                position:relative;
+                z-index:11;
+                padding:16px 18px 8px;
+                background:#020202;
+            }}
             .return-copy {{
-                position:absolute;
-                left:18px;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 30px);
+                position:relative;
+                left:auto;
+                right:auto;
+                bottom:auto;
                 z-index:6;
                 text-align:center;
-                padding:0;
+                padding:8px 18px 10px;
                 pointer-events:none;
             }}
             .return-copy h2 {{
@@ -10389,14 +10456,15 @@ def sender_pack(sender_token: str):
             }}
 
             .share-wrap {{
-                position:absolute;
-                left:18px;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 22px);
+                position:relative;
+                left:auto;
+                right:auto;
+                bottom:auto;
                 z-index:10;
                 display:grid;
                 gap:10px;
-                padding:0;
+                padding:10px 18px 24px;
+                background:#020202;
             }}
             .download-link, .share-button, .replay-emotion-button {{
                 display:block;
