@@ -3816,19 +3816,11 @@ def render_create_form() -> str:
 
         <div class="wrap">
             <div class="card" style="position:relative;z-index:2;">
-                <h1>ETERNA</h1>
-                <div class="subtitle">Crea algo que no se abra. Se viva.</div>
-
-                <div class="intro">
-                    <p class="intro-line l1">No todo lo importante</p>
-                    <p class="intro-line l2">debería desaparecer.</p>
-                    <p class="intro-line l3">Haz que vuelva convertido</p>
-                    <p class="intro-line l4">en emoción real.</p>
-                </div>
-
+                <!-- FORMULARIO DIRECTO: eliminada la pantalla intermedia "Crea algo que no se abre. Se vive." -->
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
                     <div class="form-step active" id="formStep1">
-                        <div class="atmosphere-title">Primero construimos el recuerdo. Luego decidimos cómo vuelve.</div>
+                        <div class="atmosphere-title">Crear mi ETERNA</div>
+                        <div class="form-direct-copy">Elige las fotos, las palabras y el momento en que tu ETERNA debe llegar.</div>
 
                     <div class="section s1">
                         <div class="section-title">Quién lo crea</div>
@@ -4837,8 +4829,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
 
 def render_create_intro() -> HTMLResponse:
-    """Pantalla puente visual antes del formulario real. No toca el formulario ni Stripe."""
-    return HTMLResponse("""
+    return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
@@ -4846,105 +4837,233 @@ def render_create_intro() -> HTMLResponse:
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>Crear ETERNA</title>
         <style>
-            * { box-sizing: border-box; }
-            html, body { margin:0; min-height:100%; background:#02050a; }
-            body {
+            * {{ box-sizing: border-box; }}
+            html, body {{ margin:0; min-height:100%; background:#020817; }}
+            body {{
                 min-height:100vh;
                 color:#fff7e6;
-                font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-                overflow:hidden;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                overflow-x:hidden;
                 background:
-                    radial-gradient(circle at 50% 10%, rgba(64,180,255,.22), transparent 34%),
-                    radial-gradient(circle at 50% 96%, rgba(212,175,55,.16), transparent 42%),
-                    #02050a;
-            }
-            .stage {
+                    radial-gradient(circle at 50% -10%, rgba(218,178,92,.22), transparent 36%),
+                    radial-gradient(circle at 20% 90%, rgba(64,156,255,.12), transparent 30%),
+                    linear-gradient(180deg,#020817,#000 58%,#020817);
+            }}
+            .stage {{
                 min-height:100vh;
                 display:flex;
+                align-items:center;
                 justify-content:center;
-                align-items:flex-start;
-            }
-            .phone {
+                padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+            }}
+            .phone {{
                 width:100%;
                 max-width:430px;
-                min-height:100vh;
+                min-height: min(820px, 94vh);
+                border-radius:38px;
+                padding:26px 22px;
                 position:relative;
                 overflow:hidden;
-                padding: max(22px, env(safe-area-inset-top)) 24px max(34px, env(safe-area-inset-bottom));
-                isolation:isolate;
+                border:1px solid rgba(218,178,92,.20);
                 background:
-                    radial-gradient(circle at 50% 28%, rgba(92,207,255,.18), transparent 30%),
-                    linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.01)),
-                    #02050a;
-            }
-            .halo {
+                    linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),
+                    rgba(0,0,0,.68);
+                box-shadow:0 30px 90px rgba(0,0,0,.72), inset 0 0 0 1px rgba(255,255,255,.035);
+            }}
+            .phone:before {{
+                content:"";
                 position:absolute;
-                inset:-18%;
-                background:
-                    radial-gradient(circle at 66% 22%, rgba(114,216,255,.36), transparent 20%),
-                    radial-gradient(circle at 44% 36%, rgba(58,149,255,.22), transparent 28%),
-                    radial-gradient(circle at 50% 82%, rgba(212,175,55,.14), transparent 34%);
-                filter: blur(2px);
-                opacity:.9;
-                z-index:0;
-                animation: haloBreath 7.5s ease-in-out infinite;
-            }
-            @keyframes haloBreath { 0%,100% { transform:scale(1); opacity:.62; } 50% { transform:scale(1.07); opacity:1; } }
-            .butterfly {
-                position:absolute;
-                top:8vh;
-                right:-10px;
-                width:78%;
-                aspect-ratio:1.22;
-                z-index:1;
+                inset:-30%;
+                background: radial-gradient(circle, rgba(64,156,255,.10), transparent 28%);
+                animation: breathe 9s ease-in-out infinite;
                 pointer-events:none;
-                opacity:.96;
-                filter: drop-shadow(0 0 24px rgba(116,218,255,.76)) drop-shadow(0 0 70px rgba(59,130,246,.38));
-                animation: butterflyFloat 9s ease-in-out infinite;
-            }
-            @keyframes butterflyFloat { 0%,100% { transform:translateY(0) rotate(-2deg); } 50% { transform:translateY(-14px) rotate(2deg); } }
-            .wing { position:absolute; background:linear-gradient(135deg, rgba(255,255,255,.92), rgba(93,190,255,.58), rgba(7,27,73,.04)); filter:blur(.2px); }
-            .wing.left-top { left:18%; top:6%; width:38%; height:44%; border-radius:80% 20% 80% 20%; transform:rotate(-22deg); }
-            .wing.right-top { right:8%; top:4%; width:42%; height:44%; border-radius:20% 80% 20% 80%; transform:rotate(18deg); }
-            .wing.left-bottom { left:20%; bottom:12%; width:33%; height:36%; border-radius:70% 30% 70% 30%; transform:rotate(20deg); opacity:.66; }
-            .wing.right-bottom { right:14%; bottom:10%; width:35%; height:36%; border-radius:30% 70% 30% 70%; transform:rotate(-18deg); opacity:.66; }
-            .body { position:absolute; left:52%; top:28%; width:10px; height:42%; border-radius:999px; background:rgba(255,255,255,.72); box-shadow:0 0 18px rgba(255,255,255,.68); }
-            .spark { position:absolute; width:4px; height:4px; border-radius:50%; background:#bff3ff; box-shadow:0 0 14px rgba(102,213,255,.9),0 0 30px rgba(212,175,55,.22); opacity:0; animation:sparkRise 8s linear infinite; }
-            .s1 { left:18%; bottom:18%; animation-delay:.3s; }
-            .s2 { left:78%; bottom:26%; animation-delay:1.5s; background:#f4d28c; }
-            .s3 { left:39%; bottom:14%; animation-delay:3.1s; }
-            .s4 { left:60%; bottom:20%; animation-delay:4.7s; background:#f4d28c; }
-            @keyframes sparkRise { 0% { transform:translateY(0) scale(.6); opacity:0; } 12% { opacity:.85; } 100% { transform:translateY(-62vh) scale(1.1); opacity:0; } }
-            .content { position:relative; z-index:3; min-height:calc(100vh - 56px); display:flex; flex-direction:column; }
-            .brand { text-align:center; letter-spacing:.34em; padding-left:.34em; color:#f3d98b; font-size:13px; font-weight:800; margin-top:8px; }
-            .mark { width:58px; height:58px; border:1px solid rgba(212,175,55,.68); border-radius:50%; display:grid; place-items:center; margin:30vh auto 22px; color:#d4af37; font-family:Georgia,"Times New Roman",serif; font-size:30px; box-shadow:0 0 26px rgba(212,175,55,.18); }
-            h1 { margin:0 auto; max-width:360px; text-align:center; font-family:Georgia,"Times New Roman",serif; font-size:clamp(38px, 10vw, 55px); line-height:.98; letter-spacing:-.05em; color:#fff7e6; text-shadow:0 0 24px rgba(255,255,255,.14); }
-            h1 span { display:block; color:#f3d98b; text-shadow:0 0 24px rgba(83,194,255,.38); }
-            .copy { margin:18px auto 0; max-width:330px; text-align:center; color:rgba(246,241,232,.72); line-height:1.72; font-size:15px; }
-            .actions { margin-top:auto; display:grid; gap:12px; padding-top:32px; }
-            .btn { width:100%; min-height:62px; display:flex; align-items:center; justify-content:center; border-radius:20px; text-decoration:none; text-transform:uppercase; letter-spacing:.13em; font-size:13px; font-weight:900; color:#150d03; background:linear-gradient(135deg,#fff0bd 0%,#e7bd61 52%,#b87927 100%); box-shadow:0 20px 70px rgba(59,167,255,.18),0 18px 58px rgba(212,175,55,.22); position:relative; overflow:hidden; }
-            .btn:after { content:""; position:absolute; inset:-35%; background:linear-gradient(110deg, transparent 20%, rgba(255,255,255,.55), transparent 62%); transform:translateX(-72%); animation:buttonShine 5.8s ease-in-out infinite; }
-            @keyframes buttonShine { 0%,64%,100% { transform:translateX(-72%); opacity:0; } 76% { opacity:.82; } 92% { transform:translateX(72%); opacity:0; } }
-            .tiny { text-align:center; margin-top:12px; color:rgba(246,241,232,.40); font-size:12px; line-height:1.5; }
+            }}
+            @keyframes breathe {{ 0%,100% {{ transform:scale(1); opacity:.55; }} 50% {{ transform:scale(1.12); opacity:1; }} }}
+            .content {{ position:relative; z-index:2; min-height: calc(min(820px, 94vh) - 52px); display:flex; flex-direction:column; }}
+            .brand {{
+                letter-spacing:5px;
+                font-size:13px;
+                color:rgba(218,178,92,.92);
+                text-align:center;
+                margin-top:8px;
+            }}
+            .orb {{
+                width:86px;
+                height:86px;
+                margin:42px auto 34px;
+                border-radius:999px;
+                border:1px solid rgba(218,178,92,.35);
+                box-shadow:0 0 44px rgba(218,178,92,.22), inset 0 0 28px rgba(218,178,92,.10);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                color:rgba(218,178,92,.92);
+                font-size:34px;
+                animation: pulse 4.8s ease-in-out infinite;
+            }}
+            @keyframes pulse {{ 0%,100% {{ transform:scale(1); }} 50% {{ transform:scale(1.045); }} }}
+            .line {{
+                font-family: Georgia, "Times New Roman", serif;
+                font-size: clamp(31px, 8vw, 43px);
+                line-height:1.08;
+                text-align:center;
+                letter-spacing:-.7px;
+                margin:0;
+                opacity:0;
+                transform:translateY(18px);
+                animation: reveal 1.6s ease forwards;
+            }}
+            .line.two {{ animation-delay:1.25s; color:rgba(255,255,255,.88); }}
+            .line.three {{ animation-delay:2.65s; color:rgba(218,178,92,.95); }}
+            @keyframes reveal {{ to {{ opacity:1; transform:translateY(0); }} }}
+            .copy {{
+                margin:30px auto 0;
+                max-width:330px;
+                text-align:center;
+                color:rgba(255,255,255,.58);
+                line-height:1.8;
+                font-size:15px;
+                opacity:0;
+                animation: reveal 1.4s ease forwards;
+                animation-delay:4.1s;
+            }}
+            .mock {{
+                margin:34px auto 0;
+                width:76%;
+                max-width:250px;
+                aspect-ratio:9/16;
+                border-radius:30px;
+                border:1px solid rgba(218,178,92,.26);
+                background:
+                    radial-gradient(circle at 50% 25%, rgba(255,255,255,.16), transparent 34%),
+                    linear-gradient(180deg, rgba(218,178,92,.10), rgba(0,0,0,.55));
+                box-shadow:0 22px 60px rgba(0,0,0,.58);
+                position:relative;
+                overflow:hidden;
+                opacity:0;
+                transform:translateY(20px) scale(.98);
+                animation: revealMock 1.7s ease forwards;
+                animation-delay:5.2s;
+            }}
+            @keyframes revealMock {{ to {{ opacity:1; transform:translateY(0) scale(1); }} }}
+            .mock:after {{
+                content:"Tu ETERNA ha vuelto";
+                position:absolute;
+                left:18px;
+                right:18px;
+                bottom:22px;
+                text-align:center;
+                font-family:Georgia,"Times New Roman",serif;
+                font-size:20px;
+                color:rgba(255,255,255,.9);
+            }}
+            .actions {{ margin-top:auto; padding-top:30px; display:grid; gap:12px; }}
+            .btn {{
+                display:block;
+                width:100%;
+                padding:18px 22px;
+                border-radius:999px;
+                text-align:center;
+                text-decoration:none;
+                font-weight:800;
+                letter-spacing:.3px;
+                background:linear-gradient(135deg,#f6e1a8,#c89d45);
+                color:#120d05;
+                box-shadow:0 14px 34px rgba(218,178,92,.22);
+            }}
+            .ghost {{
+                background:rgba(255,255,255,.055);
+                color:rgba(255,255,255,.78);
+                border:1px solid rgba(255,255,255,.08);
+                box-shadow:none;
+            }}
+            .tiny {{
+                text-align:center;
+                margin-top:12px;
+                color:rgba(255,255,255,.35);
+                font-size:12px;
+                line-height:1.5;
+            }}
         </style>
     </head>
     <body>
-        <main class="stage">
+
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+        </defs>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
+        </g>
+    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
+</div>
+
+
+        <main class="stage" style="position:relative;z-index:2;">
             <section class="phone">
-                <div class="halo" aria-hidden="true"></div>
-                <div class="butterfly" aria-hidden="true">
-                    <span class="wing left-top"></span><span class="wing right-top"></span><span class="wing left-bottom"></span><span class="wing right-bottom"></span><span class="body"></span>
-                </div>
-                <span class="spark s1" aria-hidden="true"></span><span class="spark s2" aria-hidden="true"></span><span class="spark s3" aria-hidden="true"></span><span class="spark s4" aria-hidden="true"></span>
                 <div class="content">
                     <div class="brand">ETERNA</div>
-                    <div class="mark">E</div>
-                    <h1>Crea algo que no se abre. <span>Se vive.</span></h1>
-                    <p class="copy">En el siguiente paso elegirás las fotos, las palabras y el momento en que tu ETERNA debe llegar.</p>
+                    <div class="orb">♥</div>
+                    <h1 class="line">No todo lo importante</h1>
+                    <h2 class="line two">debería desaparecer.</h2>
+                    <h2 class="line three">Haz que vuelva.</h2>
+                    <p class="copy">
+                        Crea una experiencia íntima con fotos, palabras y un momento que volverá a ti convertido en emoción real.
+                    </p>
+                    
                     <div class="actions">
-                        <a class="btn" href="/crear/form">Comenzar</a>
+                        <a class="btn" href="/crear">Crear mi ETERNA</a>
+                        
                     </div>
-                    <div class="tiny">El formulario real sigue intacto. Solo estás entrando en la experiencia.</div>
+                    <div class="tiny">6 fotos. 3 frases. Un recuerdo que vuelve.</div>
                 </div>
             </section>
         </main>
@@ -4954,7 +5073,6 @@ def render_create_intro() -> HTMLResponse:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    """Home real ETERNA. La imagen es visual; SOLO el botón es clicable."""
     return HTMLResponse("""
 <!DOCTYPE html>
 <html lang="es">
@@ -4990,14 +5108,14 @@ def home(request: Request):
             justify-content: center;
             background: #02050a;
         }
-        .eterna-home-stage {
+        .eterna-home-link {
             position: relative;
+            display: block;
             width: 100%;
             max-width: 430px;
             min-height: 100vh;
             background: #02050a;
-            overflow: hidden;
-            isolation: isolate;
+            text-decoration: none;
         }
         .eterna-home-img {
             width: 100%;
@@ -5008,84 +5126,6 @@ def home(request: Request):
             object-fit: cover;
             object-position: top center;
             background: #02050a;
-            pointer-events: none;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        .water-shimmer,
-        .butterfly-halo,
-        .floating-sparks { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-        .water-shimmer {
-            opacity: .38;
-            mix-blend-mode: screen;
-            background:
-                linear-gradient(110deg, transparent 0%, rgba(107,211,255,.16) 44%, rgba(255,224,154,.10) 50%, transparent 58%),
-                radial-gradient(ellipse at 50% 76%, rgba(77,194,255,.18), transparent 34%);
-            transform: translateX(-35%);
-            animation: eternaWaterLight 8.5s ease-in-out infinite;
-        }
-        @keyframes eternaWaterLight {
-            0%, 100% { transform: translateX(-38%); opacity: .20; }
-            45%, 55% { transform: translateX(22%); opacity: .48; }
-        }
-        .butterfly-halo {
-            opacity: .56;
-            mix-blend-mode: screen;
-            background: radial-gradient(circle at 50% 35%, rgba(91,207,255,.32), transparent 28%);
-            animation: eternaHaloBreath 5.8s ease-in-out infinite;
-        }
-        @keyframes eternaHaloBreath {
-            0%,100% { transform: scale(.98); opacity:.35; filter: blur(0px); }
-            50% { transform: scale(1.06); opacity:.72; filter: blur(1.5px); }
-        }
-        .spark {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: #b8efff;
-            box-shadow: 0 0 12px rgba(99,213,255,.95), 0 0 26px rgba(212,175,55,.34);
-            opacity: 0;
-            animation: eternaSparkRise 9s linear infinite;
-        }
-        .spark.s1 { left: 17%; bottom: 18%; animation-delay: .2s; }
-        .spark.s2 { left: 78%; bottom: 26%; animation-delay: 1.7s; background:#f3d98b; }
-        .spark.s3 { left: 35%; bottom: 14%; animation-delay: 3.1s; }
-        .spark.s4 { left: 61%; bottom: 20%; animation-delay: 4.6s; background:#f3d98b; }
-        .spark.s5 { left: 49%; bottom: 11%; animation-delay: 6.0s; }
-        @keyframes eternaSparkRise {
-            0% { transform: translateY(0) scale(.65); opacity:0; }
-            12% { opacity:.78; }
-            78% { opacity:.55; }
-            100% { transform: translateY(-52vh) scale(1.15); opacity:0; }
-        }
-        .eterna-home-cta {
-            position: absolute;
-            left: 52px;
-            right: 52px;
-            bottom: calc(env(safe-area-inset-bottom) + 54px);
-            z-index: 6;
-            min-height: 64px;
-            border-radius: 20px;
-            display: block;
-            text-indent: -9999px;
-            overflow: hidden;
-            background: rgba(255, 230, 170, .001);
-            box-shadow: 0 0 0 rgba(0,0,0,0);
-            -webkit-tap-highlight-color: rgba(255, 220, 150, .22);
-        }
-        .eterna-home-cta::after {
-            content: "";
-            position: absolute;
-            inset: -10px;
-            border-radius: 26px;
-            opacity: 0;
-            background: radial-gradient(ellipse at 50% 50%, rgba(111,214,255,.28), transparent 62%);
-            animation: eternaButtonGlow 7s ease-in-out infinite;
-        }
-        @keyframes eternaButtonGlow {
-            0%, 72%, 100% { opacity:0; transform:scale(.96); }
-            82% { opacity:.78; transform:scale(1.03); }
         }
         .eterna-home-fallback {
             display: none;
@@ -5148,28 +5188,22 @@ def home(request: Request):
     </style>
 </head>
 <body>
-    <!-- ETERNA_BLUE_BUTTERFLY_HOME_REAL_BUTTON_ONLY_V4 -->
+    <!-- ETERNA_BLUE_BUTTERFLY_HOME_V3 -->
     <main class="eterna-home-shell">
-        <section class="eterna-home-stage">
+        <a class="eterna-home-link" href="/crear" aria-label="Crear mi ETERNA">
             <img
                 class="eterna-home-img"
-                src="/static/eterna-cinematic/backgrounds/home-mobile-v1.png?v=eterna-blue-butterfly-v4"
+                src="/static/eterna-cinematic/backgrounds/home-mobile-v1.png?v=eterna-blue-butterfly-v3"
                 alt="ETERNA · Hay momentos que merecen quedarse para siempre"
                 onerror="this.style.display='none'; document.getElementById('eterna-home-fallback').style.display='flex';"
             >
-            <div class="butterfly-halo" aria-hidden="true"></div>
-            <div class="water-shimmer" aria-hidden="true"></div>
-            <div class="floating-sparks" aria-hidden="true">
-                <span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span><span class="spark s4"></span><span class="spark s5"></span>
-            </div>
-            <a class="eterna-home-cta" href="/crear" aria-label="Crear mi ETERNA">Crear mi ETERNA</a>
             <section id="eterna-home-fallback" class="eterna-home-fallback">
                 <div class="mark">E</div>
                 <h1>ETERNA</h1>
                 <p>Hay momentos que merecen quedarse para siempre.</p>
-                <a class="btn" href="/crear">Crear mi ETERNA</a>
+                <span class="btn">Crear mi ETERNA</span>
             </section>
-        </section>
+        </a>
     </main>
 </body>
 </html>
@@ -5177,21 +5211,16 @@ def home(request: Request):
 
 @app.get("/crear", response_class=HTMLResponse)
 def crear_get():
-    return render_create_intro()
+    return render_create_form()
 
 
-@app.get("/crear/entrada", response_class=HTMLResponse)
+@app.get("/crear/entrada")
 def crear_entrada_get():
-    return render_create_intro()
+    return RedirectResponse(url="/crear", status_code=303)
 
 
 @app.get("/crear/formulario", response_class=HTMLResponse)
 def crear_formulario_get():
-    return render_create_form()
-
-
-@app.get("/crear/form", response_class=HTMLResponse)
-def crear_form_get():
     return render_create_form()
 
 
@@ -6114,10 +6143,19 @@ h1 {{
 def checkout_exito(order_id: str):
     order = get_order_by_id(order_id)
     is_paid = bool(order.get("paid"))
-    refresh = '<meta http-equiv="refresh" content="6">' if not is_paid else ''
-    status_title = "Pago realizado" if is_paid else "Confirmando pago"
-    status_detail = "Estamos preparando tu ETERNA..." if is_paid else "Estamos esperando la confirmación segura del pago."
-    next_url = f"/resumen/{order_id}"
+    refresh = '<meta http-equiv="refresh" content="6">' if not is_paid else ""
+
+    title = "Pago confirmado" if is_paid else "Confirmando pago"
+    subtitle = (
+        "Tu ETERNA ya está en marcha."
+        if is_paid else
+        "Estamos esperando la confirmación segura del pago."
+    )
+    detail = (
+        "Estamos preparando algo que pronto llegará a alguien importante."
+        if is_paid else
+        "No cierres esta pantalla. Esto puede tardar unos segundos."
+    )
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
@@ -6125,163 +6163,213 @@ def checkout_exito(order_id: str):
 <head>
     <meta charset="UTF-8">
     {refresh}
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Pago realizado — ETERNA</title>
-    <meta name="theme-color" content="#02050a">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago confirmado — ETERNA</title>
     <style>
         * {{ box-sizing: border-box; }}
-        html, body {{ margin:0; width:100%; min-height:100%; background:#02050a; }}
+        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
         body {{
-            min-height:100vh;
-            display:flex;
-            justify-content:center;
-            align-items:flex-start;
-            overflow-x:hidden;
-            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+            min-height: 100vh;
+            color: #fff7e6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
             background:
-                radial-gradient(circle at 50% 12%, rgba(57,166,255,.20), transparent 36%),
-                radial-gradient(circle at 50% 92%, rgba(212,175,55,.14), transparent 42%),
-                #02050a;
-            color:#fff7e6;
+                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
+                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
+                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
         }}
-        .stage {{
-            position:relative;
-            width:100%;
-            max-width:430px;
-            min-height:100vh;
-            overflow:hidden;
-            background:#02050a;
-            isolation:isolate;
+        .card {{
+            width: min(100%, 760px);
+            border-radius: 34px;
+            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
+            border: 1px solid rgba(255,220,150,.20);
+            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
+            backdrop-filter: blur(12px);
         }}
-        .bg-img {{
-            width:100%;
-            max-width:430px;
-            min-height:100vh;
-            height:auto;
-            display:block;
-            object-fit:cover;
-            object-position:top center;
-            pointer-events:none;
-            user-select:none;
-            -webkit-user-select:none;
+        .mark {{
+            width: 88px;
+            height: 88px;
+            margin: 0 auto 22px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,220,150,.28);
+            color: #ffd98b;
+            font-size: 44px;
+            text-shadow: 0 0 26px rgba(255,204,111,.62);
+            background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%);
         }}
-        .fallback {{
-            display:none;
-            min-height:100vh;
-            padding:42px 24px;
-            text-align:center;
-            flex-direction:column;
-            justify-content:center;
-            background:
-                radial-gradient(circle at 50% 20%, rgba(59,167,255,.22), transparent 34%),
-                radial-gradient(circle at 50% 82%, rgba(212,175,55,.16), transparent 38%),
-                #02050a;
+        .brand {{
+            color: #ffd98b;
+            letter-spacing: .38em;
+            padding-left: .38em;
+            text-transform: uppercase;
+            font-size: 14px;
+            font-weight: 900;
+            margin-bottom: 18px;
         }}
-        .fallback .mark {{ width:58px;height:58px;border:1px solid rgba(212,175,55,.72);border-radius:50%;display:grid;place-items:center;margin:0 auto 18px;color:#d4af37;font-family:Georgia,"Times New Roman",serif;font-size:30px; }}
-        .fallback h1 {{ margin:0; font-family:Georgia,"Times New Roman",serif; font-size:clamp(42px,12vw,62px); line-height:.95; color:#fff7e6; }}
-        .fallback p {{ margin:18px auto 0; max-width:320px; color:rgba(246,241,232,.72); line-height:1.7; }}
-        .fx-halo, .fx-sparks, .progress-overlay {{ position:absolute; inset:0; pointer-events:none; z-index:2; }}
-        .fx-halo {{
-            opacity:.58;
-            mix-blend-mode:screen;
-            background:radial-gradient(circle at 50% 30%, rgba(91,207,255,.32), transparent 28%);
-            animation:haloBreath 5.8s ease-in-out infinite;
+        h1 {{
+            margin: 0;
+            font-size: clamp(42px, 8vw, 76px);
+            line-height: .98;
+            color: #fff7e6;
+            text-shadow: 0 0 30px rgba(255,255,255,.20);
         }}
-        @keyframes haloBreath {{ 0%,100% {{ transform:scale(.98); opacity:.36; }} 50% {{ transform:scale(1.07); opacity:.76; }} }}
-        .spark {{ position:absolute; width:4px; height:4px; border-radius:50%; background:#b8efff; box-shadow:0 0 12px rgba(99,213,255,.95),0 0 26px rgba(212,175,55,.34); opacity:0; animation:sparkRise 8.4s linear infinite; }}
-        .s1 {{ left:19%; bottom:20%; animation-delay:.1s; }} .s2 {{ left:78%; bottom:26%; animation-delay:1.4s; background:#f3d98b; }} .s3 {{ left:37%; bottom:15%; animation-delay:2.8s; }} .s4 {{ left:61%; bottom:18%; animation-delay:4.2s; background:#f3d98b; }} .s5 {{ left:50%; bottom:11%; animation-delay:5.9s; }}
-        @keyframes sparkRise {{ 0% {{ transform:translateY(0) scale(.65); opacity:0; }} 12% {{ opacity:.78; }} 100% {{ transform:translateY(-56vh) scale(1.14); opacity:0; }} }}
-        .progress-overlay {{
-            display:flex;
-            align-items:flex-end;
-            justify-content:center;
-            padding:0 42px calc(env(safe-area-inset-bottom) + 156px);
-            z-index:4;
+        .subtitle {{
+            margin: 24px auto 0;
+            max-width: 620px;
+            font-size: clamp(20px, 3.8vw, 28px);
+            line-height: 1.5;
+            font-weight: 800;
+            color: rgba(255,255,255,.92);
         }}
-        .progress-track {{
-            width:100%;
-            max-width:330px;
-            height:5px;
-            border-radius:999px;
-            overflow:hidden;
-            position:relative;
-            background:rgba(255,255,255,.08);
-            box-shadow:0 0 18px rgba(59,167,255,.18), inset 0 0 0 1px rgba(255,255,255,.06);
+        .detail {{
+            margin: 18px auto 0;
+            max-width: 620px;
+            font-size: clamp(16px, 2.7vw, 20px);
+            line-height: 1.7;
+            color: rgba(255,255,255,.68);
         }}
-        .progress-track::before {{
-            content:"";
-            position:absolute;
-            inset:0;
-            width:46%;
-            border-radius:999px;
-            background:linear-gradient(90deg, transparent, rgba(91,207,255,.95), rgba(243,217,139,.92), transparent);
-            filter:drop-shadow(0 0 10px rgba(91,207,255,.88));
-            animation:loadMove 2.1s ease-in-out infinite;
+        .divider {{
+            width: min(320px, 78%);
+            margin: 34px auto 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #f0c46c;
         }}
-        .progress-track::after {{
-            content:"🦋";
-            position:absolute;
-            top:-28px;
-            left:0;
-            font-size:18px;
-            filter:drop-shadow(0 0 10px rgba(91,207,255,.9));
-            animation:butterflyLine 2.1s ease-in-out infinite;
+        .divider::before,
+        .divider::after {{
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: linear-gradient(90deg, transparent, rgba(240,196,108,.72));
         }}
-        @keyframes loadMove {{ 0% {{ transform:translateX(-82%); }} 100% {{ transform:translateX(210%); }} }}
-        @keyframes butterflyLine {{ 0% {{ left:0%; opacity:.15; transform:translateY(0) scale(.85); }} 18% {{ opacity:.9; }} 80% {{ opacity:.9; }} 100% {{ left:92%; opacity:.15; transform:translateY(-2px) scale(1.05); }} }}
-        .live-copy {{
-            position:absolute;
-            left:24px;
-            right:24px;
-            bottom:calc(env(safe-area-inset-bottom) + 64px);
-            z-index:5;
-            text-align:center;
-            color:rgba(246,241,232,.82);
-            font-size:13px;
-            line-height:1.55;
-            pointer-events:none;
-            text-shadow:0 2px 14px rgba(0,0,0,.8);
+        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
+        .promise {{
+            margin: 28px auto 0;
+            max-width: 560px;
+            font-size: clamp(23px, 4.6vw, 38px);
+            line-height: 1.45;
+            font-family: Georgia, "Times New Roman", serif;
+            color: #fff7e6;
         }}
-        .continue {{
-            position:absolute;
-            left:52px;
-            right:52px;
-            bottom:calc(env(safe-area-inset-bottom) + 22px);
-            z-index:6;
-            min-height:48px;
-            border-radius:16px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            text-decoration:none;
-            text-transform:uppercase;
-            letter-spacing:.12em;
-            font-size:11px;
-            font-weight:900;
-            color:#150d03;
-            background:linear-gradient(135deg,#fff0bd 0%,#e7bd61 52%,#b87927 100%);
-            box-shadow:0 16px 50px rgba(59,167,255,.15),0 14px 42px rgba(212,175,55,.20);
+        .promise span {{
+            display: inline-block;
+            color: #ffd98b;
+            text-shadow: 0 0 24px rgba(255,204,111,.34);
+        }}
+        .btn {{
+            margin: 38px auto 0;
+            width: min(100%, 440px);
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%);
+            color: #150d03;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55);
+        }}
+        .soft {{
+            margin-top: 16px;
+            color: rgba(255,255,255,.42);
+            font-size: 13px;
+            line-height: 1.5;
         }}
     </style>
 </head>
 <body>
-    <!-- ETERNA_PAYMENT_SUCCESS_CINEMATIC_V1 -->
-    <main class="stage">
-        <img class="bg-img" src="/static/eterna-cinematic/backgrounds/payment-success-v1.png?v=eterna-payment-brilli-v1" alt="{safe_attr(status_title)}" onerror="this.style.display='none'; document.getElementById('payment-fallback').style.display='flex';">
-        <section id="payment-fallback" class="fallback">
-            <div class="mark">E</div>
-            <h1>{safe_text(status_title)}</h1>
-            <p>{safe_text(status_detail)}</p>
-        </section>
-        <div class="fx-halo" aria-hidden="true"></div>
-        <div class="fx-sparks" aria-hidden="true"><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span><span class="spark s4"></span><span class="spark s5"></span></div>
-        <div class="progress-overlay" aria-hidden="true"><div class="progress-track"></div></div>
-        <div class="live-copy">{safe_text(status_detail)}</div>
-        <a class="continue" href="{next_url}">Ver estado</a>
+
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+        </defs>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
+        </g>
+    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
+</div>
+
+
+    <main class="card" style="position:relative;z-index:2;">
+        <div class="brand">ETERNA</div>
+        <div class="mark">♥</div>
+        <h1>{title}</h1>
+        <div class="subtitle">{subtitle}</div>
+        <div class="detail">{detail}</div>
+        <div class="divider">♥</div>
+        <div class="promise">
+            Lo que das<br>
+            se queda en alguien.<br>
+            <span>Y un día, vuelve.</span>
+        </div>
+        <a class="btn" href="/crear">Volver al inicio</a>
+        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
     </main>
 </body>
 </html>
     """)
+
 
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
