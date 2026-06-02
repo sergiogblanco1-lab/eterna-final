@@ -4823,7 +4823,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
 
         const paymentOverlay = document.getElementById("paymentOverlay");
-        // Overlay antiguo desactivado: ahora usamos /checkout-loading/{order_id}
+        // Overlay antiguo desactivado: ahora usamos la pantalla checkout-loading despues de crear el pedido.
         // para evitar pantallas duplicadas superpuestas.
     }}
 
