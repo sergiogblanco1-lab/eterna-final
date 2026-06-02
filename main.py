@@ -12,7 +12,6 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("✨ UNIQUE MAGIC THEMES + VIRAL FINAL CTA VERSION ✨")
 
 import html
 import json
@@ -104,6 +103,8 @@ TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
 # Reacción móvil blindada:
 # antes estaba limitado a 15MB y en móvil/Safari una emoción real puede superar ese tamaño.
+# ETERNA_PRODUCCION_V1_RC1
+# Base: MAIN SALVAVIDAS validado con SMS. Mejoras: pantallas cinematicas, CTA viral, rutas PNG blindadas.
 # Si supera el límite, no se marca reaction_uploaded y por tanto NO vuelve el sender pack.
 MAX_VIDEO_SIZE_MB = int(os.getenv("MAX_REACTION_VIDEO_MB", "100"))
 MAX_VIDEO_SIZE = MAX_VIDEO_SIZE_MB * 1024 * 1024
@@ -127,43 +128,6 @@ REACTION_CHUNKS_FOLDER.mkdir(parents=True, exist_ok=True)
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
-
-# =========================================================
-# ETERNA CINEMATIC ASSETS — RESOLUCIÓN ROBUSTA
-# =========================================================
-# Evita pantallas rotas si Windows/Render tienen archivos como:
-#   home-mobile-v1.png
-# o accidentalmente:
-#   home-mobile-v1.png.png
-# La URL se construye con el primer archivo que exista realmente en /static.
-CINEMATIC_BACKGROUNDS_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
-
-def cinematic_background_url(file_name: str, version: str = "eterna-magia-viva-2") -> str:
-    raw = (file_name or "").strip().lstrip("/")
-    if not raw:
-        raw = "error-v1.png"
-
-    candidates = []
-    def add_candidate(name: str):
-        name = (name or "").strip().lstrip("/")
-        if name and name not in candidates:
-            candidates.append(name)
-
-    add_candidate(raw)
-    if not raw.lower().endswith(".png"):
-        add_candidate(raw + ".png")
-    else:
-        add_candidate(raw + ".png")
-        if raw.lower().endswith(".png.png"):
-            add_candidate(raw[:-4])
-
-    for candidate in candidates:
-        if (CINEMATIC_BACKGROUNDS_FOLDER / candidate).exists():
-            return f"/static/eterna-cinematic/backgrounds/{candidate}?v={version}"
-
-    # Último recurso: devuelve el nombre original para que el error sea visible en logs/navegador.
-    return f"/static/eterna-cinematic/backgrounds/{raw}?v={version}"
-
 
 PHOTO_FOLDER = Path("uploads")
 PHOTO_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -2907,7 +2871,7 @@ async def create_order_and_redirect(
             stripe_payment_status="created",
         )
 
-        return RedirectResponse(url=f"/checkout-loading/{order_id}", status_code=303)
+        return RedirectResponse(url=f"/checkout-loading", status_code=303)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
@@ -4823,8 +4787,10 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
 
         const paymentOverlay = document.getElementById("paymentOverlay");
-        // Overlay antiguo desactivado: ahora usamos la pantalla checkout-loading despues de crear el pedido.
-        // para evitar pantallas duplicadas superpuestas.
+        if (paymentOverlay) {{
+            paymentOverlay.classList.add("show");
+            paymentOverlay.setAttribute("aria-hidden", "false");
+        }}
     }}
 
     form.addEventListener("submit", function (e) {{
@@ -5256,10 +5222,10 @@ def home(request: Request):
         .fallback a { display:inline-flex;align-items:center;justify-content:center;margin:10px auto 0;min-height:56px;padding:0 26px;border-radius:18px;color:#120b02;background:linear-gradient(135deg,#fff0bd,#e7bd61,#b87927);font-weight:900;font-size:13px;letter-spacing:.12em;text-transform:uppercase;text-decoration:none; }
     </style>
 </head>
-<body class="{theme_class}">
+<body>
     <main class="screen">
         <section class="phone" aria-label="ETERNA">
-            <img class="hero-img" src="{cinematic_background_url("home-mobile-v1.png", "eterna-home-blue-live-2")}" alt="ETERNA" onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex';">
+            <img class="hero-img" src="/static/eterna-cinematic/backgrounds/landing-main-v1.png?v=eterna-home-blue-live-1" alt="ETERNA" onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex';">
             <div class="butterfly-halo" aria-hidden="true"></div>
             <div class="water-shine" aria-hidden="true"></div>
             <i class="sparkle s1" aria-hidden="true"></i>
@@ -6219,21 +6185,10 @@ def render_eterna_image_screen(
     redirect_delay_ms: int = 0,
     button_url: str = "",
     button_label: str = "",
-    secondary_button_url: str = "",
-    secondary_button_label: str = "",
-    visible_buttons: bool = False,
 ) -> HTMLResponse:
     """Pantallas visuales ETERNA. Solo capa visual: no toca Stripe, Twilio ni Video Engine."""
-    image_src = cinematic_background_url(image_name, "eterna-visual-2")
-    fallback_src = cinematic_background_url(fallback_image_name, "eterna-visual-2") if fallback_image_name else ""
-    # Tema visual aleatorio: misma experiencia, pequeños detalles únicos.
-    # Sin tocar lógica crítica: solo cambia brillo, mariposas, estrellas y partículas.
-    theme_class = secrets.choice([
-        "theme-blue-butterflies",
-        "theme-gold-butterflies",
-        "theme-stars",
-        "theme-mixed-magic",
-    ])
+    image_src = f"/static/eterna-cinematic/backgrounds/{image_name}?v=eterna-visual-1"
+    fallback_src = f"/static/eterna-cinematic/backgrounds/{fallback_image_name}?v=eterna-visual-1" if fallback_image_name else ""
     redirect_script = ""
     if redirect_url and int(redirect_delay_ms or 0) > 0:
         redirect_script = f"""
@@ -6243,13 +6198,7 @@ def render_eterna_image_screen(
         """
     button_html = ""
     if button_url and button_label:
-        if visible_buttons:
-            secondary_html = ""
-            if secondary_button_url and secondary_button_label:
-                secondary_html = f'<a class="success-secondary" href="{safe_attr(secondary_button_url)}">{safe_text(secondary_button_label)}</a>'
-            button_html = f'<div class="success-actions"><a class="success-primary" href="{safe_attr(button_url)}">{safe_text(button_label)}</a>{secondary_html}</div>'
-        else:
-            button_html = f'<a class="real-button" href="{safe_attr(button_url)}">{safe_text(button_label)}</a>'
+        button_html = f'<a class="real-button" href="{safe_attr(button_url)}">{safe_text(button_label)}</a>'
     loading_layers = ""
     if overlay_kind == "loading":
         loading_layers = """
@@ -6262,25 +6211,7 @@ def render_eterna_image_screen(
         <i class="particle p2" aria-hidden="true"></i>
         <i class="particle p3" aria-hidden="true"></i>
         <i class="particle gold p4" aria-hidden="true"></i>
-        <i class="particle gold p5" aria-hidden="true"></i>
-        <i class="particle p6" aria-hidden="true"></i>
         <div class="soft-halo" aria-hidden="true"></div>
-        <div class="organic-butterflies" aria-hidden="true">
-            <span class="ob ob-a">🦋</span>
-            <span class="ob ob-b">🦋</span>
-            <span class="ob ob-c">🦋</span>
-            <span class="ob ob-d">🦋</span>
-            <span class="ob ob-e">🦋</span>
-        </div>
-        <div class="magic-stars" aria-hidden="true">
-            <span class="ms ms-a">✦</span>
-            <span class="ms ms-b">✧</span>
-            <span class="ms ms-c">✦</span>
-            <span class="ms ms-d">✧</span>
-            <span class="ms ms-e">✦</span>
-        </div>
-        <div class="gold-sparkle sweep-one" aria-hidden="true"></div>
-        <div class="gold-sparkle sweep-two" aria-hidden="true"></div>
     """
     if fallback_src:
         onerror_attr = "this.onerror=null; this.src=" + json.dumps(fallback_src) + ";"
@@ -6307,34 +6238,6 @@ def render_eterna_image_screen(
         .p1 {{ left:18%; bottom:16%; animation-delay:.4s; }} .p2 {{ left:78%; bottom:18%; animation-delay:1.6s; transform:scale(.72); }} .p3 {{ left:54%; bottom:9%; animation-delay:3.8s; transform:scale(.55); }} .p4 {{ left:38%; bottom:36%; animation-delay:5.2s; transform:scale(.6); }}
         @keyframes haloBreath {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.94); opacity:.34; }} 50% {{ transform:translate(-50%,-50%) scale(1.10); opacity:.72; }} }}
         @keyframes floatUp {{ 0% {{ transform:translateY(0) scale(.6); opacity:0; }} 14% {{ opacity:.95; }} 72% {{ opacity:.36; }} 100% {{ transform:translateY(-150px) scale(1.1); opacity:0; }} }}
-        .p5 {{ left:68%; bottom:32%; animation-delay:2.7s; transform:scale(.42); }} .p6 {{ left:26%; bottom:24%; animation-delay:4.9s; transform:scale(.48); }}
-        .organic-butterflies {{ position:absolute; inset:0; z-index:4; pointer-events:none; overflow:hidden; mix-blend-mode:screen; }}
-        .ob {{ position:absolute; display:block; filter:drop-shadow(0 0 9px rgba(100,213,255,.9)) drop-shadow(0 0 24px rgba(48,167,255,.58)); opacity:.82; transform-origin:center; }}
-        .ob-a {{ left:8%; top:26%; font-size:29px; animation:obDriftA 6.8s ease-in-out infinite; }}
-        .ob-b {{ right:7%; top:31%; font-size:22px; animation:obDriftB 5.1s ease-in-out infinite .7s; opacity:.72; }}
-        .ob-c {{ left:16%; bottom:22%; font-size:18px; animation:obDriftC 4.4s ease-in-out infinite 1.2s; opacity:.66; }}
-        .ob-d {{ right:15%; bottom:35%; font-size:14px; animation:obDriftD 7.6s ease-in-out infinite .2s; opacity:.52; }}
-        .ob-e {{ left:50%; top:64%; font-size:11px; animation:obDriftE 3.8s ease-in-out infinite 1.8s; opacity:.38; }}
-        @keyframes obDriftA {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-8deg) scale(.96); filter:drop-shadow(0 0 8px #68dbff) brightness(1); }} 35% {{ transform:translate3d(22px,-18px,0) rotate(10deg) scale(1.16); filter:drop-shadow(0 0 17px #87efff) brightness(1.35); }} 68% {{ transform:translate3d(-9px,11px,0) rotate(4deg) scale(1.04); }} }}
-        @keyframes obDriftB {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(12deg) scale(.84); opacity:.55; }} 48% {{ transform:translate3d(-28px,16px,0) rotate(-9deg) scale(1.06); opacity:.92; }} }}
-        @keyframes obDriftC {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-18deg) scale(.72); opacity:.42; }} 45% {{ transform:translate3d(32px,-28px,0) rotate(14deg) scale(1); opacity:.82; }} }}
-        @keyframes obDriftD {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(0deg) scale(.62); }} 50% {{ transform:translate3d(-18px,-34px,0) rotate(22deg) scale(.86); }} }}
-        @keyframes obDriftE {{ 0%,100% {{ transform:translate3d(0,0,0) scale(.46); opacity:.15; }} 40% {{ transform:translate3d(10px,-18px,0) scale(.72); opacity:.55; }} }}
-        .magic-stars {{ position:absolute; inset:0; z-index:4; pointer-events:none; display:none; mix-blend-mode:screen; }}
-        .ms {{ position:absolute; color:#fff3bd; text-shadow:0 0 10px rgba(255,224,139,.95),0 0 28px rgba(75,198,255,.52); opacity:.0; animation:starBreath 5.8s ease-in-out infinite; }}
-        .ms-a {{ left:14%; top:22%; font-size:20px; animation-delay:.2s; }} .ms-b {{ right:13%; top:28%; font-size:15px; animation-delay:1.1s; }} .ms-c {{ left:28%; bottom:28%; font-size:12px; animation-delay:2.2s; }} .ms-d {{ right:23%; bottom:20%; font-size:18px; animation-delay:3.1s; }} .ms-e {{ left:52%; top:61%; font-size:10px; animation-delay:4s; }}
-        @keyframes starBreath {{ 0%,100% {{ transform:translate3d(0,0,0) scale(.6) rotate(0deg); opacity:.08; }} 42% {{ transform:translate3d(8px,-16px,0) scale(1.18) rotate(20deg); opacity:.85; }} 68% {{ opacity:.35; }} }}
-        body.theme-gold-butterflies .ob {{ filter:drop-shadow(0 0 10px rgba(255,219,139,.92)) drop-shadow(0 0 28px rgba(255,190,80,.62)) hue-rotate(140deg) saturate(1.45) brightness(1.12); }}
-        body.theme-stars .organic-butterflies .ob-a, body.theme-stars .organic-butterflies .ob-b {{ opacity:.22; }}
-        body.theme-stars .organic-butterflies .ob-c, body.theme-stars .organic-butterflies .ob-d, body.theme-stars .organic-butterflies .ob-e {{ display:none; }}
-        body.theme-stars .magic-stars, body.theme-mixed-magic .magic-stars {{ display:block; }}
-        body.theme-mixed-magic .ob-a {{ font-size:25px; }} body.theme-mixed-magic .ob-b {{ font-size:17px; }} body.theme-mixed-magic .ob-c {{ font-size:13px; }}
-        body.theme-mixed-magic .soft-halo {{ animation-duration:4.4s; opacity:.66; }}
-        body.theme-blue-butterflies .particle, body.theme-mixed-magic .particle {{ animation-duration:7.4s; }}
-        body.theme-gold-butterflies .particle.gold {{ transform:scale(1.2); }}
-        .gold-sparkle {{ position:absolute; width:120px; height:2px; border-radius:999px; pointer-events:none; z-index:3; opacity:0; background:linear-gradient(90deg,transparent,rgba(255,219,139,.92),transparent); box-shadow:0 0 18px rgba(255,210,116,.72); transform:rotate(-18deg); animation:sparkSweep 5.8s ease-in-out infinite; }}
-        .sweep-one {{ left:-28%; top:38%; animation-delay:.9s; }} .sweep-two {{ left:-32%; top:70%; animation-delay:3.2s; transform:rotate(14deg); }}
-        @keyframes sparkSweep {{ 0% {{ transform:translateX(0) rotate(var(--r,-18deg)); opacity:0; }} 12% {{ opacity:.75; }} 42% {{ opacity:.28; }} 60%,100% {{ transform:translateX(150vw) rotate(var(--r,-18deg)); opacity:0; }} }}
         .magic-line {{ position:absolute; left:8%; right:8%; top:56.8%; height:16px; border-radius:999px; pointer-events:none; overflow:hidden; mix-blend-mode:screen; }}
         .magic-line span {{ position:absolute; left:0; top:6px; height:4px; width:100%; border-radius:999px; background:linear-gradient(90deg, rgba(47,195,255,.08), rgba(52,204,255,.95), rgba(255,216,132,.32), rgba(255,216,132,.08)); box-shadow:0 0 18px rgba(45,195,255,.78),0 0 42px rgba(45,195,255,.42); animation:linePulse 1.7s ease-in-out infinite; }}
         .magic-line b {{ position:absolute; top:1px; left:-12%; width:66px; height:14px; border-radius:999px; background:radial-gradient(circle, #fff, #5cd6ff 33%, transparent 70%); filter:blur(1px); box-shadow:0 0 24px #5cd6ff; animation:runner 2.2s cubic-bezier(.42,0,.24,1) infinite; }}
@@ -6344,15 +6247,11 @@ def render_eterna_image_screen(
         @keyframes runner {{ 0% {{ left:-12%; opacity:0; }} 10% {{ opacity:1; }} 82% {{ opacity:1; }} 100% {{ left:104%; opacity:0; }} }}
         @keyframes butterflyRun {{ 0% {{ left:8%; transform:translateY(2px) scale(.82); opacity:.2; }} 12% {{ opacity:1; }} 50% {{ transform:translateY(-10px) scale(1.02); }} 88% {{ opacity:1; }} 100% {{ left:86%; transform:translateY(3px) scale(.9); opacity:0; }} }}
         @keyframes orbBeat {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.48; }} 50% {{ transform:translate(-50%,-50%) scale(1.16); opacity:.95; }} }}
-        .success-actions {{ position:absolute; left:8.5%; right:8.5%; bottom:calc(env(safe-area-inset-bottom) + 54px); z-index:7; display:grid; gap:10px; text-align:center; }}
-        .success-primary {{ min-height:58px; border-radius:999px; display:flex; align-items:center; justify-content:center; text-decoration:none; color:#130d05; font-size:19px; font-weight:900; letter-spacing:.2px; background:linear-gradient(135deg,#fff0bd,#d7ad53 48%,#a87422); box-shadow:0 0 18px rgba(255,218,126,.55),0 0 54px rgba(68,183,255,.22), inset 0 1px 0 rgba(255,255,255,.52); animation:buttonGlow 3.2s ease-in-out infinite; }}
-        .success-secondary {{ color:rgba(255,239,202,.82); font-size:14px; text-decoration:none; text-shadow:0 0 12px rgba(255,210,120,.35); }}
-        @keyframes buttonGlow {{ 0%,100% {{ transform:translateY(0) scale(1); filter:brightness(1); }} 50% {{ transform:translateY(-1px) scale(1.015); filter:brightness(1.12); }} }}
         .real-button {{ position:absolute; left:10.8%; right:10.8%; bottom:calc(env(safe-area-inset-bottom) + 70px); min-height:62px; border-radius:18px; display:block; z-index:6; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); }}
         .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
     </style>
 </head>
-<body class="{theme_class}">
+<body>
     <main class="screen">
         <section class="phone">
             <img class="img" src="{image_src}" alt="ETERNA" onerror="{safe_attr(onerror_attr)}">
@@ -6368,7 +6267,7 @@ def render_eterna_image_screen(
     """)
 
 
-@app.get("/checkout-loading/{order_id}", response_class=HTMLResponse)
+@app.get("/checkout-loading", response_class=HTMLResponse)
 def checkout_loading(order_id: str):
     order = get_order_by_id(order_id)
     target_url = f"/checkout-exito/{order_id}"
@@ -6395,15 +6294,26 @@ def render_checkout_success_visual(order_id: str) -> HTMLResponse:
         overlay_kind="soft",
         button_url="/crear",
         button_label="Crear otra ETERNA",
-        secondary_button_url="/",
-        secondary_button_label="Volver al inicio",
-        visible_buttons=True,
     )
 
 
 @app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
 def checkout_exito(order_id: str):
     return render_checkout_success_visual(order_id)
+
+@app.get("/viral-final/{recipient_token}", response_class=HTMLResponse)
+def viral_final_cta(recipient_token: str):
+    # Pantalla viral posterior a la experiencia: destinatario -> nuevo regalante.
+    # No toca pagos, SMS, webhook, reaccion ni video engine.
+    get_order_by_recipient_token_or_404(recipient_token)
+    return render_eterna_image_screen(
+        image_name="viral-final-cta-v1.png",
+        fallback_image_name="viral-final-cta-v1.png.png",
+        overlay_kind="soft",
+        button_url="/crear",
+        button_label="Crear mi ETERNA",
+    )
+
 
 
 @app.post("/stripe/webhook")
@@ -9239,33 +9149,6 @@ h1 {{
     background: rgba(255,255,255,0.10);
     color: #fff7e6;
 }}
-.viral-create {{
-    margin: 30px auto 0 auto;
-    max-width: 470px;
-    padding: 24px 18px;
-    border-radius: 28px;
-    border: 1px solid rgba(218,178,92,.28);
-    background: linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.035));
-    box-shadow: 0 0 28px rgba(83,190,255,.16), 0 0 52px rgba(218,178,92,.12);
-}}
-.viral-create .vc-title {{
-    font-size: 18px;
-    line-height: 1.55;
-    color: rgba(255,247,230,.92);
-}}
-.viral-create .vc-question {{
-    margin-top: 12px;
-    font-size: 20px;
-    line-height: 1.45;
-    font-weight: 800;
-    color: #fff2c8;
-}}
-.viral-create .btn {{ margin-top: 16px; }}
-.viral-create .vc-foot {{
-    margin-top: 12px;
-    font-size: 13px;
-    color: rgba(255,247,230,.58);
-}}
 </style>
 </head>
 <body>
@@ -9336,14 +9219,9 @@ h1 {{
 
         {cta_html}
 
-        <div class="viral-create">
-            <div class="vc-title">Lo que acabas de sentir nació porque alguien pensó en ti.</div>
-            <div class="vc-question">¿Te gustaría provocar esta emoción en otra persona?</div>
-            <a class="btn primary" href="/crear">✨ Crear una ETERNA</a>
-            <div class="vc-foot">Hay momentos que merecen quedarse para siempre.</div>
-        </div>
-
         <div class="actions">
+            <a class="btn primary" href="/viral-final/{safe_attr(recipient_token)}">¿Te gustaría provocar esta emoción?</a>
+            <a class="btn secondary" href="/crear">Crear mi ETERNA</a>
             {secondary_html}
         </div>
     </div>
