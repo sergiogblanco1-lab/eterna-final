@@ -2871,7 +2871,7 @@ async def create_order_and_redirect(
             stripe_payment_status="created",
         )
 
-        return RedirectResponse(url=f"/checkout-loading", status_code=303)
+        return RedirectResponse(url=f"/checkout-loading?order_id={order_id}", status_code=303)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
@@ -6268,7 +6268,9 @@ def render_eterna_image_screen(
 
 
 @app.get("/checkout-loading", response_class=HTMLResponse)
-def checkout_loading(order_id: str):
+def checkout_loading(order_id: Optional[str] = None):
+    if not order_id:
+        return RedirectResponse(url="/crear", status_code=303)
     order = get_order_by_id(order_id)
     target_url = f"/checkout-exito/{order_id}"
     if STRIPE_SECRET_KEY and order.get("stripe_session_id"):
@@ -6307,8 +6309,8 @@ def viral_final_cta(recipient_token: str):
     # No toca pagos, SMS, webhook, reaccion ni video engine.
     get_order_by_recipient_token_or_404(recipient_token)
     return render_eterna_image_screen(
-        image_name="viral-final-cta-v1.png",
-        fallback_image_name="viral-final-cta-v1.png.png",
+        image_name="viral-cta-v1.png",
+        fallback_image_name="viral-cta-v1.png.png",
         overlay_kind="soft",
         button_url="/crear",
         button_label="Crear mi ETERNA",
