@@ -4208,19 +4208,6 @@ def render_create_form() -> str:
         </div>
 
 
-        <div class="payment-overlay" id="paymentOverlay" aria-hidden="true">
-            <div class="payment-card">
-                <div class="payment-mark">♥</div>
-                <h2 class="payment-title">Preparando tu ETERNA</h2>
-                <p class="payment-sub">
-                    Estamos guardando tus recuerdos y abriendo el pago seguro.<br>
-                    Esto puede tardar unos segundos.<br>
-                    No cierres esta pantalla.
-                </p>
-                <div class="payment-loader"></div>
-            </div>
-        </div>
-
 <script>
 document.addEventListener("DOMContentLoaded", function () {{
 
@@ -4781,14 +4768,9 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (button) {{
             button.disabled = true;
             button.classList.add("is-loading");
-            button.innerText = "Preparando tu ETERNA...";
+            button.innerText = "Abriendo pago seguro...";
         }}
 
-        const paymentOverlay = document.getElementById("paymentOverlay");
-        if (paymentOverlay) {{
-            paymentOverlay.classList.add("show");
-            paymentOverlay.setAttribute("aria-hidden", "false");
-        }}
     }}
 
     form.addEventListener("submit", function (e) {{
@@ -5823,14 +5805,12 @@ h1 {
 
     if original_video_ready(order) and delivery_is_unlocked(order):
         experience_href = f"/guia/1/{safe_attr(recipient_token)}"
-        # PANTALLA PREMIUM APROBADA: Esto es MAGIA / Vivir la experiencia.
-        # Solo sustituye la capa visual. Mantiene el mismo destino y la misma sesión del destinatario.
         response = render_eterna_image_screen(
-            image_name="01FE5009-F8E2-49F1-A186-7FA411489476.png",
-            fallback_image_name="home-mobile-v1.png",
+            image_name="intro-shhh-v1.png",
+            fallback_image_name="intro-shhh-v1.png",
             overlay_kind="soft",
             button_url=experience_href,
-            button_label="Vivir la experiencia",
+            button_label="Estoy listo",
         )
         attach_recipient_session_if_needed(order, request, response)
         return response
@@ -6021,8 +6001,8 @@ def render_eterna_image_screen(
     button_label: str = "",
 ) -> HTMLResponse:
     """Pantallas visuales ETERNA. Solo capa visual: no toca Stripe, Twilio ni Video Engine."""
-    image_src = f"/static/eterna-cinematic/backgrounds/{image_name}?v=eterna-visual-1"
-    fallback_src = f"/static/eterna-cinematic/backgrounds/{fallback_image_name}?v=eterna-visual-1" if fallback_image_name else ""
+    image_src = f"/static/eterna-cinematic/backgrounds/{image_name}?v=eterna-premium-1"
+    fallback_src = f"/static/eterna-cinematic/backgrounds/{fallback_image_name}?v=eterna-premium-1" if fallback_image_name else ""
     redirect_script = ""
     if redirect_url and int(redirect_delay_ms or 0) > 0:
         redirect_script = f"""
@@ -6575,13 +6555,8 @@ async def start_experience(recipient_token: str = Form(...)):
 @app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
 def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     """
-    Pantallas previas ETERNA PREMIUM.
-    IMPORTANTE:
-    - No toca la experiencia.
-    - No toca MediaRecorder.
-    - No toca chunks.
-    - No toca subida de reacción.
-    - Solo cambia la capa visual y mantiene la navegación existente.
+    Guía previa ETERNA premium.
+    Mantiene la lógica segura del MAIN y solo cambia la capa visual.
     """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
@@ -6603,118 +6578,80 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         step = 1
     step = max(1, min(step, 3))
 
-    # PASO 1: sonido. Pantalla aprobada "activa el sonido".
+    token_safe = safe_attr(recipient_token)
+
     if step == 1:
-        insert_order_event(order["id"], "guide_sound_opened", "ok", "El destinatario ha abierto la guía: sonido")
+        insert_order_event(order["id"], "guide_sound_opened", "ok", "El destinatario ha abierto la guía premium: activar sonido")
         response = render_eterna_image_screen(
-            image_name="4BA8968A-02C4-4FBF-AEF9-6C6220DC9BA.png",
-            fallback_image_name="home-mobile-v1.png",
+            image_name="sound-check-v1.png",
+            fallback_image_name="sound-check-v1.png",
             overlay_kind="soft",
-            button_url=f"/guia/2/{safe_attr(recipient_token)}",
+            button_url=f"/guia/2/{token_safe}",
             button_label="Continuar",
         )
         attach_recipient_session_if_needed(order, request, response)
         return response
 
-    # PASO 2: lugar tranquilo. Pantalla aprobada "busca un lugar tranquilo".
     if step == 2:
-        insert_order_event(order["id"], "guide_place_opened", "ok", "El destinatario ha abierto la guía: lugar tranquilo")
+        insert_order_event(order["id"], "guide_place_opened", "ok", "El destinatario ha abierto la guía premium: lugar tranquilo")
         response = render_eterna_image_screen(
-            image_name="89E19D47-691F-4BBE-BC03-BCF1FF75D153.png",
-            fallback_image_name="home-mobile-v1.png",
+            image_name="quiet-place-v1.png",
+            fallback_image_name="quiet-place-v1.png",
             overlay_kind="soft",
-            button_url=f"/guia/3/{safe_attr(recipient_token)}",
+            button_url=f"/guia/3/{token_safe}",
             button_label="Estoy listo",
         )
         attach_recipient_session_if_needed(order, request, response)
         return response
 
-    # PASO 3: consentimiento real. Se conserva aceptación funcional antes de abrir cámara/micrófono.
-    insert_order_event(order["id"], "guide_consent_opened", "ok", "El destinatario ha abierto la guía: consentimiento único y permisos")
-    href = f"/experiencia/{safe_attr(recipient_token)}"
-    terms_href = "/condiciones"
-    privacy_href = "/privacidad"
-    bg = "/static/eterna-cinematic/backgrounds/21E2DE9F-97BE-42ED-B6B6-FA2E7C4B51CB.png?v=eterna-terms-live-1"
-    fallback_bg = "/static/eterna-cinematic/backgrounds/home-mobile-v1.png?v=eterna-terms-live-1"
-
+    insert_order_event(order["id"], "guide_consent_opened", "ok", "El destinatario ha abierto la guía premium: consentimiento")
+    href = f"/experiencia/{token_safe}"
     html_page = f"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA</title>
-<meta name="theme-color" content="#02050a">
-<style>
-* {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
-html, body {{ margin:0; min-height:100%; background:#02050a; }}
-body {{ min-height:100vh; min-height:100dvh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color:#fff7e6; background:#02050a; }}
-.screen {{ position:relative; min-height:100vh; display:flex; justify-content:center; background:#02050a; overflow:hidden; }}
-.phone {{ position:relative; width:100%; max-width:430px; min-height:100vh; overflow:hidden; background:#02050a; }}
-.bg {{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:top center; opacity:.98; }}
-.legal-layer {{ position:relative; z-index:5; min-height:100vh; padding:calc(env(safe-area-inset-top) + 465px) 22px calc(env(safe-area-inset-bottom) + 22px); display:flex; flex-direction:column; justify-content:flex-end; gap:14px; }}
-.real-card {{ border:1px solid rgba(255,215,128,.34); background:linear-gradient(180deg, rgba(2,8,18,.58), rgba(1,4,10,.74)); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:22px; padding:16px; box-shadow:0 0 32px rgba(0,153,255,.16), inset 0 1px 0 rgba(255,255,255,.08); }}
-.real-check {{ display:flex; gap:12px; align-items:flex-start; margin:0 0 12px; color:rgba(255,247,230,.90); font-size:14px; line-height:1.42; }}
-.real-check:last-child {{ margin-bottom:0; }}
-.real-check input {{ width:22px; height:22px; flex:0 0 auto; margin:1px 0 0; accent-color:#f0bd62; }}
-.real-check a {{ color:#f4c875; text-decoration:underline; }}
-.error {{ min-height:20px; color:#ffd28a; text-align:center; font-size:13px; line-height:1.45; text-shadow:0 0 12px rgba(0,0,0,.7); }}
-.btn {{ appearance:none; -webkit-appearance:none; border:1px solid rgba(255,230,169,.84); width:100%; min-height:64px; border-radius:22px; color:#150e05; font-family:Georgia,"Times New Roman",serif; font-size:26px; font-weight:500; background:linear-gradient(135deg,#a86e22 0%,#f7d27c 45%,#b87928 100%); box-shadow:0 0 28px rgba(255,194,83,.42),0 18px 44px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.44); cursor:pointer; }}
-.btn:disabled {{ opacity:.74; }}
-.guard {{ text-align:center; font-size:12px; color:rgba(255,247,230,.62); line-height:1.45; }}
-@media (max-height:740px) {{ .legal-layer {{ padding-top:390px; gap:10px; }} .real-card {{ padding:13px; }} .real-check {{ font-size:13px; margin-bottom:9px; }} .btn {{ min-height:58px; font-size:23px; }} }}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ETERNA</title>
+    <meta name="theme-color" content="#02050a">
+    <style>
+        * {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
+        html, body {{ margin:0; min-height:100%; background:#02050a; }}
+        body {{ min-height:100vh; min-height:100dvh; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
+        .screen {{ position:relative; min-height:100vh; min-height:100dvh; display:flex; justify-content:center; background:#02050a; overflow:hidden; }}
+        .phone {{ position:relative; width:100%; max-width:430px; min-height:100vh; min-height:100dvh; overflow:hidden; background:#02050a; }}
+        .img {{ width:100%; max-width:430px; min-height:100vh; height:auto; display:block; object-fit:cover; object-position:top center; background:#02050a; }}
+        .real-button {{ position:absolute; left:9%; right:9%; bottom:max(5.2vh, calc(env(safe-area-inset-bottom) + 22px)); min-height:72px; border-radius:26px; display:flex; align-items:center; justify-content:center; text-decoration:none; color:#160e04; font-weight:900; font-size:0; background:transparent; z-index:4; }}
+        .real-button::after {{ content:""; position:absolute; inset:-8px; border-radius:30px; background:rgba(255,205,99,.01); }}
+        .consent-error {{ position:absolute; left:8%; right:8%; bottom:max(14vh, calc(env(safe-area-inset-bottom) + 104px)); color:#ffd28a; font-size:13px; line-height:1.45; text-align:center; z-index:5; text-shadow:0 0 14px rgba(0,0,0,.9); min-height:20px; }}
+        .fallback {{ display:none; position:absolute; inset:0; align-items:center; justify-content:center; text-align:center; color:#fff7e6; padding:32px; background:#02050a; }}
+    </style>
 </head>
 <body>
-<main class="screen">
-    <section class="phone">
-        <img class="bg" src="{bg}" alt="ETERNA" onerror="this.onerror=null;this.src='{fallback_bg}';">
-        <section class="legal-layer">
-            <div class="real-card">
-                <label class="real-check">
-                    <input type="checkbox" id="termsCheck">
-                    <span>He leído y acepto los <a href="{terms_href}" target="_blank" rel="noopener">Términos de Uso</a> y la <a href="{privacy_href}" target="_blank" rel="noopener">Política de Privacidad</a>.</span>
-                </label>
-                <label class="real-check">
-                    <input type="checkbox" id="recordingCheck">
-                    <span>Acepto que mi reacción pueda ser grabada durante esta experiencia y enviada a la persona que creó esta ETERNA.</span>
-                </label>
-                <label class="real-check">
-                    <input type="checkbox" id="privacyCheck">
-                    <span>Entiendo que esta experiencia es privada y que este enlace es único.</span>
-                </label>
-            </div>
-            <button class="btn" id="consentContinue" type="button">Acepto y continuar</button>
-            <div class="error" id="consentError"></div>
-            <div class="guard">Al continuar, el navegador pedirá cámara y micrófono para vivir ETERNA.</div>
+    <main class="screen">
+        <section class="phone">
+            <img class="img" src="/static/eterna-cinematic/backgrounds/consent-recording-v1.png?v=eterna-premium-1" alt="ETERNA" onerror="this.onerror=null;this.src='/static/eterna-cinematic/backgrounds/terms-acceptance-v1.png?v=eterna-premium-1';">
+            <button class="real-button" id="consentContinue" type="button" aria-label="Acepto y continuar">Acepto y continuar</button>
+            <div class="consent-error" id="consentError"></div>
+            <section id="fallback-visual" class="fallback"><div><h1>ETERNA</h1><p>Antes de continuar, acepta vivir la experiencia.</p></div></section>
         </section>
-    </section>
-</main>
+    </main>
 <script>
 (function () {{
     const btn = document.getElementById("consentContinue");
     const error = document.getElementById("consentError");
-    const checks = ["termsCheck", "recordingCheck", "privacyCheck"].map(id => document.getElementById(id));
     if (!btn) return;
-
     btn.addEventListener("click", async function () {{
-        const ok = checks.every(ch => ch && ch.checked);
-        if (!ok) {{
-            if (error) error.textContent = "Para continuar, acepta las tres confirmaciones.";
-            return;
-        }}
         btn.disabled = true;
-        btn.textContent = "Preparando ETERNA...";
         try {{
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {{
                 throw new Error("media_devices_not_supported");
             }}
             const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
-            try {{ stream.getTracks().forEach(track => track.stop()); }} catch (_) {{}}
+            try {{ stream.getTracks().forEach(function (track) {{ track.stop(); }}); }} catch (_) {{}}
             window.location.href = "{href}";
         }} catch (err) {{
             btn.disabled = false;
-            btn.textContent = "Acepto y continuar";
             if (error) error.textContent = "ETERNA necesita acceso a cámara y micrófono para poder continuar.";
         }}
     }});
@@ -6726,29 +6663,6 @@ body {{ min-height:100vh; min-height:100dvh; overflow-x:hidden; font-family:-app
     response = HTMLResponse(html_page)
     attach_recipient_session_if_needed(order, request, response)
     return response
-
-# =========================================================
-# EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
-# =========================================================
-
-@app.post("/experience-event/{recipient_token}")
-async def experience_event(recipient_token: str, request: Request):
-    """Eventos humanos desde Safari: permite saber si aceptó cámara, empezó grabación, terminó vídeo, etc."""
-    order = get_order_by_recipient_token_or_404(recipient_token)
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-
-    step = str(payload.get("step") or "client_event")[:80]
-    status = str(payload.get("status") or "ok")[:30]
-    message = str(payload.get("message") or "")[:300]
-    meta = payload.get("meta") or {}
-    if not isinstance(meta, dict):
-        meta = {"value": str(meta)[:300]}
-
-    insert_order_event(order["id"], step, status, message, meta)
-    return JSONResponse({"ok": True})
 
 
 @app.get("/experiencia/{recipient_token}", response_class=HTMLResponse)
@@ -10245,6 +10159,17 @@ def admin_retry_r2_reaction(order_id: str, token: str = ""):
         update_order(order_id, reaction_upload_error=str(e))
         return JSONResponse({"ok": False, "reason": str(e)})
 
+
+
+@app.get("/error", response_class=HTMLResponse)
+def error_visual():
+    return render_eterna_image_screen(
+        image_name="error-v1.png",
+        fallback_image_name="error-v1.png",
+        overlay_kind="soft",
+        button_url="/crear",
+        button_label="Volver al inicio",
+    )
 
 # =========================================================
 # FINALIZAR EXPERIENCIA (DEFINITIVO)
