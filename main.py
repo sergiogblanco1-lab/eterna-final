@@ -3154,7 +3154,8 @@ def render_create_form() -> str:
             }}
             .photo-status {{
                 margin-top: 8px;
-                color: rgba(255,255,255,0.48);
+                color: rgba(255,230,180,0.92);
+    text-shadow: 0 0 18px rgba(0,0,0,.92);
                 font-size: 11px;
                 line-height: 1.45;
                 min-height: 16px;
@@ -6000,9 +6001,14 @@ def render_eterna_image_screen(
     button_url: str = "",
     button_label: str = "",
 ) -> HTMLResponse:
-    """Pantallas visuales ETERNA. Solo capa visual: no toca Stripe, Twilio ni Video Engine."""
-    image_src = f"/static/eterna-cinematic/backgrounds/{image_name}?v=eterna-premium-1"
-    fallback_src = f"/static/eterna-cinematic/backgrounds/{fallback_image_name}?v=eterna-premium-1" if fallback_image_name else ""
+    """
+    Pantallas visuales ETERNA VIVA.
+    Solo capa visual: movimiento, brillos, partículas y mariposas.
+    No toca Stripe, Twilio, DB, Video Engine, webhook ni workers.
+    """
+    image_src = f"/static/eterna-cinematic/backgrounds/{image_name}?v=eterna-magia-viva-1"
+    fallback_src = f"/static/eterna-cinematic/backgrounds/{fallback_image_name}?v=eterna-magia-viva-1" if fallback_image_name else ""
+
     redirect_script = ""
     if redirect_url and int(redirect_delay_ms or 0) > 0:
         redirect_script = f"""
@@ -6010,27 +6016,24 @@ def render_eterna_image_screen(
             window.setTimeout(function() {{ window.location.href = {json.dumps(redirect_url)}; }}, {int(redirect_delay_ms)});
         </script>
         """
+
     button_html = ""
     if button_url and button_label:
-        button_html = f'<a class="real-button" href="{safe_attr(button_url)}">{safe_text(button_label)}</a>'
-    loading_layers = ""
-    if overlay_kind == "loading":
-        loading_layers = """
-        <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
-        <div class="flying-butterfly" aria-hidden="true">🦋</div>
-        <div class="blue-orb" aria-hidden="true"></div>
-        """
-    calm_layers = """
-        <i class="particle p1" aria-hidden="true"></i>
-        <i class="particle p2" aria-hidden="true"></i>
-        <i class="particle p3" aria-hidden="true"></i>
-        <i class="particle gold p4" aria-hidden="true"></i>
-        <div class="soft-halo" aria-hidden="true"></div>
-    """
+        button_html = f'<a class="real-button" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>'
+
     if fallback_src:
         onerror_attr = "this.onerror=null; this.src=" + json.dumps(fallback_src) + ";"
     else:
         onerror_attr = "this.style.display='none'; document.getElementById('fallback-visual').style.display='flex';"
+
+    loading_layers = ""
+    if overlay_kind == "loading":
+        loading_layers = """
+            <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
+            <div class="flying-butterfly" aria-hidden="true">🦋</div>
+            <div class="blue-orb" aria-hidden="true"></div>
+        """
+
     return HTMLResponse(f"""
 <!DOCTYPE html>
 <html lang="es">
@@ -6040,36 +6043,64 @@ def render_eterna_image_screen(
     <title>ETERNA</title>
     <meta name="theme-color" content="#02050a">
     <style>
-        * {{ box-sizing:border-box; }}
+        * {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
         html, body {{ margin:0; min-height:100%; background:#02050a; }}
-        body {{ min-height:100vh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
-        .screen {{ position:relative; min-height:100vh; display:flex; justify-content:center; background:#02050a; overflow:hidden; }}
-        .phone {{ position:relative; width:100%; max-width:430px; min-height:100vh; overflow:hidden; background:#02050a; }}
-        .img {{ width:100%; max-width:430px; min-height:100vh; height:auto; display:block; object-fit:cover; object-position:top center; background:#02050a; }}
-        .soft-halo {{ position:absolute; left:67%; top:22%; width:240px; height:240px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(34,178,255,.26), rgba(34,178,255,.07) 42%, transparent 70%); filter:blur(16px); opacity:.56; mix-blend-mode:screen; animation:haloBreath 5.6s ease-in-out infinite; pointer-events:none; }}
-        .particle {{ position:absolute; width:5px; height:5px; border-radius:50%; background:#62d3ff; box-shadow:0 0 16px #62d3ff, 0 0 34px rgba(98,211,255,.55); opacity:0; animation:floatUp 9s linear infinite; pointer-events:none; }}
-        .particle.gold {{ background:#ffd98b; box-shadow:0 0 16px #ffd98b,0 0 34px rgba(255,217,139,.48); }}
-        .p1 {{ left:18%; bottom:16%; animation-delay:.4s; }} .p2 {{ left:78%; bottom:18%; animation-delay:1.6s; transform:scale(.72); }} .p3 {{ left:54%; bottom:9%; animation-delay:3.8s; transform:scale(.55); }} .p4 {{ left:38%; bottom:36%; animation-delay:5.2s; transform:scale(.6); }}
-        @keyframes haloBreath {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.94); opacity:.34; }} 50% {{ transform:translate(-50%,-50%) scale(1.10); opacity:.72; }} }}
-        @keyframes floatUp {{ 0% {{ transform:translateY(0) scale(.6); opacity:0; }} 14% {{ opacity:.95; }} 72% {{ opacity:.36; }} 100% {{ transform:translateY(-150px) scale(1.1); opacity:0; }} }}
-        .magic-line {{ position:absolute; left:8%; right:8%; top:56.8%; height:16px; border-radius:999px; pointer-events:none; overflow:hidden; mix-blend-mode:screen; }}
-        .magic-line span {{ position:absolute; left:0; top:6px; height:4px; width:100%; border-radius:999px; background:linear-gradient(90deg, rgba(47,195,255,.08), rgba(52,204,255,.95), rgba(255,216,132,.32), rgba(255,216,132,.08)); box-shadow:0 0 18px rgba(45,195,255,.78),0 0 42px rgba(45,195,255,.42); animation:linePulse 1.7s ease-in-out infinite; }}
-        .magic-line b {{ position:absolute; top:1px; left:-12%; width:66px; height:14px; border-radius:999px; background:radial-gradient(circle, #fff, #5cd6ff 33%, transparent 70%); filter:blur(1px); box-shadow:0 0 24px #5cd6ff; animation:runner 2.2s cubic-bezier(.42,0,.24,1) infinite; }}
-        .flying-butterfly {{ position:absolute; left:8%; top:54.7%; font-size:28px; filter:drop-shadow(0 0 10px #4bd2ff) drop-shadow(0 0 24px rgba(40,188,255,.9)); animation:butterflyRun 2.2s cubic-bezier(.42,0,.24,1) infinite; pointer-events:none; }}
-        .blue-orb {{ position:absolute; left:50%; top:56.8%; width:58px; height:58px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(255,255,255,.95), rgba(56,205,255,.62) 24%, transparent 72%); filter:blur(2px); opacity:.88; mix-blend-mode:screen; animation:orbBeat 1.6s ease-in-out infinite; pointer-events:none; }}
-        @keyframes linePulse {{ 0%,100% {{ opacity:.70; filter:brightness(1); }} 50% {{ opacity:1; filter:brightness(1.55); }} }}
+        body {{ min-height:100vh; min-height:100dvh; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
+        .screen {{ position:relative; min-height:100vh; min-height:100dvh; display:flex; justify-content:center; background:#02050a; overflow:hidden; }}
+        .screen::before {{ content:""; position:absolute; inset:-18%; background:
+            radial-gradient(circle at 72% 18%, rgba(67,190,255,.18), transparent 26%),
+            radial-gradient(circle at 22% 82%, rgba(255,195,92,.12), transparent 30%),
+            radial-gradient(circle at 50% 50%, rgba(255,255,255,.035), transparent 42%);
+            filter:blur(10px); animation:breathBg 8.8s ease-in-out infinite; pointer-events:none; }}
+        .phone {{ position:relative; width:100%; max-width:430px; min-height:100vh; min-height:100dvh; overflow:hidden; background:#02050a; box-shadow:0 0 80px rgba(0,0,0,.70); }}
+        .img {{ position:relative; z-index:1; width:100%; max-width:430px; min-height:100vh; min-height:100dvh; height:auto; display:block; object-fit:cover; object-position:top center; background:#02050a; transform-origin:center center; animation:imageBreath 13s ease-in-out infinite; }}
+        .phone::before {{ content:""; position:absolute; inset:0; z-index:2; pointer-events:none; background:
+            radial-gradient(circle at 50% 25%, rgba(255,255,255,.10), transparent 13%),
+            linear-gradient(115deg, transparent 0%, rgba(255,255,255,.075) 45%, transparent 58%);
+            mix-blend-mode:screen; opacity:.34; transform:translateX(-45%); animation:cinemaSweep 7.5s ease-in-out infinite; }}
+        .phone::after {{ content:""; position:absolute; inset:0; z-index:3; pointer-events:none; background:radial-gradient(circle at center, transparent 55%, rgba(0,0,0,.32) 100%); }}
+
+        .spark {{ position:absolute; z-index:4; width:4px; height:4px; border-radius:50%; background:#70dcff; box-shadow:0 0 14px #70dcff, 0 0 34px rgba(55,185,255,.72); opacity:0; animation:sparkFloat 8.5s linear infinite; pointer-events:none; }}
+        .spark.gold {{ background:#ffd58a; box-shadow:0 0 14px #ffd58a, 0 0 34px rgba(255,198,92,.62); }}
+        .s1 {{ left:16%; bottom:18%; animation-delay:.2s; }} .s2 {{ left:78%; bottom:20%; animation-delay:1.2s; transform:scale(.8); }} .s3 {{ left:54%; bottom:10%; animation-delay:2.8s; transform:scale(.55); }} .s4 {{ left:34%; bottom:39%; animation-delay:4.4s; transform:scale(.7); }} .s5 {{ left:88%; bottom:48%; animation-delay:5.8s; transform:scale(.62); }}
+        .butter-glow {{ position:absolute; z-index:4; font-size:21px; line-height:1; opacity:.72; filter:drop-shadow(0 0 10px #42cfff) drop-shadow(0 0 22px rgba(64,191,255,.92)); pointer-events:none; animation:butterDrift 10s ease-in-out infinite; }}
+        .b1 {{ left:8%; top:23%; animation-delay:.3s; }} .b2 {{ right:8%; top:33%; animation-delay:2.3s; transform:scale(.72); }} .b3 {{ left:16%; bottom:22%; animation-delay:4.1s; transform:scale(.58); }}
+        .gold-flare {{ position:absolute; z-index:4; left:50%; top:50%; width:160px; height:160px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(255,230,170,.22), rgba(255,199,92,.08) 35%, transparent 70%); mix-blend-mode:screen; filter:blur(14px); opacity:.38; animation:flareBeat 5.2s ease-in-out infinite; pointer-events:none; }}
+
+        .magic-line {{ position:absolute; z-index:5; left:8%; right:8%; top:56.8%; height:18px; border-radius:999px; pointer-events:none; overflow:hidden; mix-blend-mode:screen; }}
+        .magic-line span {{ position:absolute; left:0; top:7px; height:4px; width:100%; border-radius:999px; background:linear-gradient(90deg, rgba(47,195,255,.08), rgba(52,204,255,.98), rgba(255,216,132,.42), rgba(255,216,132,.08)); box-shadow:0 0 18px rgba(45,195,255,.88),0 0 46px rgba(45,195,255,.48); animation:linePulse 1.7s ease-in-out infinite; }}
+        .magic-line b {{ position:absolute; top:1px; left:-12%; width:70px; height:16px; border-radius:999px; background:radial-gradient(circle, #fff, #5cd6ff 33%, transparent 70%); filter:blur(1px); box-shadow:0 0 26px #5cd6ff; animation:runner 2.2s cubic-bezier(.42,0,.24,1) infinite; }}
+        .flying-butterfly {{ position:absolute; z-index:6; left:8%; top:54.7%; font-size:28px; filter:drop-shadow(0 0 10px #4bd2ff) drop-shadow(0 0 24px rgba(40,188,255,.9)); animation:butterflyRun 2.2s cubic-bezier(.42,0,.24,1) infinite; pointer-events:none; }}
+        .blue-orb {{ position:absolute; z-index:5; left:50%; top:56.8%; width:62px; height:62px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(255,255,255,.95), rgba(56,205,255,.62) 24%, transparent 72%); filter:blur(2px); opacity:.88; mix-blend-mode:screen; animation:orbBeat 1.6s ease-in-out infinite; pointer-events:none; }}
+
+        .real-button {{ position:absolute; left:9.5%; right:9.5%; bottom:calc(env(safe-area-inset-bottom) + 58px); min-height:76px; border-radius:28px; display:block; z-index:12; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); }}
+        .real-button::after {{ content:""; position:absolute; inset:-5px; border-radius:32px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent); opacity:.0; animation:buttonGhost 3.8s ease-in-out infinite; }}
+        .fallback {{ display:none; position:absolute; inset:0; z-index:20; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
+
+        @keyframes breathBg {{ 0%,100% {{ transform:scale(1); opacity:.65; }} 50% {{ transform:scale(1.05); opacity:1; }} }}
+        @keyframes imageBreath {{ 0%,100% {{ transform:scale(1); filter:saturate(1) brightness(1); }} 50% {{ transform:scale(1.012); filter:saturate(1.08) brightness(1.05); }} }}
+        @keyframes cinemaSweep {{ 0%,100% {{ transform:translateX(-65%); opacity:.18; }} 45% {{ transform:translateX(65%); opacity:.42; }} 60% {{ transform:translateX(65%); opacity:.0; }} }}
+        @keyframes sparkFloat {{ 0% {{ transform:translateY(0) scale(.55); opacity:0; }} 16% {{ opacity:.95; }} 70% {{ opacity:.34; }} 100% {{ transform:translateY(-170px) translateX(22px) scale(1.05); opacity:0; }} }}
+        @keyframes butterDrift {{ 0%,100% {{ transform:translate3d(0,0,0) rotate(-4deg) scale(.86); opacity:.32; }} 45% {{ transform:translate3d(16px,-22px,0) rotate(7deg) scale(1.08); opacity:.9; }} 70% {{ transform:translate3d(-8px,-30px,0) rotate(-2deg) scale(.92); opacity:.55; }} }}
+        @keyframes flareBeat {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.82); opacity:.18; }} 50% {{ transform:translate(-50%,-50%) scale(1.18); opacity:.48; }} }}
+        @keyframes linePulse {{ 0%,100% {{ opacity:.70; filter:brightness(1); }} 50% {{ opacity:1; filter:brightness(1.65); }} }}
         @keyframes runner {{ 0% {{ left:-12%; opacity:0; }} 10% {{ opacity:1; }} 82% {{ opacity:1; }} 100% {{ left:104%; opacity:0; }} }}
-        @keyframes butterflyRun {{ 0% {{ left:8%; transform:translateY(2px) scale(.82); opacity:.2; }} 12% {{ opacity:1; }} 50% {{ transform:translateY(-10px) scale(1.02); }} 88% {{ opacity:1; }} 100% {{ left:86%; transform:translateY(3px) scale(.9); opacity:0; }} }}
+        @keyframes butterflyRun {{ 0% {{ left:8%; transform:translateY(2px) scale(.82); opacity:.2; }} 12% {{ opacity:1; }} 50% {{ transform:translateY(-10px) scale(1.05); }} 88% {{ opacity:1; }} 100% {{ left:86%; transform:translateY(3px) scale(.9); opacity:0; }} }}
         @keyframes orbBeat {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.48; }} 50% {{ transform:translate(-50%,-50%) scale(1.16); opacity:.95; }} }}
-        .real-button {{ position:absolute; left:10.8%; right:10.8%; bottom:calc(env(safe-area-inset-bottom) + 70px); min-height:62px; border-radius:18px; display:block; z-index:6; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); }}
-        .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
+        @keyframes buttonGhost {{ 0%,100% {{ opacity:0; transform:translateX(-40%); }} 45% {{ opacity:.5; transform:translateX(40%); }} 70% {{ opacity:0; transform:translateX(40%); }} }}
+
+        @media (prefers-reduced-motion: reduce) {{
+            .img, .screen::before, .phone::before, .spark, .butter-glow, .gold-flare, .magic-line span, .magic-line b, .flying-butterfly, .blue-orb, .real-button::after {{ animation:none !important; }}
+        }}
     </style>
 </head>
 <body>
     <main class="screen">
         <section class="phone">
             <img class="img" src="{image_src}" alt="ETERNA" onerror="{safe_attr(onerror_attr)}">
-            {calm_layers}
+            <div class="gold-flare" aria-hidden="true"></div>
+            <i class="spark s1" aria-hidden="true"></i><i class="spark s2" aria-hidden="true"></i><i class="spark s3" aria-hidden="true"></i><i class="spark gold s4" aria-hidden="true"></i><i class="spark gold s5" aria-hidden="true"></i>
+            <span class="butter-glow b1" aria-hidden="true">🦋</span><span class="butter-glow b2" aria-hidden="true">🦋</span><span class="butter-glow b3" aria-hidden="true">🦋</span>
             {loading_layers}
             {button_html}
             <section id="fallback-visual" class="fallback"><h1>ETERNA</h1><p>Estamos preparando tu experiencia.</p></section>
@@ -6356,155 +6387,27 @@ def post_pago(order_id: str):
 
 @app.get("/resumen/{order_id}", response_class=HTMLResponse)
 def resumen(order_id: str):
+    """
+    Estado post-pago en versión premium.
+    Mantiene la consulta real del pedido, pero elimina la pantalla antigua.
+    """
     order = get_order_by_id(order_id)
     is_paid = bool(order.get("paid"))
-    video_ready = original_video_ready(order)
-    delivery_mode = (order.get("delivery_mode") or "instant").strip()
-    delivery_display = safe_text(scheduled_delivery_display(order))
 
     if not is_paid:
-        title = "Confirmando pago"
-        subtitle = "Todavía estamos esperando la confirmación segura."
-        detail = "No cierres esta pantalla. ETERNA actualizará el estado cuando el pago quede confirmado."
-    elif video_ready and delivery_mode == "scheduled":
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está guardada."
-        detail = f"Llegará en el momento elegido: {delivery_display}."
-    elif video_ready:
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está lista."
-        detail = "La entregaremos automáticamente en cuanto termine el proceso seguro."
-    else:
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está en marcha."
-        detail = "Estamos preparando algo que pronto llegará a alguien importante."
+        return render_eterna_image_screen(
+            image_name="checkout-loading-v1.png",
+            fallback_image_name="checkout-loading-v1.png",
+            overlay_kind="loading",
+            redirect_url=f"/resumen/{safe_attr(order_id)}",
+            redirect_delay_ms=6000,
+        )
 
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pago confirmado — ETERNA</title>
-    <style>
-        * {{ box-sizing: border-box; }}
-        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
-        body {{
-            min-height: 100vh;
-            color: #fff7e6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 24px;
-            background:
-                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
-                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
-                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
-        }}
-        .card {{
-            width: min(100%, 760px);
-            border-radius: 34px;
-            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
-            border: 1px solid rgba(255,220,150,.20);
-            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
-            backdrop-filter: blur(12px);
-        }}
-        .brand {{ color: #ffd98b; letter-spacing: .38em; padding-left: .38em; text-transform: uppercase; font-size: 14px; font-weight: 900; margin-bottom: 18px; }}
-        .mark {{ width: 88px; height: 88px; margin: 0 auto 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,220,150,.28); color: #ffd98b; font-size: 44px; text-shadow: 0 0 26px rgba(255,204,111,.62); background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%); }}
-        h1 {{ margin: 0; font-size: clamp(42px, 8vw, 76px); line-height: .98; color: #fff7e6; text-shadow: 0 0 30px rgba(255,255,255,.20); }}
-        .subtitle {{ margin: 24px auto 0; max-width: 620px; font-size: clamp(20px, 3.8vw, 28px); line-height: 1.5; font-weight: 800; color: rgba(255,255,255,.92); }}
-        .detail {{ margin: 18px auto 0; max-width: 620px; font-size: clamp(16px, 2.7vw, 20px); line-height: 1.7; color: rgba(255,255,255,.68); }}
-        .divider {{ width: min(320px, 78%); margin: 34px auto 0; display: flex; align-items: center; gap: 16px; color: #f0c46c; }}
-        .divider::before, .divider::after {{ content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, rgba(240,196,108,.72)); }}
-        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
-        .promise {{ margin: 28px auto 0; max-width: 560px; font-size: clamp(23px, 4.6vw, 38px); line-height: 1.45; font-family: Georgia, "Times New Roman", serif; color: #fff7e6; }}
-        .promise span {{ display: inline-block; color: #ffd98b; text-shadow: 0 0 24px rgba(255,204,111,.34); }}
-        .btn {{ margin: 38px auto 0; width: min(100%, 440px); min-height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%); color: #150d03; text-decoration: none; font-size: 15px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55); }}
-        .soft {{ margin-top: 16px; color: rgba(255,255,255,.42); font-size: 13px; line-height: 1.5; }}
-    </style>
-</head>
-<body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <main class="card" style="position:relative;z-index:2;">
-        <div class="brand">ETERNA</div>
-        <div class="mark">♥</div>
-        <h1>{title}</h1>
-        <div class="subtitle">{subtitle}</div>
-        <div class="detail">{detail}</div>
-        <div class="divider">♥</div>
-        <div class="promise">
-            Lo que das<br>
-            se queda en alguien.<br>
-            <span>Y un día, vuelve.</span>
-        </div>
-        <a class="btn" href="/crear">Volver al inicio</a>
-        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
-    </main>
-</body>
-</html>
-    """)
+    return render_eterna_image_screen(
+        image_name="payment-success-v1.png",
+        fallback_image_name="payment-success-v1.png",
+        overlay_kind="soft",
+    )
 
 
 # =========================================================
@@ -6630,7 +6533,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
 <body>
     <main class="screen">
         <section class="phone">
-            <img class="img" src="/static/eterna-cinematic/backgrounds/consent-recording-v1.png?v=eterna-premium-1" alt="ETERNA" onerror="this.onerror=null;this.src='/static/eterna-cinematic/backgrounds/terms-acceptance-v1.png?v=eterna-premium-1';">
+            <img class="img" src="/static/eterna-cinematic/backgrounds/consent-recording-v1.png?v=eterna-magia-viva-1" alt="ETERNA" onerror="this.onerror=null;this.src='/static/eterna-cinematic/backgrounds/terms-acceptance-v1.png?v=eterna-magia-viva-1';">
             <button class="real-button" id="consentContinue" type="button" aria-label="Acepto y continuar">Acepto y continuar</button>
             <div class="consent-error" id="consentError"></div>
             <section id="fallback-visual" class="fallback"><div><h1>ETERNA</h1><p>Antes de continuar, acepta vivir la experiencia.</p></div></section>
@@ -6777,6 +6680,11 @@ body.video-clean-mode video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
+    min-height: 72vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
 }
 
 .eyebrow {
@@ -6854,8 +6762,9 @@ body.video-clean-mode video {
     text-align: center;
     padding: 28px;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
+        linear-gradient(180deg, rgba(0,0,0,0.10), rgba(0,0,0,0.18)),
+        url('/static/eterna-cinematic/backgrounds/uploading-reaction-v1.png?v=eterna-magia-viva-1') center top / cover no-repeat,
+        #02050a;
 }
 
 .payoff.show {
@@ -6873,7 +6782,7 @@ body.video-clean-mode video {
     height: 64px;
     margin: 0 auto 24px auto;
     border-radius: 999px;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     color: #f2c878;
@@ -6911,17 +6820,16 @@ body.video-clean-mode video {
 }
 
 .payoff-title {
-    font-size: 46px;
-    line-height: 1.12;
-    font-weight: 700;
-    margin: 0 0 18px 0;
-    color: #fff7e6;
+    font-size: 0;
+    line-height: 0;
+    margin: 0;
+    color: transparent;
 }
 
 .payoff-text {
-    font-size: 22px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.82);
+    font-size: 0;
+    line-height: 0;
+    color: transparent;
     margin: 0 auto;
     max-width: 520px;
 }
@@ -10206,9 +10114,12 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     except Exception as e:
         log_error("FINALIZAR EXPERIENCE ERROR", e)
 
-    return RedirectResponse(
-        url=f"/cobrar/{recipient_token}",
-        status_code=303
+    return render_eterna_image_screen(
+        image_name="experience-complete-v1.png",
+        fallback_image_name="experience-complete-v1.png",
+        overlay_kind="soft",
+        redirect_url=f"/cobrar/{safe_attr(recipient_token)}",
+        redirect_delay_ms=2200,
     )
 @app.get("/admin/reset-recipient-session/{order_id}")
 def admin_reset_recipient_session(order_id: str, token: str = ""):
