@@ -161,6 +161,32 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 
 
 # =========================================================
+# ETERNA CINEMATIC SCREENS — MAPA OFICIAL V1
+# =========================================================
+# Estos son los nombres finales que deben existir en:
+# static/eterna-cinematic/backgrounds/
+ETERNA_CINEMATIC_SCREENS = {
+    "landing": "landing-main-v1.png",
+    "home_mobile": "home-mobile-v1.png",
+    "gift_ready": "gift-ready-v1.png",
+    "intro_shhh": "intro-shhh-v1.png",
+    "quiet_place": "quiet-place-v1.png",
+    "sound_check": "sound-check-v1.png",
+    "consent_recording": "consent-recording-v1.png",
+    "terms_acceptance": "terms-acceptance-v1.png",
+    "checkout_loading": "checkout-loading-v1.png",
+    "payment_success": "payment-success-v1.png",
+    "uploading_reaction": "uploading-reaction-v1.png",
+    "experience_complete": "experience-complete-v1.png",
+    "sender_pack_entry": "sender-pack-entry-v1.png",
+    "sender_pack": "sender-pack-v1.png",
+    "viral_cta": "viral-cta-v1.png",
+    "error": "error-v1.png",
+}
+
+
+
+# =========================================================
 # LOG HUMANO ETERNA (ESPAÑOL)
 # =========================================================
 
@@ -5225,7 +5251,7 @@ def home(request: Request):
 <body>
     <main class="screen">
         <section class="phone" aria-label="ETERNA">
-            <img class="hero-img" src="/static/eterna-cinematic/backgrounds/landing-main-v1.png?v=eterna-home-blue-live-1" alt="ETERNA" onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex';">
+            <img class="hero-img" src="/static/eterna-cinematic/backgrounds/{ETERNA_CINEMATIC_SCREENS["landing"]}?v=eterna-home-blue-live-1" alt="ETERNA" onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex';">
             <div class="butterfly-halo" aria-hidden="true"></div>
             <div class="water-shine" aria-hidden="true"></div>
             <i class="sparkle s1" aria-hidden="true"></i>
@@ -5825,6 +5851,19 @@ h1 {
 
     if original_video_ready(order) and delivery_is_unlocked(order):
         experience_href = f"/guia/1/{safe_attr(recipient_token)}"
+
+        # Pantalla visual aprobada: Tu regalo está listo.
+        # Mantiene la sesión del destinatario y no toca vídeo, SMS ni reacción.
+        response = render_eterna_image_screen(
+            image_name=ETERNA_CINEMATIC_SCREENS["gift_ready"],
+            fallback_image_name="gift-ready-v1.png.png",
+            overlay_kind="soft",
+            button_url=experience_href,
+            button_label="Vivir la experiencia",
+        )
+        attach_recipient_session_if_needed(order, request, response)
+        return response
+
         html_page = f"""
 <!DOCTYPE html>
 <html lang="es">
@@ -6281,7 +6320,7 @@ def checkout_loading(order_id: Optional[str] = None):
         except Exception as e:
             print("⚠️ No pude recuperar Stripe Checkout URL:", e)
     return render_eterna_image_screen(
-        image_name="checkout-loading-v1.png",
+        image_name=ETERNA_CINEMATIC_SCREENS["checkout_loading"],
         fallback_image_name="checkout-loading-v1.png.png",
         overlay_kind="loading",
         redirect_url=target_url,
@@ -6291,7 +6330,7 @@ def checkout_loading(order_id: Optional[str] = None):
 
 def render_checkout_success_visual(order_id: str) -> HTMLResponse:
     return render_eterna_image_screen(
-        image_name="payment-success-v1.png",
+        image_name=ETERNA_CINEMATIC_SCREENS["payment_success"],
         fallback_image_name="payment-success-v1.png.png",
         overlay_kind="soft",
         button_url="/crear",
@@ -6309,7 +6348,7 @@ def viral_final_cta(recipient_token: str):
     # No toca pagos, SMS, webhook, reaccion ni video engine.
     get_order_by_recipient_token_or_404(recipient_token)
     return render_eterna_image_screen(
-        image_name="viral-cta-v1.png",
+        image_name=ETERNA_CINEMATIC_SCREENS["viral_cta"],
         fallback_image_name="viral-cta-v1.png.png",
         overlay_kind="soft",
         button_url="/crear",
@@ -6780,6 +6819,29 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     except Exception:
         step = 1
     step = max(1, min(step, 3))
+
+    # Pantallas visuales aprobadas para la guía previa.
+    # No modifica /experiencia, MediaRecorder, chunks, SMS, Stripe ni Video Engine.
+    guide_visuals = {
+        1: (ETERNA_CINEMATIC_SCREENS["quiet_place"], "quiet-place-v1.png.png", f"/guia/2/{safe_attr(recipient_token)}", "Estoy listo"),
+        2: (ETERNA_CINEMATIC_SCREENS["sound_check"], "sound-check-v1.png.png", f"/guia/3/{safe_attr(recipient_token)}", "Continuar"),
+        3: (ETERNA_CINEMATIC_SCREENS["consent_recording"], "consent-recording-v1.png.png", f"/experiencia/{safe_attr(recipient_token)}", "Acepto y continuar"),
+    }
+    visual_image, visual_fallback, visual_href, visual_label = guide_visuals[step]
+    if step == 1:
+        insert_order_event(order["id"], "guide_place_opened", "ok", "El destinatario ha abierto la guía visual: lugar tranquilo")
+    elif step == 2:
+        insert_order_event(order["id"], "guide_sound_opened", "ok", "El destinatario ha abierto la guía visual: sonido")
+    else:
+        insert_order_event(order["id"], "guide_consent_opened", "ok", "El destinatario ha abierto la guía visual: consentimiento")
+
+    return render_eterna_image_screen(
+        image_name=visual_image,
+        fallback_image_name=visual_fallback,
+        overlay_kind="soft",
+        button_url=visual_href,
+        button_label=visual_label,
+    )
 
     if step == 1:
         insert_order_event(order["id"], "guide_place_opened", "ok", "El destinatario ha abierto la guía: lugar tranquilo")
