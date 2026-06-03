@@ -1,3 +1,13 @@
+
+# =========================================================
+# ETERNA PATCH - SENDER PACK CINEMATIC FLOW
+# Objetivo:
+# 1. sender-pack-entry-v1.png
+# 2. sender-pack-v1.png
+# 3. vídeo reacción
+# 4. botones finales
+# =========================================================
+
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
 print("🔥 WEBHOOK + CALLBACK + EXPERIENCE LOCK + REACTION SAVE 🔥")
 print("🔥 FINAL UX LOCKED + CASHOUT HARDENED + SENDER PACK READY 🔥")
@@ -164,7 +174,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v1-locked"
+ETERNA_VISUAL_VERSION = "eterna-visual-v2-ux-fullscreen"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 
 ETERNA_SCREEN_ASSETS = {
@@ -276,11 +286,12 @@ def render_eterna_image_screen(
 <meta name="theme-color" content="#02050a">
 <style>
     * {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
-    html, body {{ margin:0; min-height:100%; background:#02050a; }}
-    body {{ min-height:100vh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
-    .screen {{ position:relative; min-height:100vh; display:flex; justify-content:center; background:#02050a; overflow:hidden; }}
-    .phone {{ position:relative; width:100%; max-width:430px; min-height:100vh; overflow:hidden; background:#02050a; }}
-    .img {{ width:100%; max-width:430px; min-height:100vh; height:auto; display:block; object-fit:cover; object-position:top center; background:#02050a; }}
+    html, body {{ margin:0; width:100%; min-height:100%; background:#02050a; }}
+    body {{ min-height:100svh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
+    .screen {{ position:relative; width:100vw; min-height:100svh; min-height:100dvh; display:flex; align-items:stretch; justify-content:center; background:#02050a; overflow:hidden; }}
+    .phone {{ position:relative; width:100vw; max-width:none; min-height:100svh; min-height:100dvh; overflow:hidden; background:#02050a; }}
+    .img {{ position:absolute; inset:0; width:100%; height:100%; min-height:100svh; min-height:100dvh; display:block; object-fit:cover; object-position:center center; background:#02050a; }}
+    @media (min-width: 760px) {{ .phone {{ width:min(100vw,520px); }} .img {{ object-fit:cover; }} }}
     .soft-halo {{ position:absolute; left:67%; top:22%; width:240px; height:240px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(34,178,255,.26), rgba(34,178,255,.07) 42%, transparent 70%); filter:blur(16px); opacity:.56; mix-blend-mode:screen; animation:haloBreath 5.6s ease-in-out infinite; pointer-events:none; }}
     .particle {{ position:absolute; width:5px; height:5px; border-radius:50%; background:#62d3ff; box-shadow:0 0 16px #62d3ff, 0 0 34px rgba(98,211,255,.55); opacity:0; animation:floatUp 9s linear infinite; pointer-events:none; }}
     .particle.gold {{ background:#ffd98b; box-shadow:0 0 16px #ffd98b,0 0 34px rgba(255,217,139,.48); }}
@@ -296,7 +307,9 @@ def render_eterna_image_screen(
     @keyframes runner {{ 0% {{ left:-12%; opacity:0; }} 10% {{ opacity:1; }} 82% {{ opacity:1; }} 100% {{ left:104%; opacity:0; }} }}
     @keyframes butterflyRun {{ 0% {{ left:8%; transform:translateY(2px) scale(.82); opacity:.2; }} 12% {{ opacity:1; }} 50% {{ transform:translateY(-10px) scale(1.02); }} 88% {{ opacity:1; }} 100% {{ left:86%; transform:translateY(3px) scale(.9); opacity:0; }} }}
     @keyframes orbBeat {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.48; }} 50% {{ transform:translate(-50%,-50%) scale(1.16); opacity:.95; }} }}
-    .real-button {{ position:absolute; left:10.8%; right:10.8%; bottom:calc(env(safe-area-inset-bottom) + 68px); min-height:64px; border:0; border-radius:18px; display:block; z-index:8; color:transparent; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); cursor:pointer; }}
+    .real-button {{ position:absolute; left:7.5%; right:7.5%; bottom:calc(env(safe-area-inset-bottom) + 54px); min-height:76px; border:0; border-radius:22px; display:block; z-index:8; color:transparent; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); cursor:pointer; touch-action:manipulation; }}
+    .real-button::after {{ content:""; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(90deg,rgba(255,242,186,.10),rgba(255,179,55,.16)); box-shadow:0 0 30px rgba(255,189,75,.22); opacity:.0; animation:ctaBreath 2.8s ease-in-out infinite; }}
+    @keyframes ctaBreath {{ 0%,100% {{ opacity:.04; transform:scale(.985); }} 50% {{ opacity:.22; transform:scale(1.01); }} }}
     .visual-action-form {{ position:absolute; left:0; right:0; bottom:0; z-index:8; }}
     .extra-note {{ position:absolute; left:8%; right:8%; bottom:calc(env(safe-area-inset-bottom) + 18px); z-index:7; text-align:center; color:rgba(255,245,220,.72); font-size:12px; line-height:1.35; text-shadow:0 0 14px rgba(0,0,0,.9); }}
     .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
@@ -3148,10 +3161,7 @@ def post_pago(order_id: str):
 
 @app.get("/viral-final/{recipient_token}", response_class=HTMLResponse)
 def viral_final_cta(recipient_token: str):
-    """
-    CTA viral final: destinatario -> nuevo regalante.
-    No se muestra al regalante y no toca la lógica crítica.
-    """
+    """CTA viral RC8: no depende de imagen PNG para evitar 404/pantalla rota."""
     try:
         get_order_by_recipient_token_or_404(recipient_token)
     except Exception:
@@ -3163,13 +3173,12 @@ def viral_final_cta(recipient_token: str):
             button_label="Crear una ETERNA",
             extra_note="Esta experiencia ya no está disponible.",
         )
-    return render_eterna_image_screen(
-        image_name="viral-cta-v1.png",
-        fallback_image_name="viral-cta-v1.png",
-        overlay_kind="soft",
-        button_url="/crear",
-        button_label="Crear mi ETERNA",
-    )
+    return HTMLResponse('''
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}body{min-height:100svh;min-height:100dvh;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(72,185,255,.26),transparent 30%),radial-gradient(circle at 18% 84%,rgba(255,205,112,.12),transparent 32%),#02050a}.card{width:min(92vw,440px);text-align:center;border:1px solid rgba(255,213,130,.24);border-radius:30px;background:rgba(255,255,255,.055);padding:34px 22px;box-shadow:0 28px 90px rgba(0,0,0,.68)}.logo{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;margin-bottom:22px}.heart{font-size:44px;color:#ffd37b;text-shadow:0 0 34px rgba(255,200,90,.54);animation:pulse 2.8s ease-in-out infinite}@keyframes pulse{0%,100%{transform:scale(.96);opacity:.82}50%{transform:scale(1.06);opacity:1}}h1{font-size:clamp(34px,9vw,52px);line-height:1.02;margin:14px 0 12px;letter-spacing:-.06em}.gold{color:#f5c46e}p{margin:0 auto 24px;color:rgba(255,245,229,.75);font-size:17px;line-height:1.5;max-width:330px}.btn{min-height:60px;border-radius:19px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:16px;padding:12px 16px;background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;text-decoration:none;box-shadow:0 0 34px rgba(255,190,72,.28)}.small{margin-top:18px;color:rgba(255,245,229,.52);font-size:13px}
+</style></head><body><main class="card"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>¿Quieres provocar <span class="gold">algo así?</span></h1><p>Haz que alguien viva un momento que no se olvida.</p><a class="btn" href="/crear">Crear mi ETERNA</a><div class="small">Privado. Seguro. Emocional.</div></main></body></html>
+''')
+
 
 # =========================================================
 # FORM
@@ -6313,7 +6322,15 @@ async def start_experience(recipient_token: str = Form(...)):
 
 @app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
 def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
-    # Guía visual V1 antes de /experiencia. No toca MediaRecorder, chunks ni upload.
+    """
+    GUÍA V2 SIMPLIFICADA.
+    Problema detectado en prueba real: demasiadas pantallas antes del vídeo.
+    Nuevo flujo:
+      0 -> una sola pantalla emocional/práctica
+      1 -> consentimiento + permiso cámara/micro
+      experiencia
+    No toca MediaRecorder, chunks, subida, Stripe, SMS ni video engine.
+    """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
@@ -6329,64 +6346,57 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         step = int(step or 0)
     except Exception:
         step = 0
-    step = max(0, min(step, 4))
+    step = 0 if step <= 0 else 1
 
-    screen_flow = {
-        0: {"event": "guide_intro_opened", "image": "intro-shhh-v1.png", "button_url": f"/guia/1/{recipient_token}", "button_label": "Entrar", "note": "Busca un momento tranquilo antes de continuar."},
-        1: {"event": "guide_sound_opened", "image": "sound-check-v1.png", "button_url": f"/guia/2/{recipient_token}", "button_label": "Sonido listo", "note": "Activa el sonido del móvil para vivirlo completo."},
-        2: {"event": "guide_place_opened", "image": "quiet-place-v1.png", "button_url": f"/guia/3/{recipient_token}", "button_label": "Estoy preparado", "note": "Coloca el móvil en vertical y con buena luz."},
-        3: {"event": "guide_terms_opened", "image": "terms-acceptance-v1.png", "button_url": f"/guia/4/{recipient_token}", "button_label": "Aceptar y continuar", "note": "Tu ETERNA es una experiencia privada."},
-        4: {"event": "guide_consent_opened", "image": "consent-recording-v1.png", "button_url": "", "button_label": "Continuar", "note": "Al continuar, el navegador te pedirá cámara y micrófono."},
-    }
-    data = screen_flow[step]
-    insert_order_event(order["id"], data["event"], "ok", f"Guía visual V1 paso {step}")
-
-    if step < 4:
+    if step == 0:
+        insert_order_event(order["id"], "guide_single_opened", "ok", "Guía V2 simplificada: una sola pantalla antes del consentimiento")
         response = render_eterna_image_screen(
-            image_name=data["image"],
-            fallback_image_name="error-v1.png",
-            button_url=data["button_url"],
-            button_label=data["button_label"],
-            extra_note=data["note"],
+            image_name="intro-shhh-v1.png",
+            fallback_image_name="sound-check-v1.png",
+            button_url=f"/guia/1/{recipient_token}",
+            button_label="Estoy listo",
+            extra_note="Activa el sonido, busca un lugar tranquilo y continúa cuando estés preparado.",
         )
-    else:
-        response = render_eterna_image_screen(
-            image_name=data["image"],
-            fallback_image_name="error-v1.png",
-            form_action="/start-experience",
-            form_method="post",
-            hidden_fields={"recipient_token": recipient_token},
-            button_label=data["button_label"],
-            button_id="consentContinue",
-            extra_note=data["note"],
-            extra_script=f"""
-            <script>
-            (function() {{
-                const form = document.querySelector('.visual-action-form');
-                const btn = document.getElementById('consentContinue');
-                if (!form || !btn) return;
-                form.addEventListener('submit', async function(e) {{
-                    e.preventDefault();
-                    btn.disabled = true;
-                    try {{
-                        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
-                            const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
-                            try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
-                        }}
-                        const fd = new FormData(form);
-                        const res = await fetch('/start-experience', {{ method: 'POST', body: fd }});
-                        if (!res.ok) throw new Error('start_experience_failed');
-                        window.location.href = '/experiencia/{safe_attr(recipient_token)}';
-                    }} catch (err) {{
-                        btn.disabled = false;
-                        alert('ETERNA necesita acceso a cámara y micrófono para continuar.');
+        attach_recipient_session_if_needed(order, request, response)
+        return response
+
+    insert_order_event(order["id"], "guide_consent_opened", "ok", "Consentimiento V2 antes de iniciar experiencia")
+    response = render_eterna_image_screen(
+        image_name="consent-recording-v1.png",
+        fallback_image_name="terms-acceptance-v1.png",
+        form_action="/start-experience",
+        form_method="post",
+        hidden_fields={"recipient_token": recipient_token},
+        button_label="Aceptar y continuar",
+        button_id="consentContinue",
+        extra_note="Al continuar, el navegador pedirá cámara y micrófono.",
+        extra_script=f"""
+        <script>
+        (function() {{
+            const form = document.querySelector('.visual-action-form');
+            const btn = document.getElementById('consentContinue');
+            if (!form || !btn) return;
+            form.addEventListener('submit', async function(e) {{
+                e.preventDefault();
+                btn.disabled = true;
+                try {{
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
+                        const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
+                        try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
                     }}
-                }});
-            }})();
-            </script>
-            """,
-        )
-
+                    const fd = new FormData(form);
+                    const res = await fetch('/start-experience', {{ method: 'POST', body: fd }});
+                    if (!res.ok) throw new Error('start_experience_failed');
+                    window.location.href = '/experiencia/{safe_attr(recipient_token)}';
+                }} catch (err) {{
+                    btn.disabled = false;
+                    alert('ETERNA necesita acceso a cámara y micrófono para continuar.');
+                }}
+            }});
+        }})();
+        </script>
+        """,
+    )
     attach_recipient_session_if_needed(order, request, response)
     return response
 
@@ -8052,6 +8062,10 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
 
 @app.get("/mi-video/{recipient_token}", response_class=HTMLResponse)
 def mi_video(request: Request, recipient_token: str):
+    """
+    MI VIDEO RC8 — elimina la pantalla negra rota.
+    Pantalla mobile-first con vídeo ocupando el centro y CTA claro.
+    """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
@@ -8068,162 +8082,51 @@ def mi_video(request: Request, recipient_token: str):
     if not video_url:
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    return HTMLResponse(f"""
+    media_type = guess_media_type_from_url(video_url)
+    return HTMLResponse(f'''
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ETERNA</title>
-
+<meta name="theme-color" content="#02050a">
 <style>
-html, body {{
-    margin: 0;
-    padding: 0;
-    background: black;
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-}}
-
-.container {{
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-    text-align: center;
-    padding: 20px;
-}}
-
-video {{
-    width: 100%;
-    height: auto;
-    background: black;
-}}
-
-h1 {{
-    margin-top: 20px;
-    font-size: 32px;
-}}
-
-.text {{
-    margin-top: 16px;
-    font-size: 18px;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.8);
-}}
-
-.actions {{
-    margin-top: 30px;
-    display: grid;
-    gap: 12px;
-}}
-
-.btn {{
-    display: block;
-    width: 100%;
-    padding: 16px 22px;
-    border-radius: 999px;
-    font-weight: bold;
-    text-decoration: none;
-}}
-
-.btn.primary {{
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
-}}
-
-.btn.secondary {{
-    background: rgba(255,255,255,0.12);
-    color: #fff7e6;
-}}
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
+body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 80% 12%,rgba(78,190,255,.24),transparent 28%),radial-gradient(circle at 18% 88%,rgba(255,199,102,.10),transparent 32%),#02050a}}
+.scene{{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}}
+.scene:before{{content:"";position:absolute;inset:-20%;background:radial-gradient(circle at 72% 26%,rgba(65,185,255,.22),transparent 26%),radial-gradient(circle at 48% 72%,rgba(255,205,112,.10),transparent 28%);filter:blur(18px);animation:breath 7s ease-in-out infinite}}
+@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:.95}}}}
+.wrap{{position:relative;z-index:1;min-height:100svh;min-height:100dvh;width:100%;max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 12px calc(env(safe-area-inset-bottom) + 16px);display:flex;flex-direction:column;gap:12px}}
+.logo{{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;text-align:center;text-shadow:0 0 20px rgba(255,196,92,.34)}}
+h1{{margin:0;text-align:center;font-size:clamp(28px,7vw,42px);line-height:1.05;letter-spacing:-.05em;text-shadow:0 0 26px rgba(255,255,255,.16)}}
+.video-shell{{position:relative;flex:1;min-height:0;border-radius:28px;overflow:hidden;background:#000;border:1px solid rgba(255,214,139,.22);box-shadow:0 0 0 1px rgba(88,205,255,.14),0 28px 90px rgba(0,0,0,.72),0 0 34px rgba(0,153,255,.18)}}
+video{{width:100%;height:100%;display:block;object-fit:contain;background:#000}}
+.actions{{display:grid;gap:10px}}
+.btn{{min-height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:15px;padding:12px 16px;border:1px solid rgba(255,213,130,.22);background:rgba(255,255,255,.06);color:#fff;text-decoration:none;box-shadow:0 14px 42px rgba(0,0,0,.28)}}
+.btn.primary{{background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;border:0;box-shadow:0 0 34px rgba(255,190,72,.28)}}
+@media (orientation:landscape){{body{{overflow:auto}}.wrap{{max-width:980px;display:grid;grid-template-columns:.58fr 1.42fr;grid-template-areas:"logo video" "title video" "actions video";align-items:center}}.logo{{grid-area:logo}}h1{{grid-area:title;text-align:left}}.video-shell{{grid-area:video;height:82vh;flex:none}}.actions{{grid-area:actions}}}}
 </style>
 </head>
-
 <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-
-<div class="container" style="position:relative;z-index:2;">
-
-    <video controls playsinline>
-        <source src="{safe_attr(video_url)}" type="{safe_attr(guess_media_type_from_url(video_url))}">
+<div class="scene"></div>
+<main class="wrap">
+  <div class="logo">ETERNA</div>
+  <h1>Esto ya es tuyo.</h1>
+  <section class="video-shell">
+    <video controls playsinline preload="metadata">
+      <source src="{safe_attr(video_url)}" type="{safe_attr(media_type)}">
     </video>
-
-    <h1>Esto ya es tuyo</h1>
-
-    <div class="text">
-        Puedes volver a este momento siempre que quieras.<br><br>
-        Y si sientes que alguien debería vivir algo así,<br>
-        ahora puedes hacerlo.
-    </div>
-
-    <div class="actions">
-        <a class="btn primary" href="/crear">Crear una ETERNA</a>
-        <a class="btn secondary" href="/pedido/{safe_attr(recipient_token)}">Volver al inicio</a>
-    </div>
-
-</div>
-
+  </section>
+  <nav class="actions">
+    <a class="btn primary" href="/pedido/{safe_attr(recipient_token)}">Volver al inicio</a>
+    <a class="btn" href="/crear">Crear una ETERNA</a>
+  </nav>
+</main>
 </body>
 </html>
-    """)
+''')
 
 
 # =========================================================
@@ -8232,6 +8135,7 @@ h1 {{
 
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
 def cobrar(request: Request, recipient_token: str):
+    """COBRAR RC8 — final más claro, sin CTA comercial invasivo."""
     order = get_order_by_recipient_token_or_404(recipient_token)
     log_info("💸 DESTINATARIO ENTRA EN COBROS")
     log_info("🆔 Order ID", order.get("id"))
@@ -8240,13 +8144,10 @@ def cobrar(request: Request, recipient_token: str):
 
     if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
         return render_viral_block_page()
-
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
     if not reaction_is_safe(order):
         return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
@@ -8259,213 +8160,39 @@ def cobrar(request: Request, recipient_token: str):
 
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
-
-    title = "Tu momento ya está completo"
-    main_text = "Ya puedes recoger tu regalo."
     amount_text = ""
     cta_html = ""
-    secondary_html = f'''
-        <a class="btn secondary" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a>
-    '''
 
     if gift_amount <= 0:
         amount_text = "Este regalo no incluía dinero."
-        cta_html = ""
-
     elif cashout_status == "completed":
         amount_text = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
-        cta_html = ""
-
     elif cashout_status == "processing":
         amount_text = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
-        cta_html = ""
-
     elif cashout_status == "ready_to_send":
         amount_text = f"Has recibido {format_amount_display(gift_amount)}."
-        cta_html = f'''
-            <form action="/connect/payout/{recipient_token}" method="post" style="margin-top:22px;">
-                <button type="submit" class="btn primary">Recibir mi regalo</button>
-            </form>
-        '''
-
+        cta_html = f'''<form action="/connect/payout/{safe_attr(recipient_token)}" method="post"><button type="submit" class="btn primary">Recibir mi regalo</button></form>'''
     else:
         amount_text = f"Has recibido {format_amount_display(gift_amount)}."
-
         connect_url = None
         try:
             connect_url = create_connect_onboarding_link(order)
         except Exception as e:
             log_error("create_connect_onboarding_link_en_cobrar", e)
-
         if connect_url:
-            cta_html = f'''
-                <a href="{safe_attr(connect_url)}" class="btn primary" style="margin-top:22px;">Recibir mi regalo</a>
-            '''
+            cta_html = f'<a href="{safe_attr(connect_url)}" class="btn primary">Recibir mi regalo</a>'
         else:
-            cta_html = '''
-                <div style="margin-top:22px;color:rgba(255,255,255,0.68);font-size:15px;line-height:1.8;">
-                    Estamos preparando tu cobro. Si no aparece en unos segundos, vuelve a intentarlo.
-                </div>
-                <a href="" class="btn secondary" style="margin-top:12px;">Intentar otra vez</a>
-            '''
+            cta_html = '<a href="" class="btn primary">Intentar recibir mi regalo</a>'
 
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
-<style>
-html, body {{
-    margin: 0;
-    min-height: 100%;
-    background: #000;
-}}
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(218,178,92,0.16), transparent 34%),
-        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 24px;
-}}
-.wrap {{
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-}}
-h1 {{
-    margin: 0 0 18px 0;
-    font-size: 42px;
-    line-height: 1.2;
-}}
-.main {{
-    font-size: 22px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.90);
-}}
-.amount {{
-    margin-top: 24px;
-    font-size: 18px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.62);
-}}
-.actions {{
-    display: grid;
-    gap: 12px;
-    max-width: 420px;
-    margin: 18px auto 0 auto;
-}}
-.btn {{
-    display: block;
-    width: 100%;
-    padding: 17px 22px;
-    border-radius: 999px;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 15px;
-    border: 1px solid rgba(218,178,92,0.22);
-    cursor: pointer;
-}}
-.btn.primary {{
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
-    border: none;
-}}
-.btn.secondary {{
-    background: rgba(255,255,255,0.10);
-    color: #fff7e6;
-}}
-</style>
-</head>
-<body>
+    if not cta_html:
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver el vídeo</a>'
 
+    return HTMLResponse(f'''
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(72,185,255,.24),transparent 30%),radial-gradient(circle at 14% 76%,rgba(255,205,112,.12),transparent 33%),#02050a}}.scene{{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}}.scene:before{{content:"";position:absolute;inset:-18%;background:radial-gradient(circle at 72% 26%,rgba(65,185,255,.22),transparent 26%),radial-gradient(circle at 48% 72%,rgba(255,205,112,.10),transparent 28%);filter:blur(18px);animation:breath 7s ease-in-out infinite}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:.95}}}}.wrap{{position:relative;z-index:1;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 30px) 18px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px}}.logo{{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;text-shadow:0 0 20px rgba(255,196,92,.34)}}.heart{{width:74px;height:74px;border-radius:999px;margin:0 auto;background:radial-gradient(circle,#ffe7a6,#c98b2d 58%,rgba(255,196,77,.12));box-shadow:0 0 44px rgba(255,190,72,.42);display:flex;align-items:center;justify-content:center;font-size:32px;animation:pulse 2.8s ease-in-out infinite}}@keyframes pulse{{0%,100%{{transform:scale(.96);opacity:.82}}50%{{transform:scale(1.06);opacity:1}}}}h1{{font-size:clamp(35px,9vw,54px);line-height:1.02;margin:0;letter-spacing:-.06em;text-shadow:0 0 34px rgba(255,255,255,.16)}}p{{margin:0;color:rgba(255,245,229,.78);font-size:17px;line-height:1.5}}.amount{{font-size:19px;color:#ffe0a0;font-weight:900}}.actions{{display:grid;gap:11px;margin-top:8px}}.btn{{min-height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:15px;padding:12px 16px;border:1px solid rgba(255,213,130,.22);background:rgba(255,255,255,.06);color:#fff;text-decoration:none;box-shadow:0 14px 42px rgba(0,0,0,.28);width:100%}}.btn.primary{{background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;border:0;box-shadow:0 0 34px rgba(255,190,72,.28)}}.small{{font-size:13px;color:rgba(255,245,229,.56)}}
+</style></head><body><div class="scene"></div><main class="wrap"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>Tu momento ya está completo.</h1><p>Lo que acabas de vivir ha quedado guardado.</p><div class="amount">{safe_text(amount_text)}</div><nav class="actions">{cta_html}<a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a><a class="btn" href="/crear">Crear mi ETERNA</a></nav><div class="small">Tu experiencia es privada.</div></main></body></html>
+''')
 
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <div class="wrap">
-        <h1>{safe_text(title)}</h1>
-        <div class="main">{safe_text(main_text)}</div>
-        <div class="amount">{safe_text(amount_text)}</div>
-
-        {cta_html}
-
-        <div class="actions">
-            <a class="btn primary" href="/viral-final/{safe_attr(recipient_token)}">¿Te gustaría provocar esta emoción?</a>
-            <a class="btn secondary" href="/crear">Crear mi ETERNA</a>
-            {secondary_html}
-        </div>
-    </div>
-</body>
-</html>
-    """)
-
-
-# =========================================================
-# RECIBIR REGALO (ELIMINADO -> REDIRECCIÓN DIRECTA)
-# =========================================================
 
 @app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
 def recibir_regalo(request: Request, recipient_token: str):
@@ -8523,8 +8250,20 @@ def connect_payout(request: Request, recipient_token: str):
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
 
+
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
-def sender_pack(sender_token: str):
+def sender_pack(sender_token: str, view: str = ""):
+    """
+    SENDER PACK FINAL — flujo visual limpio y cinematográfico.
+
+    Decisión de producto:
+      1) Entrada obligatoria con sender-pack-entry-v1.png
+      2) Pack principal con sender-pack-v1.png + vídeo/reacción real encima
+      3) Se elimina la pantalla intermedia tipo "Ya ha pasado"
+      4) Se elimina la pantalla final independiente "Lo que das se queda en alguien"
+
+    No toca Stripe, Twilio, webhooks, pagos, video engine ni DB.
+    """
     order = get_order_by_sender_token_or_404(sender_token)
     log_human("REGALANTE HA ABIERTO EL PACK", "🎁 El creador ha abierto el recuerdo", f"🆔 Pedido: {order.get('id')}")
     log_info("🎁 REGALANTE HA ABIERTO EL PACK")
@@ -8543,1009 +8282,126 @@ def sender_pack(sender_token: str):
             reaction_video_type = guess_media_type_from_path(local_path)
 
     if not reaction_url:
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>ETERNA</title>
-            <style>
-                * { box-sizing: border-box; }
-                html, body { margin:0; min-height:100%; background:#020817; color:#fff7e6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
-                body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; text-align:center; background:radial-gradient(circle at top, rgba(59,130,246,.17), transparent 34%), #020817; }
-                .card { width:100%; max-width:460px; border:1px solid rgba(212,175,92,.24); border-radius:32px; padding:34px 24px; background:rgba(255,255,255,.05); box-shadow:0 30px 90px rgba(0,0,0,.65); }
-                .logo { letter-spacing:.34em; color:#d8b76d; font-size:12px; font-weight:800; margin-bottom:22px; }
-                h1 { font-size:34px; line-height:1.12; margin:0 0 14px; }
-                p { color:rgba(255,255,255,.72); line-height:1.7; font-size:17px; margin:0; }
-            </style>
-        </head>
-        <body>
+        return render_visual_screen(
+            image_name="sender_pack_entry",
+            fallback_image_name="sender_pack_entry",
+            button_url=f"/sender/{sender_token}",
+            button_label="Volver a comprobar",
+            extra_note="Tu ETERNA todavía está volviendo. La reacción se está guardando.",
+        )
 
+    # Pantalla 1: entrada emocional cinematográfica.
+    if str(view or "").strip().lower() not in {"pack", "open", "1"}:
+        return render_visual_screen(
+            image_name="sender_pack_entry",
+            fallback_image_name="sender_pack_entry",
+            button_url=f"/sender/{sender_token}?view=pack",
+            button_label="Estoy preparado",
+        )
 
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
+    share_url = sender_pack_url_from_order(order)
+    recipient_name = safe_text(order.get("recipient_name") or "esa persona")
 
+    original_source_html = ""
+    if original_video_url:
+        original_source_html = f'<source src="{safe_attr(original_video_url)}" type="video/mp4">'
 
-            <div class="card" style="position:relative;z-index:2;">
-                <div class="logo">ETERNA</div>
-                <h1>Tu ETERNA todavía está volviendo.</h1>
-                <p>La reacción aún se está guardando. Vuelve a abrir este enlace en unos segundos.</p>
-            </div>
-        </body>
-        </html>
-        """)
-
-    reaction_url_safe = safe_attr(reaction_url)
-    reaction_video_type_safe = safe_attr(reaction_video_type or "video/mp4")
-    original_video_url_safe = safe_attr(original_video_url)
-    original_video_type_safe = safe_attr(guess_media_type_from_url(original_video_url) if original_video_url else "video/mp4")
-    sender_status = "Tu ETERNA ha vuelto."
-
-    body_content = f"""
-    <main class="sender-experience" style="position:relative;z-index:2;" aria-label="Sender pack ETERNA">
-
-        <section id="return-intro" class="sender-stage active" data-stage="intro">
-            <div class="brand-mark">ETERNA</div>
-            <div class="intro-card">
-                <div class="gold-dot"></div>
-                <h1>Ya ha pasado.</h1>
-                <p>Respira. Tu ETERNA ha vuelto.</p>
-                <button id="open-return" class="gold-button" type="button">Estoy preparado</button>
-            </div>
-        </section>
-
-        <section id="return-bridge" class="sender-stage" data-stage="bridge">
-            <div class="brand-mark">ETERNA</div>
-            <div class="bridge-copy sender-return-sequence">
-                <p class="seq-line seq-one">Sube el volumen.</p>
-                <h2 class="seq-line seq-two">Tu ETERNA<br>ha vuelto.</h2>
-                <span class="seq-line seq-three">Aquí vuelve lo que provocaste.</span>
-            </div>
-        </section>
-
-        <section id="return-view" class="return-view" data-stage="view">
-            <div class="top-bar">
-                <div>
-                    <div class="eyebrow">ETERNA</div>
-                    <h1>{sender_status}</h1>
-                </div>
-                <button id="eterna-replay-all" class="small-action" type="button">Volver a sentirlo</button>
-            </div>
-
-            <div class="call-shell">
-                <div class="call-glow"></div>
-
-                <video
-                    id="eterna-bg-reaction"
-                    muted
-                    defaultMuted
-                    playsinline
-                    webkit-playsinline
-                    preload="metadata"
-                    aria-hidden="true"
-                    disablepictureinpicture
-                    controlslist="nodownload noplaybackrate noremoteplayback"
-                >
-                    <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
-                </video>
-
-                <div class="reaction-frame">
-                    <video
-                        id="eterna-reaction-player"
-                        muted
-                        defaultMuted
-                        playsinline
-                        webkit-playsinline
-                        preload="metadata"
-                        disablepictureinpicture
-                        controlslist="nodownload noplaybackrate noremoteplayback"
-                    >
-                        <source src="{reaction_url_safe}" type="{reaction_video_type_safe}">
-                    </video>
-                </div>
-
-                <div class="mini-original-wrap" aria-label="Vídeo original enviado">
-                    <div class="mini-label">Lo que enviaste</div>
-                    <video
-                        id="eterna-mini-original"
-                        playsinline
-                        webkit-playsinline
-                        preload="auto"
-                        disablepictureinpicture
-                        controlslist="nodownload noplaybackrate noremoteplayback"
-                    >
-                        <source src="{original_video_url_safe}" type="{original_video_type_safe}">
-                    </video>
-                </div>
-            </div>
-
-            <div class="return-copy">
-                <h2>Aquí vuelve lo que provocaste.</h2>
-                
-            </div>
-
-            <div id="eterna-final-signature" class="final-signature" aria-hidden="true">
-                <div class="final-orb">♥</div>
-                <div class="final-brand">ETERNA</div>
-                <h2>Lo que das se queda en alguien.</h2>
-                <p>Y un día, vuelve.</p>
-            </div>
-
-            <div id="eterna-share-wrap" class="share-wrap" style="display:none;">
-                <button id="eterna-replay-final" class="replay-emotion-button" type="button">▶️ Volver a ver esta emoción</button>
-                <a class="download-link" href="{reaction_url_safe}" download>Guardar este regreso</a>
-                <button id="eterna-share-reaction" class="share-button" type="button">Compartir su reacción</button>
-                <div class="share-note">
-                    Comparte solo la emoción.<br>
-                    El vídeo original se queda aquí para no romper la magia de ETERNA.
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <script>
-    (function () {{
-        const intro = document.getElementById("return-intro");
-        const bridge = document.getElementById("return-bridge");
-        const view = document.getElementById("return-view");
-        const openBtn = document.getElementById("open-return");
-
-        const reaction = document.getElementById("eterna-reaction-player");
-        const bgReaction = document.getElementById("eterna-bg-reaction");
-        const mini = document.getElementById("eterna-mini-original");
-        const replay = document.getElementById("eterna-replay-all");
-        const finalSignature = document.getElementById("eterna-final-signature");
-        const shareWrap = document.getElementById("eterna-share-wrap");
-        const shareBtn = document.getElementById("eterna-share-reaction");
-        const replayFinal = document.getElementById("eterna-replay-final");
-        const cinematicSceneLayers = Array.from(document.querySelectorAll("[data-eterna-cinematic-scene]"));
-
-        let eternaMuteGuard = null;
-
-        function forceReactionSilent() {{
-            // REGLA SAGRADA ETERNA SENDER PACK:
-            // La reacción se ve, pero JAMÁS se escucha.
-            // El único sonido permitido es el del vídeo original generado por el video engine.
-            try {{
-                [reaction, bgReaction].forEach((player) => {{
-                    if (!player) return;
-                    player.muted = true;
-                    player.defaultMuted = true;
-                    player.volume = 0;
-                    player.setAttribute("muted", "");
-                    player.setAttribute("defaultMuted", "");
-                    player.removeAttribute("controls");
-                    player.controls = false;
-                }});
-            }} catch (e) {{}}
-        }}
-
-        function forceEngineAudioOn() {{
-            try {{
-                if (!mini) return;
-                mini.muted = false;
-                mini.defaultMuted = false;
-                mini.volume = 0.95;
-                mini.removeAttribute("muted");
-                mini.removeAttribute("defaultMuted");
-                mini.removeAttribute("controls");
-                mini.controls = false;
-            }} catch (e) {{}}
-        }}
-
-        function enforceSenderPackAudioPolicy() {{
-            forceReactionSilent();
-            forceEngineAudioOn();
-        }}
-
-        function startMuteGuard() {{
-            try {{ if (eternaMuteGuard) window.clearInterval(eternaMuteGuard); }} catch (e) {{}}
-            enforceSenderPackAudioPolicy();
-            eternaMuteGuard = window.setInterval(enforceSenderPackAudioPolicy, 350);
-        }}
-
-        function stopMuteGuard() {{
-            try {{ if (eternaMuteGuard) window.clearInterval(eternaMuteGuard); }} catch (e) {{}}
-            eternaMuteGuard = null;
-            forceReactionSilent();
-        }}
-
-        forceReactionSilent();
-
-        function senderCleanVideoModeOn() {{
-            try {{
-                document.body.classList.add("sender-video-clean-mode");
-                cinematicSceneLayers.forEach((el) => {{ el.style.display = "none"; }});
-            }} catch (e) {{}}
-        }}
-
-        function senderCleanVideoModeOff() {{
-            try {{
-                cinematicSceneLayers.forEach((el) => {{ el.style.display = ""; }});
-                document.body.classList.remove("sender-video-clean-mode");
-            }} catch (e) {{}}
-        }}
-
-        function stopDecorativeVideo() {{
-            try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
-        }}
-
-        function showView() {{
-            if (intro) intro.classList.remove("active");
-            if (bridge) bridge.classList.remove("active");
-            if (view) view.classList.add("active");
-            document.body.classList.add("return-started");
-            playAllFromStart();
-        }}
-
-        function openReturn() {{
-            if (intro) intro.classList.remove("active");
-            if (bridge) bridge.classList.add("active");
-            window.setTimeout(showView, 7200);
-        }}
-
-        function syncMini() {{
-            if (!reaction || !mini) return;
-            try {{
-                const reactionTime = reaction.currentTime || 0;
-                const miniTime = mini.currentTime || 0;
-                const diff = Math.abs(miniTime - reactionTime);
-                if (diff > 0.30) mini.currentTime = reactionTime;
-            }} catch (e) {{}}
-        }}
-
-        function syncBackground() {{
-            if (!reaction || !bgReaction) return;
-            try {{
-                const diff = Math.abs((bgReaction.currentTime || 0) - (reaction.currentTime || 0));
-                if (diff > 0.35) bgReaction.currentTime = reaction.currentTime || 0;
-            }} catch (e) {{}}
-        }}
-
-        function preparePlayersForStart() {{
-            try {{ if (reaction) reaction.currentTime = 0; }} catch (e) {{}}
-            try {{ if (bgReaction) bgReaction.currentTime = 0; }} catch (e) {{}}
-            try {{ if (mini) mini.currentTime = 0; }} catch (e) {{}}
-
-            enforceSenderPackAudioPolicy();
-        }}
-
-        function playAllFromStart() {{
-            enforceSenderPackAudioPolicy();
-            if (shareWrap) shareWrap.style.display = "none";
-            if (replay) replay.style.display = "";
-            if (finalSignature) {{
-                finalSignature.classList.remove("active");
-                finalSignature.setAttribute("aria-hidden", "true");
-            }}
-
-            if (reaction) reaction.controls = false;
-            if (mini) mini.controls = false;
-
-            preparePlayersForStart();
-
-            senderCleanVideoModeOn();
-            stopDecorativeVideo();
-            startMuteGuard();
-            if (mini) mini.play().catch(() => {{}});
-            if (reaction) reaction.play().catch(() => {{}});
-        }}
-
-        function replayEmotionFreely() {{
-            enforceSenderPackAudioPolicy();
-            if (shareWrap) shareWrap.style.display = "grid";
-            if (replay) replay.style.display = "";
-            if (finalSignature) {{
-                finalSignature.classList.remove("active");
-                finalSignature.setAttribute("aria-hidden", "true");
-            }}
-
-            if (reaction) reaction.controls = false;
-            if (mini) mini.controls = false;
-
-            preparePlayersForStart();
-
-            senderCleanVideoModeOn();
-            stopDecorativeVideo();
-            startMuteGuard();
-            if (mini) mini.play().catch(() => {{}});
-            if (reaction) reaction.play().catch(() => {{}});
-        }}
-
-        if (openBtn) {{
-            openBtn.addEventListener("click", openReturn);
-            openBtn.addEventListener("touchend", function (ev) {{ ev.preventDefault(); openReturn(); }}, {{ passive:false }});
-        }}
-
-        if (reaction) {{
-            reaction.addEventListener("loadedmetadata", function () {{ forceReactionSilent(); syncMini(); syncBackground(); }});
-            reaction.addEventListener("play", function () {{
-                startMuteGuard();
-                forceReactionSilent();
-                syncMini();
-                syncBackground();
-                senderCleanVideoModeOn();
-                stopDecorativeVideo();
-                if (mini) mini.play().catch(() => {{}});
-            }});
-            reaction.addEventListener("pause", function () {{
-                forceReactionSilent();
-                if (bgReaction) bgReaction.pause();
-                if (mini) mini.pause();
-            }});
-            reaction.addEventListener("seeking", function () {{ enforceSenderPackAudioPolicy(); syncMini(); syncBackground(); }});
-            reaction.addEventListener("volumechange", function () {{ forceReactionSilent(); }});
-            if (bgReaction) bgReaction.addEventListener("volumechange", function () {{ forceReactionSilent(); }});
-            if (mini) mini.addEventListener("volumechange", function () {{ forceEngineAudioOn(); }});
-            reaction.addEventListener("timeupdate", function () {{ enforceSenderPackAudioPolicy(); syncMini(); syncBackground(); }});
-            reaction.addEventListener("ended", function () {{
-                try {{ if (bgReaction) bgReaction.pause(); }} catch (e) {{}}
-                try {{ if (mini) mini.pause(); }} catch (e) {{}}
-                stopMuteGuard();
-                senderCleanVideoModeOff();
-                if (finalSignature) {{
-                    finalSignature.classList.add("active");
-                    finalSignature.setAttribute("aria-hidden", "false");
-                }}
-                if (replay) replay.style.display = "none";
-                if (shareWrap) shareWrap.style.display = "grid";
-            }});
-        }}
-
-        if (replay) {{
-            replay.addEventListener("click", playAllFromStart);
-        }}
-
-        if (replayFinal) {{
-            replayFinal.addEventListener("click", replayEmotionFreely);
-        }}
-
-        if (shareBtn) {{
-            shareBtn.addEventListener("click", async function () {{
-                const url = "{reaction_url_safe}";
-                if (navigator.share) {{
-                    try {{
-                        await navigator.share({{
-                            title: "ETERNA",
-                            text: "Esto es lo que provoca ETERNA.",
-                            url: url
-                        }});
-                        return;
-                    }} catch (e) {{}}
-                }}
-                try {{
-                    await navigator.clipboard.writeText(url);
-                    alert("Link copiado");
-                }} catch (e) {{
-                    alert(url);
-                }}
-            }});
-        }}
-    }})();
-    </script>
-    """
+    reaction_source_html = f'<source src="{safe_attr(reaction_url)}" type="{safe_attr(reaction_video_type)}">'
+    sender_bg = eterna_asset("sender_pack")
 
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <title>ETERNA</title>
-        <style>
-            * {{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }}
-            html, body {{ margin:0; min-height:100%; background:#020817; color:#fff; }}
-            body {{
-                font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;
-                overflow-x:hidden;
-                background:
-                    radial-gradient(circle at 50% -10%, rgba(218,177,83,.22), transparent 38%),
-                    radial-gradient(circle at 10% 85%, rgba(160,116,43,.13), transparent 38%),
-                    #020817;
-            }}
-            body.sender-video-clean-mode [data-eterna-cinematic-scene],
-            body.sender-video-clean-mode #eterna-bg-reaction,
-            body.sender-video-clean-mode .call-glow {{
-                display:none !important;
-            }}
-            body.sender-video-clean-mode .reaction-frame {{
-                animation:none !important;
-                box-shadow:0 20px 70px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.055) inset !important;
-            }}
-            .sender-experience {{
-                min-height:100svh;
-                width:100%;
-                position:relative;
-                overflow:hidden;
-            }}
-            .brand-mark {{
-                position:fixed;
-                top:calc(env(safe-area-inset-top) + 22px);
-                left:0;
-                right:0;
-                text-align:center;
-                letter-spacing:.42em;
-                font-size:12px;
-                font-weight:800;
-                color:#d7b46a;
-                z-index:20;
-                text-shadow:0 0 24px rgba(215,180,106,.32);
-            }}
-            .sender-stage {{
-                position:fixed;
-                inset:0;
-                min-height:100svh;
-                display:none;
-                align-items:center;
-                justify-content:center;
-                padding:32px 22px;
-                text-align:center;
-                background:
-                    radial-gradient(circle at 50% 18%, rgba(219,180,91,.18), transparent 34%),
-                    linear-gradient(180deg, #070503 0%, #010101 100%);
-                z-index:10;
-            }}
-            .sender-stage.active {{ display:flex; }}
-            .intro-card {{
-                width:100%;
-                max-width:430px;
-                padding:42px 26px 30px;
-                border-radius:34px;
-                background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-                border:1px solid rgba(215,180,106,.25);
-                box-shadow:0 38px 110px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.09);
-            }}
-            .gold-dot {{
-                width:54px;
-                height:54px;
-                margin:0 auto 24px;
-                border-radius:50%;
-                background:radial-gradient(circle, #f3d78f 0%, #b8872f 55%, rgba(184,135,47,.2) 100%);
-                box-shadow:0 0 46px rgba(218,177,83,.46);
-            }}
-            .intro-card h1 {{
-                margin:0 0 10px;
-                font-size:46px;
-                line-height:1.02;
-                letter-spacing:-.05em;
-            }}
-            .intro-card p {{
-                margin:0 0 32px;
-                font-size:21px;
-                line-height:1.48;
-                color:rgba(255,255,255,.78);
-            }}
-            .gold-button {{
-                width:100%;
-                border:none;
-                border-radius:999px;
-                padding:20px 24px;
-                color:#14100a;
-                background:linear-gradient(135deg, #fff0ba, #d2a649 45%, #a56f22);
-                font-size:20px;
-                font-weight:850;
-                box-shadow:0 16px 44px rgba(198,148,55,.32);
-                cursor:pointer;
-            }}
-            .bridge-copy {{
-                animation:bridgeIn 1.6s ease both;
-            }}
-            .bridge-copy p {{
-                margin:0 0 16px;
-                font-size:28px;
-                color:rgba(255,255,255,.70);
-            }}
-            .bridge-copy h2 {{
-                margin:0;
-                font-size:43px;
-                line-height:1.08;
-                letter-spacing:-.045em;
-                color:#fff;
-                text-shadow:0 0 34px rgba(215,180,106,.24);
-                animation:bridgePhrase 2.2s ease both .55s;
-            }}
-            .bridge-copy span {{
-                display:block;
-                margin-top:26px;
-                font-size:20px;
-                color:#d7b46a;
-                opacity:0;
-                animation:bridgePhrase 2.2s ease both 2.8s;
-            }}
-            @keyframes bridgePhrase {{
-                from {{ opacity:0; transform:translateY(14px); filter:blur(8px); }}
-                to {{ opacity:1; transform:translateY(0); filter:blur(0); }}
-            }}
-            @keyframes bridgeIn {{
-                from {{ opacity:0; transform:translateY(18px) scale(.98); filter:blur(10px); }}
-                to {{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); }}
-            }}
-
-            .sender-return-sequence {{
-                width:100%;
-                max-width:420px;
-                min-height:260px;
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                justify-content:center;
-                gap:16px;
-            }}
-            .seq-line {{
-                opacity:0;
-                filter:blur(12px);
-                transform:translateY(18px);
-                animation:senderBlackFade 2.4s ease both;
-            }}
-            .seq-one {{ animation-delay:.25s; }}
-            .seq-two {{ animation-delay:2.05s; }}
-            .seq-three {{ animation-delay:4.25s; }}
-            @keyframes senderBlackFade {{
-                0% {{ opacity:0; transform:translateY(18px); filter:blur(14px); }}
-                38% {{ opacity:1; transform:translateY(0); filter:blur(0); }}
-                78% {{ opacity:1; transform:translateY(0); filter:blur(0); }}
-                100% {{ opacity:0; transform:translateY(-8px); filter:blur(10px); }}
-            }}
-
-            .return-view {{
-                min-height:100svh;
-                height:100svh;
-                display:none;
-                position:relative;
-                overflow:hidden;
-                background:#020202;
-            }}
-            .return-view.active {{ display:block; }}
-            .top-bar {{
-                position:absolute;
-                top:calc(env(safe-area-inset-top) + 18px);
-                left:20px;
-                right:20px;
-                display:flex;
-                align-items:flex-start;
-                justify-content:space-between;
-                gap:12px;
-                padding:0;
-                z-index:8;
-                pointer-events:none;
-            }}
-            .top-bar .small-action {{ pointer-events:auto; }}
-            .eyebrow {{
-                font-size:11px;
-                letter-spacing:.34em;
-                color:#d7b46a;
-                font-weight:800;
-                margin-bottom:7px;
-            }}
-            .top-bar h1 {{
-                margin:0;
-                font-size:25px;
-                line-height:1.05;
-                letter-spacing:-.045em;
-                text-shadow:0 8px 28px rgba(0,0,0,.9);
-            }}
-            .small-action {{
-                border:1px solid rgba(215,180,106,.26);
-                background:rgba(0,0,0,.34);
-                color:#fff;
-                border-radius:999px;
-                padding:10px 12px;
-                font-size:12px;
-                font-weight:750;
-                white-space:nowrap;
-                backdrop-filter:blur(14px);
-                -webkit-backdrop-filter:blur(14px);
-            }}
-            .call-shell {{
-                position:absolute;
-                inset:0;
-                overflow:hidden;
-                background:#020202;
-                border:0;
-                border-radius:0;
-                box-shadow:none;
-            }}
-            .call-glow {{
-                position:absolute;
-                inset:-30%;
-                background:
-                    radial-gradient(circle at 50% 22%, rgba(218,177,83,.22), transparent 30%),
-                    radial-gradient(circle at 80% 80%, rgba(150,102,35,.12), transparent 36%);
-                pointer-events:none;
-                z-index:1;
-            }}
-            #eterna-bg-reaction {{
-                position:absolute;
-                inset:0;
-                width:100%;
-                height:100%;
-                object-fit:cover;
-                filter:blur(36px) brightness(.25) saturate(1.08);
-                transform:scale(1.22);
-                opacity:.76;
-                z-index:0;
-            }}
-            .reaction-frame {{
-                position:absolute;
-                inset:76px 10px 104px 10px;
-                z-index:2;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                border-radius:34px;
-                overflow:hidden;
-                background:#000;
-                border:1px solid rgba(255,224,154,.28);
-                box-shadow:
-                    0 26px 100px rgba(0,0,0,.76),
-                    0 0 0 1px rgba(255,255,255,.075) inset,
-                    0 0 34px rgba(215,180,106,.18),
-                    0 0 88px rgba(215,180,106,.11);
-                animation:eternaFrameBreath 9.5s ease-in-out infinite;
-            }}
-            .reaction-frame::after {{
-                content:"";
-                position:absolute;
-                inset:0;
-                z-index:3;
-                pointer-events:none;
-                border-radius:34px;
-                background:
-                    linear-gradient(120deg, rgba(255,255,255,.16), transparent 18%, transparent 72%, rgba(255,224,154,.10)),
-                    radial-gradient(circle at 50% 0%, rgba(255,224,154,.16), transparent 38%);
-                mix-blend-mode:screen;
-                opacity:.62;
-            }}
-            @keyframes eternaFrameBreath {{
-                0%,100% {{ box-shadow:0 26px 100px rgba(0,0,0,.76), 0 0 0 1px rgba(255,255,255,.075) inset, 0 0 28px rgba(215,180,106,.13), 0 0 70px rgba(215,180,106,.08); }}
-                50% {{ box-shadow:0 30px 112px rgba(0,0,0,.82), 0 0 0 1px rgba(255,255,255,.095) inset, 0 0 46px rgba(215,180,106,.25), 0 0 105px rgba(215,180,106,.14); }}
-            }}
-            #eterna-reaction-player {{
-                width:100%;
-                height:100%;
-                object-fit:cover;
-                background:#000;
-                animation:eternaSlowZoom 46s ease-in-out forwards;
-            }}
-            @keyframes eternaSlowZoom {{
-                from {{ transform:scale(1.000); }}
-                to {{ transform:scale(1.055); }}
-            }}
-            .mini-original-wrap {{
-                position:absolute;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 104px);
-                z-index:5;
-                width:min(27vw, 112px);
-                aspect-ratio:9/16;
-                border-radius:22px;
-                overflow:hidden;
-                background:#000;
-                border:1px solid rgba(255,226,158,.32);
-                box-shadow:0 18px 58px rgba(0,0,0,.72), 0 0 28px rgba(215,180,106,.15);
-            }}
-            .mini-label {{
-                position:absolute;
-                left:7px;
-                top:7px;
-                z-index:2;
-                padding:5px 7px;
-                border-radius:999px;
-                background:rgba(0,0,0,.54);
-                color:rgba(255,255,255,.86);
-                font-size:9px;
-                font-weight:800;
-                letter-spacing:.02em;
-            }}
-            #eterna-mini-original {{
-                width:100%;
-                height:100%;
-                object-fit:cover;
-                display:block;
-                background:#000;
-            }}
-            .return-copy {{
-                position:absolute;
-                left:18px;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 30px);
-                z-index:6;
-                text-align:center;
-                padding:0;
-                pointer-events:none;
-            }}
-            .return-copy h2 {{
-                margin:0;
-                font-size:20px;
-                line-height:1.14;
-                letter-spacing:-.035em;
-                text-shadow:0 8px 28px rgba(0,0,0,.9);
-                color:rgba(255,255,255,.86);
-            }}
-            .return-copy p {{ display:none; }}
-            .final-signature {{
-                position:absolute;
-                inset:0;
-                z-index:9;
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                justify-content:center;
-                padding:30px 24px calc(env(safe-area-inset-bottom) + 120px);
-                text-align:center;
-                background:
-                    radial-gradient(circle at 50% 30%, rgba(218,177,83,.20), transparent 34%),
-                    linear-gradient(180deg, rgba(0,0,0,.76), #020202 72%);
-                opacity:0;
-                pointer-events:none;
-                filter:blur(10px);
-                transform:scale(1.015);
-                transition:opacity 1.4s ease, filter 1.4s ease, transform 1.4s ease;
-            }}
-            .final-signature.active {{
-                opacity:1;
-                pointer-events:auto;
-                filter:blur(0);
-                transform:scale(1);
-            }}
-            .final-orb {{
-                width:82px;
-                height:82px;
-                border-radius:50%;
-                display:grid;
-                place-items:center;
-                margin-bottom:22px;
-                color:#f3d78f;
-                font-size:46px;
-                line-height:1;
-                border:1px solid rgba(255,224,154,.26);
-                background:radial-gradient(circle, rgba(243,215,143,.20), rgba(184,135,47,.08) 58%, rgba(0,0,0,.25));
-                box-shadow:0 0 58px rgba(218,177,83,.28);
-                animation:finalOrbBreath 7s ease-in-out infinite;
-            }}
-            .final-brand {{
-                letter-spacing:.42em;
-                font-size:12px;
-                font-weight:850;
-                color:#d7b46a;
-                margin-bottom:20px;
-                text-shadow:0 0 22px rgba(215,180,106,.26);
-            }}
-            .final-signature h2 {{
-                margin:0;
-                font-size:34px;
-                line-height:1.08;
-                letter-spacing:-.055em;
-                max-width:340px;
-            }}
-            .final-signature p {{
-                margin:16px 0 0;
-                font-size:22px;
-                color:rgba(255,255,255,.72);
-            }}
-            .final-replay {{
-                margin-top:30px;
-                border:1px solid rgba(255,224,154,.30);
-                color:#fff;
-                background:rgba(255,255,255,.08);
-                border-radius:999px;
-                padding:14px 18px;
-                font-size:15px;
-                font-weight:800;
-                backdrop-filter:blur(16px);
-                -webkit-backdrop-filter:blur(16px);
-                box-shadow:0 18px 54px rgba(0,0,0,.42), 0 0 30px rgba(215,180,106,.10);
-            }}
-            @keyframes finalOrbBreath {{
-                0%,100% {{ transform:scale(1); opacity:.92; }}
-                50% {{ transform:scale(1.045); opacity:1; }}
-            }}
-
-            .share-wrap {{
-                position:absolute;
-                left:18px;
-                right:18px;
-                bottom:calc(env(safe-area-inset-bottom) + 22px);
-                z-index:10;
-                display:grid;
-                gap:10px;
-                padding:0;
-            }}
-            .download-link, .share-button, .replay-emotion-button {{
-                display:block;
-                width:100%;
-                border:none;
-                border-radius:999px;
-                padding:16px 18px;
-                text-align:center;
-                font-size:17px;
-                font-weight:800;
-                text-decoration:none;
-            }}
-            .replay-emotion-button {{
-                background:linear-gradient(135deg, #d8b76d, #fff0b8);
-                color:#070503;
-                border:1px solid rgba(255,228,164,.72);
-                box-shadow:0 18px 54px rgba(215,180,106,.24), inset 0 1px 0 rgba(255,255,255,.42);
-            }}
-            .replay-emotion-button:focus,
-            .replay-emotion-button:active {{
-                outline:none;
-                box-shadow:0 0 0 3px rgba(216,183,109,.22), 0 18px 54px rgba(215,180,106,.24);
-            }}
-            .download-link {{ background:linear-gradient(135deg,#fff0bd,#d2a649 45%,#a56f22); color:#120b02; }}
-            .share-button {{ background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.12); }}
-            .share-note {{
-                font-size:12px;
-                line-height:1.45;
-                text-align:center;
-                color:rgba(255,255,255,.45);
-            }}
-            @media (min-width: 760px) {{
-                body {{
-                    display:flex;
-                    justify-content:center;
-                    background:#020817;
-                }}
-                .sender-experience {{
-                    max-width:430px;
-                    min-height:100svh;
-                    box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 0 80px rgba(0,0,0,.7);
-                }}
-                .return-view {{
-                    width:430px;
-                    max-width:430px;
-                    margin:0 auto;
-                }}
-                .sender-stage {{
-                    left:50%;
-                    width:430px;
-                    transform:translateX(-50%);
-                }}
-            }}
-        </style>
-    </head>
-    <body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-        {body_content}
-    </body>
-    </html>
-    """)
-
-
-# =========================================================
-# VIDEO / FILE ROUTES
-# =========================================================
-
-@app.get("/video/input/{order_id}/{slot_name}")
-def get_video_input(order_id: str, slot_name: str):
-    path = get_photo_asset_path(order_id, slot_name)
-    if not path:
-        raise HTTPException(status_code=404, detail="Imagen no encontrada")
-
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Archivo no encontrado")
-
-    return FileResponse(
-        path,
-        media_type=guess_media_type_from_path(path),
-        filename=os.path.basename(path),
-    )
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Aquí vuelve lo que provocaste</title>
+<meta name="theme-color" content="#02050a">
+<style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}}
+body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}}
+.shell{{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:#02050a;box-shadow:0 0 80px rgba(0,0,0,.72)}}
+.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:0;user-select:none;pointer-events:none}}
+.glow{{position:absolute;inset:-10%;z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 32%,rgba(50,190,255,.20),transparent 25%),radial-gradient(circle at 74% 45%,rgba(255,174,56,.18),transparent 18%);mix-blend-mode:screen;animation:breath 6s ease-in-out infinite}}
+@keyframes breath{{0%,100%{{opacity:.45;transform:scale(1)}}50%{{opacity:.9;transform:scale(1.045)}}}}
+.main-video{{position:absolute;z-index:3;left:11.8%;right:11.8%;top:22.8%;height:36.3%;border-radius:24px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.70);box-shadow:0 0 26px rgba(34,174,255,.42)}}
+.main-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
+.reaction-video{{position:absolute;z-index:4;right:12.8%;top:40.1%;width:24.5%;height:23.2%;border-radius:18px;overflow:hidden;background:#000;border:2px solid rgba(255,198,91,.92);box-shadow:0 0 22px rgba(255,180,58,.58)}}
+.reaction-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
+.real-hit{{position:absolute;z-index:8;border:0;background:rgba(255,255,255,.001);cursor:pointer;text-indent:-9999px;overflow:hidden;border-radius:999px}}
+.hit-replay{{left:12%;right:12%;bottom:26.8%;height:6.9%}}
+.hit-save{{left:12%;right:12%;bottom:18.7%;height:6.9%}}
+.hit-share{{left:12%;right:12%;bottom:10.6%;height:6.9%}}
+.hit-back{{right:7.5%;top:6.5%;width:31%;height:5.5%}}
+.pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
+@keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
+.floating{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#5bd9ff;box-shadow:0 0 16px #5bd9ff;animation:floatUp 7.5s linear infinite;opacity:0;pointer-events:none}}
+.f1{{left:17%;bottom:13%;animation-delay:.2s}}.f2{{left:83%;bottom:22%;animation-delay:1.5s;background:#ffd98c;box-shadow:0 0 16px #ffd98c}}.f3{{left:47%;bottom:7%;animation-delay:3.1s}}.f4{{left:70%;bottom:58%;animation-delay:4.6s}}
+@keyframes floatUp{{0%{{transform:translateY(0) scale(.6);opacity:0}}15%{{opacity:.95}}100%{{transform:translateY(-180px) scale(1.1);opacity:0}}}}
+.toast{{position:absolute;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center}}
+.toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
+@media (min-width:760px){{body{{overflow:auto}}.shell{{width:min(100vw,520px);height:100svh;height:100dvh}}}}
+@media (max-width:420px){{.main-video{{border-radius:20px}}.reaction-video{{border-radius:15px}}}}
+</style>
+</head>
+<body>
+<main class="shell" aria-label="Sender Pack ETERNA">
+    <img class="bg" src="{safe_attr(sender_bg)}" alt="Aquí vuelve lo que provocaste">
+    <div class="glow" aria-hidden="true"></div>
+    <i class="floating f1"></i><i class="floating f2"></i><i class="floating f3"></i><i class="floating f4"></i>
+    <section class="main-video" aria-label="Lo que enviaste">
+        <video id="originalVideo" controls playsinline preload="metadata">
+            {original_source_html}
+        </video>
+    </section>
+    <section class="reaction-video" aria-label="Su reacción">
+        <video id="reactionVideo" muted playsinline preload="metadata">
+            {reaction_source_html}
+        </video>
+    </section>
+    <div class="pulse" aria-hidden="true"></div>
+    <button class="real-hit hit-replay" id="replayBtn" type="button">Volver a ver esta emoción</button>
+    <a class="real-hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download>Guardar este regreso</a>
+    <button class="real-hit hit-share" id="shareBtn" type="button">Compartir su reacción</button>
+    <a class="real-hit hit-back" href="/sender/{safe_attr(sender_token)}">Volver a sentirlo</a>
+    <div class="toast" id="toast">Listo</div>
+</main>
+<script>
+(function(){{
+  const original = document.getElementById('originalVideo');
+  const reaction = document.getElementById('reactionVideo');
+  const replay = document.getElementById('replayBtn');
+  const share = document.getElementById('shareBtn');
+  const toast = document.getElementById('toast');
+  function showToast(msg){{
+    if(!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1800);
+  }}
+  function restartBoth(){{
+    try{{ original.currentTime = 0; }}catch(e){{}}
+    try{{ reaction.currentTime = 0; }}catch(e){{}}
+    try{{ original.play(); }}catch(e){{}}
+    try{{ reaction.play(); }}catch(e){{}}
+  }}
+  replay && replay.addEventListener('click', restartBoth);
+  original && original.addEventListener('play', function(){{ try{{ reaction.play(); }}catch(e){{}} }});
+  original && original.addEventListener('pause', function(){{ try{{ reaction.pause(); }}catch(e){{}} }});
+  original && original.addEventListener('ended', function(){{ try{{ reaction.pause(); }}catch(e){{}} }});
+  share && share.addEventListener('click', async function(){{
+    const data = {{title:'ETERNA', text:'Aquí vuelve lo que provocaste.', url:{json.dumps(share_url)}}};
+    try {{
+      if (navigator.share) {{ await navigator.share(data); }}
+      else {{ await navigator.clipboard.writeText(data.url); showToast('Enlace copiado'); }}
+    }} catch(e) {{}}
+  }});
+}})();
+</script>
+</body>
+</html>
+""")
 
 
 @app.get("/video/sender-reaction/{sender_token}")
