@@ -5877,6 +5877,399 @@ def pedido(request: Request, recipient_token: str):
 # START EXPERIENCE (FIX CRÍTICO)
 # =========================================================
 
+
+
+# =========================================================
+# RUTAS CRÍTICAS RECUPERADAS DEL SALVAVIDAS
+# Stripe webhook + callback video engine + resumen
+# =========================================================
+
+@app.post("/stripe/webhook")
+@app.post("/stripe/webhook/")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            STRIPE_WEBHOOK_SECRET,
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma inválida")
+
+    if event["type"] != "checkout.session.completed":
+        return {"status": "ignored"}
+
+    session = event["data"]["object"]
+
+    order_id = (session.get("client_reference_id") or "").strip()
+    if not order_id:
+        metadata = session.get("metadata", {}) or {}
+        order_id = (metadata.get("order_id") or "").strip()
+
+    if not order_id:
+        stripe_session_id = (session.get("id") or "").strip()
+        if stripe_session_id:
+            try:
+                order = get_order_by_stripe_session_id(stripe_session_id)
+                order_id = order["id"]
+            except Exception:
+                order_id = ""
+
+    print("📦 order_id webhook:", order_id)
+
+    if not order_id:
+        raise HTTPException(status_code=400, detail="order_id missing")
+
+    try:
+        order = get_order_by_id(order_id)
+        log_info("💳 PAGO RECIBIDO EN STRIPE")
+        log_info("🆔 Order ID", order_id)
+        log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
+        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+        log_info("🎬 Estado", "voy a preparar el vídeo")
+    except Exception:
+        raise HTTPException(status_code=404, detail="order_not_found")
+
+    try:
+        stripe_payment_status = (session.get("payment_status") or "paid").strip()
+        stripe_payment_intent_id = (session.get("payment_intent") or "").strip() or None
+        stripe_session_id = (session.get("id") or "").strip() or None
+
+        update_order(
+            order_id,
+            paid=1,
+            stripe_session_id=stripe_session_id or order.get("stripe_session_id"),
+            stripe_payment_status=stripe_payment_status,
+            stripe_payment_intent_id=stripe_payment_intent_id,
+            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+            delivery_locked=1 if (order.get("delivery_mode") or "instant") == "scheduled" else 0,
+        )
+
+        order = get_order_by_id(order_id)
+
+        if original_video_ready(order):
+            return {
+                "status": "ok",
+                "reason": "video_already_ready",
+                "order_id": order_id,
+            }
+
+        if render_request_already_marked(order):
+            return {
+                "status": "ok",
+                "reason": "render_already_requested",
+                "order_id": order_id,
+            }
+
+        phrases = [
+            (order.get("phrase_1") or "").strip(),
+            (order.get("phrase_2") or "").strip(),
+            (order.get("phrase_3") or "").strip(),
+        ]
+
+        try:
+            mark_video_render_requested(order_id)
+            data = trigger_video_engine(order_id, phrases)
+            print("✅ Video engine aceptó el trabajo:", data)
+        except Exception as e:
+            clear_video_render_requested(order_id)
+            log_error("webhook_video_engine", e)
+            raise HTTPException(status_code=500, detail=f"video_engine_error: {e}")
+
+        return {"status": "ok", "reason": "render_requested"}
+
+    except Exception as e:
+        log_error("webhook", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/internal/video-ready")
+@app.post("/internal/video-ready/")
+async def internal_video_ready(request: Request):
+    incoming_secret = (request.headers.get("X-Video-Engine-Secret") or "").strip()
+
+    if VIDEO_READY_CALLBACK_SECRET:
+        if incoming_secret != VIDEO_READY_CALLBACK_SECRET:
+            return JSONResponse(
+                status_code=403,
+                content={"status": "error", "reason": "invalid_secret"},
+            )
+
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "reason": "invalid_json"},
+        )
+
+    order_id = (data.get("order_id") or "").strip()
+    video_url = (data.get("video_url") or "").strip()
+
+    print("🎬 CALLBACK VIDEO READY")
+    print("🎬 order_id:", order_id)
+    print("🎬 video_url:", video_url)
+
+    if not order_id or not video_url:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "reason": "missing_data"},
+        )
+
+    try:
+        order = get_order_by_id(order_id)
+        insert_order_event(order_id, "video_ready", "ok", "El motor de vídeo avisó de que el vídeo está listo", {"video_url": video_url})
+
+        if not bool(order.get("paid")):
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "reason": "order_not_paid"},
+            )
+
+        existing_video = (order.get("experience_video_url") or "").strip()
+
+        if existing_video:
+            print("⚠️ Callback duplicado ignorado")
+            return JSONResponse({
+                "status": "ok",
+                "reason": "video_already_saved",
+                "order_id": order_id,
+                "video_url": existing_video,
+                "recipient_url": recipient_experience_url_from_order(order),
+                "sender_url": sender_pack_url_from_order(order),
+            })
+
+        permanent_video_url = preserve_remote_video_to_r2(order, video_url, kind="original")
+        final_video_url = permanent_video_url or video_url
+
+        update_order(
+            order_id,
+            experience_video_url=final_video_url,
+            video_render_requested=0,
+        )
+
+        video_url = final_video_url
+
+        log_human("VÍDEO LISTO", f"🆔 Pedido: {order_id}", "✅ El vídeo ya está preparado", f"🔗 Link experiencia: {recipient_experience_url_from_order(order)}")
+        log_info("✅ VÍDEO LISTO")
+        log_info("🆔 Order ID", order_id)
+        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+        log_info("🔗 Link experiencia", recipient_experience_url_from_order(order))
+        log_info("🔗 Link regalante", sender_pack_url_from_order(order))
+
+        if not asset_exists(order_id, "rendered_video", video_url):
+            insert_asset(
+                order_id=order_id,
+                asset_type="rendered_video",
+                file_url=video_url,
+                storage_provider="video_engine",
+            )
+
+        order = get_order_by_id(order_id)
+
+        print("🔥 CALLBACK VIDEO READY 🔥")
+        print("🎬 VIDEO GENERADO")
+        print("➡️ Recipient experience:", recipient_experience_url_from_order(order))
+        print("➡️ Sender pack:", sender_pack_url_from_order(order))
+        print("🕒 delivery_mode:", order.get("delivery_mode"))
+        print("🕒 scheduled_delivery_at:", order.get("scheduled_delivery_at"))
+        print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
+        print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
+        print("📦 delivery_sent:", bool(order.get("delivery_sent")))
+
+        # SOLO AQUÍ intentamos enviar al regalado,
+        # porque aquí ya sabemos que el vídeo real existe.
+        delivery_result = process_scheduled_recipient_delivery(order_id)
+        print("📩 Resultado entrega programada callback:", delivery_result)
+
+        return JSONResponse({
+            "status": "ok",
+            "order_id": order_id,
+            "video_url": video_url,
+            "recipient_url": recipient_experience_url_from_order(order),
+            "sender_url": sender_pack_url_from_order(order),
+            "delivery_mode": order.get("delivery_mode"),
+            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
+            "scheduled_delivery_display": scheduled_delivery_display(order),
+            "delivery_result": delivery_result,
+        })
+
+    except Exception as e:
+        log_error("internal_video_ready", e)
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "reason": str(e)},
+        )
+
+
+# =========================================================
+# POST PAYMENT
+# =========================================================
+
+@app.get("/resumen/{order_id}", response_class=HTMLResponse)
+def resumen(order_id: str):
+    order = get_order_by_id(order_id)
+    is_paid = bool(order.get("paid"))
+    video_ready = original_video_ready(order)
+    delivery_mode = (order.get("delivery_mode") or "instant").strip()
+    delivery_display = safe_text(scheduled_delivery_display(order))
+
+    if not is_paid:
+        title = "Confirmando pago"
+        subtitle = "Todavía estamos esperando la confirmación segura."
+        detail = "No cierres esta pantalla. ETERNA actualizará el estado cuando el pago quede confirmado."
+    elif video_ready and delivery_mode == "scheduled":
+        title = "Pago confirmado"
+        subtitle = "Tu ETERNA ya está guardada."
+        detail = f"Llegará en el momento elegido: {delivery_display}."
+    elif video_ready:
+        title = "Pago confirmado"
+        subtitle = "Tu ETERNA ya está lista."
+        detail = "La entregaremos automáticamente en cuanto termine el proceso seguro."
+    else:
+        title = "Pago confirmado"
+        subtitle = "Tu ETERNA ya está en marcha."
+        detail = "Estamos preparando algo que pronto llegará a alguien importante."
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago confirmado — ETERNA</title>
+    <style>
+        * {{ box-sizing: border-box; }}
+        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
+        body {{
+            min-height: 100vh;
+            color: #fff7e6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
+                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
+                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
+        }}
+        .card {{
+            width: min(100%, 760px);
+            border-radius: 34px;
+            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
+            border: 1px solid rgba(255,220,150,.20);
+            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
+            backdrop-filter: blur(12px);
+        }}
+        .brand {{ color: #ffd98b; letter-spacing: .38em; padding-left: .38em; text-transform: uppercase; font-size: 14px; font-weight: 900; margin-bottom: 18px; }}
+        .mark {{ width: 88px; height: 88px; margin: 0 auto 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,220,150,.28); color: #ffd98b; font-size: 44px; text-shadow: 0 0 26px rgba(255,204,111,.62); background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%); }}
+        h1 {{ margin: 0; font-size: clamp(42px, 8vw, 76px); line-height: .98; color: #fff7e6; text-shadow: 0 0 30px rgba(255,255,255,.20); }}
+        .subtitle {{ margin: 24px auto 0; max-width: 620px; font-size: clamp(20px, 3.8vw, 28px); line-height: 1.5; font-weight: 800; color: rgba(255,255,255,.92); }}
+        .detail {{ margin: 18px auto 0; max-width: 620px; font-size: clamp(16px, 2.7vw, 20px); line-height: 1.7; color: rgba(255,255,255,.68); }}
+        .divider {{ width: min(320px, 78%); margin: 34px auto 0; display: flex; align-items: center; gap: 16px; color: #f0c46c; }}
+        .divider::before, .divider::after {{ content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, rgba(240,196,108,.72)); }}
+        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
+        .promise {{ margin: 28px auto 0; max-width: 560px; font-size: clamp(23px, 4.6vw, 38px); line-height: 1.45; font-family: Georgia, "Times New Roman", serif; color: #fff7e6; }}
+        .promise span {{ display: inline-block; color: #ffd98b; text-shadow: 0 0 24px rgba(255,204,111,.34); }}
+        .btn {{ margin: 38px auto 0; width: min(100%, 440px); min-height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%); color: #150d03; text-decoration: none; font-size: 15px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55); }}
+        .soft {{ margin-top: 16px; color: rgba(255,255,255,.42); font-size: 13px; line-height: 1.5; }}
+    </style>
+</head>
+<body>
+
+
+<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
+    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
+    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
+                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
+                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
+                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
+                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
+                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
+            </linearGradient>
+            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="0.25"/>
+            </filter>
+            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="14" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+        </defs>
+        <g opacity=".95">
+            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
+            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
+            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
+        </g>
+        <g opacity=".96">
+            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
+            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
+            <g filter="url(#wingTexture)" opacity=".96">
+                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
+                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
+                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
+                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
+            </g>
+        </g>
+        <g opacity=".86">
+            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
+            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
+        </g>
+        <g opacity=".62" filter="url(#softGlow)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
+            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
+            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
+            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
+        </g>
+    </svg>
+    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
+</div>
+
+
+    <main class="card" style="position:relative;z-index:2;">
+        <div class="brand">ETERNA</div>
+        <div class="mark">♥</div>
+        <h1>{title}</h1>
+        <div class="subtitle">{subtitle}</div>
+        <div class="detail">{detail}</div>
+        <div class="divider">♥</div>
+        <div class="promise">
+            Lo que das<br>
+            se queda en alguien.<br>
+            <span>Y un día, vuelve.</span>
+        </div>
+        <a class="btn" href="/crear">Volver al inicio</a>
+        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
+    </main>
+</body>
+</html>
+    """)
+
+
+# =========================================================
+# START EXPERIENCE (FIX CRÍTICO)
+# =========================================================
+
 @app.post("/start-experience")
 async def start_experience(recipient_token: str = Form(...)):
     try:
