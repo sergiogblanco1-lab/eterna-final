@@ -37,6 +37,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 import boto3
 import requests
@@ -174,35 +175,102 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v3-clean-screens-senderpack"
+ETERNA_VISUAL_VERSION = "eterna-visual-v4-rc12-assets-magia"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
+ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
+# Pantallas canónicas aprobadas.
+# Las claves que no tienen PNG definitivo se redirigen a una pantalla buena para evitar 404.
 ETERNA_SCREEN_ASSETS = {
-    "landing": "landing-main-v1.png",
+    "landing": "home-mobile-v1.png",
     "home_mobile": "home-mobile-v1.png",
-    "checkout_loading": "checkout-loading-v1.png",
+    "checkout_loading": "uploading-reaction-v1.png",
     "payment_success": "payment-success-v1.png",
     "intro_shhh": "intro-shhh-v1.png",
     "sound_check": "sound-check-v1.png",
     "quiet_place": "quiet-place-v1.png",
     "terms_acceptance": "terms-acceptance-v1.png",
-    "consent_recording": "consent-recording-v1.png",
+    "consent_recording": "terms-acceptance-v1.png",
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
-    "gift_ready": "gift-ready-v1.png",
+    "gift_ready": "uploading-reaction-v1.png",
     "sender_pack_entry": "sender-pack-entry-v1.png",
     "sender_pack": "sender-pack-v1.png",
     "viral_cta": "viral-cta-v1.png",
     "error": "error-v1.png",
 }
 
+def _eterna_asset_key(value: str) -> str:
+    raw = str(value or "").strip().replace("\\", "/").split("/")[-1].split("?")[0].strip().lower()
+    raw = raw.replace("%20", " ")
+    raw = raw.replace(".png.png", ".png")
+    raw = raw.replace(".jpg.jpg", ".jpg")
+    raw = raw.replace(".jpeg.jpeg", ".jpeg")
+    raw = raw.replace(".webp.webp", ".webp")
+    for suffix in [" (copy)", " copy", " copia", " - copia"]:
+        raw = raw.replace(suffix, "")
+    for n in range(1, 10):
+        raw = raw.replace(f" ({n})", "")
+    for ext in [".png", ".jpg", ".jpeg", ".webp"]:
+        while raw.endswith(ext):
+            raw = raw[:-len(ext)]
+    return raw.strip(" ._- ")
+
+def resolve_eterna_asset_filename(name: str, fallback: str = "error-v1.png") -> str:
+    """
+    Resuelve assets aunque Windows haya dejado nombres tipo:
+    payment-success-v1.png (2).png, payment-success-v1.png.png o home-mobile-v1.png (2).
+    Así evitamos pantallas negras e iconos rotos en producción.
+    """
+    requested = str(name or "").strip() or fallback
+    if requested in ETERNA_SCREEN_ASSETS:
+        requested = ETERNA_SCREEN_ASSETS[requested]
+
+    direct_candidates = [requested]
+    if not requested.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+        direct_candidates.append(requested + ".png")
+
+    # variantes típicas de Windows / copias / doble extensión
+    expanded = []
+    for c in direct_candidates:
+        expanded.extend([
+            c,
+            c.replace(".png", ".png.png"),
+            c.replace(".png", " (2).png"),
+            c + " (2)",
+            c + ".png" if not c.endswith(".png") else c,
+        ])
+
+    for candidate in expanded:
+        p = ETERNA_BG_FOLDER / candidate
+        if p.exists() and p.is_file():
+            return p.name
+
+    requested_key = _eterna_asset_key(requested)
+    try:
+        if ETERNA_BG_FOLDER.exists():
+            for p in ETERNA_BG_FOLDER.iterdir():
+                if p.is_file() and _eterna_asset_key(p.name) == requested_key:
+                    return p.name
+    except Exception as e:
+        print("⚠️ No pude resolver asset ETERNA:", requested, e)
+
+    return requested
+
 def eterna_asset(name: str) -> str:
-    clean = str(name or "").strip().replace(".png", ".png")
-    if clean in ETERNA_SCREEN_ASSETS:
-        clean = ETERNA_SCREEN_ASSETS[clean]
-    return f"{ETERNA_BG_BASE}/{clean}?v={ETERNA_VISUAL_VERSION}"
+    clean = resolve_eterna_asset_filename(name)
+    return f"/eterna-assets/{quote(clean)}?v={quote(ETERNA_VISUAL_VERSION)}"
 
-
+@app.get("/eterna-assets/{asset_name}")
+def eterna_asset_file(asset_name: str):
+    filename = resolve_eterna_asset_filename(asset_name)
+    path = ETERNA_BG_FOLDER / filename
+    if not path.exists() or not path.is_file():
+        fallback = ETERNA_BG_FOLDER / resolve_eterna_asset_filename("error-v1.png")
+        if fallback.exists() and fallback.is_file():
+            return FileResponse(str(fallback), media_type="image/png")
+        raise HTTPException(status_code=404, detail=f"Asset no encontrado: {asset_name}")
+    return FileResponse(str(path), media_type=guess_media_type_from_path(str(path)))
 
 
 # =========================================================
@@ -238,8 +306,8 @@ def render_eterna_image_screen(
     if clean_fallback in ETERNA_SCREEN_ASSETS:
         clean_fallback = ETERNA_SCREEN_ASSETS[clean_fallback]
 
-    image_src = f"{ETERNA_BG_BASE}/{safe_attr(clean_image)}?v={safe_attr(ETERNA_VISUAL_VERSION)}"
-    fallback_src = f"{ETERNA_BG_BASE}/{safe_attr(clean_fallback)}?v={safe_attr(ETERNA_VISUAL_VERSION)}"
+    image_src = safe_attr(eterna_asset(clean_image))
+    fallback_src = safe_attr(eterna_asset(clean_fallback))
 
     note_html = ""
     if extra_note:
@@ -3096,8 +3164,8 @@ def checkout_loading(order_id: Optional[str] = None):
             log_error("checkout_loading_retrieve_stripe_session", e)
 
     return render_eterna_image_screen(
-        image_name="checkout-loading-v1.png",
-        fallback_image_name="checkout-loading-v1.png",
+        image_name="checkout_loading",
+        fallback_image_name="uploading_reaction",
         overlay_kind="loading",
         redirect_url=target_url,
         redirect_delay_ms=900,
@@ -5529,7 +5597,7 @@ def home(request: Request):
 <body>
     <main class="screen">
         <section class="phone" aria-label="ETERNA">
-            <img class="hero-img" src="/static/eterna-cinematic/backgrounds/landing-main-v1.png?v=eterna-home-blue-live-1" alt="ETERNA" onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex';">
+            <img class="hero-img" src="/eterna-assets/home_mobile?v=eterna-home-rc12" alt="ETERNA" onerror="this.style.display='none'; document.getElementById('fallback-home').style.display='flex';">
             <div class="butterfly-halo" aria-hidden="true"></div>
             <div class="water-shine" aria-hidden="true"></div>
             <i class="sparkle s1" aria-hidden="true"></i>
@@ -8158,7 +8226,7 @@ def sender_pack(sender_token: str, view: str = ""):
             reaction_video_type = guess_media_type_from_path(local_path)
 
     if not reaction_url:
-        return render_visual_screen(
+        return render_eterna_image_screen(
             image_name="sender_pack_entry",
             fallback_image_name="sender_pack_entry",
             button_url=f"/sender/{sender_token}",
@@ -8168,7 +8236,7 @@ def sender_pack(sender_token: str, view: str = ""):
 
     # Pantalla 1: entrada emocional cinematográfica.
     if str(view or "").strip().lower() not in {"pack", "open", "1"}:
-        return render_visual_screen(
+        return render_eterna_image_screen(
             image_name="sender_pack_entry",
             fallback_image_name="sender_pack_entry",
             button_url=f"/sender/{sender_token}?view=pack",
@@ -8201,15 +8269,15 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 .bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;user-select:none;pointer-events:none}}
 .glow{{position:absolute;inset:-10%;z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 32%,rgba(50,190,255,.20),transparent 25%),radial-gradient(circle at 74% 45%,rgba(255,174,56,.18),transparent 18%);mix-blend-mode:screen;animation:breath 6s ease-in-out infinite}}
 @keyframes breath{{0%,100%{{opacity:.45;transform:scale(1)}}50%{{opacity:.9;transform:scale(1.045)}}}}
-.main-video{{position:absolute;z-index:3;left:10.7%;right:10.7%;top:24.2%;height:32.8%;border-radius:24px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.70);box-shadow:0 0 26px rgba(34,174,255,.42)}}
+.main-video{{position:absolute;z-index:3;left:8.6%;right:8.6%;top:23.4%;height:35.7%;border-radius:26px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.82);box-shadow:0 0 28px rgba(34,174,255,.48), inset 0 0 18px rgba(60,190,255,.16)}}
 .main-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
-.reaction-video{{position:absolute;z-index:4;right:11.8%;top:43.2%;width:26.5%;height:21.8%;border-radius:18px;overflow:hidden;background:#000;border:2px solid rgba(255,198,91,.92);box-shadow:0 0 22px rgba(255,180,58,.58)}}
+.reaction-video{{position:absolute;z-index:4;right:9.6%;top:43.8%;width:29.5%;height:21.5%;border-radius:19px;overflow:hidden;background:#000;border:2px solid rgba(255,198,91,.96);box-shadow:0 0 24px rgba(255,180,58,.68), inset 0 0 14px rgba(255,210,120,.18)}}
 .reaction-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
 .real-hit{{position:absolute;z-index:8;border:0;background:rgba(255,255,255,.001);cursor:pointer;text-indent:-9999px;overflow:hidden;border-radius:999px}}
-.hit-replay{{left:10.5%;right:10.5%;bottom:26.2%;height:7.2%}}
-.hit-save{{left:10.5%;right:10.5%;bottom:18.0%;height:7.2%}}
-.hit-share{{left:10.5%;right:10.5%;bottom:9.8%;height:7.2%}}
-.hit-back{{right:6.4%;top:5.8%;width:34%;height:6.2%}}
+.hit-replay{{left:9.2%;right:9.2%;bottom:25.2%;height:7.1%}}
+.hit-save{{left:9.2%;right:9.2%;bottom:17.1%;height:7.1%}}
+.hit-share{{left:9.2%;right:9.2%;bottom:9.1%;height:7.1%}}
+.hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
 .pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
 @keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
 .floating{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#5bd9ff;box-shadow:0 0 16px #5bd9ff;animation:floatUp 7.5s linear infinite;opacity:0;pointer-events:none}}
