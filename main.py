@@ -1,3 +1,9 @@
+# =========================================================
+# RC13 FLUJO SALVAVIDAS + PANTALLAS LIMPIAS
+# Base: RC12 visual. Objetivo: recuperar experiencia completa
+# y evitar pantallas negras por assets mal nombrados.
+# =========================================================
+
 
 # =========================================================
 # ETERNA PATCH - SENDER PACK CINEMATIC FLOW
@@ -175,7 +181,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v4-rc12-assets-magia"
+ETERNA_VISUAL_VERSION = "eterna-visual-v5-rc13-fixed-flujo-salvavidas"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
