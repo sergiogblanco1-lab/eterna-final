@@ -8,7 +8,6 @@ print("🔥 GLOBAL PHONE READY VERSION 🔥")
 print("🔥 DELIVERY FEE +2€ ONLY IF SCHEDULED VERSION 🔥")
 print("🔥 NO SHARE ORIGINAL VIDEO VERSION 🔥")
 print("🔥 VIRAL BLOCK + CALLBACK IDEMPOTENT + SMS/WHATSAPP HARDENED VERSION 🔥")
-print("🦋 ETERNA PRODUCCION V1 RC5 - PANTALLAS NUEVAS INTEGRADAS SOBRE SALVAVIDAS 🦋")
 print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
@@ -160,6 +159,169 @@ if STRIPE_SECRET_KEY:
 
 app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 
+
+# =========================================================
+# ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
+# =========================================================
+
+ETERNA_VISUAL_VERSION = "eterna-visual-v1-locked"
+ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
+
+ETERNA_SCREEN_ASSETS = {
+    "landing": "landing-main-v1.png",
+    "home_mobile": "home-mobile-v1.png",
+    "checkout_loading": "checkout-loading-v1.png",
+    "payment_success": "payment-success-v1.png",
+    "intro_shhh": "intro-shhh-v1.png",
+    "sound_check": "sound-check-v1.png",
+    "quiet_place": "quiet-place-v1.png",
+    "terms_acceptance": "terms-acceptance-v1.png",
+    "consent_recording": "consent-recording-v1.png",
+    "uploading_reaction": "uploading-reaction-v1.png",
+    "experience_complete": "experience-complete-v1.png",
+    "gift_ready": "gift-ready-v1.png",
+    "sender_pack_entry": "sender-pack-entry-v1.png",
+    "sender_pack": "sender-pack-v1.png",
+    "viral_cta": "viral-cta-v1.png",
+    "error": "error-v1.png",
+}
+
+def eterna_asset(name: str) -> str:
+    clean = str(name or "").strip().replace(".png", ".png")
+    if clean in ETERNA_SCREEN_ASSETS:
+        clean = ETERNA_SCREEN_ASSETS[clean]
+    return f"{ETERNA_BG_BASE}/{clean}?v={ETERNA_VISUAL_VERSION}"
+
+
+
+
+# =========================================================
+# ETERNA VISUAL V1 — RENDER ÚNICO LIMPIO Y BLINDADO
+# =========================================================
+
+def render_eterna_image_screen(
+    image_name: str,
+    fallback_image_name: str = "error-v1.png",
+    overlay_kind: str = "soft",
+    redirect_url: str = "",
+    redirect_delay_ms: int = 0,
+    button_url: str = "",
+    button_label: str = "",
+    extra_note: str = "",
+    form_action: str = "",
+    form_method: str = "post",
+    hidden_fields: Optional[dict] = None,
+    button_id: str = "",
+    extra_script: str = "",
+) -> HTMLResponse:
+    """
+    Renderizador único para pantallas V1 de ETERNA.
+    Solo cambia capa visual. No toca Stripe, Twilio, SMS, webhook, DB, Video Engine,
+    reacción, workers ni sender pack dinámico.
+    """
+    clean_image = str(image_name or "").strip() or "error-v1.png"
+    clean_fallback = str(fallback_image_name or "error-v1.png").strip() or "error-v1.png"
+
+    # Permite usar clave lógica (intro_shhh) o nombre real (intro-shhh-v1.png).
+    if clean_image in ETERNA_SCREEN_ASSETS:
+        clean_image = ETERNA_SCREEN_ASSETS[clean_image]
+    if clean_fallback in ETERNA_SCREEN_ASSETS:
+        clean_fallback = ETERNA_SCREEN_ASSETS[clean_fallback]
+
+    image_src = f"{ETERNA_BG_BASE}/{safe_attr(clean_image)}?v={safe_attr(ETERNA_VISUAL_VERSION)}"
+    fallback_src = f"{ETERNA_BG_BASE}/{safe_attr(clean_fallback)}?v={safe_attr(ETERNA_VISUAL_VERSION)}"
+
+    note_html = ""
+    if extra_note:
+        note_html = f'<div class="extra-note">{safe_text(extra_note)}</div>'
+
+    redirect_script = ""
+    if redirect_url and int(redirect_delay_ms or 0) > 0:
+        redirect_script = f"""
+        <script>
+        window.setTimeout(function() {{ window.location.href = {json.dumps(str(redirect_url))}; }}, {int(redirect_delay_ms)});
+        </script>
+        """
+
+    action_html = ""
+    if form_action:
+        hidden_html = ""
+        for k, v in (hidden_fields or {}).items():
+            hidden_html += f'<input type="hidden" name="{safe_attr(k)}" value="{safe_attr(v)}">'
+        btn_id = f' id="{safe_attr(button_id)}"' if button_id else ""
+        action_html = f"""
+        <form class="visual-action-form" method="{safe_attr(form_method or 'post')}" action="{safe_attr(form_action)}">
+            {hidden_html}
+            <button class="real-button"{btn_id} type="submit">{safe_text(button_label or 'Continuar')}</button>
+        </form>
+        """
+    elif button_url and button_label:
+        action_html = f'<a class="real-button" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>'
+
+    loading_layers = ""
+    if overlay_kind == "loading":
+        loading_layers = """
+        <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
+        <div class="flying-butterfly b1" aria-hidden="true">🦋</div>
+        <div class="blue-orb" aria-hidden="true"></div>
+        """
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<meta name="theme-color" content="#02050a">
+<style>
+    * {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
+    html, body {{ margin:0; min-height:100%; background:#02050a; }}
+    body {{ min-height:100vh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
+    .screen {{ position:relative; min-height:100vh; display:flex; justify-content:center; background:#02050a; overflow:hidden; }}
+    .phone {{ position:relative; width:100%; max-width:430px; min-height:100vh; overflow:hidden; background:#02050a; }}
+    .img {{ width:100%; max-width:430px; min-height:100vh; height:auto; display:block; object-fit:cover; object-position:top center; background:#02050a; }}
+    .soft-halo {{ position:absolute; left:67%; top:22%; width:240px; height:240px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(34,178,255,.26), rgba(34,178,255,.07) 42%, transparent 70%); filter:blur(16px); opacity:.56; mix-blend-mode:screen; animation:haloBreath 5.6s ease-in-out infinite; pointer-events:none; }}
+    .particle {{ position:absolute; width:5px; height:5px; border-radius:50%; background:#62d3ff; box-shadow:0 0 16px #62d3ff, 0 0 34px rgba(98,211,255,.55); opacity:0; animation:floatUp 9s linear infinite; pointer-events:none; }}
+    .particle.gold {{ background:#ffd98b; box-shadow:0 0 16px #ffd98b,0 0 34px rgba(255,217,139,.48); }}
+    .p1 {{ left:18%; bottom:16%; animation-delay:.4s; }} .p2 {{ left:78%; bottom:18%; animation-delay:1.6s; transform:scale(.72); }} .p3 {{ left:54%; bottom:9%; animation-delay:3.8s; transform:scale(.55); }} .p4 {{ left:38%; bottom:36%; animation-delay:5.2s; transform:scale(.6); }}
+    @keyframes haloBreath {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.94); opacity:.34; }} 50% {{ transform:translate(-50%,-50%) scale(1.10); opacity:.72; }} }}
+    @keyframes floatUp {{ 0% {{ transform:translateY(0) scale(.6); opacity:0; }} 14% {{ opacity:.95; }} 72% {{ opacity:.36; }} 100% {{ transform:translateY(-150px) scale(1.1); opacity:0; }} }}
+    .magic-line {{ position:absolute; left:8%; right:8%; top:56.8%; height:16px; border-radius:999px; pointer-events:none; overflow:hidden; mix-blend-mode:screen; }}
+    .magic-line span {{ position:absolute; left:0; top:6px; height:4px; width:100%; border-radius:999px; background:linear-gradient(90deg, rgba(47,195,255,.08), rgba(52,204,255,.95), rgba(255,216,132,.32), rgba(255,216,132,.08)); box-shadow:0 0 18px rgba(45,195,255,.78),0 0 42px rgba(45,195,255,.42); animation:linePulse 1.7s ease-in-out infinite; }}
+    .magic-line b {{ position:absolute; top:1px; left:-12%; width:66px; height:14px; border-radius:999px; background:radial-gradient(circle, #fff, #5cd6ff 33%, transparent 70%); filter:blur(1px); box-shadow:0 0 24px #5cd6ff; animation:runner 2.2s cubic-bezier(.42,0,.24,1) infinite; }}
+    .flying-butterfly {{ position:absolute; left:8%; top:54.7%; font-size:28px; filter:drop-shadow(0 0 10px #4bd2ff) drop-shadow(0 0 24px rgba(40,188,255,.9)); animation:butterflyRun 2.2s cubic-bezier(.42,0,.24,1) infinite; pointer-events:none; }}
+    .blue-orb {{ position:absolute; left:50%; top:56.8%; width:58px; height:58px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(255,255,255,.95), rgba(56,205,255,.62) 24%, transparent 72%); filter:blur(2px); opacity:.88; mix-blend-mode:screen; animation:orbBeat 1.6s ease-in-out infinite; pointer-events:none; }}
+    @keyframes linePulse {{ 0%,100% {{ opacity:.70; filter:brightness(1); }} 50% {{ opacity:1; filter:brightness(1.55); }} }}
+    @keyframes runner {{ 0% {{ left:-12%; opacity:0; }} 10% {{ opacity:1; }} 82% {{ opacity:1; }} 100% {{ left:104%; opacity:0; }} }}
+    @keyframes butterflyRun {{ 0% {{ left:8%; transform:translateY(2px) scale(.82); opacity:.2; }} 12% {{ opacity:1; }} 50% {{ transform:translateY(-10px) scale(1.02); }} 88% {{ opacity:1; }} 100% {{ left:86%; transform:translateY(3px) scale(.9); opacity:0; }} }}
+    @keyframes orbBeat {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.48; }} 50% {{ transform:translate(-50%,-50%) scale(1.16); opacity:.95; }} }}
+    .real-button {{ position:absolute; left:10.8%; right:10.8%; bottom:calc(env(safe-area-inset-bottom) + 68px); min-height:64px; border:0; border-radius:18px; display:block; z-index:8; color:transparent; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); cursor:pointer; }}
+    .visual-action-form {{ position:absolute; left:0; right:0; bottom:0; z-index:8; }}
+    .extra-note {{ position:absolute; left:8%; right:8%; bottom:calc(env(safe-area-inset-bottom) + 18px); z-index:7; text-align:center; color:rgba(255,245,220,.72); font-size:12px; line-height:1.35; text-shadow:0 0 14px rgba(0,0,0,.9); }}
+    .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
+</style>
+</head>
+<body>
+<main class="screen">
+    <section class="phone">
+        <img class="img" src="{image_src}" alt="ETERNA" onerror="this.onerror=null; this.src='{fallback_src}';">
+        <i class="particle p1" aria-hidden="true"></i>
+        <i class="particle p2" aria-hidden="true"></i>
+        <i class="particle p3" aria-hidden="true"></i>
+        <i class="particle gold p4" aria-hidden="true"></i>
+        <div class="soft-halo" aria-hidden="true"></div>
+        {loading_layers}
+        {action_html}
+        {note_html}
+        <section id="fallback-visual" class="fallback"><h1>ETERNA</h1><p>Estamos preparando tu experiencia.</p></section>
+    </section>
+</main>
+{redirect_script}
+{extra_script or ''}
+</body>
+</html>
+""")
 
 # =========================================================
 # LOG HUMANO ETERNA (ESPAÑOL)
@@ -2878,6 +3040,137 @@ async def create_order_and_redirect(
         raise HTTPException(status_code=500, detail=f"Error creando checkout Stripe: {e}")
 
     
+
+# =========================================================
+# CHECKOUT VISUAL V1 — RUTAS PUENTE BLINDADAS
+# =========================================================
+
+@app.get("/checkout-loading", response_class=HTMLResponse)
+def checkout_loading(order_id: Optional[str] = None):
+    """
+    Pantalla visual intermedia antes de Stripe.
+    No toca pago, webhook, SMS, video engine ni DB salvo leer el pedido.
+    Si falta order_id, vuelve a /crear para evitar error 422/500.
+    """
+    if not order_id:
+        return RedirectResponse(url="/crear", status_code=303)
+
+    try:
+        order = get_order_by_id(order_id)
+    except Exception:
+        return render_eterna_image_screen(
+            image_name="error-v1.png",
+            fallback_image_name="error-v1.png",
+            overlay_kind="soft",
+            button_url="/crear",
+            button_label="Volver a crear",
+            extra_note="No hemos podido encontrar este pedido.",
+        )
+
+    target_url = f"/checkout-exito/{order_id}"
+
+    if STRIPE_SECRET_KEY and (order.get("stripe_session_id") or "").strip():
+        try:
+            session = stripe.checkout.Session.retrieve(order.get("stripe_session_id"))
+            session_url = ""
+            try:
+                session_url = session.get("url") or ""
+            except Exception:
+                session_url = getattr(session, "url", "") or ""
+            if session_url:
+                target_url = session_url
+        except Exception as e:
+            log_error("checkout_loading_retrieve_stripe_session", e)
+
+    return render_eterna_image_screen(
+        image_name="checkout-loading-v1.png",
+        fallback_image_name="checkout-loading-v1.png",
+        overlay_kind="loading",
+        redirect_url=target_url,
+        redirect_delay_ms=1600,
+    )
+
+
+def render_checkout_success_visual(order: dict) -> HTMLResponse:
+    """
+    Pantalla de pago realizado. Visual únicamente.
+    No fuerza envío, no toca webhook y no modifica el estado del pedido.
+    """
+    return render_eterna_image_screen(
+        image_name="payment-success-v1.png",
+        fallback_image_name="payment-success-v1.png",
+        overlay_kind="soft",
+        button_url="/crear",
+        button_label="Crear otra ETERNA",
+        extra_note="Tu ETERNA ya está en marcha.",
+    )
+
+
+@app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
+def checkout_exito(order_id: str):
+    """
+    Landing posterior al pago. Stripe vuelve aquí tras pago correcto.
+    El webhook sigue siendo quien marca paid/render/SMS; esta ruta solo muestra pantalla.
+    """
+    try:
+        order = get_order_by_id(order_id)
+    except Exception:
+        return render_eterna_image_screen(
+            image_name="error-v1.png",
+            fallback_image_name="error-v1.png",
+            overlay_kind="soft",
+            button_url="/crear",
+            button_label="Volver a crear",
+            extra_note="No hemos podido encontrar este pedido.",
+        )
+    return render_checkout_success_visual(order)
+
+
+@app.get("/post-pago/{order_id}", response_class=HTMLResponse)
+def post_pago(order_id: str):
+    """
+    Compatibilidad para flujos antiguos o modo sin Stripe.
+    Centraliza la salida visual en checkout-exito para no duplicar pantallas.
+    """
+    try:
+        get_order_by_id(order_id)
+    except Exception:
+        return render_eterna_image_screen(
+            image_name="error-v1.png",
+            fallback_image_name="error-v1.png",
+            overlay_kind="soft",
+            button_url="/crear",
+            button_label="Volver a crear",
+            extra_note="No hemos podido encontrar este pedido.",
+        )
+    return RedirectResponse(url=f"/checkout-exito/{order_id}", status_code=303)
+
+
+@app.get("/viral-final/{recipient_token}", response_class=HTMLResponse)
+def viral_final_cta(recipient_token: str):
+    """
+    CTA viral final: destinatario -> nuevo regalante.
+    No se muestra al regalante y no toca la lógica crítica.
+    """
+    try:
+        get_order_by_recipient_token_or_404(recipient_token)
+    except Exception:
+        return render_eterna_image_screen(
+            image_name="error-v1.png",
+            fallback_image_name="error-v1.png",
+            overlay_kind="soft",
+            button_url="/crear",
+            button_label="Crear una ETERNA",
+            extra_note="Esta experiencia ya no está disponible.",
+        )
+    return render_eterna_image_screen(
+        image_name="viral-cta-v1.png",
+        fallback_image_name="viral-cta-v1.png",
+        overlay_kind="soft",
+        button_url="/crear",
+        button_label="Crear mi ETERNA",
+    )
+
 # =========================================================
 # FORM
 # =========================================================
@@ -5536,750 +5829,48 @@ def startup_event():
 
 @app.get("/pedido/{recipient_token}", response_class=HTMLResponse)
 def pedido(request: Request, recipient_token: str):
-    order = None
-
+    # Entrada del destinatario con pantallas visuales V1.
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
         insert_order_event(order["id"], "recipient_opened", "ok", "El destinatario abrió el enlace recibido")
-        log_info("🚪 DESTINATARIO HA ABIERTO ETERNA")
-        log_info("🆔 Order ID", order.get("id"))
-        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
-        log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
-        log_info("🎥 Vídeo listo", "sí" if original_video_ready(order) else "no")
     except Exception:
-        order = None
         log_info("🚪 ENTRADA ETERNA CON TOKEN INVÁLIDO", recipient_token)
-
-    # =========================================================
-    # TOKEN INVÁLIDO O PEDIDO NO ENCONTRADO
-    # =========================================================
-    if not order:
         return render_eterna_image_screen(
             image_name="error-v1.png",
             fallback_image_name="error-v1.png",
-            overlay_kind="soft",
             button_url="/",
             button_label="Volver al inicio",
         )
 
-    if original_video_ready(order) and delivery_is_unlocked(order):
-        experience_href = f"/guia/1/{safe_attr(recipient_token)}"
-        response = render_eterna_image_screen(
-            image_name="gift-ready-v1.png",
-            fallback_image_name="gift-ready-v1.png",
-            overlay_kind="soft",
-            button_url=experience_href,
-            button_label="Quiero recibir mi regalo",
-        )
-        attach_recipient_session_if_needed(order, request, response)
-        return response
-
-    refresh = '<meta http-equiv="refresh" content="8">' if not original_video_ready(order) else ""
-
-    html_page = f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-{refresh}
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA</title>
-<style>
-html, body {{
-    margin: 0;
-    min-height: 100%;
-    background: #000;
-}}
-body {{
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at top, rgba(59,130,246,0.16), transparent 34%),
-        linear-gradient(180deg, #020817 0%, #000000 58%, #020817 100%);
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 24px;
-}}
-.wrap {{
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-}}
-.brand {{
-    font-size: 13px;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.32);
-    margin-bottom: 26px;
-}}
-h1 {{
-    margin: 0 0 22px 0;
-    font-size: 64px;
-    line-height: 1.05;
-    font-weight: 700;
-}}
-.main {{
-    font-size: 24px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.90);
-}}
-.soft {{
-    margin-top: 24px;
-    font-size: 16px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.50);
-}}
-.actions {{
-    display: grid;
-    gap: 12px;
-    max-width: 420px;
-    margin: 34px auto 0 auto;
-}}
-.btn {{
-    display: block;
-    width: 100%;
-    padding: 18px 24px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #fff0bd 0%, #e4bd69 45%, #b9822f 100%);
-    color: #120b02;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 17px;
-    border: none;
-}}
-</style>
-</head>
-<body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <div class="wrap">
-        <div class="brand">ETERNA</div>
-        <h1>Hay algo para ti</h1>
-        <div class="main">
-            Alguien quiso dejarte un momento<br>
-            que no se olvida.
-        </div>
-        <div class="soft">
-            Cuando esté listo, entrarás aquí para vivirlo de verdad.
-        </div>
-        <div style="
-        margin-top:22px;
-        font-size:14px;
-        line-height:1.7;
-        color:rgba(255,255,255,0.55);
-        max-width:420px;
-        margin-left:auto;
-        margin-right:auto;
-">
-        Al continuar, aceptas que este momento sea guardado
-        y compartido únicamente con quien lo creó.
-    </div>
-        <div class="actions">
-            <a class="btn" href="/pedido/{safe_attr(recipient_token)}">Entrar</a>
-        </div>
-    </div>
-</body>
-</html>
-    """
-    return HTMLResponse(html_page)
-
-
-# =========================================================
-# CHECKOUT / WEBHOOK / CALLBACK
-# =========================================================
-
-
-def render_eterna_image_screen(
-    image_name: str,
-    fallback_image_name: str = "",
-    overlay_kind: str = "soft",
-    redirect_url: str = "",
-    redirect_delay_ms: int = 0,
-    button_url: str = "",
-    button_label: str = "",
-) -> HTMLResponse:
-    """Pantallas visuales ETERNA. Solo capa visual: no toca Stripe, Twilio ni Video Engine."""
-    image_src = f"/static/eterna-cinematic/backgrounds/{image_name}?v=eterna-visual-1"
-    fallback_src = f"/static/eterna-cinematic/backgrounds/{fallback_image_name}?v=eterna-visual-1" if fallback_image_name else ""
-    redirect_script = ""
-    if redirect_url and int(redirect_delay_ms or 0) > 0:
-        redirect_script = f"""
-        <script>
-            window.setTimeout(function() {{ window.location.href = {json.dumps(redirect_url)}; }}, {int(redirect_delay_ms)});
-        </script>
-        """
-    button_html = ""
-    if button_url and button_label:
-        button_html = f'<a class="real-button" href="{safe_attr(button_url)}">{safe_text(button_label)}</a>'
-    loading_layers = ""
-    if overlay_kind == "loading":
-        loading_layers = """
-        <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
-        <div class="flying-butterfly" aria-hidden="true">🦋</div>
-        <div class="blue-orb" aria-hidden="true"></div>
-        """
-    calm_layers = """
-        <i class="particle p1" aria-hidden="true"></i>
-        <i class="particle p2" aria-hidden="true"></i>
-        <i class="particle p3" aria-hidden="true"></i>
-        <i class="particle gold p4" aria-hidden="true"></i>
-        <div class="soft-halo" aria-hidden="true"></div>
-    """
-    if fallback_src:
-        onerror_attr = "this.onerror=null; this.src=" + json.dumps(fallback_src) + ";"
-    else:
-        onerror_attr = "this.style.display='none'; document.getElementById('fallback-visual').style.display='flex';"
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>ETERNA</title>
-    <meta name="theme-color" content="#02050a">
-    <style>
-        * {{ box-sizing:border-box; }}
-        html, body {{ margin:0; min-height:100%; background:#02050a; }}
-        body {{ min-height:100vh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
-        .screen {{ position:relative; min-height:100vh; display:flex; justify-content:center; background:#02050a; overflow:hidden; }}
-        .phone {{ position:relative; width:100%; max-width:430px; min-height:100vh; overflow:hidden; background:#02050a; }}
-        .img {{ width:100%; max-width:430px; min-height:100vh; height:auto; display:block; object-fit:cover; object-position:top center; background:#02050a; }}
-        .soft-halo {{ position:absolute; left:67%; top:22%; width:240px; height:240px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(34,178,255,.26), rgba(34,178,255,.07) 42%, transparent 70%); filter:blur(16px); opacity:.56; mix-blend-mode:screen; animation:haloBreath 5.6s ease-in-out infinite; pointer-events:none; }}
-        .particle {{ position:absolute; width:5px; height:5px; border-radius:50%; background:#62d3ff; box-shadow:0 0 16px #62d3ff, 0 0 34px rgba(98,211,255,.55); opacity:0; animation:floatUp 9s linear infinite; pointer-events:none; }}
-        .particle.gold {{ background:#ffd98b; box-shadow:0 0 16px #ffd98b,0 0 34px rgba(255,217,139,.48); }}
-        .p1 {{ left:18%; bottom:16%; animation-delay:.4s; }} .p2 {{ left:78%; bottom:18%; animation-delay:1.6s; transform:scale(.72); }} .p3 {{ left:54%; bottom:9%; animation-delay:3.8s; transform:scale(.55); }} .p4 {{ left:38%; bottom:36%; animation-delay:5.2s; transform:scale(.6); }}
-        @keyframes haloBreath {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.94); opacity:.34; }} 50% {{ transform:translate(-50%,-50%) scale(1.10); opacity:.72; }} }}
-        @keyframes floatUp {{ 0% {{ transform:translateY(0) scale(.6); opacity:0; }} 14% {{ opacity:.95; }} 72% {{ opacity:.36; }} 100% {{ transform:translateY(-150px) scale(1.1); opacity:0; }} }}
-        .magic-line {{ position:absolute; left:8%; right:8%; top:56.8%; height:16px; border-radius:999px; pointer-events:none; overflow:hidden; mix-blend-mode:screen; }}
-        .magic-line span {{ position:absolute; left:0; top:6px; height:4px; width:100%; border-radius:999px; background:linear-gradient(90deg, rgba(47,195,255,.08), rgba(52,204,255,.95), rgba(255,216,132,.32), rgba(255,216,132,.08)); box-shadow:0 0 18px rgba(45,195,255,.78),0 0 42px rgba(45,195,255,.42); animation:linePulse 1.7s ease-in-out infinite; }}
-        .magic-line b {{ position:absolute; top:1px; left:-12%; width:66px; height:14px; border-radius:999px; background:radial-gradient(circle, #fff, #5cd6ff 33%, transparent 70%); filter:blur(1px); box-shadow:0 0 24px #5cd6ff; animation:runner 2.2s cubic-bezier(.42,0,.24,1) infinite; }}
-        .flying-butterfly {{ position:absolute; left:8%; top:54.7%; font-size:28px; filter:drop-shadow(0 0 10px #4bd2ff) drop-shadow(0 0 24px rgba(40,188,255,.9)); animation:butterflyRun 2.2s cubic-bezier(.42,0,.24,1) infinite; pointer-events:none; }}
-        .blue-orb {{ position:absolute; left:50%; top:56.8%; width:58px; height:58px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(255,255,255,.95), rgba(56,205,255,.62) 24%, transparent 72%); filter:blur(2px); opacity:.88; mix-blend-mode:screen; animation:orbBeat 1.6s ease-in-out infinite; pointer-events:none; }}
-        @keyframes linePulse {{ 0%,100% {{ opacity:.70; filter:brightness(1); }} 50% {{ opacity:1; filter:brightness(1.55); }} }}
-        @keyframes runner {{ 0% {{ left:-12%; opacity:0; }} 10% {{ opacity:1; }} 82% {{ opacity:1; }} 100% {{ left:104%; opacity:0; }} }}
-        @keyframes butterflyRun {{ 0% {{ left:8%; transform:translateY(2px) scale(.82); opacity:.2; }} 12% {{ opacity:1; }} 50% {{ transform:translateY(-10px) scale(1.02); }} 88% {{ opacity:1; }} 100% {{ left:86%; transform:translateY(3px) scale(.9); opacity:0; }} }}
-        @keyframes orbBeat {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.48; }} 50% {{ transform:translate(-50%,-50%) scale(1.16); opacity:.95; }} }}
-        .real-button {{ position:absolute; left:10.8%; right:10.8%; bottom:calc(env(safe-area-inset-bottom) + 70px); min-height:62px; border-radius:18px; display:block; z-index:6; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); }}
-        .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
-    </style>
-</head>
-<body>
-    <main class="screen">
-        <section class="phone">
-            <img class="img" src="{image_src}" alt="ETERNA" onerror="{safe_attr(onerror_attr)}">
-            {calm_layers}
-            {loading_layers}
-            {button_html}
-            <section id="fallback-visual" class="fallback"><h1>ETERNA</h1><p>Estamos preparando tu experiencia.</p></section>
-        </section>
-    </main>
-    {redirect_script}
-</body>
-</html>
-    """)
-
-
-@app.get("/checkout-loading", response_class=HTMLResponse)
-def checkout_loading(order_id: Optional[str] = None):
-    if not order_id:
-        return RedirectResponse(url="/crear", status_code=303)
-    order = get_order_by_id(order_id)
-    target_url = f"/checkout-exito/{order_id}"
-    if STRIPE_SECRET_KEY and order.get("stripe_session_id"):
-        try:
-            session = stripe.checkout.Session.retrieve(order.get("stripe_session_id"))
-            if getattr(session, "url", None):
-                target_url = session.url
-        except Exception as e:
-            print("⚠️ No pude recuperar Stripe Checkout URL:", e)
-    return render_eterna_image_screen(
-        image_name="checkout-loading-v1.png",
-        fallback_image_name="checkout-loading-v1.png",
-        overlay_kind="loading",
-        redirect_url=target_url,
-        redirect_delay_ms=2600,
-    )
-
-
-def render_checkout_success_visual(order_id: str) -> HTMLResponse:
-    return render_eterna_image_screen(
-        image_name="payment-success-v1.png",
-        fallback_image_name="payment-success-v1.png",
-        overlay_kind="soft",
-        button_url="/crear",
-        button_label="Crear otra ETERNA",
-    )
-
-
-@app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
-def checkout_exito(order_id: str):
-    return render_checkout_success_visual(order_id)
-
-@app.get("/viral-final/{recipient_token}", response_class=HTMLResponse)
-def viral_final_cta(recipient_token: str):
-    # Pantalla viral posterior a la experiencia: destinatario -> nuevo regalante.
-    # No toca pagos, SMS, webhook, reaccion ni video engine.
-    get_order_by_recipient_token_or_404(recipient_token)
-    return render_eterna_image_screen(
-        image_name="viral-cta-v1.png",
-        fallback_image_name="viral-cta-v1.png",
-        overlay_kind="soft",
-        button_url="/crear",
-        button_label="Crear mi ETERNA",
-    )
-
-
-
-@app.post("/stripe/webhook")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-
-    if not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            STRIPE_WEBHOOK_SECRET,
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Payload inválido")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Firma inválida")
-
-    if event["type"] != "checkout.session.completed":
-        return {"status": "ignored"}
-
-    session = event["data"]["object"]
-
-    order_id = (session.get("client_reference_id") or "").strip()
-    if not order_id:
-        metadata = session.get("metadata", {}) or {}
-        order_id = (metadata.get("order_id") or "").strip()
-
-    if not order_id:
-        stripe_session_id = (session.get("id") or "").strip()
-        if stripe_session_id:
-            try:
-                order = get_order_by_stripe_session_id(stripe_session_id)
-                order_id = order["id"]
-            except Exception:
-                order_id = ""
-
-    print("📦 order_id webhook:", order_id)
-
-    if not order_id:
-        raise HTTPException(status_code=400, detail="order_id missing")
-
-    try:
-        order = get_order_by_id(order_id)
-        log_info("💳 PAGO RECIBIDO EN STRIPE")
-        log_info("🆔 Order ID", order_id)
-        log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
-        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
-        log_info("🎬 Estado", "voy a preparar el vídeo")
-    except Exception:
-        raise HTTPException(status_code=404, detail="order_not_found")
-
-    try:
-        stripe_payment_status = (session.get("payment_status") or "paid").strip()
-        stripe_payment_intent_id = (session.get("payment_intent") or "").strip() or None
-        stripe_session_id = (session.get("id") or "").strip() or None
-
-        update_order(
-            order_id,
-            paid=1,
-            stripe_session_id=stripe_session_id or order.get("stripe_session_id"),
-            stripe_payment_status=stripe_payment_status,
-            stripe_payment_intent_id=stripe_payment_intent_id,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-            delivery_locked=1 if (order.get("delivery_mode") or "instant") == "scheduled" else 0,
-        )
-
-        order = get_order_by_id(order_id)
-
-        if original_video_ready(order):
-            return {
-                "status": "ok",
-                "reason": "video_already_ready",
-                "order_id": order_id,
-            }
-
-        if render_request_already_marked(order):
-            return {
-                "status": "ok",
-                "reason": "render_already_requested",
-                "order_id": order_id,
-            }
-
-        phrases = [
-            (order.get("phrase_1") or "").strip(),
-            (order.get("phrase_2") or "").strip(),
-            (order.get("phrase_3") or "").strip(),
-        ]
-
-        try:
-            mark_video_render_requested(order_id)
-            data = trigger_video_engine(order_id, phrases)
-            print("✅ Video engine aceptó el trabajo:", data)
-        except Exception as e:
-            clear_video_render_requested(order_id)
-            log_error("webhook_video_engine", e)
-            raise HTTPException(status_code=500, detail=f"video_engine_error: {e}")
-
-        return {"status": "ok", "reason": "render_requested"}
-
-    except Exception as e:
-        log_error("webhook", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/internal/video-ready")
-async def internal_video_ready(request: Request):
-    incoming_secret = (request.headers.get("X-Video-Engine-Secret") or "").strip()
-
-    if VIDEO_READY_CALLBACK_SECRET:
-        if incoming_secret != VIDEO_READY_CALLBACK_SECRET:
-            return JSONResponse(
-                status_code=403,
-                content={"status": "error", "reason": "invalid_secret"},
-            )
-
-    try:
-        data = await request.json()
-    except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "reason": "invalid_json"},
-        )
-
-    order_id = (data.get("order_id") or "").strip()
-    video_url = (data.get("video_url") or "").strip()
-
-    print("🎬 CALLBACK VIDEO READY")
-    print("🎬 order_id:", order_id)
-    print("🎬 video_url:", video_url)
-
-    if not order_id or not video_url:
-        return JSONResponse(
-            status_code=400,
-            content={"status": "error", "reason": "missing_data"},
-        )
-
-    try:
-        order = get_order_by_id(order_id)
-        insert_order_event(order_id, "video_ready", "ok", "El motor de vídeo avisó de que el vídeo está listo", {"video_url": video_url})
-
-        if not bool(order.get("paid")):
-            return JSONResponse(
-                status_code=400,
-                content={"status": "error", "reason": "order_not_paid"},
-            )
-
-        existing_video = (order.get("experience_video_url") or "").strip()
-
-        if existing_video:
-            print("⚠️ Callback duplicado ignorado")
-            return JSONResponse({
-                "status": "ok",
-                "reason": "video_already_saved",
-                "order_id": order_id,
-                "video_url": existing_video,
-                "recipient_url": recipient_experience_url_from_order(order),
-                "sender_url": sender_pack_url_from_order(order),
-            })
-
-        permanent_video_url = preserve_remote_video_to_r2(order, video_url, kind="original")
-        final_video_url = permanent_video_url or video_url
-
-        update_order(
-            order_id,
-            experience_video_url=final_video_url,
-            video_render_requested=0,
-        )
-
-        video_url = final_video_url
-
-        log_human("VÍDEO LISTO", f"🆔 Pedido: {order_id}", "✅ El vídeo ya está preparado", f"🔗 Link experiencia: {recipient_experience_url_from_order(order)}")
-        log_info("✅ VÍDEO LISTO")
-        log_info("🆔 Order ID", order_id)
-        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
-        log_info("🔗 Link experiencia", recipient_experience_url_from_order(order))
-        log_info("🔗 Link regalante", sender_pack_url_from_order(order))
-
-        if not asset_exists(order_id, "rendered_video", video_url):
-            insert_asset(
-                order_id=order_id,
-                asset_type="rendered_video",
-                file_url=video_url,
-                storage_provider="video_engine",
-            )
-
-        order = get_order_by_id(order_id)
-
-        print("🔥 CALLBACK VIDEO READY 🔥")
-        print("🎬 VIDEO GENERADO")
-        print("➡️ Recipient experience:", recipient_experience_url_from_order(order))
-        print("➡️ Sender pack:", sender_pack_url_from_order(order))
-        print("🕒 delivery_mode:", order.get("delivery_mode"))
-        print("🕒 scheduled_delivery_at:", order.get("scheduled_delivery_at"))
-        print("🕒 scheduled_delivery_display:", scheduled_delivery_display(order))
-        print("🕒 scheduled_delivery_ready:", scheduled_delivery_ready(order))
-        print("📦 delivery_sent:", bool(order.get("delivery_sent")))
-
-        # SOLO AQUÍ intentamos enviar al regalado,
-        # porque aquí ya sabemos que el vídeo real existe.
-        delivery_result = process_scheduled_recipient_delivery(order_id)
-        print("📩 Resultado entrega programada callback:", delivery_result)
-
-        return JSONResponse({
-            "status": "ok",
-            "order_id": order_id,
-            "video_url": video_url,
-            "recipient_url": recipient_experience_url_from_order(order),
-            "sender_url": sender_pack_url_from_order(order),
-            "delivery_mode": order.get("delivery_mode"),
-            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-            "delivery_result": delivery_result,
-        })
-
-    except Exception as e:
-        log_error("internal_video_ready", e)
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "reason": str(e)},
-        )
-
-
-# =========================================================
-# POST PAYMENT
-# =========================================================
-
-@app.get("/post-pago/{order_id}")
-def post_pago(order_id: str):
-    order = get_order_by_id(order_id)
-
     if not bool(order.get("paid")):
-        return RedirectResponse(url=f"/checkout-exito/{order_id}", status_code=303)
+        return render_eterna_image_screen(
+            image_name="error-v1.png",
+            fallback_image_name="error-v1.png",
+            extra_note="Este acceso aún no está activo.",
+        )
 
-    return RedirectResponse(url=f"/resumen/{order_id}", status_code=303)
+    if not original_video_ready(order):
+        return render_eterna_image_screen(
+            image_name="gift-ready-v1.png",
+            fallback_image_name="error-v1.png",
+            redirect_url=f"/pedido/{recipient_token}",
+            redirect_delay_ms=8000,
+            extra_note="Tu ETERNA está tomando forma. No cierres esta pantalla.",
+        )
 
+    if not delivery_is_unlocked(order):
+        return render_eterna_image_screen(
+            image_name="gift-ready-v1.png",
+            fallback_image_name="error-v1.png",
+            extra_note=f"Esta ETERNA se abrirá en el momento elegido: {scheduled_delivery_display(order)}.",
+        )
 
-@app.get("/resumen/{order_id}", response_class=HTMLResponse)
-def resumen(order_id: str):
-    order = get_order_by_id(order_id)
-    is_paid = bool(order.get("paid"))
-    video_ready = original_video_ready(order)
-    delivery_mode = (order.get("delivery_mode") or "instant").strip()
-    delivery_display = safe_text(scheduled_delivery_display(order))
+    if bool(order.get("experience_completed")):
+        return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    if not is_paid:
-        title = "Confirmando pago"
-        subtitle = "Todavía estamos esperando la confirmación segura."
-        detail = "No cierres esta pantalla. ETERNA actualizará el estado cuando el pago quede confirmado."
-    elif video_ready and delivery_mode == "scheduled":
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está guardada."
-        detail = f"Llegará en el momento elegido: {delivery_display}."
-    elif video_ready:
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está lista."
-        detail = "La entregaremos automáticamente en cuanto termine el proceso seguro."
-    else:
-        title = "Pago confirmado"
-        subtitle = "Tu ETERNA ya está en marcha."
-        detail = "Estamos preparando algo que pronto llegará a alguien importante."
-
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pago confirmado — ETERNA</title>
-    <style>
-        * {{ box-sizing: border-box; }}
-        html, body {{ margin: 0; min-height: 100%; background: #020817; }}
-        body {{
-            min-height: 100vh;
-            color: #fff7e6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 24px;
-            background:
-                radial-gradient(circle at 50% 14%, rgba(59,130,246,0.22), transparent 28%),
-                radial-gradient(circle at 50% 76%, rgba(37,99,235,0.10), transparent 32%),
-                linear-gradient(180deg, #020817 0%, #000000 62%, #020817 100%);
-        }}
-        .card {{
-            width: min(100%, 760px);
-            border-radius: 34px;
-            padding: clamp(34px, 6vw, 66px) clamp(22px, 6vw, 58px);
-            border: 1px solid rgba(255,220,150,.20);
-            background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
-            box-shadow: 0 30px 110px rgba(0,0,0,.62), 0 0 90px rgba(225,163,73,.14);
-            backdrop-filter: blur(12px);
-        }}
-        .brand {{ color: #ffd98b; letter-spacing: .38em; padding-left: .38em; text-transform: uppercase; font-size: 14px; font-weight: 900; margin-bottom: 18px; }}
-        .mark {{ width: 88px; height: 88px; margin: 0 auto 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,220,150,.28); color: #ffd98b; font-size: 44px; text-shadow: 0 0 26px rgba(255,204,111,.62); background: radial-gradient(circle, rgba(255,225,159,.14), transparent 70%); }}
-        h1 {{ margin: 0; font-size: clamp(42px, 8vw, 76px); line-height: .98; color: #fff7e6; text-shadow: 0 0 30px rgba(255,255,255,.20); }}
-        .subtitle {{ margin: 24px auto 0; max-width: 620px; font-size: clamp(20px, 3.8vw, 28px); line-height: 1.5; font-weight: 800; color: rgba(255,255,255,.92); }}
-        .detail {{ margin: 18px auto 0; max-width: 620px; font-size: clamp(16px, 2.7vw, 20px); line-height: 1.7; color: rgba(255,255,255,.68); }}
-        .divider {{ width: min(320px, 78%); margin: 34px auto 0; display: flex; align-items: center; gap: 16px; color: #f0c46c; }}
-        .divider::before, .divider::after {{ content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, rgba(240,196,108,.72)); }}
-        .divider::after {{ background: linear-gradient(90deg, rgba(240,196,108,.72), transparent); }}
-        .promise {{ margin: 28px auto 0; max-width: 560px; font-size: clamp(23px, 4.6vw, 38px); line-height: 1.45; font-family: Georgia, "Times New Roman", serif; color: #fff7e6; }}
-        .promise span {{ display: inline-block; color: #ffd98b; text-shadow: 0 0 24px rgba(255,204,111,.34); }}
-        .btn {{ margin: 38px auto 0; width: min(100%, 440px); min-height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #fff0bd 0%, #e6bd65 45%, #b87725 100%); color: #150d03; text-decoration: none; font-size: 15px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 18px 60px rgba(255,172,62,.22), inset 0 1px 0 rgba(255,255,255,.55); }}
-        .soft {{ margin-top: 16px; color: rgba(255,255,255,.42); font-size: 13px; line-height: 1.5; }}
-    </style>
-</head>
-<body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <main class="card" style="position:relative;z-index:2;">
-        <div class="brand">ETERNA</div>
-        <div class="mark">♥</div>
-        <h1>{title}</h1>
-        <div class="subtitle">{subtitle}</div>
-        <div class="detail">{detail}</div>
-        <div class="divider">♥</div>
-        <div class="promise">
-            Lo que das<br>
-            se queda en alguien.<br>
-            <span>Y un día, vuelve.</span>
-        </div>
-        <a class="btn" href="/crear">Volver al inicio</a>
-        <div class="soft">Puedes cerrar esta pantalla. ETERNA continuará su camino.</div>
-    </main>
-</body>
-</html>
-    """)
+    response = RedirectResponse(url=f"/guia/0/{recipient_token}", status_code=303)
+    attach_recipient_session_if_needed(order, request, response)
+    return response
 
 
 # =========================================================
@@ -6329,447 +5920,83 @@ async def start_experience(recipient_token: str = Form(...)):
 
 @app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
 def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
-    """
-    Pantallas previas de preparación y consentimiento.
-    IMPORTANTE: no toca la experiencia, no toca MediaRecorder, no toca chunks.
-    Solo guía a la persona y después entrega a /experiencia/{token}.
-    """
+    # Guía visual V1 antes de /experiencia. No toca MediaRecorder, chunks ni upload.
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
     if not original_video_ready(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
     if not delivery_is_unlocked(order):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    # =========================================================
-    # PANTALLAS CINEMÁTICAS NUEVAS — SIN TOCAR /experiencia
-    # =========================================================
     try:
-        step = int(step or 1)
+        step = int(step or 0)
     except Exception:
-        step = 1
-    step = max(1, min(step, 3))
+        step = 0
+    step = max(0, min(step, 4))
 
-    if step == 1:
-        insert_order_event(order["id"], "guide_quiet_place_opened", "ok", "Pantalla nueva: busca un lugar tranquilo")
-        return render_eterna_image_screen(
-            image_name="quiet-place-v1.png",
-            fallback_image_name="quiet-place-v1.png",
-            overlay_kind="soft",
-            button_url=f"/guia/2/{safe_attr(recipient_token)}",
-            button_label="Estoy listo",
+    screen_flow = {
+        0: {"event": "guide_intro_opened", "image": "intro-shhh-v1.png", "button_url": f"/guia/1/{recipient_token}", "button_label": "Entrar", "note": "Busca un momento tranquilo antes de continuar."},
+        1: {"event": "guide_sound_opened", "image": "sound-check-v1.png", "button_url": f"/guia/2/{recipient_token}", "button_label": "Sonido listo", "note": "Activa el sonido del móvil para vivirlo completo."},
+        2: {"event": "guide_place_opened", "image": "quiet-place-v1.png", "button_url": f"/guia/3/{recipient_token}", "button_label": "Estoy preparado", "note": "Coloca el móvil en vertical y con buena luz."},
+        3: {"event": "guide_terms_opened", "image": "terms-acceptance-v1.png", "button_url": f"/guia/4/{recipient_token}", "button_label": "Aceptar y continuar", "note": "Tu ETERNA es una experiencia privada."},
+        4: {"event": "guide_consent_opened", "image": "consent-recording-v1.png", "button_url": "", "button_label": "Continuar", "note": "Al continuar, el navegador te pedirá cámara y micrófono."},
+    }
+    data = screen_flow[step]
+    insert_order_event(order["id"], data["event"], "ok", f"Guía visual V1 paso {step}")
+
+    if step < 4:
+        response = render_eterna_image_screen(
+            image_name=data["image"],
+            fallback_image_name="error-v1.png",
+            button_url=data["button_url"],
+            button_label=data["button_label"],
+            extra_note=data["note"],
+        )
+    else:
+        response = render_eterna_image_screen(
+            image_name=data["image"],
+            fallback_image_name="error-v1.png",
+            form_action="/start-experience",
+            form_method="post",
+            hidden_fields={"recipient_token": recipient_token},
+            button_label=data["button_label"],
+            button_id="consentContinue",
+            extra_note=data["note"],
+            extra_script=f"""
+            <script>
+            (function() {{
+                const form = document.querySelector('.visual-action-form');
+                const btn = document.getElementById('consentContinue');
+                if (!form || !btn) return;
+                form.addEventListener('submit', async function(e) {{
+                    e.preventDefault();
+                    btn.disabled = true;
+                    try {{
+                        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
+                            const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
+                            try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
+                        }}
+                        const fd = new FormData(form);
+                        const res = await fetch('/start-experience', {{ method: 'POST', body: fd }});
+                        if (!res.ok) throw new Error('start_experience_failed');
+                        window.location.href = '/experiencia/{safe_attr(recipient_token)}';
+                    }} catch (err) {{
+                        btn.disabled = false;
+                        alert('ETERNA necesita acceso a cámara y micrófono para continuar.');
+                    }}
+                }});
+            }})();
+            </script>
+            """,
         )
 
-    if step == 2:
-        insert_order_event(order["id"], "guide_sound_check_opened", "ok", "Pantalla nueva: activa el sonido")
-        return render_eterna_image_screen(
-            image_name="sound-check-v1.png",
-            fallback_image_name="sound-check-v1.png",
-            overlay_kind="soft",
-            button_url=f"/guia/3/{safe_attr(recipient_token)}",
-            button_label="Continuar",
-        )
-
-    insert_order_event(order["id"], "guide_consent_opened", "ok", "Pantalla nueva: consentimiento de grabación")
-    return render_eterna_image_screen(
-        image_name="consent-recording-v1.png",
-        fallback_image_name="consent-recording-v1.png",
-        overlay_kind="soft",
-        button_url=f"/experiencia/{safe_attr(recipient_token)}",
-        button_label="Acepto y continuar",
-    )
-
-    try:
-        step = int(step or 1)
-    except Exception:
-        step = 1
-    step = max(1, min(step, 3))
-
-    if step == 1:
-        insert_order_event(order["id"], "guide_place_opened", "ok", "El destinatario ha abierto la guía: lugar tranquilo")
-        eyebrow = "PASO 1 DE 3"
-        title = "Busca tu lugar"
-        subtitle = "Antes de abrirlo, elige un sitio tranquilo."
-        body = "Elige un lugar tranquilo, con algo de luz y donde puedas vivir este momento sin prisas."
-        icon = "⌖"
-        button = "Ya estoy en un lugar tranquilo"
-        href = f"/guia/2/{safe_attr(recipient_token)}"
-        note = "Tómate unos segundos. ETERNA empieza mejor cuando tú estás preparado."
-    elif step == 2:
-        insert_order_event(order["id"], "guide_position_opened", "ok", "El destinatario ha abierto la guía: teléfono vertical")
-        eyebrow = "PASO 2 DE 3"
-        title = "Coloca el teléfono"
-        subtitle = "Ponlo en vertical y busca buena luz."
-        body = """
-            Apóyalo si puedes, deja la cámara frente a ti y vive esta experiencia de principio a fin.<br><br>
-            Para asegurar que todo quede guardado correctamente, intenta mantener esta pantalla abierta hasta el final.
-        """
-        icon = "▯"
-        button = "Ya estoy colocado"
-        href = f"/guia/3/{safe_attr(recipient_token)}"
-        note = "No hace falta posar. Solo estar presente."
-    else:
-        insert_order_event(order["id"], "guide_consent_opened", "ok", "El destinatario ha abierto la guía: consentimiento único y permisos")
-        eyebrow = "PASO 3 DE 3"
-        title = "Antes de comenzar"
-        subtitle = "Esta experiencia forma parte de ETERNA."
-        body = """
-            <label class="consent-box">
-                <input type="checkbox" id="consentCheck">
-                <span>Acepto que mi reacción pueda ser grabada durante esta experiencia y enviada a la persona que creó esta ETERNA.</span>
-            </label>
-        """
-        icon = "♥"
-        button = "Continuar"
-        href = f"/experiencia/{safe_attr(recipient_token)}"
-        note = "Al pulsar Continuar, el navegador te pedirá permiso para usar cámara y micrófono. Si aceptas, ETERNA comenzará."
-
-    if step == 3:
-        action_html = f'<button class="btn" id="consentContinue" type="button">{button}</button>'
-    else:
-        action_html = f'<a class="btn" href="{href}">{button}</a>'
-
-    dot1 = "on" if step == 1 else ""
-    dot2 = "on" if step == 2 else ""
-    dot3 = "on" if step == 3 else ""
-
-    html_page = f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA</title>
-<style>
-* {{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }}
-html, body {{
-    margin: 0;
-    min-height: 100%;
-    background: #030405;
-}}
-body {{
-    min-height: 100vh;
-    min-height: 100dvh;
-    color: #fff7e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: max(22px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)) 20px;
-    background:
-        radial-gradient(circle at 50% 5%, rgba(245,188,92,0.22), transparent 24%),
-        radial-gradient(circle at 85% 38%, rgba(197,135,43,0.14), transparent 28%),
-        linear-gradient(180deg, #070809 0%, #020202 100%);
-    overflow-x: hidden;
-}}
-body::before {{
-    content: "";
-    position: fixed;
-    inset: -30%;
-    background:
-        radial-gradient(circle, rgba(255,214,135,0.09) 0 1px, transparent 2px),
-        radial-gradient(circle, rgba(255,214,135,0.05) 0 1px, transparent 2px);
-    background-size: 90px 90px, 140px 140px;
-    opacity: .45;
-    pointer-events: none;
-}}
-.wrap {{
-    width: 100%;
-    max-width: 520px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
-    text-align: center;
-}}
-.logo-mark {{
-    margin: 0 auto 10px auto;
-    font-size: 44px;
-    line-height: 1;
-    color: #e8b75c;
-    text-shadow: 0 0 26px rgba(232,183,92,0.55);
-}}
-.brand {{
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(54px, 16vw, 82px);
-    letter-spacing: .17em;
-    color: #d9a64e;
-    margin: 0 0 2px 0;
-    text-indent: .17em;
-    text-shadow: 0 2px 16px rgba(214,160,67,0.26);
-}}
-.line {{
-    width: min(72%, 360px);
-    height: 1px;
-    margin: 12px auto 26px auto;
-    background: linear-gradient(90deg, transparent, rgba(224,171,80,0.65), transparent);
-}}
-.card {{
-    border: 1px solid rgba(224,171,80,0.34);
-    background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025));
-    border-radius: 32px;
-    padding: 28px 22px 24px;
-    box-shadow:
-        0 28px 70px rgba(0,0,0,0.55),
-        0 0 42px rgba(211,151,55,0.10),
-        inset 0 1px 0 rgba(255,255,255,0.08);
-}}
-.eyebrow {{
-    font-size: 12px;
-    letter-spacing: .26em;
-    text-transform: uppercase;
-    color: rgba(236,190,108,0.78);
-    margin-bottom: 18px;
-}}
-.step-icon {{
-    width: 76px;
-    height: 76px;
-    border-radius: 999px;
-    margin: 0 auto 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 38px;
-    color: #f0bd62;
-    border: 1px solid rgba(240,189,98,0.38);
-    background: rgba(255,255,255,0.055);
-    box-shadow: 0 0 28px rgba(240,189,98,0.13);
-}}
-h1 {{
-    margin: 0 0 12px 0;
-    font-family: Georgia, "Times New Roman", serif;
-    font-weight: 500;
-    font-size: clamp(34px, 10vw, 54px);
-    line-height: 1.04;
-    color: #fff5df;
-}}
-.subtitle {{
-    font-size: clamp(19px, 5.4vw, 24px);
-    line-height: 1.45;
-    color: rgba(255,247,230,0.88);
-    margin-bottom: 16px;
-}}
-.body {{
-    font-size: 15.5px;
-    line-height: 1.75;
-    color: rgba(255,247,230,0.66);
-    max-width: 430px;
-    margin: 0 auto;
-}}
-.consent-box {{
-    display: flex;
-    gap: 13px;
-    align-items: flex-start;
-    text-align: left;
-    padding: 16px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.055);
-    border: 1px solid rgba(224,171,80,0.24);
-    color: rgba(255,247,230,0.84);
-}}
-.consent-box input {{
-    width: 20px;
-    height: 20px;
-    flex: 0 0 auto;
-    margin-top: 4px;
-    accent-color: #e6b761;
-}}
-.consent-error {{
-    margin-top: 14px;
-    color: #ffd28a;
-    font-size: 13px;
-    line-height: 1.5;
-    min-height: 18px;
-}}
-.warning {{
-    margin: 20px auto 0;
-    padding: 15px 16px;
-    border-radius: 20px;
-    border: 1px solid rgba(224,171,80,0.20);
-    background: rgba(0,0,0,0.25);
-    color: rgba(255,247,230,0.58);
-    font-size: 13px;
-    line-height: 1.55;
-}}
-.actions {{ margin-top: 26px; }}
-.btn {{
-    appearance: none;
-    -webkit-appearance: none;
-    display: block;
-    width: 100%;
-    padding: 19px 22px;
-    border-radius: 20px;
-    text-decoration: none;
-    font-size: 16px;
-    font-weight: 900;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: #171006;
-    background: linear-gradient(135deg, #b57928 0%, #f7d27c 48%, #b87928 100%);
-    border: 1px solid rgba(255,230,169,0.70);
-    box-shadow:
-        0 18px 38px rgba(209,151,53,0.24),
-        0 0 24px rgba(232,183,92,0.28),
-        inset 0 1px 0 rgba(255,255,255,0.45);
-    position: relative;
-    z-index: 5;
-    touch-action: manipulation;
-}}
-.btn:active {{ transform: scale(0.99); }}
-.progress {{
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin: 24px 0 0;
-}}
-.dot {{
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.20);
-}}
-.dot.on {{ background: #e6b761; box-shadow: 0 0 12px rgba(230,183,97,0.7); }}
-.footer {{
-    margin-top: 24px;
-    font-size: 11px;
-    letter-spacing: .42em;
-    color: rgba(224,171,80,0.58);
-    text-indent: .42em;
-}}
-</style>
-</head>
-<body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-    <main class="wrap">
-        <div class="logo-mark">♥</div>
-        <div class="brand">ETERNA</div>
-        <div class="line"></div>
-        <section class="card" style="position:relative;z-index:2;">
-            <div class="eyebrow">{eyebrow}</div>
-            <div class="step-icon">{icon}</div>
-            <h1>{title}</h1>
-            <div class="subtitle">{subtitle}</div>
-            <div class="body">{body}</div>
-            <div class="warning">{note}</div>
-            <div class="actions">{action_html}</div>
-            <div class="consent-error" id="consentError"></div>
-            <div class="progress">
-                <span class="dot {dot1}"></span>
-                <span class="dot {dot2}"></span>
-                <span class="dot {dot3}"></span>
-            </div>
-        </section>
-        <div class="footer">ETERNA</div>
-    </main>
-<script>
-(function () {{
-    const btn = document.getElementById("consentContinue");
-    if (!btn) return;
-
-    const check = document.getElementById("consentCheck");
-    const error = document.getElementById("consentError");
-
-    btn.addEventListener("click", async function () {{
-        if (!check || !check.checked) {{
-            if (error) error.textContent = "Para continuar, acepta que tu reacción pueda ser grabada y enviada a la persona que creó esta ETERNA.";
-            return;
-        }}
-
-        btn.disabled = true;
-        btn.textContent = "Preparando ETERNA...";
-
-        try {{
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {{
-                throw new Error("media_devices_not_supported");
-            }}
-
-            const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
-            try {{
-                stream.getTracks().forEach(function (track) {{ track.stop(); }});
-            }} catch (_) {{}}
-
-            window.location.href = "{href}";
-        }} catch (err) {{
-            btn.disabled = false;
-            btn.textContent = "Continuar";
-            if (error) {{
-                error.textContent = "ETERNA necesita acceso a cámara y micrófono para poder continuar.";
-            }}
-        }}
-    }});
-}})();
-</script>
-</body>
-</html>
-    """
-    response = HTMLResponse(html_page)
     attach_recipient_session_if_needed(order, request, response)
     return response
+
 
 # =========================================================
 # EXPERIENCE (VERSIÓN ESTABLE LIMPIA)
@@ -10327,12 +9554,9 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     except Exception as e:
         log_error("FINALIZAR EXPERIENCE ERROR", e)
 
-    return render_eterna_image_screen(
-        image_name="experience-complete-v1.png",
-        fallback_image_name="experience-complete-v1.png",
-        overlay_kind="soft",
-        button_url=f"/cobrar/{safe_attr(recipient_token)}",
-        button_label="Finalizar",
+    return RedirectResponse(
+        url=f"/cobrar/{recipient_token}",
+        status_code=303
     )
 @app.get("/admin/reset-recipient-session/{order_id}")
 def admin_reset_recipient_session(order_id: str, token: str = ""):
