@@ -5,7 +5,12 @@
 # Mantiene main preparando fotos para engine. NO toca video engine.
 # =========================================================
 
-# RC20 STRIPE OK + CARGA MARIPOSA VIVA
+# RC26 ESTABLE + PANTALLAS VIVAS + ASSETS REALES
+# Base: RC25. Mantiene una sola pantalla formulario→Stripe.
+# Ajusta resolver de assets reales y da vida visual a pantallas sin tocar lógica crítica.
+# =========================================================
+
+# RC25 FORMULARIO ESTABLE + UNA SOLA PANTALLA A STRIPE
 # Base: RC19 enviado por Sergio.
 # Corrige JS de redirección a Stripe y aplica loading-mode real.
 # Mantiene pantalla de mariposa/carga, alinea línea azul y añade vida.
@@ -238,7 +243,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v13-rc22-post-formulario-energia-cinematica"
+ETERNA_VISUAL_VERSION = "eterna-visual-v15-rc26-estable-pantallas-vivas-assets-reales"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -272,8 +277,10 @@ def _eterna_asset_key(value: str) -> str:
     raw = raw.replace(".webp.webp", ".webp")
     for suffix in [" (copy)", " copy", " copia", " - copia"]:
         raw = raw.replace(suffix, "")
-    for n in range(1, 10):
+    for n in range(1, 20):
         raw = raw.replace(f" ({n})", "")
+        raw = raw.replace(f"({n})", "")
+        raw = raw.replace(f"_{n}", "") if raw.endswith(f"_{n}") else raw
     for ext in [".png", ".jpg", ".jpeg", ".webp"]:
         while raw.endswith(ext):
             raw = raw[:-len(ext)]
@@ -299,7 +306,12 @@ def resolve_eterna_asset_filename(name: str, fallback: str = "error-v1.png") -> 
         expanded.extend([
             c,
             c.replace(".png", ".png.png"),
+            c.replace(".png", "(1).png"),
+            c.replace(".png", "(2).png"),
+            c.replace(".png", " (1).png"),
             c.replace(".png", " (2).png"),
+            c + "(1)",
+            c + " (1)",
             c + " (2)",
             c + ".png" if not c.endswith(".png") else c,
         ])
@@ -375,6 +387,13 @@ def render_eterna_image_screen(
     is_terms_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("terms-acceptance-v1.png")
     is_payment_success_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("payment-success-v1.png")
     is_quiet_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("quiet-place-v1.png")
+    is_intro_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("intro-shhh-v1.png")
+    is_sound_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sound-check-v1.png")
+    is_uploading_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("uploading-reaction-v1.png")
+    is_complete_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("experience-complete-v1.png")
+    is_sender_entry_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-entry-v1.png")
+    is_sender_pack_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-v1.png")
+    is_viral_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("viral-cta-v1.png")
 
     note_html = ""
     if extra_note:
@@ -455,6 +474,20 @@ def render_eterna_image_screen(
         screen_mode_class += " payment-success-mode"
     if is_quiet_screen:
         screen_mode_class += " quiet-mode"
+    if is_intro_screen:
+        screen_mode_class += " intro-mode"
+    if is_sound_screen:
+        screen_mode_class += " sound-mode"
+    if is_uploading_screen:
+        screen_mode_class += " uploading-mode"
+    if is_complete_screen:
+        screen_mode_class += " complete-mode"
+    if is_sender_entry_screen:
+        screen_mode_class += " sender-entry-mode"
+    if is_sender_pack_screen:
+        screen_mode_class += " sender-pack-bg-mode"
+    if is_viral_screen:
+        screen_mode_class += " viral-mode"
     if overlay_kind == "loading":
         loading_layers = """
         <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
@@ -923,6 +956,229 @@ def render_eterna_image_screen(
     }}
     @keyframes quietButterflyBreathe {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.88); opacity:.30; }} 50% {{ transform:translate(-50%,-50%) scale(1.08); opacity:.78; }} }}
     .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
+
+
+    /* RC25 — CHECKOUT ESTABLE: una sola pantalla entre formulario y Stripe */
+    .screen.loading-mode .magic-line {{ top:67.20%; }}
+    .screen.loading-mode .line-spark-runner {{ top:67.90%; }}
+    .screen.loading-mode .blue-orb {{ top:67.85%; }}
+    .screen.loading-mode .magic-line,
+    .screen.loading-mode .line-spark-runner,
+    .screen.loading-mode .blue-orb {{
+        animation-delay:1.45s !important;
+    }}
+    .screen.loading-mode .magic-line span {{
+        animation-delay:1.45s !important;
+    }}
+    .screen.loading-mode .magic-line b {{
+        animation-delay:1.50s !important;
+    }}
+
+    /* RC25 — pago realizado: corazón vivo pero NO explosión brutal al cargar */
+    .screen.payment-success-mode .phone::before {{
+        width:270px;
+        height:270px;
+        top:60.8%;
+        opacity:.38;
+        filter:blur(12px);
+        background:
+            radial-gradient(circle, rgba(255,255,255,.62) 0%, rgba(255,230,150,.42) 6%, rgba(255,183,52,.30) 16%, rgba(255,183,52,.13) 32%, transparent 62%),
+            conic-gradient(from 0deg, transparent, rgba(255,219,130,.18), transparent, rgba(255,244,190,.26), transparent);
+        animation:paymentHeartSoftPulse 2.55s ease-in-out 1.15s infinite both;
+    }}
+    .screen.payment-success-mode .phone::after {{
+        width:305px;
+        height:305px;
+        top:60.8%;
+        opacity:.24;
+        filter:drop-shadow(0 0 16px rgba(255,198,68,.42));
+        animation:paymentGoldenSoft 5.8s ease-in-out 1.35s infinite both;
+    }}
+    .screen.payment-success-mode .soft-halo {{
+        top:60.8%;
+        width:330px;
+        height:330px;
+        opacity:.36;
+        filter:blur(22px);
+        animation:paymentHaloSoft 3.4s ease-in-out 1.2s infinite both;
+    }}
+    @keyframes paymentHeartSoftPulse {{
+        0% {{ transform:translate(-50%,-50%) scale(.82); opacity:0; filter:blur(14px) brightness(.85); }}
+        22% {{ opacity:.28; }}
+        42% {{ transform:translate(-50%,-50%) scale(1.02); opacity:.46; filter:blur(10px) brightness(1.32); }}
+        62% {{ transform:translate(-50%,-50%) scale(.94); opacity:.34; }}
+        100% {{ transform:translate(-50%,-50%) scale(.88); opacity:.22; filter:blur(13px) brightness(1); }}
+    }}
+    @keyframes paymentGoldenSoft {{
+        0% {{ transform:translate(-50%,-50%) rotate(0deg) scale(.86); opacity:0; }}
+        25% {{ opacity:.18; }}
+        52% {{ opacity:.34; transform:translate(-50%,-50%) rotate(18deg) scale(1.02); }}
+        100% {{ opacity:.10; transform:translate(-50%,-50%) rotate(34deg) scale(.94); }}
+    }}
+    @keyframes paymentHaloSoft {{
+        0% {{ opacity:0; transform:translate(-50%,-50%) scale(.86); }}
+        36% {{ opacity:.38; transform:translate(-50%,-50%) scale(1.03); }}
+        100% {{ opacity:.25; transform:translate(-50%,-50%) scale(.92); }}
+    }}
+
+
+
+    /* RC26 — términos estable: checkbox real invisible alineado con la casilla dibujada, sin cuadrado gigante flotante */
+    .screen.terms-mode .terms-real-check {{
+        left:19.0%;
+        top:80.8%;
+        width:56px;
+        height:48px;
+        z-index:12;
+    }}
+    .screen.terms-mode .terms-real-check label {{
+        opacity:0;
+        background:transparent;
+        border:0;
+        box-shadow:none;
+    }}
+    .screen.terms-mode .terms-real-check label span {{ display:none; }}
+    .screen.terms-mode .terms-real-check input {{ opacity:0; }}
+    .screen.terms-mode .terms-real-check::after {{
+        content:"";
+        position:absolute;
+        inset:5px;
+        border-radius:10px;
+        pointer-events:none;
+        opacity:.0;
+        border:1px solid rgba(255,235,176,.0);
+        box-shadow:0 0 0 rgba(255,205,100,0);
+        transition:opacity .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }}
+    .screen.terms-mode .terms-real-check:has(input:checked)::after {{
+        opacity:.55;
+        border-color:rgba(255,232,169,.75);
+        box-shadow:0 0 22px rgba(255,203,94,.55), inset 0 0 10px rgba(255,221,145,.18);
+    }}
+    .screen.terms-mode .terms-real-check.needs-attention::after {{
+        opacity:.80;
+        border-color:rgba(255,255,255,.95);
+        box-shadow:0 0 26px rgba(255,255,255,.75),0 0 46px rgba(255,191,66,.40);
+    }}
+
+    /* RC26 — pantallas reales con vida: luz, agua, alas y botones sin cambiar lógica */
+    .screen.intro-mode .soft-halo,
+    .screen.sound-mode .soft-halo,
+    .screen.complete-mode .soft-halo,
+    .screen.sender-entry-mode .soft-halo,
+    .screen.viral-mode .soft-halo {{
+        left:62%; top:25%; width:380px; height:380px;
+        background:radial-gradient(circle, rgba(67,213,255,.36), rgba(29,123,255,.13) 45%, transparent 74%);
+        filter:blur(18px);
+        animation:rc26BlueWingBreath 4.6s ease-in-out infinite;
+        z-index:2;
+    }}
+    .screen.intro-mode .edge-glow.eg1,
+    .screen.sound-mode .edge-glow.eg1,
+    .screen.quiet-mode .edge-glow.eg1,
+    .screen.complete-mode .edge-glow.eg1,
+    .screen.sender-entry-mode .edge-glow.eg1,
+    .screen.viral-mode .edge-glow.eg1 {{
+        opacity:.28;
+        border-color:rgba(56,202,255,.26);
+        box-shadow:0 0 38px rgba(56,202,255,.40), inset 0 0 40px rgba(56,202,255,.14);
+        animation:rc26LeftAurora 6.2s ease-in-out infinite;
+    }}
+    .screen.intro-mode .edge-glow.eg2,
+    .screen.sound-mode .edge-glow.eg2,
+    .screen.quiet-mode .edge-glow.eg2,
+    .screen.complete-mode .edge-glow.eg2,
+    .screen.sender-entry-mode .edge-glow.eg2,
+    .screen.viral-mode .edge-glow.eg2 {{
+        opacity:.24;
+        border-color:rgba(255,214,126,.22);
+        box-shadow:0 0 38px rgba(255,196,82,.34), inset 0 0 40px rgba(255,196,82,.12);
+        animation:rc26RightGoldAurora 6.8s ease-in-out .7s infinite;
+    }}
+    .screen.intro-mode .star-run.sr1,
+    .screen.sound-mode .star-run.sr1,
+    .screen.quiet-mode .star-run.sr1,
+    .screen.complete-mode .star-run.sr1,
+    .screen.sender-entry-mode .star-run.sr1,
+    .screen.viral-mode .star-run.sr1 {{
+        display:block; width:145px; height:3px; top:34%; left:3%; z-index:9;
+        animation:rc26StarTravelOne 5.7s ease-in-out .9s infinite;
+    }}
+    .screen.intro-mode .star-run.sr2,
+    .screen.sound-mode .star-run.sr2,
+    .screen.quiet-mode .star-run.sr2,
+    .screen.complete-mode .star-run.sr2,
+    .screen.sender-entry-mode .star-run.sr2,
+    .screen.viral-mode .star-run.sr2 {{
+        display:block; width:145px; height:3px; bottom:24%; right:3%; z-index:9;
+        animation:rc26StarTravelTwo 6.1s ease-in-out 1.6s infinite;
+    }}
+    .screen.sound-mode .phone::before,
+    .screen.quiet-mode .phone::before,
+    .screen.complete-mode .phone::before,
+    .screen.sender-entry-mode .phone::before,
+    .screen.viral-mode .phone::before {{
+        content:"";
+        position:absolute;
+        left:8%; right:8%; bottom:5%; height:22%;
+        border-radius:999px;
+        background:linear-gradient(90deg, transparent, rgba(66,205,255,.12), rgba(255,214,126,.16), rgba(66,205,255,.10), transparent);
+        filter:blur(12px);
+        opacity:.50;
+        mix-blend-mode:screen;
+        pointer-events:none;
+        z-index:2;
+        animation:rc26WaterGlow 6.4s ease-in-out infinite;
+    }}
+    .screen.sound-mode .phone::after,
+    .screen.quiet-mode .phone::after,
+    .screen.complete-mode .phone::after,
+    .screen.sender-entry-mode .phone::after,
+    .screen.viral-mode .phone::after {{
+        content:"";
+        position:absolute;
+        inset:0;
+        pointer-events:none;
+        z-index:7;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:linear-gradient(115deg, transparent 0%, transparent 38%, rgba(255,244,198,.42) 41%, rgba(71,211,255,.22) 44%, transparent 50%, transparent 100%);
+        transform:translateX(-74%) skewX(-10deg);
+        animation:rc26SoftSweep 7.2s cubic-bezier(.2,.7,.15,1) 1.2s infinite;
+    }}
+    .screen.complete-mode .real-button::after,
+    .screen.sound-mode .real-button::after,
+    .screen.quiet-mode .real-button::after,
+    .screen.viral-mode .real-button::after,
+    .screen.sender-entry-mode .real-button::after {{
+        opacity:.28;
+        box-shadow:0 0 42px rgba(255,190,66,.54),0 0 80px rgba(255,220,132,.24);
+        animation:rc26ButtonBreath 1.95s ease-in-out infinite;
+    }}
+    .screen.uploading-mode .soft-halo {{
+        left:50%; top:55%; width:360px; height:360px;
+        background:radial-gradient(circle, rgba(59,211,255,.42), rgba(255,211,121,.12) 46%, transparent 76%);
+        animation:rc26SavingPulse 2.8s ease-in-out infinite;
+    }}
+    .screen.uploading-mode .edge-glow.eg1,
+    .screen.uploading-mode .edge-glow.eg2 {{ opacity:.20; }}
+    .screen.payment-success-mode .phone::before,
+    .screen.payment-success-mode .phone::after,
+    .screen.payment-success-mode .soft-halo {{
+        animation-delay:1.55s !important;
+    }}
+    .screen.payment-success-mode .phone::before {{ opacity:.30; }}
+    .screen.payment-success-mode .phone::after {{ opacity:.16; }}
+
+    @keyframes rc26BlueWingBreath {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.88); opacity:.26; }} 50% {{ transform:translate(-50%,-50%) scale(1.10); opacity:.76; }} }}
+    @keyframes rc26LeftAurora {{ 0%,100% {{ opacity:.06; transform:rotate(-18deg) scale(.94); }} 50% {{ opacity:.36; transform:rotate(-13deg) scale(1.06); }} }}
+    @keyframes rc26RightGoldAurora {{ 0%,100% {{ opacity:.05; transform:rotate(21deg) scale(.94); }} 50% {{ opacity:.30; transform:rotate(16deg) scale(1.06); }} }}
+    @keyframes rc26StarTravelOne {{ 0% {{ transform:translateX(-120px) translateY(12px); opacity:0; }} 18% {{ opacity:.86; }} 100% {{ transform:translateX(430px) translateY(-26px); opacity:0; }} }}
+    @keyframes rc26StarTravelTwo {{ 0% {{ transform:translateX(140px) translateY(-12px); opacity:0; }} 18% {{ opacity:.72; }} 100% {{ transform:translateX(-430px) translateY(26px); opacity:0; }} }}
+    @keyframes rc26WaterGlow {{ 0%,100% {{ transform:translateX(-12px) scaleX(.94); opacity:.26; }} 50% {{ transform:translateX(14px) scaleX(1.06); opacity:.64; }} }}
+    @keyframes rc26SoftSweep {{ 0%,70% {{ opacity:0; transform:translateX(-74%) skewX(-10deg); }} 80% {{ opacity:.48; }} 100% {{ opacity:0; transform:translateX(74%) skewX(-10deg); }} }}
+    @keyframes rc26ButtonBreath {{ 0%,100% {{ opacity:.16; transform:scale(.99); filter:brightness(1); }} 50% {{ opacity:.44; transform:scale(1.012); filter:brightness(1.34); }} }}
+    @keyframes rc26SavingPulse {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.86); opacity:.28; }} 50% {{ transform:translate(-50%,-50%) scale(1.10); opacity:.70; }} }}
 
 /* RC15 SENDER PACK — encaje fino y vida visual */
 .sender-pack-stage, .sender-pack-wrap, .sender-pack-card {{ position:relative; }}
@@ -3902,7 +4158,7 @@ def checkout_loading(order_id: Optional[str] = None):
         fallback_image_name="checkout_loading",
         overlay_kind="loading",
         redirect_url=target_url,
-        redirect_delay_ms=2200,
+        redirect_delay_ms=6000,
         extra_note="Tu ETERNA está cobrando vida...",
     )
 
@@ -5893,10 +6149,13 @@ document.addEventListener("DOMContentLoaded", function () {{
             button.innerText = "Abriendo pago seguro...";
         }}
 
+        // RC25: NO mostramos overlay intermedio dentro del formulario.
+        // Solo debe existir UNA pantalla entre formulario y Stripe: /checkout-loading.
+        // Esto elimina la pantalla negra y la doble/triple transición.
         const paymentOverlay = document.getElementById("paymentOverlay");
         if (paymentOverlay) {{
-            paymentOverlay.classList.add("show");
-            paymentOverlay.setAttribute("aria-hidden", "false");
+            paymentOverlay.classList.remove("show");
+            paymentOverlay.setAttribute("aria-hidden", "true");
         }}
     }}
 
@@ -6976,9 +7235,10 @@ async def start_experience(request: Request, recipient_token: str = Form(...)):
         # Si Safari envía el formulario de forma normal porque algún JS falla,
         # NO debe quedarse en una página blanca con {"ok":true}.
         # En navegación HTML redirigimos directamente a la experiencia.
-        accept_header = (request.headers.get("accept") or "").lower()
         ajax_header = (request.headers.get("x-eterna-ajax") or "").strip()
-        if "text/html" in accept_header and ajax_header != "1":
+        # RC26: por defecto redirigimos. Solo devolvemos JSON si el JS lo pide explícitamente.
+        # Así evitamos Safari en blanco con {"ok":true}.
+        if ajax_header != "1":
             return RedirectResponse(url=redirect_url, status_code=303)
 
         return JSONResponse({
