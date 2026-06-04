@@ -1,4 +1,11 @@
 # =========================================================
+# RC19 TRANSICION CREANDO ETERNA + LINEA AZUL ALINEADA
+# Base: RC18.
+# Objetivo: no repetir pago realizado, usar pantalla bonita de carga
+# con mariposa/línea azul, foto completa y movimiento alineado.
+# =========================================================
+
+# =========================================================
 # RC18 TRANSICION STRIPE SIN PANTALLA NEGRA
 # Base: RC17 Sender Pack + RC16 fotos robustas.
 # Objetivo: después del formulario mostrar pantalla buena
@@ -217,7 +224,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v10-rc18-transicion-stripe-sin-negro"
+ETERNA_VISUAL_VERSION = "eterna-visual-v11-rc19-transicion-creando-eterna-linea-azul"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -359,7 +366,7 @@ def render_eterna_image_screen(
     if redirect_url and int(redirect_delay_ms or 0) > 0:
         redirect_script = f"""
         <script>
-        window.setTimeout(function() {{ window.location.href = {json.dumps(str(redirect_url))}; }}, {int(redirect_delay_ms)});
+        window.setTimeout(function() {{ window.location.replace({json.dumps(str(redirect_url))}; }}, {int(redirect_delay_ms)});
         </script>
         """
 
@@ -379,6 +386,7 @@ def render_eterna_image_screen(
         action_html = f'<a class="real-button" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>'
 
     loading_layers = ""
+    screen_mode_class = " loading-mode" if overlay_kind == "loading" else ""
     if overlay_kind == "loading":
         loading_layers = """
         <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
@@ -435,6 +443,20 @@ def render_eterna_image_screen(
     @keyframes ctaBreath {{ 0%,100% {{ opacity:.04; transform:scale(.985); }} 50% {{ opacity:.22; transform:scale(1.01); }} }}
     .visual-action-form {{ position:absolute; left:0; right:0; bottom:0; z-index:8; }}
     .extra-note {{ position:absolute; left:8%; right:8%; bottom:calc(env(safe-area-inset-bottom) + 18px); z-index:7; text-align:center; color:rgba(255,245,220,.72); font-size:12px; line-height:1.35; text-shadow:0 0 14px rgba(0,0,0,.9); }}
+
+    /* RC19 — pantalla transición post-formulario: foto completa y línea azul alineada */
+    .screen.loading-mode .phone {{ max-width:520px; }}
+    .screen.loading-mode .img {{ object-fit:contain; object-position:center center; background:#02050a; }}
+    .screen.loading-mode .soft-halo {{ left:50%; top:54%; width:320px; height:320px; opacity:.42; }}
+    .screen.loading-mode .magic-line {{ left:18.4%; right:18.4%; top:61.25%; height:18px; border-radius:999px; }}
+    .screen.loading-mode .magic-line span {{ top:7px; height:3px; background:linear-gradient(90deg, rgba(37,122,255,.15), rgba(51,196,255,.96), rgba(255,220,139,.44), rgba(51,196,255,.30)); box-shadow:0 0 22px rgba(53,203,255,.88),0 0 46px rgba(43,149,255,.45); }}
+    .screen.loading-mode .magic-line b {{ top:1px; width:74px; height:16px; }}
+    .screen.loading-mode .line-spark-runner {{ left:18.4%; top:61.85%; width:84px; height:2px; }}
+    .screen.loading-mode .blue-orb {{ left:50%; top:61.9%; width:48px; height:48px; opacity:.62; }}
+    .screen.loading-mode .sr1, .screen.loading-mode .sr2 {{ display:none; }}
+    .screen.loading-mode .edge-glow.eg1 {{ left:-20%; top:28%; opacity:.10; }}
+    .screen.loading-mode .edge-glow.eg2 {{ right:-28%; bottom:16%; opacity:.10; }}
+
     .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
 
 /* RC15 SENDER PACK — encaje fino y vida visual */
@@ -3406,16 +3428,16 @@ def checkout_loading(order_id: Optional[str] = None):
         except Exception as e:
             log_error("checkout_loading_retrieve_stripe_session", e)
 
-    # RC18:
-    # Pantalla de transición buena después del formulario.
-    # Se queda visible hasta el último instante antes de saltar a Stripe.
-    # Evitamos la pantalla negra/loading fea y damos sensación de película.
+    # RC19:
+    # Pantalla correcta después del formulario: "creando / guardando tu ETERNA"
+    # con mariposa y línea azul. No repetimos la pantalla de pago realizado.
+    # Se mantiene visible hasta el último instante antes de saltar a Stripe.
     return render_eterna_image_screen(
-        image_name="payment-success-v1.png",
-        fallback_image_name="payment-success-v1.png",
+        image_name="uploading_reaction",
+        fallback_image_name="uploading_reaction",
         overlay_kind="loading",
         redirect_url=target_url,
-        redirect_delay_ms=1800,
+        redirect_delay_ms=1200,
         extra_note="Tu ETERNA está cobrando vida...",
     )
 
@@ -6579,7 +6601,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
                     const fd = new FormData(form);
                     const res = await fetch('/start-experience', {{ method: 'POST', body: fd }});
                     if (!res.ok) throw new Error('start_experience_failed');
-                    window.location.href = '/experiencia/{safe_attr(recipient_token)}';
+                    window.location.replace('/experiencia/{safe_attr(recipient_token)}';
                 }} catch (err) {{
                     btn.disabled = false;
                     alert('ETERNA necesita acceso a cámara y micrófono para continuar.');
