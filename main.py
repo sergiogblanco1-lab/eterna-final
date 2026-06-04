@@ -1,4 +1,11 @@
 # =========================================================
+# RC20 STRIPE OK + CARGA MARIPOSA VIVA
+# Base: RC19 enviado por Sergio.
+# Corrige JS de redirección a Stripe y aplica loading-mode real.
+# Mantiene pantalla de mariposa/carga, alinea línea azul y añade vida.
+# =========================================================
+
+# =========================================================
 # RC19 TRANSICION CREANDO ETERNA + LINEA AZUL ALINEADA
 # Base: RC18.
 # Objetivo: no repetir pago realizado, usar pantalla bonita de carga
@@ -86,6 +93,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 from urllib.parse import quote
 
 import boto3
@@ -224,7 +232,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v11-rc19-transicion-creando-eterna-linea-azul"
+ETERNA_VISUAL_VERSION = "eterna-visual-v12-rc20-stripe-ok-carga-mariposa-viva"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -366,7 +374,7 @@ def render_eterna_image_screen(
     if redirect_url and int(redirect_delay_ms or 0) > 0:
         redirect_script = f"""
         <script>
-        window.setTimeout(function() {{ window.location.replace({json.dumps(str(redirect_url))}; }}, {int(redirect_delay_ms)});
+        window.setTimeout(function() {{ window.location.replace({json.dumps(str(redirect_url))}); }}, {int(redirect_delay_ms)});
         </script>
         """
 
@@ -392,6 +400,14 @@ def render_eterna_image_screen(
         <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
         <div class="line-spark-runner" aria-hidden="true"></div>
         <div class="blue-orb" aria-hidden="true"></div>
+        <div class="water-shimmer" aria-hidden="true"></div>
+        <div class="sun-glow" aria-hidden="true"></div>
+        <div class="eterna-ring" aria-hidden="true"><span></span></div>
+        <i class="loading-spark ls1" aria-hidden="true"></i>
+        <i class="loading-spark ls2" aria-hidden="true"></i>
+        <i class="loading-spark ls3" aria-hidden="true"></i>
+        <i class="loading-spark ls4" aria-hidden="true"></i>
+        <i class="loading-spark ls5" aria-hidden="true"></i>
         """
 
     return HTMLResponse(f"""
@@ -446,16 +462,78 @@ def render_eterna_image_screen(
 
     /* RC19 — pantalla transición post-formulario: foto completa y línea azul alineada */
     .screen.loading-mode .phone {{ max-width:520px; }}
-    .screen.loading-mode .img {{ object-fit:contain; object-position:center center; background:#02050a; }}
+    .screen.loading-mode .img {{ object-fit:contain; object-position:center center; background:radial-gradient(circle at 50% 62%, rgba(26,117,219,.22), transparent 36%), #02050a; }}
     .screen.loading-mode .soft-halo {{ left:50%; top:54%; width:320px; height:320px; opacity:.42; }}
-    .screen.loading-mode .magic-line {{ left:18.4%; right:18.4%; top:61.25%; height:18px; border-radius:999px; }}
+    .screen.loading-mode .magic-line {{ left:18.2%; right:18.2%; top:64.15%; height:18px; border-radius:999px; }}
     .screen.loading-mode .magic-line span {{ top:7px; height:3px; background:linear-gradient(90deg, rgba(37,122,255,.15), rgba(51,196,255,.96), rgba(255,220,139,.44), rgba(51,196,255,.30)); box-shadow:0 0 22px rgba(53,203,255,.88),0 0 46px rgba(43,149,255,.45); }}
     .screen.loading-mode .magic-line b {{ top:1px; width:74px; height:16px; }}
-    .screen.loading-mode .line-spark-runner {{ left:18.4%; top:61.85%; width:84px; height:2px; }}
-    .screen.loading-mode .blue-orb {{ left:50%; top:61.9%; width:48px; height:48px; opacity:.62; }}
+    .screen.loading-mode .line-spark-runner {{ left:18.2%; top:64.75%; width:90px; height:2px; }}
+    .screen.loading-mode .blue-orb {{ left:50%; top:64.85%; width:52px; height:52px; opacity:.72; }}
     .screen.loading-mode .sr1, .screen.loading-mode .sr2 {{ display:none; }}
     .screen.loading-mode .edge-glow.eg1 {{ left:-20%; top:28%; opacity:.10; }}
     .screen.loading-mode .edge-glow.eg2 {{ right:-28%; bottom:16%; opacity:.10; }}
+
+
+    /* RC20 — vida específica para pantalla creando ETERNA */
+    .screen.loading-mode .water-shimmer {{
+        position:absolute; left:9%; right:9%; bottom:14.8%; height:18%;
+        border-radius:999px;
+        background:linear-gradient(90deg, transparent, rgba(86,207,255,.10), rgba(255,214,126,.12), rgba(86,207,255,.08), transparent);
+        filter:blur(10px);
+        opacity:.55;
+        mix-blend-mode:screen;
+        animation:waterMove 6.8s ease-in-out infinite;
+        pointer-events:none;
+        z-index:2;
+    }}
+    .screen.loading-mode .sun-glow {{
+        position:absolute; left:50%; bottom:18.5%; width:230px; height:130px;
+        transform:translateX(-50%);
+        border-radius:999px;
+        background:radial-gradient(circle, rgba(255,225,142,.34), rgba(255,168,58,.16) 42%, transparent 72%);
+        filter:blur(12px);
+        opacity:.58;
+        mix-blend-mode:screen;
+        animation:sunBreath 5.2s ease-in-out infinite;
+        pointer-events:none;
+        z-index:2;
+    }}
+    .screen.loading-mode .eterna-ring {{
+        position:absolute; left:50%; top:35.2%; width:92px; height:92px;
+        transform:translate(-50%,-50%);
+        border-radius:999px;
+        border:1px solid rgba(255,218,140,.34);
+        box-shadow:0 0 28px rgba(255,203,102,.30), inset 0 0 22px rgba(77,204,255,.16);
+        opacity:.62;
+        animation:ringRotate 7.2s linear infinite;
+        pointer-events:none;
+        z-index:3;
+        mix-blend-mode:screen;
+    }}
+    .screen.loading-mode .eterna-ring span {{
+        position:absolute; right:-4px; top:38px; width:10px; height:10px;
+        border-radius:999px;
+        background:#fff7d0;
+        box-shadow:0 0 18px #fff7d0, 0 0 34px rgba(255,207,98,.86);
+    }}
+    .screen.loading-mode .loading-spark {{
+        position:absolute; width:4px; height:4px; border-radius:999px;
+        background:#ffd98a;
+        box-shadow:0 0 14px #ffd98a,0 0 28px rgba(255,217,138,.48);
+        opacity:0;
+        pointer-events:none;
+        z-index:4;
+        animation:loadingSparkFloat 5.4s linear infinite;
+    }}
+    .screen.loading-mode .ls1 {{ left:25%; top:31%; animation-delay:.2s; }}
+    .screen.loading-mode .ls2 {{ left:70%; top:34%; animation-delay:1.0s; background:#70dcff; box-shadow:0 0 14px #70dcff,0 0 28px rgba(112,220,255,.50); }}
+    .screen.loading-mode .ls3 {{ left:62%; top:55%; animation-delay:1.8s; }}
+    .screen.loading-mode .ls4 {{ left:35%; top:66%; animation-delay:2.7s; background:#74dfff; box-shadow:0 0 14px #74dfff,0 0 28px rgba(116,223,255,.50); }}
+    .screen.loading-mode .ls5 {{ left:78%; top:69%; animation-delay:3.4s; }}
+    @keyframes waterMove {{ 0%,100% {{ transform:translateX(-10px) scaleX(.96); opacity:.32; }} 50% {{ transform:translateX(12px) scaleX(1.05); opacity:.72; }} }}
+    @keyframes sunBreath {{ 0%,100% {{ transform:translateX(-50%) scale(.90); opacity:.36; }} 50% {{ transform:translateX(-50%) scale(1.12); opacity:.78; }} }}
+    @keyframes ringRotate {{ from {{ transform:translate(-50%,-50%) rotate(0deg); }} to {{ transform:translate(-50%,-50%) rotate(360deg); }} }}
+    @keyframes loadingSparkFloat {{ 0% {{ opacity:0; transform:translateY(0) scale(.55); }} 15% {{ opacity:1; }} 70% {{ opacity:.46; }} 100% {{ opacity:0; transform:translateY(-90px) translateX(18px) scale(1.08); }} }}
 
     .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
 
@@ -507,7 +585,7 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
 </style>
 </head>
 <body>
-<main class="screen">
+<main class="screen{screen_mode_class}">
     <section class="phone">
         <img class="img" src="{image_src}" alt="ETERNA" onerror="this.onerror=null; this.src='{fallback_src}';">
         <i class="particle p1" aria-hidden="true"></i>
@@ -3433,11 +3511,11 @@ def checkout_loading(order_id: Optional[str] = None):
     # con mariposa y línea azul. No repetimos la pantalla de pago realizado.
     # Se mantiene visible hasta el último instante antes de saltar a Stripe.
     return render_eterna_image_screen(
-        image_name="uploading_reaction",
-        fallback_image_name="uploading_reaction",
+        image_name="checkout_loading",
+        fallback_image_name="checkout_loading",
         overlay_kind="loading",
         redirect_url=target_url,
-        redirect_delay_ms=1200,
+        redirect_delay_ms=900,
         extra_note="Tu ETERNA está cobrando vida...",
     )
 
@@ -8641,18 +8719,100 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 
 
 
+def prepare_photo_for_video_engine(original_path: str, order_id: str, slot_name: str) -> str:
+    """
+    RC21 MAIN PATCH — prepara la foto para el video engine SIN tocar el video engine.
+
+    Objetivo:
+    - Mantener el original intacto.
+    - Crear una copia vertical 360x640 ya lista para el engine.
+    - No recortar la foto principal.
+    - No deformar.
+    - Rellenar con fondo blur cinematográfico.
+    - Evitar que fotos horizontales/cuadradas lleguen ampliadas o raras al render.
+
+    Importante:
+    - save_upload_original_robust() sigue guardando el archivo original.
+    - Esta función solo crea una copia técnica para /video/input.
+    """
+    TARGET_W = 360
+    TARGET_H = 640
+
+    original_path = str(original_path or "").strip()
+    if not original_path or not os.path.exists(original_path):
+        raise ValueError(f"Original no encontrado: {original_path}")
+
+    safe_slot = safe_slug(slot_name, "photo")
+    prepared_dir = PHOTO_FOLDER / str(order_id) / "engine_prepared"
+    prepared_dir.mkdir(parents=True, exist_ok=True)
+
+    prepared_path = prepared_dir / f"{safe_slot}_engine_360x640.jpg"
+
+    original_mtime = os.path.getmtime(original_path)
+    if prepared_path.exists() and os.path.getsize(prepared_path) > 0:
+        prepared_mtime = os.path.getmtime(prepared_path)
+        if prepared_mtime >= original_mtime:
+            return str(prepared_path)
+
+    with Image.open(original_path) as img:
+        # Respeta orientación EXIF de iPhone/Instagram sin tocar el archivo original.
+        img = ImageOps.exif_transpose(img)
+
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+
+        original_w, original_h = img.size
+        if original_w <= 0 or original_h <= 0:
+            raise ValueError(f"Imagen inválida: {original_path}")
+
+        # 1) Fondo cinematográfico: cubre 360x640 con la misma foto ampliada + blur.
+        bg_ratio = max(TARGET_W / original_w, TARGET_H / original_h)
+        bg_w = max(int(original_w * bg_ratio), TARGET_W)
+        bg_h = max(int(original_h * bg_ratio), TARGET_H)
+
+        bg = img.resize((bg_w, bg_h), Image.LANCZOS)
+
+        left = max((bg_w - TARGET_W) // 2, 0)
+        top = max((bg_h - TARGET_H) // 2, 0)
+        bg = bg.crop((left, top, left + TARGET_W, top + TARGET_H))
+
+        bg = bg.filter(ImageFilter.GaussianBlur(radius=18))
+        bg = ImageEnhance.Brightness(bg).enhance(0.42)
+        bg = ImageEnhance.Contrast(bg).enhance(1.16)
+        bg = ImageEnhance.Color(bg).enhance(1.08)
+
+        # 2) Foto principal: entra COMPLETA dentro del lienzo sin recorte ni deformación.
+        fg_ratio = min(TARGET_W / original_w, TARGET_H / original_h)
+        fg_w = max(int(original_w * fg_ratio), 1)
+        fg_h = max(int(original_h * fg_ratio), 1)
+
+        fg = img.resize((fg_w, fg_h), Image.LANCZOS)
+
+        x = (TARGET_W - fg_w) // 2
+        y = (TARGET_H - fg_h) // 2
+
+        bg.paste(fg, (x, y))
+        bg.save(str(prepared_path), "JPEG", quality=94, optimize=True)
+
+    if not prepared_path.exists() or os.path.getsize(prepared_path) <= 0:
+        raise ValueError(f"No se pudo preparar imagen para engine: {prepared_path}")
+
+    return str(prepared_path)
+
+
 @app.get("/video/input/{order_id}/{slot_name}")
 def get_video_input(order_id: str, slot_name: str):
     """
-    RC14 RESTAURADO DESDE MAIN SALVAVIDAS.
+    RC21 MAIN PATCH.
     Ruta crítica para que el video engine pueda descargar las 6 fotos.
-    Sin esta ruta:
-    - Stripe puede ir OK
-    - webhook puede pedir render
-    - pero el motor no puede leer fotos
-    - no termina vídeo
-    - no hay callback útil
-    - no se envía SMS al destinatario
+
+    Decisión técnica:
+    - NO tocamos video engine.
+    - NO tocamos zoompan.
+    - NO tocamos Stripe/webhook/SMS/workers/DB.
+    - El main conserva el original y entrega al engine una copia recalculada 360x640.
+
+    Si la preparación falla, entregamos el original como fallback para no romper el render.
     """
     path = get_photo_asset_path(order_id, slot_name)
     if not path:
@@ -8661,15 +8821,32 @@ def get_video_input(order_id: str, slot_name: str):
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
 
-    # RC16: se entrega al video engine el archivo original guardado.
-    # Sin crop, sin resize, sin compresión.
-    print(f"🖼️ RC16 /video/input original -> order={order_id} slot={slot_name} path={path} size={os.path.getsize(path)}")
+    try:
+        prepared_path = prepare_photo_for_video_engine(path, order_id, slot_name)
+        print(
+            f"🖼️ RC21 /video/input preparado -> "
+            f"order={order_id} slot={slot_name} "
+            f"original={path} prepared={prepared_path} "
+            f"size={os.path.getsize(prepared_path)}"
+        )
+        return FileResponse(
+            prepared_path,
+            media_type="image/jpeg",
+            filename=os.path.basename(prepared_path),
+        )
 
-    return FileResponse(
-        path,
-        media_type=guess_media_type_from_path(path),
-        filename=os.path.basename(path),
-    )
+    except Exception as e:
+        # Fallback salvavidas: jamás bloqueamos el render si PIL falla por una imagen rara.
+        print(
+            f"⚠️ RC21 prepare_photo_for_video_engine falló. "
+            f"Entrego original para no romper render. "
+            f"order={order_id} slot={slot_name} error={e}"
+        )
+        return FileResponse(
+            path,
+            media_type=guess_media_type_from_path(path),
+            filename=os.path.basename(path),
+        )
 
 
 @app.get("/video/sender-reaction/{sender_token}")
