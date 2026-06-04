@@ -1,4 +1,12 @@
 # =========================================================
+# RC14 FLUJO SALVAVIDAS + SMS + VIDEO INPUT RESTAURADO
+# Base: RC13 fixed visual.
+# Arreglo crítico: recupera /video/input/{order_id}/{slot_name}
+# desde el main salvavidas para que el video engine pueda crear vídeo
+# y después se disparen callback + SMS.
+# =========================================================
+
+# =========================================================
 # RC13 FLUJO SALVAVIDAS + PANTALLAS LIMPIAS
 # Base: RC12 visual. Objetivo: recuperar experiencia completa
 # y evitar pantallas negras por assets mal nombrados.
@@ -181,7 +189,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v5-rc13-fixed-flujo-salvavidas"
+ETERNA_VISUAL_VERSION = "eterna-visual-v6-rc14-salvavidas-sms-video-input"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -1621,6 +1629,7 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     message = build_sender_ready_message(order)
+    print("📩 RC14 ENVIANDO MENSAJE REGALANTE A:", order.get("sender_phone", ""))
     result = send_message_best_effort(order.get("sender_phone", ""), message)
 
     attempts = attempts + 1
@@ -1939,6 +1948,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     # SMS
     # =========================================================
     message = build_recipient_message(order)
+    print("📩 RC14 ENVIANDO MENSAJE DESTINATARIO A:", order.get("recipient_phone", ""))
     result = send_message_best_effort(order.get("recipient_phone", ""), message)
 
     print("📩 RECIPIENT SMS RESULT:", result)
@@ -8352,6 +8362,34 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 </body>
 </html>
 """)
+
+
+
+@app.get("/video/input/{order_id}/{slot_name}")
+def get_video_input(order_id: str, slot_name: str):
+    """
+    RC14 RESTAURADO DESDE MAIN SALVAVIDAS.
+    Ruta crítica para que el video engine pueda descargar las 6 fotos.
+    Sin esta ruta:
+    - Stripe puede ir OK
+    - webhook puede pedir render
+    - pero el motor no puede leer fotos
+    - no termina vídeo
+    - no hay callback útil
+    - no se envía SMS al destinatario
+    """
+    path = get_photo_asset_path(order_id, slot_name)
+    if not path:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+    return FileResponse(
+        path,
+        media_type=guess_media_type_from_path(path),
+        filename=os.path.basename(path),
+    )
 
 
 @app.get("/video/sender-reaction/{sender_token}")
