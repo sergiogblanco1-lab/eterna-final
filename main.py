@@ -6946,7 +6946,7 @@ def resumen(order_id: str):
 # =========================================================
 
 @app.post("/start-experience")
-async def start_experience(recipient_token: str = Form(...)):
+async def start_experience(request: Request, recipient_token: str = Form(...)):
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
         insert_order_event(order["id"], "experience_started", "ok", "El destinatario ha pulsado empezar y se inicia cámara/vídeo")
@@ -6971,8 +6971,19 @@ async def start_experience(recipient_token: str = Form(...)):
             experience_started=1
         )
 
+        redirect_url = f"/experiencia/{recipient_token}"
+
+        # Si Safari envía el formulario de forma normal porque algún JS falla,
+        # NO debe quedarse en una página blanca con {"ok":true}.
+        # En navegación HTML redirigimos directamente a la experiencia.
+        accept_header = (request.headers.get("accept") or "").lower()
+        ajax_header = (request.headers.get("x-eterna-ajax") or "").strip()
+        if "text/html" in accept_header and ajax_header != "1":
+            return RedirectResponse(url=redirect_url, status_code=303)
+
         return JSONResponse({
-            "ok": True
+            "ok": True,
+            "redirect_url": redirect_url
         })
 
     except Exception as e:
@@ -7064,9 +7075,11 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
                         try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
                     }}
                     const fd = new FormData(form);
-                    const res = await fetch('/start-experience', {{ method: 'POST', body: fd }});
+                    const res = await fetch('/start-experience', {{ method: 'POST', body: fd, headers: {{ 'X-ETERNA-AJAX': '1' }} }});
                     if (!res.ok) throw new Error('start_experience_failed');
-                    window.location.replace('/experiencia/{safe_attr(recipient_token)}';
+                    let data = {{}};
+                    try {{ data = await res.json(); }} catch (_) {{}}
+                    window.location.replace(data.redirect_url || '/experiencia/{safe_attr(recipient_token)}');
                 }} catch (err) {{
                     btn.disabled = false;
                     alert('ETERNA necesita acceso a cámara y micrófono para continuar.');
@@ -8220,10 +8233,11 @@ startBtn.addEventListener("click", async () => {
 
         const response = await fetch("/start-experience", {
             method: "POST",
-            body: formData
+            body: formData,
+            headers: { "X-ETERNA-AJAX": "1" }
         });
 
-        let data = {};
+        let data = {{}};
         try {
             data = await response.json();
         } catch (_) {}
