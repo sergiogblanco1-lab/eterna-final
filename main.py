@@ -1,4 +1,11 @@
 # =========================================================
+# RC17 SENDER PACK DIMENSIONES + VIDA PREMIUM
+# Base: RC16 fotos robustas.
+# Objetivo: encaje fino del pack, eliminar ruido visual inferior,
+# corazón vivo, líneas brillantes, purpurina y composición premium.
+# =========================================================
+
+# =========================================================
 # RC16 FOTOS ROBUSTAS + ORIGINALES AL VIDEO ENGINE
 # Base: RC15 visual.
 # Arreglo crítico: guardado robusto de fotos en iPhone/Instagram
@@ -203,7 +210,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v8-rc16-fotos-robustas-originales"
+ETERNA_VISUAL_VERSION = "eterna-visual-v9-rc17-senderpack-dimensiones-vida"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -8498,20 +8505,38 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 .bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;user-select:none;pointer-events:none}}
 .glow{{position:absolute;inset:-10%;z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 32%,rgba(50,190,255,.20),transparent 25%),radial-gradient(circle at 74% 45%,rgba(255,174,56,.18),transparent 18%);mix-blend-mode:screen;animation:breath 6s ease-in-out infinite}}
 @keyframes breath{{0%,100%{{opacity:.45;transform:scale(1)}}50%{{opacity:.9;transform:scale(1.045)}}}}
-.main-video{{position:absolute;z-index:3;left:8.6%;right:8.6%;top:23.4%;height:35.7%;border-radius:26px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.82);box-shadow:0 0 28px rgba(34,174,255,.48), inset 0 0 18px rgba(60,190,255,.16)}}
-.main-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
-.reaction-video{{position:absolute;z-index:4;right:9.6%;top:43.8%;width:29.5%;height:21.5%;border-radius:19px;overflow:hidden;background:#000;border:2px solid rgba(255,198,91,.96);box-shadow:0 0 24px rgba(255,180,58,.68), inset 0 0 14px rgba(255,210,120,.18)}}
-.reaction-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
+.main-video{{position:absolute;z-index:3;left:8.2%;right:8.2%;top:24.6%;height:34.8%;border-radius:25px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.82);box-shadow:0 0 32px rgba(34,174,255,.54), inset 0 0 20px rgba(60,190,255,.18)}}
+.main-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.06) saturate(1.06) brightness(1.03)}}
+.reaction-video{{position:absolute;z-index:5;right:8.4%;top:42.4%;width:30.6%;height:22.6%;border-radius:20px;overflow:hidden;background:#000;border:2px solid rgba(255,204,104,.98);box-shadow:0 0 0 1px rgba(255,245,207,.22),0 0 30px rgba(255,183,70,.72), inset 0 0 16px rgba(255,218,137,.22)}}
+.reaction-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.12) saturate(1.10) brightness(1.08)}}
 .real-hit{{position:absolute;z-index:8;border:0;background:rgba(255,255,255,.001);cursor:pointer;text-indent:-9999px;overflow:hidden;border-radius:999px}}
-.hit-replay{{left:9.2%;right:9.2%;bottom:25.2%;height:7.1%}}
-.hit-save{{left:9.2%;right:9.2%;bottom:17.1%;height:7.1%}}
-.hit-share{{left:9.2%;right:9.2%;bottom:9.1%;height:7.1%}}
+.hit-replay{{left:8.6%;right:8.6%;bottom:25.0%;height:7.5%}}
+.hit-save{{left:8.6%;right:8.6%;bottom:16.8%;height:7.5%}}
+.hit-share{{left:8.6%;right:8.6%;bottom:8.6%;height:7.5%}}
 .hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
 .pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
 @keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
 .floating{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#5bd9ff;box-shadow:0 0 16px #5bd9ff;animation:floatUp 7.5s linear infinite;opacity:0;pointer-events:none}}
 .f1{{left:17%;bottom:13%;animation-delay:.2s}}.f2{{left:83%;bottom:22%;animation-delay:1.5s;background:#ffd98c;box-shadow:0 0 16px #ffd98c}}.f3{{left:47%;bottom:7%;animation-delay:3.1s}}.f4{{left:70%;bottom:58%;animation-delay:4.6s}}
 @keyframes floatUp{{0%{{transform:translateY(0) scale(.6);opacity:0}}15%{{opacity:.95}}100%{{transform:translateY(-180px) scale(1.1);opacity:0}}}}
+
+.life-line{{position:absolute;z-index:2;left:7%;right:7%;top:21.9%;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(70,210,255,.95),rgba(255,215,126,.85),transparent);box-shadow:0 0 24px rgba(70,210,255,.78),0 0 46px rgba(255,208,105,.34);animation:lifeLine 3.4s ease-in-out infinite;pointer-events:none;mix-blend-mode:screen}}
+.life-line::after{{content:"";position:absolute;top:-5px;left:-12%;width:70px;height:12px;border-radius:999px;background:radial-gradient(circle,#fff,rgba(79,211,255,.86) 34%,transparent 72%);filter:blur(1px);box-shadow:0 0 26px rgba(87,215,255,.94);animation:lineStar 4.8s cubic-bezier(.42,0,.24,1) infinite}}
+.alive-heart{{position:absolute;z-index:4;left:50%;bottom:18.9%;width:92px;height:92px;transform:translateX(-50%);border-radius:999px;pointer-events:none;display:flex;align-items:center;justify-content:center;color:#ffd98a;font-size:36px;text-shadow:0 0 20px rgba(255,212,126,.9),0 0 44px rgba(255,166,54,.5);animation:heartBeat 2.4s ease-in-out infinite}}
+.alive-heart::before{{content:"";position:absolute;inset:2px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.20),rgba(255,198,84,.18) 38%,transparent 70%);filter:blur(3px);animation:heartHalo 3.1s ease-in-out infinite}}
+.alive-heart::after{{content:"";position:absolute;inset:18px;border-radius:999px;border:1px solid rgba(255,213,128,.42);box-shadow:0 0 22px rgba(255,197,82,.38);animation:heartRing 3.7s ease-in-out infinite}}
+.spark{{position:absolute;z-index:4;width:4px;height:4px;border-radius:999px;background:#ffd98a;box-shadow:0 0 14px #ffd98a,0 0 28px rgba(255,217,138,.48);opacity:0;pointer-events:none;animation:sparkFloat 5.2s linear infinite}}
+.s1{{right:22%;top:38%;animation-delay:.1s}}.s2{{right:34%;top:44%;animation-delay:1.1s;background:#69d8ff;box-shadow:0 0 14px #69d8ff,0 0 28px rgba(105,216,255,.46)}}.s3{{right:11%;top:52%;animation-delay:2.0s}}.s4{{left:18%;top:26%;animation-delay:2.8s;background:#7ddfff;box-shadow:0 0 14px #7ddfff,0 0 28px rgba(125,223,255,.46)}}.s5{{left:68%;bottom:30%;animation-delay:3.6s}}
+@keyframes lifeLine{{0%,100%{{opacity:.36;filter:brightness(1)}}50%{{opacity:1;filter:brightness(1.85)}}}}
+@keyframes lineStar{{0%{{left:-14%;opacity:0;transform:scaleX(.62)}}12%{{opacity:1}}82%{{opacity:1}}100%{{left:104%;opacity:0;transform:scaleX(1.18)}}}}
+@keyframes heartBeat{{0%,100%{{transform:translateX(-50%) scale(.96);opacity:.72}}14%{{transform:translateX(-50%) scale(1.08);opacity:1}}28%{{transform:translateX(-50%) scale(.98);opacity:.86}}44%{{transform:translateX(-50%) scale(1.04);opacity:1}}}}
+@keyframes heartHalo{{0%,100%{{opacity:.18;transform:scale(.86)}}50%{{opacity:.46;transform:scale(1.12)}}}}
+@keyframes heartRing{{0%{{opacity:.18;transform:scale(.72)}}55%{{opacity:.56;transform:scale(1.18)}}100%{{opacity:0;transform:scale(1.42)}}}}
+@keyframes sparkFloat{{0%{{opacity:0;transform:translateY(0) scale(.55)}}16%{{opacity:.96}}72%{{opacity:.42}}100%{{opacity:0;transform:translateY(-105px) translateX(24px) scale(1.1)}}}}
+.video-shine{{position:absolute;z-index:6;left:8.2%;right:8.2%;top:24.6%;height:34.8%;border-radius:25px;pointer-events:none;overflow:hidden}}
+.video-shine::before{{content:"";position:absolute;top:-35%;left:-45%;width:28%;height:170%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transform:rotate(18deg);animation:videoShine 7.8s ease-in-out infinite;mix-blend-mode:screen}}
+@keyframes videoShine{{0%,62%{{left:-45%;opacity:0}}70%{{opacity:.7}}100%{{left:118%;opacity:0}}}}
+
 .toast{{position:absolute;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
 @media (min-width:760px){{body{{overflow:auto}}.shell{{width:min(100vw,520px);height:100svh;height:100dvh}}}}
@@ -8522,17 +8547,21 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 <main class="shell" aria-label="Sender Pack ETERNA">
     <img class="bg" src="{safe_attr(sender_bg)}" alt="Aquí vuelve lo que provocaste">
     <div class="glow" aria-hidden="true"></div>
+    <div class="life-line" aria-hidden="true"></div>
     <i class="floating f1"></i><i class="floating f2"></i><i class="floating f3"></i><i class="floating f4"></i>
+    <i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><i class="spark s5"></i>
     <section class="main-video" aria-label="Lo que enviaste">
         <video id="originalVideo" controls playsinline preload="metadata">
             {original_source_html}
         </video>
     </section>
+    <div class="video-shine" aria-hidden="true"></div>
     <section class="reaction-video" aria-label="Su reacción">
         <video id="reactionVideo" muted playsinline preload="metadata">
             {reaction_source_html}
         </video>
     </section>
+    <div class="alive-heart" aria-hidden="true">♡</div>
     <div class="pulse" aria-hidden="true"></div>
     <button class="real-hit hit-replay" id="replayBtn" type="button">Volver a ver esta emoción</button>
     <a class="real-hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download>Guardar este regreso</a>
