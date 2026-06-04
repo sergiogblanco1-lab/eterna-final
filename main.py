@@ -1,4 +1,10 @@
 # =========================================================
+# RC23 VIDA PREMIUM + TERMINOS INTERACTIVOS + CORAZON PALPITANTE
+# Base: RC22. Más vida en pago, términos y pantallas visuales.
+# Corrige aceptación con checkbox real y botón activado.
+# Mantiene main preparando fotos para engine. NO toca video engine.
+# =========================================================
+
 # RC20 STRIPE OK + CARGA MARIPOSA VIVA
 # Base: RC19 enviado por Sergio.
 # Corrige JS de redirección a Stripe y aplica loading-mode real.
@@ -232,7 +238,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v12-rc20-stripe-ok-carga-mariposa-viva"
+ETERNA_VISUAL_VERSION = "eterna-visual-v13-rc22-post-formulario-energia-cinematica"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -366,6 +372,10 @@ def render_eterna_image_screen(
     image_src = safe_attr(eterna_asset(clean_image))
     fallback_src = safe_attr(eterna_asset(clean_fallback))
 
+    is_terms_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("terms-acceptance-v1.png")
+    is_payment_success_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("payment-success-v1.png")
+    is_quiet_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("quiet-place-v1.png")
+
     note_html = ""
     if extra_note:
         note_html = f'<div class="extra-note">{safe_text(extra_note)}</div>'
@@ -391,10 +401,60 @@ def render_eterna_image_screen(
         </form>
         """
     elif button_url and button_label:
-        action_html = f'<a class="real-button" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>'
+        if is_terms_screen:
+            action_html = f"""
+            <div class="terms-hover-layer" aria-hidden="true">
+                <span class="terms-hover-zone thz1"></span>
+                <span class="terms-hover-zone thz2"></span>
+                <span class="terms-hover-zone thz3"></span>
+                <span class="terms-hover-zone thz4"></span>
+            </div>
+            <div class="terms-real-check">
+                <input id="termsRealCheck" type="checkbox" aria-label="He leído y acepto los términos">
+                <label for="termsRealCheck"><span></span></label>
+            </div>
+            <a class="real-button terms-continue is-disabled" id="termsContinueButton" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>
+            <script>
+            (function() {{
+                const check = document.getElementById('termsRealCheck');
+                const btn = document.getElementById('termsContinueButton');
+                if (!check || !btn) return;
+                function sync() {{
+                    if (check.checked) {{
+                        btn.classList.remove('is-disabled');
+                        btn.classList.add('is-ready');
+                    }} else {{
+                        btn.classList.add('is-disabled');
+                        btn.classList.remove('is-ready');
+                    }}
+                }}
+                btn.addEventListener('click', function(e) {{
+                    if (!check.checked) {{
+                        e.preventDefault();
+                        const box = document.querySelector('.terms-real-check');
+                        if (box) {{
+                            box.classList.remove('needs-attention');
+                            void box.offsetWidth;
+                            box.classList.add('needs-attention');
+                        }}
+                    }}
+                }});
+                check.addEventListener('change', sync);
+                sync();
+            }})();
+            </script>
+            """
+        else:
+            action_html = f'<a class="real-button" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>'
 
     loading_layers = ""
     screen_mode_class = " loading-mode" if overlay_kind == "loading" else ""
+    if is_terms_screen:
+        screen_mode_class += " terms-mode"
+    if is_payment_success_screen:
+        screen_mode_class += " payment-success-mode"
+    if is_quiet_screen:
+        screen_mode_class += " quiet-mode"
     if overlay_kind == "loading":
         loading_layers = """
         <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
@@ -474,67 +534,394 @@ def render_eterna_image_screen(
     .screen.loading-mode .edge-glow.eg2 {{ right:-28%; bottom:16%; opacity:.10; }}
 
 
-    /* RC20 — vida específica para pantalla creando ETERNA */
-    .screen.loading-mode .water-shimmer {{
-        position:absolute; left:9%; right:9%; bottom:14.8%; height:18%;
-        border-radius:999px;
-        background:linear-gradient(90deg, transparent, rgba(86,207,255,.10), rgba(255,214,126,.12), rgba(86,207,255,.08), transparent);
-        filter:blur(10px);
-        opacity:.55;
+    /* RC22 — POST FORMULARIO: energía cinematográfica exagerada, no técnica */
+    /* Objetivo: primero aparece la escena; después despierta la magia. */
+    .screen.loading-mode .img {{
+        opacity:0;
+        animation:loadingImageReveal 1.05s ease-out forwards;
+        filter:contrast(1.05) saturate(1.08) brightness(1.04);
+    }}
+
+    .screen.loading-mode .phone::before {{
+        content:"";
+        position:absolute;
+        inset:-12%;
+        pointer-events:none;
+        z-index:3;
+        opacity:0;
         mix-blend-mode:screen;
-        animation:waterMove 6.8s ease-in-out infinite;
+        background:
+            radial-gradient(circle at 50% 39%, rgba(118,222,255,.42), transparent 10%),
+            radial-gradient(circle at 38% 43%, rgba(255,226,148,.30), transparent 12%),
+            radial-gradient(circle at 62% 42%, rgba(255,226,148,.28), transparent 12%),
+            radial-gradient(circle at 50% 66%, rgba(61,207,255,.22), transparent 22%),
+            radial-gradient(circle at 50% 78%, rgba(255,205,105,.20), transparent 18%);
+        filter:blur(10px);
+        animation:energyWake 5.8s ease-in-out 1.0s infinite;
+    }}
+
+    .screen.loading-mode .phone::after {{
+        content:"";
+        position:absolute;
+        inset:0;
+        pointer-events:none;
+        z-index:7;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:
+            linear-gradient(115deg, transparent 0%, transparent 34%, rgba(255,255,255,.60) 38%, rgba(98,218,255,.34) 41%, transparent 47%, transparent 100%),
+            linear-gradient(65deg, transparent 0%, transparent 56%, rgba(255,222,135,.48) 59%, rgba(255,255,255,.42) 61%, transparent 66%, transparent 100%);
+        transform:translateX(-70%) skewX(-10deg);
+        animation:bigCinematicFlares 4.9s cubic-bezier(.2,.7,.15,1) 1.65s infinite;
+    }}
+
+    .screen.loading-mode .soft-halo {{
+        left:50%; top:43.5%; width:410px; height:410px;
+        opacity:0;
+        background:radial-gradient(circle, rgba(80,216,255,.42), rgba(42,153,255,.16) 40%, transparent 72%);
+        filter:blur(18px);
+        animation:butterflyHaloPower 3.8s ease-in-out 1.0s infinite;
+        z-index:2;
+    }}
+
+    /* Línea energética: retrasada, más lenta y más baja para cruzar el eje de la mariposa */
+    .screen.loading-mode .magic-line {{
+        left:16.2%; right:16.2%; top:66.35%; height:22px;
+        opacity:0;
+        z-index:6;
+        animation:lineWakeDelay .45s ease-out 1.05s forwards;
+    }}
+    .screen.loading-mode .magic-line span {{
+        top:9px; height:4px;
+        background:linear-gradient(90deg, rgba(37,122,255,.04), rgba(58,212,255,1), rgba(255,255,255,.96), rgba(255,218,129,.78), rgba(58,212,255,.40), rgba(37,122,255,.04));
+        box-shadow:0 0 26px rgba(53,203,255,1),0 0 58px rgba(43,149,255,.62),0 0 34px rgba(255,213,126,.44);
+        animation:linePulsePower 2.7s ease-in-out 1.05s infinite;
+    }}
+    .screen.loading-mode .magic-line b {{
+        top:0px; width:98px; height:20px;
+        background:radial-gradient(circle, #fff, #75e5ff 28%, rgba(255,218,126,.78) 47%, transparent 74%);
+        filter:blur(1px);
+        box-shadow:0 0 32px #75e5ff,0 0 68px rgba(255,211,118,.58);
+        animation:runnerPower 3.65s cubic-bezier(.23,.72,.18,1) 1.10s infinite;
+    }}
+    .screen.loading-mode .line-spark-runner {{
+        left:16.2%; top:67.05%; width:116px; height:3px;
+        opacity:0;
+        z-index:7;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,1), rgba(73,219,255,1), rgba(255,218,125,.88), transparent);
+        box-shadow:0 0 26px rgba(75,210,255,1),0 0 60px rgba(255,212,120,.62);
+        animation:lightRunnerPower 3.65s cubic-bezier(.23,.72,.18,1) 1.10s infinite;
+    }}
+    .screen.loading-mode .blue-orb {{
+        left:50%; top:67.0%; width:76px; height:76px;
+        opacity:0;
+        z-index:5;
+        background:radial-gradient(circle, rgba(255,255,255,1), rgba(82,219,255,.78) 24%, rgba(255,218,126,.30) 46%, transparent 74%);
+        filter:blur(2px);
+        animation:orbBeatPower 2.35s ease-in-out 1.05s infinite;
+    }}
+
+    .screen.loading-mode .water-shimmer {{
+        position:absolute; left:5%; right:5%; bottom:11.7%; height:22%;
+        border-radius:999px;
+        background:linear-gradient(90deg, transparent, rgba(86,207,255,.18), rgba(255,214,126,.22), rgba(86,207,255,.16), transparent);
+        filter:blur(12px);
+        opacity:0;
+        mix-blend-mode:screen;
+        animation:waterMovePower 5.9s ease-in-out 1.15s infinite;
         pointer-events:none;
         z-index:2;
     }}
     .screen.loading-mode .sun-glow {{
-        position:absolute; left:50%; bottom:18.5%; width:230px; height:130px;
+        position:absolute; left:50%; bottom:17.2%; width:280px; height:155px;
         transform:translateX(-50%);
         border-radius:999px;
-        background:radial-gradient(circle, rgba(255,225,142,.34), rgba(255,168,58,.16) 42%, transparent 72%);
-        filter:blur(12px);
-        opacity:.58;
+        background:radial-gradient(circle, rgba(255,238,174,.58), rgba(255,168,58,.25) 42%, transparent 74%);
+        filter:blur(14px);
+        opacity:0;
         mix-blend-mode:screen;
-        animation:sunBreath 5.2s ease-in-out infinite;
+        animation:sunBreathPower 4.4s ease-in-out 1.0s infinite;
         pointer-events:none;
         z-index:2;
     }}
     .screen.loading-mode .eterna-ring {{
-        position:absolute; left:50%; top:35.2%; width:92px; height:92px;
+        position:absolute; left:50%; top:39.9%; width:126px; height:126px;
         transform:translate(-50%,-50%);
         border-radius:999px;
-        border:1px solid rgba(255,218,140,.34);
-        box-shadow:0 0 28px rgba(255,203,102,.30), inset 0 0 22px rgba(77,204,255,.16);
-        opacity:.62;
-        animation:ringRotate 7.2s linear infinite;
+        border:1px solid rgba(255,230,159,.58);
+        box-shadow:0 0 36px rgba(255,203,102,.54), inset 0 0 28px rgba(77,204,255,.26), 0 0 74px rgba(65,210,255,.25);
+        opacity:0;
+        animation:ringRotatePower 7.8s linear 1.0s infinite, ringWake .5s ease-out 1.0s forwards;
         pointer-events:none;
-        z-index:3;
+        z-index:5;
         mix-blend-mode:screen;
     }}
     .screen.loading-mode .eterna-ring span {{
-        position:absolute; right:-4px; top:38px; width:10px; height:10px;
+        position:absolute; right:-5px; top:52px; width:13px; height:13px;
         border-radius:999px;
         background:#fff7d0;
-        box-shadow:0 0 18px #fff7d0, 0 0 34px rgba(255,207,98,.86);
+        box-shadow:0 0 22px #fff7d0, 0 0 46px rgba(255,207,98,1);
     }}
+
+    /* Destellos exagerados alrededor de alas y línea */
     .screen.loading-mode .loading-spark {{
-        position:absolute; width:4px; height:4px; border-radius:999px;
+        position:absolute; width:5px; height:5px; border-radius:999px;
         background:#ffd98a;
-        box-shadow:0 0 14px #ffd98a,0 0 28px rgba(255,217,138,.48);
+        box-shadow:0 0 18px #ffd98a,0 0 38px rgba(255,217,138,.72);
         opacity:0;
         pointer-events:none;
-        z-index:4;
-        animation:loadingSparkFloat 5.4s linear infinite;
+        z-index:8;
+        animation:loadingSparkFloatPower 4.8s linear 1.1s infinite;
     }}
-    .screen.loading-mode .ls1 {{ left:25%; top:31%; animation-delay:.2s; }}
-    .screen.loading-mode .ls2 {{ left:70%; top:34%; animation-delay:1.0s; background:#70dcff; box-shadow:0 0 14px #70dcff,0 0 28px rgba(112,220,255,.50); }}
-    .screen.loading-mode .ls3 {{ left:62%; top:55%; animation-delay:1.8s; }}
-    .screen.loading-mode .ls4 {{ left:35%; top:66%; animation-delay:2.7s; background:#74dfff; box-shadow:0 0 14px #74dfff,0 0 28px rgba(116,223,255,.50); }}
-    .screen.loading-mode .ls5 {{ left:78%; top:69%; animation-delay:3.4s; }}
-    @keyframes waterMove {{ 0%,100% {{ transform:translateX(-10px) scaleX(.96); opacity:.32; }} 50% {{ transform:translateX(12px) scaleX(1.05); opacity:.72; }} }}
-    @keyframes sunBreath {{ 0%,100% {{ transform:translateX(-50%) scale(.90); opacity:.36; }} 50% {{ transform:translateX(-50%) scale(1.12); opacity:.78; }} }}
-    @keyframes ringRotate {{ from {{ transform:translate(-50%,-50%) rotate(0deg); }} to {{ transform:translate(-50%,-50%) rotate(360deg); }} }}
-    @keyframes loadingSparkFloat {{ 0% {{ opacity:0; transform:translateY(0) scale(.55); }} 15% {{ opacity:1; }} 70% {{ opacity:.46; }} 100% {{ opacity:0; transform:translateY(-90px) translateX(18px) scale(1.08); }} }}
+    .screen.loading-mode .ls1 {{ left:23%; top:37%; animation-delay:1.10s; }}
+    .screen.loading-mode .ls2 {{ left:73%; top:39%; animation-delay:1.36s; background:#70dcff; box-shadow:0 0 18px #70dcff,0 0 38px rgba(112,220,255,.76); }}
+    .screen.loading-mode .ls3 {{ left:61%; top:52%; animation-delay:1.72s; }}
+    .screen.loading-mode .ls4 {{ left:32%; top:54%; animation-delay:2.08s; background:#74dfff; box-shadow:0 0 18px #74dfff,0 0 38px rgba(116,223,255,.76); }}
+    .screen.loading-mode .ls5 {{ left:78%; top:65%; animation-delay:2.44s; }}
 
+    .screen.loading-mode .edge-glow.eg1 {{
+        left:-16%; top:28%; width:82%; height:45%;
+        border-color:rgba(69,213,255,.28);
+        box-shadow:0 0 36px rgba(58,201,255,.42), inset 0 0 44px rgba(58,201,255,.18);
+        opacity:0;
+        animation:edgeGlowOnePower 5.8s ease-in-out 1.2s infinite;
+        z-index:4;
+    }}
+    .screen.loading-mode .edge-glow.eg2 {{
+        right:-18%; bottom:12%; width:86%; height:48%;
+        border-color:rgba(255,213,126,.24);
+        box-shadow:0 0 42px rgba(255,194,90,.36), inset 0 0 42px rgba(255,194,90,.16);
+        opacity:0;
+        animation:edgeGlowTwoPower 6.1s ease-in-out 1.45s infinite;
+        z-index:4;
+    }}
+    .screen.loading-mode .star-run.sr1 {{
+        display:block; left:2%; top:36%; width:150px; height:3px;
+        opacity:0; z-index:9;
+        animation:starRunOnePower 4.6s ease-in-out 1.75s infinite;
+    }}
+    .screen.loading-mode .star-run.sr2 {{
+        display:block; right:0%; bottom:31%; width:150px; height:3px;
+        opacity:0; z-index:9;
+        animation:starRunTwoPower 5.0s ease-in-out 2.35s infinite;
+    }}
+
+    @keyframes loadingImageReveal {{ 0% {{ opacity:0; transform:scale(1.012); filter:brightness(.42) blur(2px); }} 100% {{ opacity:1; transform:scale(1); filter:contrast(1.05) saturate(1.08) brightness(1.04) blur(0); }} }}
+    @keyframes lineWakeDelay {{ from {{ opacity:0; transform:translateY(8px); }} to {{ opacity:1; transform:translateY(0); }} }}
+    @keyframes energyWake {{ 0%,100% {{ opacity:.44; transform:scale(.95); }} 45% {{ opacity:1; transform:scale(1.06); }} 70% {{ opacity:.72; transform:scale(1.01); }} }}
+    @keyframes bigCinematicFlares {{ 0% {{ opacity:0; transform:translateX(-78%) skewX(-10deg); }} 13% {{ opacity:.0; }} 24% {{ opacity:.85; }} 48% {{ opacity:.42; }} 100% {{ opacity:0; transform:translateX(72%) skewX(-10deg); }} }}
+    @keyframes butterflyHaloPower {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.84); opacity:.34; }} 42% {{ transform:translate(-50%,-50%) scale(1.16); opacity:.96; }} 70% {{ opacity:.58; }} }}
+    @keyframes linePulsePower {{ 0%,100% {{ opacity:.76; filter:brightness(1); }} 35% {{ opacity:1; filter:brightness(2.25); }} 68% {{ opacity:.92; filter:brightness(1.45); }} }}
+    @keyframes runnerPower {{ 0% {{ left:-20%; opacity:0; transform:scaleX(.55); }} 12% {{ opacity:1; }} 76% {{ opacity:1; }} 100% {{ left:110%; opacity:0; transform:scaleX(.72); }} }}
+    @keyframes lightRunnerPower {{ 0% {{ left:16.2%; opacity:0; transform:translateY(1px) scaleX(.55); }} 12% {{ opacity:1; }} 52% {{ opacity:1; transform:translateY(-8px) scaleX(1.10); }} 100% {{ left:84%; opacity:0; transform:translateY(2px) scaleX(.50); }} }}
+    @keyframes orbBeatPower {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.78); opacity:.30; }} 36% {{ transform:translate(-50%,-50%) scale(1.25); opacity:1; }} 68% {{ opacity:.58; }} }}
+    @keyframes waterMovePower {{ 0%,100% {{ transform:translateX(-16px) scaleX(.94); opacity:.34; }} 45% {{ transform:translateX(18px) scaleX(1.08); opacity:.86; }} 72% {{ opacity:.58; }} }}
+    @keyframes sunBreathPower {{ 0%,100% {{ transform:translateX(-50%) scale(.82); opacity:.30; }} 42% {{ transform:translateX(-50%) scale(1.18); opacity:.90; }} }}
+    @keyframes ringWake {{ from {{ opacity:0; }} to {{ opacity:.92; }} }}
+    @keyframes ringRotatePower {{ from {{ transform:translate(-50%,-50%) rotate(0deg); }} to {{ transform:translate(-50%,-50%) rotate(360deg); }} }}
+    @keyframes loadingSparkFloatPower {{ 0% {{ opacity:0; transform:translateY(0) translateX(0) scale(.45); }} 12% {{ opacity:1; }} 36% {{ opacity:.94; transform:translateY(-32px) translateX(12px) scale(1.18); }} 72% {{ opacity:.52; }} 100% {{ opacity:0; transform:translateY(-118px) translateX(30px) scale(1.42); }} }}
+    @keyframes edgeGlowOnePower {{ 0%,100% {{ opacity:.06; transform:rotate(-18deg) scale(.94); }} 46% {{ opacity:.56; transform:rotate(-13deg) scale(1.08); }} }}
+    @keyframes edgeGlowTwoPower {{ 0%,100% {{ opacity:.05; transform:rotate(21deg) scale(.94); }} 52% {{ opacity:.48; transform:rotate(16deg) scale(1.09); }} }}
+    @keyframes starRunOnePower {{ 0% {{ transform:translateX(-120px) translateY(12px) scaleX(.55); opacity:0; }} 14% {{ opacity:.95; }} 42% {{ opacity:.68; }} 100% {{ transform:translateX(430px) translateY(-18px) scaleX(1.32); opacity:0; }} }}
+    @keyframes starRunTwoPower {{ 0% {{ transform:translateX(130px) translateY(-8px) scaleX(.55); opacity:0; }} 14% {{ opacity:.90; }} 42% {{ opacity:.58; }} 100% {{ transform:translateX(-430px) translateY(18px) scaleX(1.28); opacity:0; }} }}
+
+
+
+    /* RC23 — VIDA PREMIUM GENERAL: más cine sin tocar lógica */
+    .screen.payment-success-mode .phone::before {{
+        content:"";
+        position:absolute;
+        left:50%; top:61%; width:360px; height:360px;
+        transform:translate(-50%,-50%);
+        border-radius:999px;
+        pointer-events:none;
+        z-index:3;
+        opacity:.88;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,230,150,.78) 5%, rgba(255,183,52,.55) 14%, rgba(255,183,52,.22) 30%, transparent 58%),
+            conic-gradient(from 0deg, transparent, rgba(255,219,130,.50), transparent, rgba(255,244,190,.72), transparent);
+        filter:blur(8px);
+        animation:paymentHeartMegaPulse 1.55s ease-in-out infinite;
+    }}
+    .screen.payment-success-mode .phone::after {{
+        content:"";
+        position:absolute;
+        left:50%; top:61%; width:410px; height:410px;
+        transform:translate(-50%,-50%);
+        pointer-events:none;
+        z-index:4;
+        opacity:.80;
+        mix-blend-mode:screen;
+        background:
+            repeating-conic-gradient(from 8deg, rgba(255,224,137,.0) 0deg, rgba(255,224,137,.0) 9deg, rgba(255,237,178,.48) 10deg, rgba(255,174,41,.0) 12deg),
+            radial-gradient(circle, transparent 0 18%, rgba(255,210,92,.38) 19%, transparent 21%, transparent 31%, rgba(255,221,132,.30) 32%, transparent 35%, transparent 47%, rgba(255,244,186,.22) 48%, transparent 50%);
+        filter:drop-shadow(0 0 24px rgba(255,198,68,.78));
+        animation:paymentGoldenExplosion 4.2s ease-in-out infinite;
+    }}
+    .screen.payment-success-mode .soft-halo {{
+        left:50%; top:61%; width:430px; height:430px;
+        background:radial-gradient(circle, rgba(255,210,92,.50), rgba(255,162,31,.20) 34%, rgba(54,195,255,.15) 52%, transparent 75%);
+        filter:blur(20px);
+        opacity:.88;
+        animation:paymentHaloBreathe 2.0s ease-in-out infinite;
+        z-index:2;
+    }}
+    .screen.payment-success-mode .edge-glow.eg1 {{
+        left:-22%; top:22%; width:94%; height:52%;
+        border-color:rgba(255,219,126,.26);
+        box-shadow:0 0 42px rgba(255,199,76,.36), inset 0 0 44px rgba(255,199,76,.14);
+        animation:paymentSideGlow 4.8s ease-in-out infinite;
+        opacity:.32;
+    }}
+    .screen.payment-success-mode .edge-glow.eg2 {{
+        right:-24%; bottom:9%; width:96%; height:52%;
+        border-color:rgba(61,203,255,.24);
+        box-shadow:0 0 42px rgba(61,203,255,.34), inset 0 0 44px rgba(61,203,255,.12);
+        animation:paymentSideGlowTwo 5.4s ease-in-out .6s infinite;
+        opacity:.28;
+    }}
+    .screen.payment-success-mode .star-run.sr1 {{
+        left:0%; top:54%; width:190px; height:3px; z-index:8;
+        animation:paymentStarSweep 3.4s ease-in-out .25s infinite;
+    }}
+    .screen.payment-success-mode .star-run.sr2 {{
+        right:0%; bottom:28%; width:180px; height:3px; z-index:8;
+        animation:paymentStarSweepBack 3.8s ease-in-out 1.0s infinite;
+    }}
+    .screen.payment-success-mode .particle {{ width:7px; height:7px; animation-duration:6.8s; }}
+    .screen.payment-success-mode .particle.gold {{ width:8px; height:8px; }}
+
+    @keyframes paymentHeartMegaPulse {{
+        0%,100% {{ transform:translate(-50%,-50%) scale(.86); opacity:.52; filter:blur(10px) brightness(1); }}
+        28% {{ transform:translate(-50%,-50%) scale(1.16); opacity:1; filter:blur(6px) brightness(1.85); }}
+        42% {{ transform:translate(-50%,-50%) scale(.98); opacity:.76; }}
+        62% {{ transform:translate(-50%,-50%) scale(1.08); opacity:.94; filter:blur(7px) brightness(1.55); }}
+    }}
+    @keyframes paymentGoldenExplosion {{
+        0%,100% {{ transform:translate(-50%,-50%) rotate(0deg) scale(.88); opacity:.26; }}
+        30% {{ opacity:.96; transform:translate(-50%,-50%) rotate(20deg) scale(1.08); }}
+        62% {{ opacity:.50; transform:translate(-50%,-50%) rotate(38deg) scale(1.0); }}
+    }}
+    @keyframes paymentHaloBreathe {{
+        0%,100% {{ transform:translate(-50%,-50%) scale(.90); opacity:.45; }}
+        38% {{ transform:translate(-50%,-50%) scale(1.16); opacity:1; }}
+        62% {{ transform:translate(-50%,-50%) scale(1.02); opacity:.72; }}
+    }}
+    @keyframes paymentSideGlow {{ 0%,100% {{ opacity:.16; transform:rotate(-18deg) scale(.96); }} 50% {{ opacity:.58; transform:rotate(-13deg) scale(1.07); }} }}
+    @keyframes paymentSideGlowTwo {{ 0%,100% {{ opacity:.12; transform:rotate(21deg) scale(.96); }} 50% {{ opacity:.50; transform:rotate(16deg) scale(1.08); }} }}
+    @keyframes paymentStarSweep {{ 0% {{ transform:translateX(-140px) translateY(20px); opacity:0; }} 18% {{ opacity:1; }} 100% {{ transform:translateX(520px) translateY(-46px); opacity:0; }} }}
+    @keyframes paymentStarSweepBack {{ 0% {{ transform:translateX(140px) translateY(-18px); opacity:0; }} 18% {{ opacity:.9; }} 100% {{ transform:translateX(-520px) translateY(42px); opacity:0; }} }}
+
+    /* RC23 — términos: zonas vivas al pasar cursor y checkbox real */
+    .screen.terms-mode .real-button {{
+        bottom:calc(env(safe-area-inset-bottom) + 82px);
+        min-height:86px;
+        transition:filter .22s ease, transform .22s ease;
+    }}
+    .screen.terms-mode .real-button::after {{
+        opacity:.10;
+        background:linear-gradient(90deg, rgba(255,230,155,.22), rgba(255,174,42,.34), rgba(255,244,190,.22));
+        box-shadow:0 0 22px rgba(255,190,72,.24);
+    }}
+    .screen.terms-mode .real-button.is-disabled {{
+        cursor:not-allowed;
+        filter:saturate(.65) brightness(.74);
+    }}
+    .screen.terms-mode .real-button.is-disabled::after {{
+        opacity:.04;
+        animation:none;
+    }}
+    .screen.terms-mode .real-button.is-ready::after,
+    .screen.terms-mode .real-button:hover::after,
+    .screen.terms-mode .real-button:active::after {{
+        opacity:.46;
+        box-shadow:0 0 46px rgba(255,191,66,.72), 0 0 86px rgba(255,216,132,.42), inset 0 0 26px rgba(255,255,255,.18);
+        animation:termsButtonReady 1.35s ease-in-out infinite;
+    }}
+    .terms-hover-layer {{ position:absolute; inset:0; z-index:6; pointer-events:auto; }}
+    .terms-hover-zone {{
+        position:absolute;
+        left:18.8%; right:18.6%; height:8.2%;
+        border-radius:18px;
+        opacity:0;
+        border:1px solid rgba(255,222,142,.0);
+        background:linear-gradient(90deg, rgba(255,218,126,.02), rgba(255,218,126,.13), rgba(92,216,255,.08), rgba(255,218,126,.02));
+        box-shadow:0 0 0 rgba(255,210,95,0);
+        transition:opacity .2s ease, box-shadow .2s ease, border-color .2s ease, transform .2s ease;
+    }}
+    .terms-hover-zone:hover,
+    .terms-hover-zone:active {{
+        opacity:1;
+        border-color:rgba(255,222,142,.82);
+        box-shadow:0 0 26px rgba(255,202,82,.55), inset 0 0 22px rgba(255,221,142,.12), 0 0 44px rgba(65,204,255,.22);
+        transform:scale(1.015);
+    }}
+    .thz1 {{ top:46.9%; }}
+    .thz2 {{ top:55.0%; }}
+    .thz3 {{ top:63.1%; }}
+    .thz4 {{ top:71.2%; }}
+
+    .terms-real-check {{
+        position:absolute;
+        left:17.2%; top:80.7%;
+        width:44px; height:44px;
+        z-index:12;
+        pointer-events:auto;
+    }}
+    .terms-real-check input {{
+        position:absolute;
+        inset:0;
+        opacity:0;
+        cursor:pointer;
+        z-index:2;
+    }}
+    .terms-real-check label {{
+        position:absolute;
+        inset:0;
+        border-radius:8px;
+        display:block;
+        background:rgba(2,5,10,.78);
+        border:2px solid rgba(255,247,218,.95);
+        box-shadow:0 0 18px rgba(255,239,196,.42), inset 0 0 12px rgba(0,0,0,.68);
+        transition:all .18s ease;
+    }}
+    .terms-real-check label span {{
+        position:absolute;
+        left:10px; top:3px;
+        width:14px; height:24px;
+        border:solid #111;
+        border-width:0 4px 4px 0;
+        transform:rotate(45deg) scale(.2);
+        opacity:0;
+        transition:all .18s ease;
+    }}
+    .terms-real-check input:checked + label {{
+        background:linear-gradient(135deg,#fff7d5,#ffbe45 45%,#9b5b06);
+        border-color:#fff0bd;
+        box-shadow:0 0 28px rgba(255,195,74,.95),0 0 58px rgba(255,220,134,.42), inset 0 0 14px rgba(255,255,255,.28);
+    }}
+    .terms-real-check input:checked + label span {{ opacity:1; transform:rotate(45deg) scale(1); }}
+    .terms-real-check.needs-attention {{ animation:termsCheckShake .35s ease-in-out 1; }}
+    @keyframes termsButtonReady {{ 0%,100% {{ filter:brightness(1); transform:scale(.996); }} 50% {{ filter:brightness(1.42); transform:scale(1.012); }} }}
+    @keyframes termsCheckShake {{ 0%,100% {{ transform:translateX(0); }} 25% {{ transform:translateX(-6px); }} 50% {{ transform:translateX(5px); }} 75% {{ transform:translateX(-3px); }} }}
+
+    /* RC23 — quiet-place: microvida premium también antes de empezar */
+    .screen.quiet-mode .soft-halo {{
+        left:50%; top:33%; width:390px; height:390px;
+        background:radial-gradient(circle, rgba(54,205,255,.36), rgba(255,213,126,.12) 42%, transparent 72%);
+        animation:quietButterflyBreathe 4.2s ease-in-out infinite;
+    }}
+    .screen.quiet-mode .edge-glow.eg1 {{ opacity:.24; animation:edgeGlowOnePower 6.4s ease-in-out infinite; }}
+    .screen.quiet-mode .edge-glow.eg2 {{ opacity:.20; animation:edgeGlowTwoPower 6.8s ease-in-out .8s infinite; }}
+    .screen.quiet-mode .star-run.sr1 {{ left:6%; top:36%; animation:starRunOnePower 6s ease-in-out .8s infinite; }}
+    .screen.quiet-mode .star-run.sr2 {{ right:4%; bottom:23%; animation:starRunTwoPower 6.5s ease-in-out 1.6s infinite; }}
+    .screen.quiet-mode .real-button::after {{
+        opacity:.30;
+        box-shadow:0 0 42px rgba(255,190,66,.58),0 0 80px rgba(255,220,132,.26);
+        animation:termsButtonReady 1.8s ease-in-out infinite;
+    }}
+    @keyframes quietButterflyBreathe {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.88); opacity:.30; }} 50% {{ transform:translate(-50%,-50%) scale(1.08); opacity:.78; }} }}
     .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
 
 /* RC15 SENDER PACK — encaje fino y vida visual */
@@ -3515,7 +3902,7 @@ def checkout_loading(order_id: Optional[str] = None):
         fallback_image_name="checkout_loading",
         overlay_kind="loading",
         redirect_url=target_url,
-        redirect_delay_ms=900,
+        redirect_delay_ms=2200,
         extra_note="Tu ETERNA está cobrando vida...",
     )
 
