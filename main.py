@@ -1,4 +1,11 @@
 # =========================================================
+# RC15 VIDA VISUAL + ENCUADRE SENDER PACK
+# Base: RC14 flujo recuperado.
+# Objetivo: más vida en imágenes, menos emoji, más brillos/estelas,
+# filtros suaves en reacción y preparación para encaje fino.
+# =========================================================
+
+# =========================================================
 # RC14 FLUJO SALVAVIDAS + SMS + VIDEO INPUT RESTAURADO
 # Base: RC13 fixed visual.
 # Arreglo crítico: recupera /video/input/{order_id}/{slot_name}
@@ -189,7 +196,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v6-rc14-salvavidas-sms-video-input"
+ETERNA_VISUAL_VERSION = "eterna-visual-v7-rc15-vida-visual-encuadre"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -354,7 +361,7 @@ def render_eterna_image_screen(
     if overlay_kind == "loading":
         loading_layers = """
         <div class="magic-line" aria-hidden="true"><span></span><b></b></div>
-        <div class="flying-butterfly b1" aria-hidden="true">🦋</div>
+        <div class="line-spark-runner" aria-hidden="true"></div>
         <div class="blue-orb" aria-hidden="true"></div>
         """
 
@@ -383,11 +390,24 @@ def render_eterna_image_screen(
     .magic-line {{ position:absolute; left:8%; right:8%; top:56.8%; height:16px; border-radius:999px; pointer-events:none; overflow:hidden; mix-blend-mode:screen; }}
     .magic-line span {{ position:absolute; left:0; top:6px; height:4px; width:100%; border-radius:999px; background:linear-gradient(90deg, rgba(47,195,255,.08), rgba(52,204,255,.95), rgba(255,216,132,.32), rgba(255,216,132,.08)); box-shadow:0 0 18px rgba(45,195,255,.78),0 0 42px rgba(45,195,255,.42); animation:linePulse 1.7s ease-in-out infinite; }}
     .magic-line b {{ position:absolute; top:1px; left:-12%; width:66px; height:14px; border-radius:999px; background:radial-gradient(circle, #fff, #5cd6ff 33%, transparent 70%); filter:blur(1px); box-shadow:0 0 24px #5cd6ff; animation:runner 2.2s cubic-bezier(.42,0,.24,1) infinite; }}
-    .flying-butterfly {{ position:absolute; left:8%; top:54.7%; font-size:28px; filter:drop-shadow(0 0 10px #4bd2ff) drop-shadow(0 0 24px rgba(40,188,255,.9)); animation:butterflyRun 2.2s cubic-bezier(.42,0,.24,1) infinite; pointer-events:none; }}
+    .line-spark-runner {{ position:absolute; left:8%; top:55.9%; width:76px; height:2px; border-radius:999px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.95), rgba(67,211,255,.88), transparent); box-shadow:0 0 18px rgba(75,210,255,.95),0 0 42px rgba(255,212,120,.42); animation:lightRunner 2.2s cubic-bezier(.42,0,.24,1) infinite; pointer-events:none; mix-blend-mode:screen; }}
     .blue-orb {{ position:absolute; left:50%; top:56.8%; width:58px; height:58px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(255,255,255,.95), rgba(56,205,255,.62) 24%, transparent 72%); filter:blur(2px); opacity:.88; mix-blend-mode:screen; animation:orbBeat 1.6s ease-in-out infinite; pointer-events:none; }}
     @keyframes linePulse {{ 0%,100% {{ opacity:.70; filter:brightness(1); }} 50% {{ opacity:1; filter:brightness(1.55); }} }}
     @keyframes runner {{ 0% {{ left:-12%; opacity:0; }} 10% {{ opacity:1; }} 82% {{ opacity:1; }} 100% {{ left:104%; opacity:0; }} }}
     @keyframes butterflyRun {{ 0% {{ left:8%; transform:translateY(2px) scale(.82); opacity:.2; }} 12% {{ opacity:1; }} 50% {{ transform:translateY(-10px) scale(1.02); }} 88% {{ opacity:1; }} 100% {{ left:86%; transform:translateY(3px) scale(.9); opacity:0; }} }}
+
+    .edge-glow {{ position:absolute; pointer-events:none; mix-blend-mode:screen; opacity:.0; }}
+    .eg1 {{ left:-18%; top:18%; width:72%; height:42%; border-radius:999px; border:1px solid rgba(58,201,255,.16); box-shadow:0 0 24px rgba(58,201,255,.22), inset 0 0 28px rgba(58,201,255,.10); transform:rotate(-18deg); animation:edgeGlowOne 7.4s ease-in-out infinite; }}
+    .eg2 {{ right:-24%; bottom:12%; width:78%; height:46%; border-radius:999px; border:1px solid rgba(255,207,113,.13); box-shadow:0 0 28px rgba(255,194,90,.18), inset 0 0 28px rgba(255,194,90,.08); transform:rotate(21deg); animation:edgeGlowTwo 8.2s ease-in-out infinite; }}
+    .star-run {{ position:absolute; width:110px; height:2px; border-radius:999px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.94), rgba(255,213,121,.88), transparent); box-shadow:0 0 18px rgba(255,221,143,.72),0 0 36px rgba(74,204,255,.28); opacity:0; pointer-events:none; mix-blend-mode:screen; }}
+    .sr1 {{ left:10%; top:30%; animation:starRunOne 5.8s ease-in-out infinite; }}
+    .sr2 {{ right:7%; bottom:23%; animation:starRunTwo 6.6s ease-in-out infinite 1.4s; }}
+    @keyframes edgeGlowOne {{ 0%,100% {{ opacity:.02; transform:rotate(-18deg) scale(.96); }} 48% {{ opacity:.26; transform:rotate(-14deg) scale(1.04); }} }}
+    @keyframes edgeGlowTwo {{ 0%,100% {{ opacity:.02; transform:rotate(21deg) scale(.96); }} 52% {{ opacity:.22; transform:rotate(17deg) scale(1.06); }} }}
+    @keyframes starRunOne {{ 0% {{ transform:translateX(-80px) scaleX(.65); opacity:0; }} 14% {{ opacity:.76; }} 48% {{ opacity:.42; }} 100% {{ transform:translateX(360px) scaleX(1.25); opacity:0; }} }}
+    @keyframes starRunTwo {{ 0% {{ transform:translateX(100px) scaleX(.65); opacity:0; }} 14% {{ opacity:.62; }} 48% {{ opacity:.34; }} 100% {{ transform:translateX(-360px) scaleX(1.2); opacity:0; }} }}
+    @keyframes lightRunner {{ 0% {{ left:8%; opacity:0; transform:translateY(1px) scaleX(.55); }} 10% {{ opacity:1; }} 55% {{ opacity:.98; transform:translateY(-6px) scaleX(1); }} 100% {{ left:86%; opacity:0; transform:translateY(2px) scaleX(.45); }} }}
+
     @keyframes orbBeat {{ 0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.48; }} 50% {{ transform:translate(-50%,-50%) scale(1.16); opacity:.95; }} }}
     .real-button {{ position:absolute; left:7.5%; right:7.5%; bottom:calc(env(safe-area-inset-bottom) + 54px); min-height:76px; border:0; border-radius:22px; display:block; z-index:8; color:transparent; text-indent:-9999px; overflow:hidden; background:rgba(255,255,255,.001); cursor:pointer; touch-action:manipulation; }}
     .real-button::after {{ content:""; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(90deg,rgba(255,242,186,.10),rgba(255,179,55,.16)); box-shadow:0 0 30px rgba(255,189,75,.22); opacity:.0; animation:ctaBreath 2.8s ease-in-out infinite; }}
@@ -395,6 +415,52 @@ def render_eterna_image_screen(
     .visual-action-form {{ position:absolute; left:0; right:0; bottom:0; z-index:8; }}
     .extra-note {{ position:absolute; left:8%; right:8%; bottom:calc(env(safe-area-inset-bottom) + 18px); z-index:7; text-align:center; color:rgba(255,245,220,.72); font-size:12px; line-height:1.35; text-shadow:0 0 14px rgba(0,0,0,.9); }}
     .fallback {{ display:none; min-height:100vh; padding:42px 24px; color:#f6f1e8; text-align:center; flex-direction:column; justify-content:center; gap:18px; background:#02050a; }}
+
+/* RC15 SENDER PACK — encaje fino y vida visual */
+.sender-pack-stage, .sender-pack-wrap, .sender-pack-card {{ position:relative; }}
+.sender-pack-video, video.sender-pack-video {{
+    object-fit:cover !important;
+    border-radius:22px !important;
+    filter:contrast(1.08) saturate(1.10) brightness(1.04);
+}}
+.sender-reaction, video.sender-reaction, .reaction-video {{
+    object-fit:cover !important;
+    filter:contrast(1.12) saturate(1.08) brightness(1.08);
+    box-shadow:0 0 0 2px rgba(255,208,108,.82), 0 0 28px rgba(255,190,82,.46) !important;
+}}
+video::-webkit-media-controls-panel {{ opacity:0; transition:opacity .22s ease; }}
+video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-panel {{ opacity:1; }}
+.sender-pack-stage::before {{
+    content:"";
+    position:absolute;
+    left:5%;
+    right:5%;
+    top:19%;
+    height:2px;
+    border-radius:999px;
+    background:linear-gradient(90deg, transparent, rgba(76,209,255,.92), rgba(255,215,125,.78), transparent);
+    box-shadow:0 0 22px rgba(76,209,255,.72),0 0 38px rgba(255,208,112,.30);
+    animation:senderLineLife 3.1s ease-in-out infinite;
+    pointer-events:none;
+    z-index:6;
+}}
+.sender-pack-stage::after {{
+    content:"";
+    position:absolute;
+    width:72px;
+    height:72px;
+    right:10%;
+    top:24%;
+    border-radius:999px;
+    background:radial-gradient(circle, rgba(255,255,255,.92), rgba(255,210,110,.35) 28%, transparent 72%);
+    filter:blur(3px);
+    animation:senderGlowBreath 3.8s ease-in-out infinite;
+    pointer-events:none;
+    z-index:6;
+}}
+@keyframes senderLineLife {{ 0%,100%{{opacity:.45; filter:brightness(1);}} 50%{{opacity:1; filter:brightness(1.8);}} }}
+@keyframes senderGlowBreath {{ 0%,100%{{opacity:.16; transform:scale(.82);}} 50%{{opacity:.48; transform:scale(1.08);}} }}
+
 </style>
 </head>
 <body>
@@ -406,6 +472,10 @@ def render_eterna_image_screen(
         <i class="particle p3" aria-hidden="true"></i>
         <i class="particle gold p4" aria-hidden="true"></i>
         <div class="soft-halo" aria-hidden="true"></div>
+        <div class="edge-glow eg1" aria-hidden="true"></div>
+        <div class="edge-glow eg2" aria-hidden="true"></div>
+        <div class="star-run sr1" aria-hidden="true"></div>
+        <div class="star-run sr2" aria-hidden="true"></div>
         {loading_layers}
         {action_html}
         {note_html}
