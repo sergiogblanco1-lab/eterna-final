@@ -5,9 +5,10 @@
 # Mantiene main preparando fotos para engine. NO toca video engine.
 # =========================================================
 
-# RC26 ESTABLE + PANTALLAS VIVAS + ASSETS REALES
-# Base: RC25. Mantiene una sola pantalla formulario→Stripe.
-# Ajusta resolver de assets reales y da vida visual a pantallas sin tocar lógica crítica.
+# RC27 ESTABLE CIRCUITO COMPLETO + VIDEO ARRANCA SIN BUCLE
+# Base: RC26. Mantiene pantallas/assets reales y una sola pantalla formulario→Stripe.
+# Arreglo crítico: en /experiencia el botón Estoy listo NO redirige otra vez a /experiencia.
+# Ahora arranca cámara + vídeo en la misma página y evita el bucle/pantalla Shhh sin acceso al vídeo.
 # =========================================================
 
 # RC25 FORMULARIO ESTABLE + UNA SOLA PANTALLA A STRIPE
@@ -243,7 +244,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v15-rc26-estable-pantallas-vivas-assets-reales"
+ETERNA_VISUAL_VERSION = "eterna-visual-v16-rc27-circuito-completo-video-arranca"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -8497,7 +8498,7 @@ startBtn.addEventListener("click", async () => {
             headers: { "X-ETERNA-AJAX": "1" }
         });
 
-        let data = {{}};
+        let data = {};
         try {
             data = await response.json();
         } catch (_) {}
@@ -8506,9 +8507,18 @@ startBtn.addEventListener("click", async () => {
             throw new Error(data.detail || "start_experience_error");
         }
 
+        // RC27 FIX CRÍTICO:
+        // /start-experience confirma en backend que la experiencia empezó.
+        // En RC26 devolvía redirect_url y este botón volvía a cargar /experiencia,
+        // dejando al usuario otra vez en la pantalla Shhh sin arrancar el vídeo.
+        // Aquí NO redirigimos: seguimos en la misma página, con el gesto del usuario vivo,
+        // cámara ya iniciada y el vídeo listo para reproducirse.
         if (data.redirect_url) {
-            window.location.replace(data.redirect_url);
-            return;
+            console.log("RC27 start-experience confirmado; no redirijo para evitar bucle", data.redirect_url);
+        }
+
+        if (!video || !video.querySelector('source') || !video.querySelector('source').src) {
+            throw new Error('experience_video_url_missing');
         }
 
         video.load();
@@ -8555,6 +8565,7 @@ startBtn.addEventListener("click", async () => {
 
     } catch (e) {
         console.error("experience start error", e);
+        logClientStep("experience_start_error_client", "error", String(e && e.message ? e.message : e));
 
         startBtn.disabled = false;
         experienceStarted = false;
