@@ -1,4 +1,11 @@
 # =========================================================
+# RC16 FOTOS ROBUSTAS + ORIGINALES AL VIDEO ENGINE
+# Base: RC15 visual.
+# Arreglo crítico: guardado robusto de fotos en iPhone/Instagram
+# y entrega original por /video/input sin recortar ni ampliar.
+# =========================================================
+
+# =========================================================
 # RC15 VIDA VISUAL + ENCUADRE SENDER PACK
 # Base: RC14 flujo recuperado.
 # Objetivo: más vida en imágenes, menos emoji, más brillos/estelas,
@@ -196,7 +203,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v7-rc15-vida-visual-encuadre"
+ETERNA_VISUAL_VERSION = "eterna-visual-v8-rc16-fotos-robustas-originales"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -1039,6 +1046,8 @@ def detect_image_extension(upload: UploadFile) -> str:
         return "png"
     if filename.endswith(".webp") or content_type == "image/webp":
         return "webp"
+    if filename.endswith(".heic") or content_type in {"image/heic", "image/heif"}:
+        return "heic"
     if filename.endswith(".jpeg") or content_type == "image/jpeg":
         return "jpg"
     if filename.endswith(".jpg") or content_type in {"image/jpg", "image/jpeg"}:
@@ -1052,6 +1061,126 @@ def build_photo_path(order_id: str, slot_name: str, upload: UploadFile) -> str:
     folder = PHOTO_FOLDER / order_id
     folder.mkdir(parents=True, exist_ok=True)
     return str(folder / f"{slot_name}.{ext}")
+
+
+
+async def save_upload_original_robust(order_id: str, slot_name: str, upload: UploadFile) -> str:
+    """
+    RC16 — guardado robusto de foto ORIGINAL.
+
+    Objetivo:
+    - No recortar.
+    - No reescalar.
+    - No comprimir.
+    - No tocar orientación.
+    - Guardar exactamente los bytes que llegan del navegador.
+    - Ser más tolerante con iPhone / Instagram in-app browser.
+
+    El video engine debe recibir estas fotos originales por /video/input.
+    """
+    if not upload:
+        raise HTTPException(status_code=400, detail=f"{slot_name} no ha llegado")
+
+    original_filename = (upload.filename or "").strip()
+    content_type = (upload.content_type or "").lower().strip()
+
+    if not original_filename:
+        raise HTTPException(status_code=400, detail=f"{slot_name} no tiene nombre de archivo")
+
+    filepath = build_photo_path(order_id, slot_name, upload)
+    Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+
+    # Muy importante en móviles/in-app browsers: asegurar puntero al inicio.
+    try:
+        await upload.seek(0)
+    except Exception:
+        try:
+            upload.file.seek(0)
+        except Exception:
+            pass
+
+    total = 0
+    chunks = 0
+
+    try:
+        with open(filepath, "wb") as f:
+            while True:
+                chunk = await upload.read(1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+                total += len(chunk)
+                chunks += 1
+            try:
+                f.flush()
+                os.fsync(f.fileno())
+            except Exception:
+                pass
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{slot_name} no se pudo escribir en disco: {e}")
+
+    # Fallback extra: algunos UploadFile quedan con stream raro; probamos lectura directa.
+    if total <= 0:
+        try:
+            with open(filepath, "wb") as f:
+                try:
+                    upload.file.seek(0)
+                except Exception:
+                    pass
+                data = upload.file.read()
+                if data:
+                    f.write(data)
+                    total = len(data)
+                    chunks = 1
+                    try:
+                        f.flush()
+                        os.fsync(f.fileno())
+                    except Exception:
+                        pass
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"{slot_name} llegó vacío y falló el reintento: {e}")
+
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=400, detail=f"{slot_name} no se ha creado en disco")
+
+    size = os.path.getsize(filepath)
+    if size <= 0:
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=f"{slot_name} ha llegado vacío desde el navegador")
+
+    # Validación mínima por firma de archivo. No transforma la imagen.
+    with open(filepath, "rb") as f:
+        head = f.read(32)
+
+    looks_like_image = (
+        head.startswith(b"\xff\xd8\xff") or     # jpg/jpeg
+        head.startswith(b"\x89PNG\r\n\x1a\n") or # png
+        head.startswith(b"RIFF") or              # webp
+        b"ftypheic" in head or b"ftypheif" in head or b"ftypmif1" in head
+    )
+
+    if not looks_like_image:
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=f"{slot_name} no parece una imagen válida al guardarse")
+
+    log_human(
+        "FOTO ORIGINAL GUARDADA",
+        f"🆔 Pedido: {order_id}",
+        f"🖼️ Slot: {slot_name}",
+        f"📄 Archivo: {original_filename}",
+        f"📦 Tamaño: {size} bytes",
+        f"🧩 Tipo: {content_type or 'desconocido'}",
+        f"📍 Ruta original para engine: {filepath}",
+    )
+
+    return filepath
+
 
 
 def reaction_video_path(order_id: str, extension: str = "webm") -> str:
@@ -2994,12 +3123,14 @@ async def create_order_and_redirect(
         content_type = (upload.content_type or "").lower().strip()
         filename = (upload.filename or "").lower().strip()
 
-        is_valid_type = content_type in {"image/jpeg", "image/png", "image/webp"}
+        is_valid_type = content_type in {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif", "application/octet-stream"}
         is_valid_name = (
             filename.endswith(".jpg")
             or filename.endswith(".jpeg")
             or filename.endswith(".png")
             or filename.endswith(".webp")
+            or filename.endswith(".heic")
+            or filename.endswith(".heif")
         )
 
         if not is_valid_type and not is_valid_name:
@@ -3115,26 +3246,38 @@ async def create_order_and_redirect(
 
     try:
         for slot_name, upload in photos.items():
-            filepath = build_photo_path(order_id, slot_name, upload)
-
-            with open(filepath, "wb") as f:
-                while True:
-                    chunk = await upload.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-
-            if not os.path.exists(filepath) or os.path.getsize(filepath) <= 0:
-                raise HTTPException(status_code=400, detail=f"{slot_name} no se ha guardado correctamente")
+            filepath = await save_upload_original_robust(order_id, slot_name, upload)
 
             insert_asset(
                 order_id=order_id,
                 asset_type=slot_name,
                 file_url=filepath,
-                storage_provider="local",
+                storage_provider="local_original",
             )
 
+        insert_order_event(
+            order_id,
+            "photos_saved",
+            "ok",
+            "Las 6 fotos originales se han guardado correctamente para el video engine",
+        )
+
+    except HTTPException as e:
+        insert_order_event(
+            order_id,
+            "photos_saved",
+            "error",
+            str(e.detail),
+        )
+        raise e
+
     except Exception as e:
+        insert_order_event(
+            order_id,
+            "photos_saved",
+            "error",
+            str(e),
+        )
         raise HTTPException(status_code=500, detail=f"Error guardando fotos: {e}")
 
     finally:
@@ -8454,6 +8597,10 @@ def get_video_input(order_id: str, slot_name: str):
 
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+    # RC16: se entrega al video engine el archivo original guardado.
+    # Sin crop, sin resize, sin compresión.
+    print(f"🖼️ RC16 /video/input original -> order={order_id} slot={slot_name} path={path} size={os.path.getsize(path)}")
 
     return FileResponse(
         path,
