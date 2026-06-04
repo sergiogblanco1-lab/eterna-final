@@ -1,4 +1,11 @@
 # =========================================================
+# RC18 TRANSICION STRIPE SIN PANTALLA NEGRA
+# Base: RC17 Sender Pack + RC16 fotos robustas.
+# Objetivo: después del formulario mostrar pantalla buena
+# hasta saltar a Stripe, sin pantalla negra intermedia.
+# =========================================================
+
+# =========================================================
 # RC17 SENDER PACK DIMENSIONES + VIDA PREMIUM
 # Base: RC16 fotos robustas.
 # Objetivo: encaje fino del pack, eliminar ruido visual inferior,
@@ -210,7 +217,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v9-rc17-senderpack-dimensiones-vida"
+ETERNA_VISUAL_VERSION = "eterna-visual-v10-rc18-transicion-stripe-sin-negro"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -3399,12 +3406,17 @@ def checkout_loading(order_id: Optional[str] = None):
         except Exception as e:
             log_error("checkout_loading_retrieve_stripe_session", e)
 
+    # RC18:
+    # Pantalla de transición buena después del formulario.
+    # Se queda visible hasta el último instante antes de saltar a Stripe.
+    # Evitamos la pantalla negra/loading fea y damos sensación de película.
     return render_eterna_image_screen(
-        image_name="checkout_loading",
-        fallback_image_name="uploading_reaction",
+        image_name="payment-success-v1.png",
+        fallback_image_name="payment-success-v1.png",
         overlay_kind="loading",
         redirect_url=target_url,
-        redirect_delay_ms=900,
+        redirect_delay_ms=1800,
+        extra_note="Tu ETERNA está cobrando vida...",
     )
 
 
