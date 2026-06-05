@@ -7263,6 +7263,334 @@ async def start_experience(request: Request, recipient_token: str = Form(...)):
 
 
 
+def render_recipient_consent_screen(recipient_token: str) -> HTMLResponse:
+    """
+    RC35 — pantalla 0 del regalado estabilizada.
+    Objetivo: primera pantalla clara, bonita y funcional:
+    - Sin hover zones raras.
+    - Sin cajas desalineadas.
+    - Sin pedir cámara todavía.
+    - Solo consentimiento real antes de entrar en la parte emocional.
+    No toca formulario, Stripe, webhook, video engine, SMS, DB, workers ni sender pack.
+    """
+    next_url = f"/guia/1/{recipient_token}"
+    bg_src = safe_attr(eterna_asset("terms-acceptance-v1.png"))
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<meta name="theme-color" content="#02050a">
+<style>
+    * {{
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }}
+    html, body {{
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+        background: #02050a;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }}
+    body {{
+        min-height: 100svh;
+        overflow-x: hidden;
+    }}
+    .wrap {{
+        position: relative;
+        width: 100vw;
+        min-height: 100svh;
+        display: flex;
+        justify-content: center;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 18%, rgba(38,143,255,.20), transparent 34%), #02050a;
+    }}
+    .phone {{
+        position: relative;
+        width: min(100vw, 520px);
+        min-height: 100svh;
+        padding: calc(env(safe-area-inset-top) + 28px) 22px calc(env(safe-area-inset-bottom) + 28px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+    }}
+    .bg {{
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        opacity: .42;
+        filter: blur(1px) saturate(1.05) brightness(.78);
+        transform: scale(1.035);
+    }}
+    .veil {{
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 50% 42%, rgba(2,5,10,.22), rgba(2,5,10,.82) 62%, #02050a 100%),
+            linear-gradient(180deg, rgba(2,5,10,.58), rgba(2,5,10,.18) 36%, rgba(2,5,10,.78));
+    }}
+    .spark {{
+        position: absolute;
+        border-radius: 999px;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        opacity: .85;
+        animation: floatSpark 7s ease-in-out infinite;
+    }}
+    .s1 {{ left: 13%; top: 18%; width: 5px; height: 5px; background: #56d7ff; box-shadow: 0 0 18px #56d7ff; }}
+    .s2 {{ right: 17%; top: 26%; width: 6px; height: 6px; background: #ffd27c; box-shadow: 0 0 20px #ffd27c; animation-delay: 1.2s; }}
+    .s3 {{ left: 18%; bottom: 21%; width: 7px; height: 7px; background: #ffd27c; box-shadow: 0 0 22px #ffd27c; animation-delay: 2s; }}
+    @keyframes floatSpark {{
+        0%,100% {{ transform: translateY(0) scale(.8); opacity: .28; }}
+        45% {{ transform: translateY(-24px) scale(1.18); opacity: .95; }}
+    }}
+    .content {{
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto;
+        text-align: center;
+    }}
+    .brand {{
+        letter-spacing: .42em;
+        color: #e8bc62;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 18px;
+        margin-bottom: 10px;
+        text-shadow: 0 0 18px rgba(232,188,98,.38);
+    }}
+    .heart {{
+        color: #f1c879;
+        font-size: 20px;
+        margin-bottom: 28px;
+        text-shadow: 0 0 20px rgba(241,200,121,.65);
+    }}
+    h1 {{
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 500;
+        font-size: clamp(40px, 10vw, 58px);
+        line-height: .98;
+        letter-spacing: -.03em;
+        text-shadow: 0 0 24px rgba(0,0,0,.82);
+    }}
+    h1 span {{
+        display: block;
+        color: #f0bd59;
+        text-shadow: 0 0 24px rgba(240,189,89,.36);
+    }}
+    .lead {{
+        margin: 22px auto 0;
+        max-width: 360px;
+        color: rgba(255,248,232,.86);
+        font-size: 18px;
+        line-height: 1.42;
+        text-shadow: 0 0 16px rgba(0,0,0,.78);
+    }}
+    .card {{
+        margin: 30px auto 0;
+        padding: 22px 20px;
+        border: 1px solid rgba(232,188,98,.56);
+        border-radius: 26px;
+        background: linear-gradient(180deg, rgba(4,10,20,.78), rgba(3,7,14,.62));
+        box-shadow:
+            0 0 44px rgba(35,158,255,.20),
+            inset 0 0 30px rgba(255,209,114,.06);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        text-align: left;
+    }}
+    .line {{
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255,255,255,.09);
+    }}
+    .line:last-child {{
+        border-bottom: 0;
+    }}
+    .ico {{
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(232,188,98,.75);
+        color: #f0bd59;
+        box-shadow: 0 0 18px rgba(232,188,98,.18);
+        font-size: 18px;
+        flex: none;
+    }}
+    .line strong {{
+        display: block;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 20px;
+        font-weight: 500;
+        color: #fff7e4;
+        margin-bottom: 4px;
+    }}
+    .line p {{
+        margin: 0;
+        color: rgba(255,248,232,.76);
+        font-size: 14px;
+        line-height: 1.35;
+    }}
+    .accept {{
+        margin-top: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 15px;
+        border-radius: 18px;
+        border: 1px solid rgba(232,188,98,.42);
+        background: rgba(0,0,0,.34);
+        cursor: pointer;
+        text-align: left;
+    }}
+    .accept input {{
+        width: 28px;
+        height: 28px;
+        flex: none;
+        accent-color: #f0bd59;
+        cursor: pointer;
+    }}
+    .accept span {{
+        color: rgba(255,248,232,.88);
+        font-size: 15px;
+        line-height: 1.32;
+    }}
+    .accept b {{
+        color: #f0bd59;
+        font-weight: 700;
+    }}
+    .btn {{
+        margin-top: 18px;
+        width: 100%;
+        min-height: 72px;
+        border: 0;
+        border-radius: 22px;
+        cursor: pointer;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(28px, 7vw, 38px);
+        color: #171009;
+        background: linear-gradient(135deg, #fff0bc 0%, #e9ac3d 42%, #a86713 100%);
+        box-shadow:
+            0 0 30px rgba(236,174,58,.52),
+            inset 0 1px 0 rgba(255,255,255,.55);
+        transition: transform .18s ease, filter .18s ease, opacity .18s ease;
+    }}
+    .btn:disabled {{
+        opacity: .42;
+        filter: grayscale(.35);
+        cursor: not-allowed;
+        box-shadow: none;
+    }}
+    .btn:not(:disabled):active {{
+        transform: scale(.985);
+    }}
+    .small {{
+        margin: 14px auto 0;
+        max-width: 340px;
+        color: rgba(255,248,232,.54);
+        font-size: 12px;
+        line-height: 1.35;
+        text-align: center;
+    }}
+    @media (max-height: 740px) {{
+        .phone {{ justify-content: flex-start; padding-top: 20px; }}
+        .heart {{ margin-bottom: 16px; }}
+        .lead {{ margin-top: 14px; }}
+        .card {{ margin-top: 18px; padding: 16px 18px; }}
+        .line {{ padding: 9px 0; }}
+        .btn {{ min-height: 64px; }}
+    }}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div class="phone">
+        <img class="bg" src="{bg_src}" alt="">
+        <div class="veil"></div>
+        <i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i>
+
+        <main class="content">
+            <div class="brand">ETERNA</div>
+            <div class="heart">♡</div>
+
+            <h1>Acepta para <span>abrir tu ETERNA</span></h1>
+            <p class="lead">Alguien ha preparado algo para ti. Antes de vivirlo, necesitamos tu permiso.</p>
+
+            <section class="card" aria-label="Consentimiento ETERNA">
+                <div class="line">
+                    <div class="ico">◉</div>
+                    <div>
+                        <strong>Tu reacción será grabada</strong>
+                        <p>Durante la experiencia se grabarán tu imagen y tu voz.</p>
+                    </div>
+                </div>
+                <div class="line">
+                    <div class="ico">♡</div>
+                    <div>
+                        <strong>Volverá solo a quien la preparó</strong>
+                        <p>Ese recuerdo privado se enviará únicamente a la persona que creó este momento.</p>
+                    </div>
+                </div>
+                <div class="line">
+                    <div class="ico">✦</div>
+                    <div>
+                        <strong>Vívelo con calma</strong>
+                        <p>Busca un lugar tranquilo, activa el sonido y déjate llevar.</p>
+                    </div>
+                </div>
+
+                <label class="accept">
+                    <input id="consentCheck" type="checkbox">
+                    <span>Entiendo y <b>acepto</b> vivir esta experiencia grabada.</span>
+                </label>
+
+                <button id="continueBtn" class="btn" type="button" disabled>Aceptar y continuar</button>
+                <p class="small">No pediremos cámara todavía. La experiencia empezará después de esta aceptación.</p>
+            </section>
+        </main>
+    </div>
+</div>
+<script>
+(function() {{
+    const check = document.getElementById("consentCheck");
+    const btn = document.getElementById("continueBtn");
+    const nextUrl = {json.dumps(next_url)};
+    if (!check || !btn) return;
+
+    function sync() {{
+        btn.disabled = !check.checked;
+    }}
+
+    check.addEventListener("change", sync);
+    btn.addEventListener("click", function() {{
+        if (btn.disabled) return;
+        btn.textContent = "Abriendo...";
+        btn.disabled = true;
+        window.location.href = nextUrl;
+    }});
+    sync();
+}})();
+</script>
+</body>
+</html>
+""")
+
+
 # =========================================================
 # GUÍA PREVIA A LA EXPERIENCIA — CAPA DELANTE, SIN TOCAR /experiencia
 # =========================================================
@@ -7306,12 +7634,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     # 0 — Consentimiento primero. Legal claro, sin contaminar después la parte emocional.
     if step == 0:
         insert_order_event(order["id"], "guide_consent_opened", "ok", "Pantalla inicial de consentimiento antes de la experiencia")
-        response = render_eterna_image_screen(
-            image_name="terms-acceptance-v1.png",
-            fallback_image_name="terms-acceptance-v1.png",
-            button_url=f"/guia/1/{recipient_token}",
-            button_label="Acepto y continúo",
-        )
+        response = render_recipient_consent_screen(recipient_token)
         attach_recipient_session_if_needed(order, request, response)
         return response
 
