@@ -5,9 +5,13 @@
 # Mantiene main preparando fotos para engine. NO toca video engine.
 # =========================================================
 
-# RC33 EXPERIENCIA REGALADO RECUPERA PANTALLAS CINEMATICAS + CONSENTIMIENTO PRIMERO
-# Base: RC27B estable que arrancaba video. Recupera Shhh/Sonido/Lugar tranquilo.
-# No toca formulario, Stripe, webhook, Video Engine, SMS, DB, workers ni Sender Pack.
+# RC34 EXPERIENCIA REGALADO + BOTONES INTEGRADOS + FINAL REGALO PREMIUM
+# Base: RC33/RC27B estable que arrancaba video. Recupera pantallas cinematográficas.
+# Cambios quirúrgicos:
+# 1) Al pulsar Abrir pago seguro, aparece INMEDIATAMENTE la pantalla bonita de carga.
+# 2) Pantalla final del regalado convertida en experiencia premium de regalo/cobro.
+# 3) Botones integrados visualmente como parte de ETERNA, no como HTML pegado.
+# No toca Stripe, webhook, Video Engine, SMS, DB, workers ni Sender Pack.
 # =========================================================
 
 # RC27 ESTABLE CIRCUITO COMPLETO + VIDEO ARRANCA SIN BUCLE
@@ -249,7 +253,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v17-rc33-pantallas-cinematicas-consentimiento-primero"
+ETERNA_VISUAL_VERSION = "eterna-visual-v18-rc34-botones-integrados-final-regalo-premium"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -6155,13 +6159,13 @@ document.addEventListener("DOMContentLoaded", function () {{
             button.innerText = "Abriendo pago seguro...";
         }}
 
-        // RC25: NO mostramos overlay intermedio dentro del formulario.
-        // Solo debe existir UNA pantalla entre formulario y Stripe: /checkout-loading.
-        // Esto elimina la pantalla negra y la doble/triple transición.
+        // RC34: la espera NO debe quedarse en el formulario.
+        // En cuanto el usuario pulsa, mostramos la pantalla cinematográfica bonita
+        // y mientras tanto el navegador sube fotos / procesa / crea sesión Stripe.
         const paymentOverlay = document.getElementById("paymentOverlay");
         if (paymentOverlay) {{
-            paymentOverlay.classList.remove("show");
-            paymentOverlay.setAttribute("aria-hidden", "true");
+            paymentOverlay.classList.add("show");
+            paymentOverlay.setAttribute("aria-hidden", "false");
         }}
     }}
 
@@ -9173,14 +9177,81 @@ def cobrar(request: Request, recipient_token: str):
             cta_html = '<a href="" class="btn primary">Intentar recibir mi regalo</a>'
 
     if not cta_html:
-        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver el vídeo</a>'
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver mi ETERNA</a>'
+
+    sender_name = (order.get("sender_name") or "alguien que te quiere").strip()
+    secondary_video_html = ""
+    if f'/mi-video/{recipient_token}' not in cta_html:
+        secondary_video_html = f'<a class="btn ghost" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a>'
 
     return HTMLResponse(f'''
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
-*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(72,185,255,.24),transparent 30%),radial-gradient(circle at 14% 76%,rgba(255,205,112,.12),transparent 33%),#02050a}}.scene{{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}}.scene:before{{content:"";position:absolute;inset:-18%;background:radial-gradient(circle at 72% 26%,rgba(65,185,255,.22),transparent 26%),radial-gradient(circle at 48% 72%,rgba(255,205,112,.10),transparent 28%);filter:blur(18px);animation:breath 7s ease-in-out infinite}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:.95}}}}.wrap{{position:relative;z-index:1;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 30px) 18px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px}}.logo{{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;text-shadow:0 0 20px rgba(255,196,92,.34)}}.heart{{width:74px;height:74px;border-radius:999px;margin:0 auto;background:radial-gradient(circle,#ffe7a6,#c98b2d 58%,rgba(255,196,77,.12));box-shadow:0 0 44px rgba(255,190,72,.42);display:flex;align-items:center;justify-content:center;font-size:32px;animation:pulse 2.8s ease-in-out infinite}}@keyframes pulse{{0%,100%{{transform:scale(.96);opacity:.82}}50%{{transform:scale(1.06);opacity:1}}}}h1{{font-size:clamp(35px,9vw,54px);line-height:1.02;margin:0;letter-spacing:-.06em;text-shadow:0 0 34px rgba(255,255,255,.16)}}p{{margin:0;color:rgba(255,245,229,.78);font-size:17px;line-height:1.5}}.amount{{font-size:19px;color:#ffe0a0;font-weight:900}}.actions{{display:grid;gap:11px;margin-top:8px}}.btn{{min-height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:15px;padding:12px 16px;border:1px solid rgba(255,213,130,.22);background:rgba(255,255,255,.06);color:#fff;text-decoration:none;box-shadow:0 14px 42px rgba(0,0,0,.28);width:100%}}.btn.primary{{background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;border:0;box-shadow:0 0 34px rgba(255,190,72,.28)}}.small{{font-size:13px;color:rgba(255,245,229,.56)}}
-</style></head><body><div class="scene"></div><main class="wrap"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>Tu momento ya está completo.</h1><p>Lo que acabas de vivir ha quedado guardado.</p><div class="amount">{safe_text(amount_text)}</div><nav class="actions">{cta_html}<a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a><a class="btn" href="/crear">Crear mi ETERNA</a></nav><div class="small">Tu experiencia es privada.</div></main></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<meta name="theme-color" content="#02050a">
+<style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
+body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
+.scene{{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;background:radial-gradient(circle at 50% 7%,rgba(80,185,255,.22),transparent 26%),radial-gradient(circle at 50% 84%,rgba(255,204,111,.16),transparent 31%),linear-gradient(180deg,#020817 0%,#02050a 54%,#000 100%)}}
+.scene:before{{content:"";position:absolute;inset:-20%;background:radial-gradient(circle at 72% 23%,rgba(70,205,255,.30),transparent 18%),radial-gradient(circle at 22% 68%,rgba(255,210,124,.14),transparent 26%),radial-gradient(circle at 50% 104%,rgba(45,154,255,.18),transparent 32%);filter:blur(18px);animation:bgBreath 7.5s ease-in-out infinite}}
+.scene:after{{content:"";position:absolute;left:50%;bottom:8%;width:520px;height:190px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(58,188,255,.20),rgba(255,213,126,.11) 38%,transparent 70%);filter:blur(16px);animation:waterGlow 5.5s ease-in-out infinite}}
+@keyframes bgBreath{{0%,100%{{transform:scale(1);opacity:.62}}50%{{transform:scale(1.06);opacity:1}}}}
+@keyframes waterGlow{{0%,100%{{opacity:.36;transform:translateX(-50%) scale(.96)}}50%{{opacity:.82;transform:translateX(-50%) scale(1.04)}}}}
+.wrap{{position:relative;z-index:1;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 26px) 20px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:14px}}
+.logo{{letter-spacing:.42em;color:#d8b76d;font-weight:950;font-size:12px;text-shadow:0 0 24px rgba(255,196,92,.45);margin-bottom:2px}}
+.butterfly{{width:82px;height:58px;margin:0 auto 2px;position:relative;filter:drop-shadow(0 0 24px rgba(77,207,255,.55));animation:floatButterfly 3.8s ease-in-out infinite}}
+.butterfly:before,.butterfly:after{{content:"";position:absolute;top:7px;width:42px;height:46px;border-radius:52% 48% 60% 40%;background:radial-gradient(circle at 55% 34%,rgba(255,255,255,.90),rgba(81,213,255,.65) 24%,rgba(26,88,190,.26) 62%,transparent 73%);box-shadow:0 0 30px rgba(81,213,255,.32)}}
+.butterfly:before{{left:0;transform:rotate(-24deg);transform-origin:right center}}
+.butterfly:after{{right:0;transform:rotate(24deg) scaleX(-1);transform-origin:left center}}
+@keyframes floatButterfly{{0%,100%{{transform:translateY(0) scale(.98);opacity:.86}}50%{{transform:translateY(-8px) scale(1.04);opacity:1}}}}
+h1{{font-family:Georgia,"Times New Roman",serif;font-size:clamp(34px,8.8vw,50px);line-height:1.02;margin:0;letter-spacing:-.055em;text-shadow:0 0 34px rgba(255,255,255,.18)}}
+.lead{{margin:0 auto;color:rgba(255,247,232,.78);font-size:17px;line-height:1.46;max-width:360px}}
+.bridge{{margin:1px auto 0;color:#ffe0a0;font-size:15px;line-height:1.42;font-weight:750;text-shadow:0 0 24px rgba(255,202,107,.20)}}
+.gift-box{{position:relative;margin:8px auto 4px;width:100%;max-width:390px;min-height:132px;border-radius:24px;padding:22px 18px;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(0,0,0,.56));border:1px solid rgba(255,217,140,.32);box-shadow:0 0 0 1px rgba(76,201,255,.10),0 22px 70px rgba(0,0,0,.52),inset 0 0 32px rgba(255,207,121,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden}}
+.gift-box:before{{content:"";position:absolute;left:-30%;right:-30%;top:-1px;height:2px;background:linear-gradient(90deg,transparent,rgba(86,211,255,.95),rgba(255,221,144,.82),transparent);box-shadow:0 0 22px rgba(83,211,255,.58);animation:lineRun 3.2s ease-in-out infinite}}
+@keyframes lineRun{{0%{{transform:translateX(-34%);opacity:.15}}35%{{opacity:1}}100%{{transform:translateX(34%);opacity:.22}}}}
+.gift-label{{position:relative;z-index:1;color:rgba(255,246,226,.72);font-size:13px;text-transform:uppercase;letter-spacing:.14em;font-weight:800}}
+.amount{{position:relative;z-index:1;color:#ffe3a4;font-weight:950;font-size:clamp(23px,6.2vw,32px);line-height:1.18;text-shadow:0 0 24px rgba(255,201,100,.28)}}
+.gift-foot{{position:relative;z-index:1;color:rgba(255,246,226,.62);font-size:13px;line-height:1.35}}
+.actions{{display:grid;gap:10px;margin-top:6px;width:100%}}
+.actions form{{margin:0;width:100%}}
+.btn{{min-height:58px;border-radius:19px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:950;font-size:14px;letter-spacing:.04em;padding:12px 16px;border:1px solid rgba(255,220,146,.26);background:rgba(255,255,255,.055);color:#fff;text-decoration:none;box-shadow:0 14px 44px rgba(0,0,0,.32),inset 0 0 18px rgba(255,255,255,.035);width:100%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}}
+button.btn{{font-family:inherit;cursor:pointer}}
+.btn.primary{{background:linear-gradient(135deg,#fff0bc,#e0a342 48%,#9d6317);color:#171007;border:0;box-shadow:0 0 38px rgba(255,190,72,.34),0 18px 48px rgba(0,0,0,.32);animation:primaryBreath 2.4s ease-in-out infinite}}
+@keyframes primaryBreath{{0%,100%{{filter:brightness(1);transform:scale(.995)}}50%{{filter:brightness(1.12);transform:scale(1.01)}}}}
+.btn.ghost{{background:rgba(4,12,24,.42);border-color:rgba(94,206,255,.24)}}
+.btn.create{{background:linear-gradient(135deg,rgba(37,152,255,.20),rgba(255,215,132,.11));border-color:rgba(255,219,146,.22)}}
+.small{{font-size:12px;color:rgba(255,245,229,.48);line-height:1.35;margin-top:2px}}
+@media (max-height:720px){{.wrap{{gap:10px;padding-top:18px;padding-bottom:14px}}.butterfly{{width:68px;height:46px}}.gift-box{{min-height:112px;padding:17px 14px}}.btn{{min-height:52px}}h1{{font-size:31px}}.lead{{font-size:15px}}}}
+</style>
+</head>
+<body>
+<div class="scene"></div>
+<main class="wrap">
+  <div class="logo">ETERNA</div>
+  <div class="butterfly" aria-hidden="true"></div>
+  <h1>Tu ETERNA aún no ha terminado.</h1>
+  <p class="lead">Lo que acabas de sentir permanecerá contigo para siempre.</p>
+  <p class="bridge">Pero {safe_text(sender_name)} quiso dejarte algo más...</p>
+  <section class="gift-box" aria-label="Regalo recibido">
+    <div class="gift-label">Has recibido un regalo especial</div>
+    <div class="amount">{safe_text(amount_text)}</div>
+    <div class="gift-foot">Preparado especialmente para ti.</div>
+  </section>
+  <nav class="actions">
+    {cta_html}
+    {secondary_video_html}
+    <a class="btn create" href="/crear">Crear mi ETERNA</a>
+  </nav>
+  <div class="small">Este momento es privado. Vívelo con calma.</div>
+</main>
+</body>
+</html>
 ''')
-
 
 @app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
 def recibir_regalo(request: Request, recipient_token: str):
@@ -9235,7 +9306,7 @@ def connect_payout(request: Request, recipient_token: str):
     except Exception as e:
         log_error("process_gift_transfer_for_order", e)
 
-    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+    return RedirectResponse(url=f"/viral-final/{recipient_token}", status_code=303)
 
 
 
