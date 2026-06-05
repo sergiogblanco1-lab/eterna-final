@@ -5,14 +5,9 @@
 # Mantiene main preparando fotos para engine. NO toca video engine.
 # =========================================================
 
-# RC31 REGALO UMBRAL SALVAVIDAS
-# Base técnica: RC27B estable. Solo cambia la entrada del regalado a la experiencia.
-# Mantiene formulario actual, Stripe, Video Engine, subida reacción y Sender Pack intactos.
-# =========================================================
-
-# RC32 EXPERIENCIA REGALADO 9:16 + UMBRAL POÉTICO + FOTOS ORIGINALES
-# Base: RC31 funcionando. No toca formulario, pago, Stripe, webhook, callback, workers ni sender pack.
-# Objetivo: corregir zoom visual, hacer el Umbral más emocional y entregar fotos originales al Video Engine.
+# RC33 EXPERIENCIA REGALADO RECUPERA PANTALLAS CINEMATICAS + CONSENTIMIENTO PRIMERO
+# Base: RC27B estable que arrancaba video. Recupera Shhh/Sonido/Lugar tranquilo.
+# No toca formulario, Stripe, webhook, Video Engine, SMS, DB, workers ni Sender Pack.
 # =========================================================
 
 # RC27 ESTABLE CIRCUITO COMPLETO + VIDEO ARRANCA SIN BUCLE
@@ -100,7 +95,6 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🦋 RC32 EXPERIENCIA REGALADO 9:16 + UMBRAL POÉTICO + FOTOS ORIGINALES 🦋")
 
 import html
 import json
@@ -255,7 +249,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v19-rc32-experiencia-regalado-9x16"
+ETERNA_VISUAL_VERSION = "eterna-visual-v17-rc33-pantallas-cinematicas-consentimiento-primero"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -271,9 +265,6 @@ ETERNA_SCREEN_ASSETS = {
     "quiet_place": "quiet-place-v1.png",
     "terms_acceptance": "terms-acceptance-v1.png",
     "consent_recording": "terms-acceptance-v1.png",
-    "umbral": "pantalla_umbral.v1-png.png",
-    "pre_experience": "pantalla_umbral.v1-png.png",
-    "pantalla_umbral": "pantalla_umbral.v1-png.png",
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
     "gift_ready": "uploading-reaction-v1.png",
@@ -290,9 +281,6 @@ def _eterna_asset_key(value: str) -> str:
     raw = raw.replace(".jpg.jpg", ".jpg")
     raw = raw.replace(".jpeg.jpeg", ".jpeg")
     raw = raw.replace(".webp.webp", ".webp")
-    # Windows a veces deja nombres como pantalla_umbral.v1-png.png.
-    # Normalizamos -png/-jpg para que pantalla_umbral.v1.png y pantalla_umbral.v1-png.png resuelvan igual.
-    raw = raw.replace("-png", ".png").replace("-jpg", ".jpg").replace("-jpeg", ".jpeg").replace("-webp", ".webp")
     for suffix in [" (copy)", " copy", " copia", " - copia"]:
         raw = raw.replace(suffix, "")
     for n in range(1, 20):
@@ -328,10 +316,6 @@ def resolve_eterna_asset_filename(name: str, fallback: str = "error-v1.png") -> 
             c.replace(".png", "(2).png"),
             c.replace(".png", " (1).png"),
             c.replace(".png", " (2).png"),
-            c.replace(".png", "-png.png"),
-            c.replace(".jpg", "-jpg.jpg"),
-            c.replace(".jpeg", "-jpeg.jpeg"),
-            c.replace(".webp", "-webp.webp"),
             c + "(1)",
             c + " (1)",
             c + " (2)",
@@ -537,11 +521,10 @@ def render_eterna_image_screen(
     * {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
     html, body {{ margin:0; width:100%; min-height:100%; background:#02050a; }}
     body {{ min-height:100svh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
-    /* RC32 — LEY VISUAL ETERNA: todo asset emocional vive en 9:16 completo, sin recortes ni zoom forzado */
-    .screen {{ position:relative; width:100vw; min-height:100svh; min-height:100dvh; display:flex; align-items:center; justify-content:center; background:#02050a; overflow:hidden; }}
-    .phone {{ position:relative; width:min(100vw, calc(100dvh * 9 / 16)); height:min(100dvh, calc(100vw * 16 / 9)); aspect-ratio:9/16; overflow:hidden; background:#02050a; margin:auto; }}
-    .img {{ position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:contain; object-position:center center; background:#02050a; }}
-    @media (min-width: 760px) {{ .phone {{ width:min(100vw,520px, calc(100dvh * 9 / 16)); height:min(100dvh, calc(520px * 16 / 9)); }} .img {{ object-fit:contain; }} }}
+    .screen {{ position:relative; width:100vw; min-height:100svh; min-height:100dvh; display:flex; align-items:stretch; justify-content:center; background:#02050a; overflow:hidden; }}
+    .phone {{ position:relative; width:100vw; max-width:none; min-height:100svh; min-height:100dvh; overflow:hidden; background:#02050a; }}
+    .img {{ position:absolute; inset:0; width:100%; height:100%; min-height:100svh; min-height:100dvh; display:block; object-fit:cover; object-position:center center; background:#02050a; }}
+    @media (min-width: 760px) {{ .phone {{ width:min(100vw,520px); }} .img {{ object-fit:cover; }} }}
     .soft-halo {{ position:absolute; left:67%; top:22%; width:240px; height:240px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(34,178,255,.26), rgba(34,178,255,.07) 42%, transparent 70%); filter:blur(16px); opacity:.56; mix-blend-mode:screen; animation:haloBreath 5.6s ease-in-out infinite; pointer-events:none; }}
     .particle {{ position:absolute; width:5px; height:5px; border-radius:50%; background:#62d3ff; box-shadow:0 0 16px #62d3ff, 0 0 34px rgba(98,211,255,.55); opacity:0; animation:floatUp 9s linear infinite; pointer-events:none; }}
     .particle.gold {{ background:#ffd98b; box-shadow:0 0 16px #ffd98b,0 0 34px rgba(255,217,139,.48); }}
@@ -7283,14 +7266,18 @@ async def start_experience(request: Request, recipient_token: str = Form(...)):
 @app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
 def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     """
-    RC31 REGALO — UMBRAL ÚNICO SOBRE BASE SALVAVIDAS.
-    Solo cambia la entrada a la experiencia del regalado.
-    NO toca formulario, Stripe, webhook, video engine, upload, sender pack ni /experiencia.
+    RC33 — EXPERIENCIA DEL REGALADO RECUPERADA.
 
-    Flujo:
-      /pedido -> /guia/0 -> Umbral cinematográfico
-      aceptar + pedir cámara/micro -> POST /start-experience
-      /start-experience -> /experiencia/{token}
+    Base emocional: pantallas cinematográficas antiguas de ETERNA.
+    Base técnica: flujo estable que ya arrancaba cámara + vídeo.
+
+    Decisión de producto:
+      0 -> Consentimiento antes de la magia.
+      1 -> Shhh / Esto no es un vídeo.
+      2 -> Activa el sonido.
+      3 -> Busca un lugar tranquilo / Estoy listo / arranca cámara + vídeo.
+
+    NO toca formulario, Stripe, webhook, Video Engine, SMS, DB, workers ni Sender Pack.
     """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
@@ -7303,363 +7290,90 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    insert_order_event(order["id"], "umbral_opened", "ok", "El destinatario abrió el Umbral cinematográfico RC31")
+    try:
+        step = int(step or 0)
+    except Exception:
+        step = 0
+    if step < 0:
+        step = 0
+    if step > 3:
+        step = 3
 
-    # Nombre real guardado en el repo de Sergio.
-    # El resolver también acepta pantalla_umbral.v1.png si mañana se renombra limpio.
-    bg_src = safe_attr(eterna_asset("pantalla_umbral.v1-png.png"))
-    fallback_src = safe_attr(eterna_asset("pantalla_umbral.v1.png"))
-    token_attr = safe_attr(recipient_token)
-    token_js = json.dumps(recipient_token)
+    # 0 — Consentimiento primero. Legal claro, sin contaminar después la parte emocional.
+    if step == 0:
+        insert_order_event(order["id"], "guide_consent_opened", "ok", "Pantalla inicial de consentimiento antes de la experiencia")
+        response = render_eterna_image_screen(
+            image_name="terms-acceptance-v1.png",
+            fallback_image_name="terms-acceptance-v1.png",
+            button_url=f"/guia/1/{recipient_token}",
+            button_label="Acepto y continúo",
+        )
+        attach_recipient_session_if_needed(order, request, response)
+        return response
 
-    html_page = f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA · El Umbral</title>
-<meta name="theme-color" content="#02050a">
-<meta name="robots" content="noindex,nofollow">
-<style>
-* {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
-html,body {{ margin:0; width:100%; height:100%; background:#02050a; overflow:hidden; }}
-body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color:#fff8e8; }}
-.umbral {{
-    position:relative; width:100vw; height:100svh; min-height:100dvh; overflow:hidden;
-    display:flex; align-items:center; justify-content:center;
-    background:
-        radial-gradient(circle at 50% 72%, rgba(20,102,165,.25), transparent 34%),
-        radial-gradient(circle at 50% 24%, rgba(5,25,58,.55), transparent 36%),
-        #02050a;
-}}
-.bg {{
-    position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center center;
-    opacity:0; transform:scale(1);
-    filter:brightness(.82) contrast(1.06) saturate(1.08);
-    animation:bgIn 1900ms ease-out forwards, bgBreath 14000ms ease-in-out 2400ms infinite;
-}}
-.veil {{
-    position:absolute; inset:0; pointer-events:none;
-    background:
-        radial-gradient(circle at 50% 42%, rgba(0,0,0,.02), rgba(0,0,0,.28) 56%, rgba(0,0,0,.72) 100%),
-        linear-gradient(180deg, rgba(0,0,0,.28) 0%, rgba(0,0,0,.05) 34%, rgba(0,0,0,.36) 100%);
-}}
-.light {{
-    position:absolute; left:50%; bottom:16%; width:330px; height:240px; transform:translateX(-50%);
-    border-radius:999px;
-    background:radial-gradient(circle, rgba(255,215,125,.24), rgba(75,205,255,.12) 36%, transparent 72%);
-    filter:blur(20px); opacity:.22; mix-blend-mode:screen;
-    animation:lightBreath 7600ms ease-in-out infinite;
-}}
-.story {{
-    position:absolute; left:7.5%; right:7.5%; top:19%; bottom:30%;
-    display:flex; align-items:center; justify-content:center; text-align:center; z-index:4;
-}}
-.story-inner {{ width:100%; max-width:440px; margin:0 auto; }}
-.line {{
-    display:block; opacity:0; transform:translateY(14px);
-    font-family:Georgia,"Times New Roman",serif;
-    font-size:clamp(32px,8.6vw,50px); line-height:1.14; letter-spacing:.01em;
-    text-shadow:0 2px 20px rgba(0,0,0,.92),0 0 32px rgba(87,207,255,.10);
-}}
-.line.small {{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    font-size:clamp(24px,6.55vw,36px); line-height:1.28; font-weight:360;
-}}
-.line.legal {{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    font-size:clamp(22px,5.95vw,32px); line-height:1.32; font-weight:360;
-}}
-.gold {{ color:#f2c56f; text-shadow:0 0 22px rgba(242,197,111,.26),0 2px 20px rgba(0,0,0,.92); }}
-.blue {{ color:#67d6ff; text-shadow:0 0 24px rgba(103,214,255,.34),0 2px 20px rgba(0,0,0,.92); }}
-.line.is-active {{ animation:textIn 900ms ease-out forwards; }}
-.line.is-out {{ animation:textOut 650ms ease-in forwards; }}
-.cursor {{
-    display:inline-block; width:2px; height:.92em; margin-left:5px; vertical-align:-.10em;
-    background:#f2c56f; box-shadow:0 0 16px rgba(242,197,111,.82);
-    animation:blink 850ms step-end infinite;
-}}
-.consent-wrap {{
-    position:absolute; left:7.2%; right:7.2%; bottom:calc(env(safe-area-inset-bottom) + 104px);
-    z-index:8; opacity:0; transform:translateY(18px); pointer-events:none;
-    transition:opacity 700ms ease, transform 700ms ease;
-}}
-.consent-wrap.show {{ opacity:1; transform:translateY(0); pointer-events:auto; }}
-.consent-card {{
-    position:relative; display:block; width:100%;
-    min-height:118px; padding:20px 18px 20px 66px;
-    border-radius:20px;
-    border:1px solid rgba(103,214,255,.48);
-    background:linear-gradient(180deg, rgba(3,16,35,.72), rgba(2,7,16,.88));
-    box-shadow:0 0 30px rgba(78,201,255,.18), inset 0 0 24px rgba(255,255,255,.035);
-    backdrop-filter:blur(8px);
-    color:rgba(255,248,232,.94); font-size:17px; line-height:1.36;
-}}
-.consent-card strong {{ color:#f2c56f; font-weight:650; }}
-.consent-card input {{
-    position:absolute; left:20px; top:25px; width:32px; height:32px; margin:0; opacity:0; z-index:3;
-}}
-.fake-check {{
-    position:absolute; left:20px; top:25px; width:32px; height:32px; border-radius:9px;
-    border:1.5px solid rgba(103,214,255,.88);
-    background:rgba(2,8,18,.60);
-    box-shadow:0 0 18px rgba(103,214,255,.24), inset 0 0 10px rgba(0,0,0,.58);
-}}
-.fake-check::after {{
-    content:""; position:absolute; left:9px; top:4px; width:9px; height:16px;
-    border:solid #071018; border-width:0 3px 3px 0;
-    transform:rotate(45deg) scale(.20); opacity:0; transition:all 180ms ease;
-}}
-.consent-card input:checked + .fake-check {{
-    border-color:#ffe4a2;
-    background:linear-gradient(135deg,#fff5cc,#f1bd53 54%,#9d5b08);
-    box-shadow:0 0 24px rgba(242,197,111,.78),0 0 44px rgba(103,214,255,.18);
-}}
-.consent-card input:checked + .fake-check::after {{ opacity:1; transform:rotate(45deg) scale(1); }}
-.cta {{
-    position:absolute; left:7.2%; right:7.2%; bottom:calc(env(safe-area-inset-bottom) + 24px);
-    min-height:70px; border-radius:21px; border:1px solid rgba(255,226,159,.74);
-    background:linear-gradient(180deg, rgba(255,219,130,.94), rgba(196,120,24,.94));
-    box-shadow:0 0 30px rgba(242,197,111,.45), inset 0 1px 14px rgba(255,255,255,.38);
-    color:#1a1105; font-family:Georgia,"Times New Roman",serif;
-    font-size:clamp(23px,6.2vw,34px); letter-spacing:.075em;
-    display:flex; align-items:center; justify-content:center;
-    opacity:0; transform:translateY(18px) scale(.98); pointer-events:none;
-    transition:opacity 700ms ease, transform 700ms ease, filter 250ms ease;
-    z-index:9; overflow:hidden;
-}}
-.cta.show {{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }}
-.cta:disabled {{ filter:saturate(.55) brightness(.68); pointer-events:none; }}
-.cta.ready {{ animation:buttonBreath 2600ms ease-in-out infinite; }}
-.cta::before {{
-    content:""; position:absolute; inset:-60%;
-    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.44) 48%, transparent 61%);
-    transform:translateX(-72%); animation:buttonSweep 4300ms ease-in-out 1500ms infinite;
-}}
-.cta span {{ position:relative; z-index:2; min-height:1.2em; }}
-.status {{
-    position:absolute; left:8%; right:8%; bottom:calc(env(safe-area-inset-bottom) + 4px);
-    z-index:9; text-align:center; font-size:11px; letter-spacing:.20em;
-    color:rgba(255,238,191,.66); opacity:0; transition:opacity 400ms ease;
-}}
-.status.show {{ opacity:1; }}
-@keyframes bgIn {{ to {{ opacity:1; transform:scale(1); }} }}
-@keyframes bgBreath {{ 0%,100% {{ transform:scale(1); filter:brightness(.82) contrast(1.06) saturate(1.08); }} 50% {{ transform:scale(1); filter:brightness(.90) contrast(1.08) saturate(1.12); }} }}
-@keyframes lightBreath {{ 0%,100% {{ opacity:.16; transform:translateX(-50%) scale(.92); }} 50% {{ opacity:.46; transform:translateX(-50%) scale(1.13); }} }}
-@keyframes textIn {{ to {{ opacity:1; transform:translateY(0); }} }}
-@keyframes textOut {{ to {{ opacity:0; transform:translateY(-14px); }} }}
-@keyframes blink {{ 50% {{ opacity:0; }} }}
-@keyframes buttonBreath {{ 0%,100% {{ box-shadow:0 0 30px rgba(242,197,111,.45), inset 0 1px 14px rgba(255,255,255,.38); }} 50% {{ box-shadow:0 0 50px rgba(242,197,111,.78),0 0 82px rgba(103,214,255,.18), inset 0 1px 18px rgba(255,255,255,.48); }} }}
-@keyframes buttonSweep {{ 0%,62% {{ transform:translateX(-72%); opacity:0; }} 72% {{ opacity:.75; }} 100% {{ transform:translateX(72%); opacity:0; }} }}
-@media (max-height:700px) {{
-    .story {{ top:21%; bottom:30%; }}
-    .line {{ font-size:clamp(27px,7.1vw,38px); }}
-    .line.small,.line.legal {{ font-size:clamp(20px,5.2vw,27px); }}
-    .consent-wrap {{ bottom:calc(env(safe-area-inset-bottom) + 92px); }}
-    .consent-card {{ min-height:88px; padding-top:13px; padding-bottom:13px; font-size:13px; }}
-    .consent-card input,.fake-check {{ top:17px; }}
-    .cta {{ min-height:62px; }}
-}}
-</style>
-</head>
-<body>
-<div class="umbral">
-    <img class="bg" src="{bg_src}" alt="ETERNA" onerror="this.onerror=null; this.src='{fallback_src}';">
-    <div class="veil" aria-hidden="true"></div>
-    <div class="light" aria-hidden="true"></div>
+    # 1 — Recuperamos la puerta emocional antigua.
+    if step == 1:
+        insert_order_event(order["id"], "guide_intro_opened", "ok", "Pantalla Shhh cinematográfica recuperada")
+        response = render_eterna_image_screen(
+            image_name="intro-shhh-v1.png",
+            fallback_image_name="intro-shhh-v1.png",
+            button_url=f"/guia/2/{recipient_token}",
+            button_label="Estoy listo",
+        )
+        attach_recipient_session_if_needed(order, request, response)
+        return response
 
-    <main class="story" aria-live="polite">
-        <div class="story-inner" id="storyInner"></div>
-    </main>
+    # 2 — Sonido antes del vídeo, como ritual. No pide cámara aún.
+    if step == 2:
+        insert_order_event(order["id"], "guide_sound_opened", "ok", "Pantalla activa el sonido recuperada")
+        response = render_eterna_image_screen(
+            image_name="sound-check-v1.png",
+            fallback_image_name="sound-check-v1.png",
+            button_url=f"/guia/3/{recipient_token}",
+            button_label="Continuar",
+        )
+        attach_recipient_session_if_needed(order, request, response)
+        return response
 
-    <form id="startForm" method="post" action="/start-experience">
-        <input type="hidden" name="recipient_token" value="{token_attr}">
-        <div class="consent-wrap" id="consentWrap">
-            <label class="consent-card" for="consentCheck">
-                <input id="consentCheck" type="checkbox" autocomplete="off">
-                <span class="fake-check" aria-hidden="true"></span>
-                Entiendo y acepto que <strong>mi imagen y mi voz serán grabadas</strong> durante esta experiencia y enviadas únicamente a la persona que preparó este regalo.
-            </label>
-        </div>
-        <button id="openBtn" class="cta" type="submit" disabled><span id="btnText"></span></button>
-    </form>
-    <div class="status" id="statusText">RESPIRA · DISFRUTA · VIVE ESTE MOMENTO</div>
-</div>
-
-<script>
-(function() {{
-    const token = {token_js};
-    const story = document.getElementById('storyInner');
-    const consentWrap = document.getElementById('consentWrap');
-    const consentCheck = document.getElementById('consentCheck');
-    const openBtn = document.getElementById('openBtn');
-    const btnText = document.getElementById('btnText');
-    const form = document.getElementById('startForm');
-    const statusText = document.getElementById('statusText');
-
-    const scenes = [
-        {{ html: '<span class="gold">Shhh...</span>', cls: 'line', hold: 3200, speed: 105 }},
-        {{ html: 'No tengas prisa.', cls: 'line', hold: 3000, speed: 96 }},
-        {{ html: 'Alguien ha dejado<br>algo <span class="gold">para ti</span>.', cls: 'line small', hold: 4100, speed: 82 }},
-        {{ html: 'No es solo un vídeo.', cls: 'line', hold: 3400, speed: 92 }},
-        {{ html: 'Es un momento<br>hecho para quedarse.', cls: 'line small', hold: 4400, speed: 82 }},
-        {{ html: 'Para que esta emoción pueda volver,<br><span class="gold">tu imagen y tu voz serán grabadas</span>.', cls: 'line legal', hold: 5200, speed: 72 }},
-        {{ html: 'Lo que sientas aquí<br>volverá solo a quien<br>preparó este regalo.', cls: 'line legal', hold: 5200, speed: 72 }},
-        {{ html: 'Cuando estés preparado...', cls: 'line small', hold: 3300, speed: 88 }},
-        {{ html: 'abre tu <span class="gold">ETERNA</span>.', cls: 'line', hold: 2500, speed: 92 }}
-    ];
-
-    function sleep(ms) {{ return new Promise(resolve => setTimeout(resolve, ms)); }}
-
-    function track(name, extra) {{
-        try {{
-            fetch('/experience-event/' + token, {{
-                method:'POST',
-                headers:{{'Content-Type':'application/json'}},
-                body:JSON.stringify(Object.assign({{event:name, source:'umbral_rc32'}}, extra || {{}}))
-            }}).catch(function(){{}});
-        }} catch (_) {{}}
-    }}
-
-    function typeHtml(el, html, speed) {{
-        return new Promise(resolve => {{
-            let i = 0;
-            let out = '';
-            const cursor = '<span class="cursor"></span>';
-            function step() {{
-                if (i >= html.length) {{
-                    el.innerHTML = out;
-                    resolve();
-                    return;
-                }}
-                if (html[i] === '<') {{
-                    const end = html.indexOf('>', i);
-                    if (end !== -1) {{
-                        out += html.slice(i, end + 1);
-                        i = end + 1;
-                    }} else {{
-                        out += html[i++];
+    # 3 — Última preparación. Aquí sí se pide cámara/micro y entra al vídeo.
+    insert_order_event(order["id"], "guide_quiet_opened", "ok", "Pantalla lugar tranquilo antes de iniciar experiencia")
+    response = render_eterna_image_screen(
+        image_name="quiet-place-v1.png",
+        fallback_image_name="quiet-place-v1.png",
+        form_action="/start-experience",
+        form_method="post",
+        hidden_fields={"recipient_token": recipient_token},
+        button_label="Estoy listo",
+        button_id="startExperienceNow",
+        extra_script=f"""
+        <script>
+        (function() {{
+            const form = document.querySelector('.visual-action-form');
+            const btn = document.getElementById('startExperienceNow');
+            if (!form || !btn) return;
+            form.addEventListener('submit', async function(e) {{
+                e.preventDefault();
+                btn.disabled = true;
+                try {{
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
+                        const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
+                        try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
                     }}
-                }} else {{
-                    out += html[i++];
+                    const fd = new FormData(form);
+                    const res = await fetch('/start-experience', {{ method: 'POST', body: fd, headers: {{ 'X-ETERNA-AJAX': '1' }} }});
+                    if (!res.ok) throw new Error('start_experience_failed');
+                    let data = {{}};
+                    try {{ data = await res.json(); }} catch (_) {{}}
+                    window.location.replace(data.redirect_url || '/experiencia/{safe_attr(recipient_token)}');
+                }} catch (err) {{
+                    btn.disabled = false;
+                    alert('Para vivir ETERNA necesitamos acceso a cámara y micrófono.');
                 }}
-                el.innerHTML = out + cursor;
-                setTimeout(step, speed || 64);
-            }}
-            step();
-        }});
-    }}
-
-    async function playStory() {{
-        track('umbral_story_started');
-        await sleep(2200);
-        for (const scene of scenes) {{
-            const el = document.createElement('div');
-            el.className = scene.cls + ' is-active';
-            story.innerHTML = '';
-            story.appendChild(el);
-            await typeHtml(el, scene.html, scene.speed || 64);
-            await sleep(scene.hold || 3000);
-            el.classList.add('is-out');
-            await sleep(700);
-        }}
-        story.innerHTML = '<div class="line small is-active">Acepta para abrir este momento.</div>';
-        await sleep(500);
-        consentWrap.classList.add('show');
-        statusText.classList.add('show');
-        track('umbral_consent_visible');
-    }}
-
-    let buttonTypingStarted = false;
-    function typeButtonText() {{
-        if (buttonTypingStarted) return;
-        buttonTypingStarted = true;
-        const text = 'ABRIR MI ETERNA';
-        btnText.textContent = '';
-        openBtn.classList.add('show');
-        let i = 0;
-        const t = setInterval(function() {{
-            btnText.textContent = text.slice(0, i++);
-            if (i > text.length) {{
-                clearInterval(t);
-                openBtn.disabled = false;
-                openBtn.classList.add('ready');
-                track('umbral_open_button_ready');
-            }}
-        }}, 95);
-    }}
-
-    consentCheck.addEventListener('change', function() {{
-        if (consentCheck.checked) {{
-            track('umbral_consent_checked');
-            typeButtonText();
-        }} else {{
-            buttonTypingStarted = false;
-            openBtn.disabled = true;
-            openBtn.classList.remove('ready');
-            openBtn.classList.remove('show');
-            btnText.textContent = '';
-        }}
-    }});
-
-    form.addEventListener('submit', async function(e) {{
-        e.preventDefault();
-        if (!consentCheck.checked || openBtn.disabled) return;
-
-        openBtn.disabled = true;
-        openBtn.classList.remove('ready');
-        btnText.textContent = 'ABRIENDO...';
-        statusText.textContent = 'PREPARANDO CÁMARA...';
-        statusText.classList.add('show');
-        track('umbral_open_clicked');
-
-        try {{
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {{
-                throw new Error('media_devices_not_supported');
-            }}
-
-            // Esta llamada debe disparar el permiso real de cámara/micrófono en móvil.
-            const stream = await navigator.mediaDevices.getUserMedia({{
-                video: {{ facingMode: 'user', width: {{ ideal: 480 }}, height: {{ ideal: 854 }} }},
-                audio: true
             }});
-
-            track('umbral_camera_permission_ok');
-            statusText.textContent = 'CÁMARA LISTA...';
-
-            // Solo pedimos permiso aquí. La grabación real continúa intacta dentro de /experiencia.
-            try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
-
-            const fd = new FormData(form);
-            const res = await fetch('/start-experience', {{
-                method:'POST',
-                body:fd,
-                headers:{{ 'X-ETERNA-AJAX':'1' }}
-            }});
-            if (!res.ok) throw new Error('start_experience_failed');
-
-            let data = {{}};
-            try {{ data = await res.json(); }} catch (_) {{}}
-            window.location.replace(data.redirect_url || ('/experiencia/' + token));
-
-        }} catch (err) {{
-            track('umbral_camera_permission_error', {{message: String(err && err.message || err)}});
-            openBtn.disabled = false;
-            openBtn.classList.add('ready');
-            btnText.textContent = 'REINTENTAR';
-            statusText.textContent = 'ETERNA NECESITA CÁMARA Y MICRÓFONO';
-            alert('ETERNA necesita acceso a cámara y micrófono para abrir este regalo.');
-        }}
-    }});
-
-    playStory();
-}})();
-</script>
-</body>
-</html>
-"""
-    response = HTMLResponse(html_page)
+        }})();
+        </script>
+        """,
+    )
     attach_recipient_session_if_needed(order, request, response)
     return response
 
@@ -9785,16 +9499,16 @@ def prepare_photo_for_video_engine(original_path: str, order_id: str, slot_name:
 @app.get("/video/input/{order_id}/{slot_name}")
 def get_video_input(order_id: str, slot_name: str):
     """
-    RC32 — SALVAVIDAS FOTO ORIGINAL AL VIDEO ENGINE.
+    RC21 MAIN PATCH.
+    Ruta crítica para que el video engine pueda descargar las 6 fotos.
 
     Decisión técnica:
     - NO tocamos video engine.
+    - NO tocamos zoompan.
     - NO tocamos Stripe/webhook/SMS/workers/DB.
-    - Entregamos la foto ORIGINAL guardada por el formulario.
-    - Evitamos doble encuadre / doble zoom antes del render.
+    - El main conserva el original y entrega al engine una copia recalculada 360x640.
 
-    La función prepare_photo_for_video_engine se mantiene arriba como referencia/fallback histórico,
-    pero esta ruta crítica vuelve al comportamiento salvavidas: original limpio.
+    Si la preparación falla, entregamos el original como fallback para no romper el render.
     """
     path = get_photo_asset_path(order_id, slot_name)
     if not path:
@@ -9803,16 +9517,33 @@ def get_video_input(order_id: str, slot_name: str):
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
 
-    print(
-        f"🖼️ RC32 /video/input ORIGINAL -> "
-        f"order={order_id} slot={slot_name} "
-        f"path={path} size={os.path.getsize(path)}"
-    )
-    return FileResponse(
-        path,
-        media_type=guess_media_type_from_path(path),
-        filename=os.path.basename(path),
-    )
+    try:
+        prepared_path = prepare_photo_for_video_engine(path, order_id, slot_name)
+        print(
+            f"🖼️ RC21 /video/input preparado -> "
+            f"order={order_id} slot={slot_name} "
+            f"original={path} prepared={prepared_path} "
+            f"size={os.path.getsize(prepared_path)}"
+        )
+        return FileResponse(
+            prepared_path,
+            media_type="image/jpeg",
+            filename=os.path.basename(prepared_path),
+        )
+
+    except Exception as e:
+        # Fallback salvavidas: jamás bloqueamos el render si PIL falla por una imagen rara.
+        print(
+            f"⚠️ RC21 prepare_photo_for_video_engine falló. "
+            f"Entrego original para no romper render. "
+            f"order={order_id} slot={slot_name} error={e}"
+        )
+        return FileResponse(
+            path,
+            media_type=guess_media_type_from_path(path),
+            filename=os.path.basename(path),
+        )
+
 
 @app.get("/video/sender-reaction/{sender_token}")
 def get_sender_reaction_video(sender_token: str):
