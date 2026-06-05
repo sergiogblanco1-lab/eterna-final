@@ -5,6 +5,13 @@
 # Mantiene main preparando fotos para engine. NO toca video engine.
 # =========================================================
 
+# RC29B REVISADO + UMBRAL ÚNICO + PREVIEW SMS + ASSETS BLINDADOS
+# Revisión: AST OK, rutas sin duplicar, gift-ready blindado, botón umbral sin intervalos duplicados.
+# RC29 UMBRAL ÚNICO + PREVIEW SMS + CIRCUITO COMPLETO ESTABLE
+# Base: RC27. Mantiene circuito completo y sustituye guía previa por Umbral cinematográfico.
+# SMS con metadatos OG para vista previa con imagen cuando la app lo permita.
+# =========================================================
+
 # RC27 ESTABLE CIRCUITO COMPLETO + VIDEO ARRANCA SIN BUCLE
 # Base: RC26. Mantiene pantallas/assets reales y una sola pantalla formulario→Stripe.
 # Arreglo crítico: en /experiencia el botón Estoy listo NO redirige otra vez a /experiencia.
@@ -244,7 +251,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v16-rc27-circuito-completo-video-arranca"
+ETERNA_VISUAL_VERSION = "eterna-visual-v17-rc29-umbral-unico-preview-sms"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -260,9 +267,13 @@ ETERNA_SCREEN_ASSETS = {
     "quiet_place": "quiet-place-v1.png",
     "terms_acceptance": "terms-acceptance-v1.png",
     "consent_recording": "terms-acceptance-v1.png",
+    "umbral": "pantalla_umbral.v1.png",
+    "pre_experience": "pantalla_umbral.v1.png",
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
     "gift_ready": "uploading-reaction-v1.png",
+    "gift-ready-v1": "uploading-reaction-v1.png",
+    "gift-ready-v1.png": "uploading-reaction-v1.png",
     "sender_pack_entry": "sender-pack-entry-v1.png",
     "sender_pack": "sender-pack-v1.png",
     "viral_cta": "viral-cta-v1.png",
@@ -1411,6 +1422,249 @@ def r2_order_key(order: dict, kind: str, filename: str) -> str:
     return f"orders/{order_id}/{recipient}_{sender}/{kind}/{filename}"
 
 
+
+
+# =========================================================
+# ETERNA UMBRAL V1 — PREEXPERIENCIA CINEMATOGRÁFICA ÚNICA
+# =========================================================
+
+def render_eterna_umbral_screen(request: Request, order: dict, recipient_token: str) -> HTMLResponse:
+    """
+    Pantalla única antes del vídeo.
+    - Usa UNA imagen base vacía: pantalla_umbral.v1.png
+    - El texto nace por código encima, como una historia.
+    - Consentimiento único, claro y honesto: imagen y voz serán grabadas.
+    - No toca video engine, Stripe, SMS, sender pack ni lógica de subida.
+    """
+    bg_src = safe_attr(eterna_asset("pantalla_umbral.v1.png"))
+    start_url = "/start-experience"
+    token = safe_attr(recipient_token)
+
+    html_page = f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA · El Umbral</title>
+<meta name="theme-color" content="#02050a">
+<style>
+* {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
+html, body {{ margin:0; width:100%; min-height:100%; background:#02050a; }}
+body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color:#fff8e8; }}
+.umbral {{ position:relative; width:100vw; height:100svh; min-height:100dvh; overflow:hidden; background:#02050a; }}
+.bg {{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center; opacity:0; transform:scale(1.018); filter:brightness(.82) contrast(1.06) saturate(1.08); animation:bgIn 1.8s ease-out forwards, bgBreath 9s ease-in-out 2s infinite; }}
+.vignette {{ position:absolute; inset:0; background:radial-gradient(circle at 50% 42%, rgba(0,0,0,.04), rgba(0,0,0,.30) 58%, rgba(0,0,0,.70) 100%); pointer-events:none; }}
+.cine-light {{ position:absolute; left:50%; bottom:17%; width:260px; height:260px; transform:translateX(-50%); border-radius:999px; background:radial-gradient(circle, rgba(255,218,126,.28), rgba(42,188,255,.10) 34%, transparent 70%); filter:blur(18px); opacity:.0; mix-blend-mode:screen; animation:lightWake 8s ease-in-out 1.5s infinite; pointer-events:none; }}
+.story {{ position:absolute; left:8.4%; right:8.4%; top:25.5%; bottom:22.5%; display:flex; align-items:center; justify-content:center; text-align:center; }}
+.story-inner {{ width:100%; max-width:430px; margin:auto; }}
+.line {{ display:none; opacity:0; transform:translateY(10px); font-family:Georgia,"Times New Roman",serif; font-size:clamp(27px, 7.2vw, 42px); line-height:1.18; letter-spacing:.01em; text-shadow:0 2px 18px rgba(0,0,0,.88), 0 0 30px rgba(62,185,255,.10); }}
+.line.small {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; font-size:clamp(20px, 5.3vw, 29px); line-height:1.38; font-weight:350; letter-spacing:.01em; }}
+.line.legal {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; font-size:clamp(18px, 4.8vw, 25px); line-height:1.42; font-weight:350; }}
+.gold {{ color:#f4c46b; text-shadow:0 0 22px rgba(244,196,107,.22), 0 2px 18px rgba(0,0,0,.88); }}
+.blue {{ color:#62cfff; text-shadow:0 0 24px rgba(98,207,255,.34), 0 2px 18px rgba(0,0,0,.88); }}
+.line.is-active {{ display:block; animation:textIn .75s ease-out forwards; }}
+.line.is-out {{ animation:textOut .55s ease-in forwards; }}
+.cursor {{ display:inline-block; width:2px; height:.95em; margin-left:5px; background:#f4c46b; vertical-align:-.12em; box-shadow:0 0 16px rgba(244,196,107,.78); animation:blink .78s step-end infinite; }}
+.consent-wrap {{ position:absolute; left:7.5%; right:7.5%; bottom:calc(env(safe-area-inset-bottom) + 102px); opacity:0; transform:translateY(16px); pointer-events:none; transition:opacity .55s ease, transform .55s ease; }}
+.consent-wrap.show {{ opacity:1; transform:translateY(0); pointer-events:auto; }}
+.consent {{ position:relative; min-height:100px; padding:18px 18px 18px 58px; border:1px solid rgba(98,207,255,.48); border-radius:18px; background:linear-gradient(180deg, rgba(4,16,34,.72), rgba(2,7,16,.82)); box-shadow:0 0 26px rgba(71,192,255,.18), inset 0 0 24px rgba(255,255,255,.035); color:rgba(255,248,232,.90); font-size:15px; line-height:1.36; backdrop-filter:blur(8px); }}
+.consent strong {{ color:#f4c46b; font-weight:650; }}
+.consent input {{ position:absolute; left:18px; top:24px; width:26px; height:26px; opacity:0; }}
+.fake-check {{ position:absolute; left:18px; top:24px; width:26px; height:26px; border-radius:7px; border:1.5px solid rgba(98,207,255,.86); background:rgba(2,8,18,.56); box-shadow:0 0 16px rgba(98,207,255,.22), inset 0 0 10px rgba(0,0,0,.55); }}
+.fake-check::after {{ content:""; position:absolute; left:8px; top:3px; width:8px; height:15px; border:solid #071018; border-width:0 3px 3px 0; transform:rotate(45deg) scale(.25); opacity:0; transition:all .18s ease; }}
+.consent input:checked + .fake-check {{ border-color:#ffe6a5; background:linear-gradient(135deg,#fff5cc,#f4bd4d 52%,#9d5b08); box-shadow:0 0 24px rgba(244,196,107,.76),0 0 42px rgba(98,207,255,.16); }}
+.consent input:checked + .fake-check::after {{ opacity:1; transform:rotate(45deg) scale(1); }}
+.cta {{ position:absolute; left:7.5%; right:7.5%; bottom:calc(env(safe-area-inset-bottom) + 24px); min-height:70px; border-radius:20px; border:1px solid rgba(255,226,159,.72); background:linear-gradient(180deg, rgba(255,218,126,.92), rgba(195,119,21,.92)); box-shadow:0 0 30px rgba(244,196,107,.45), inset 0 1px 14px rgba(255,255,255,.38); color:#1a1105; font-family:Georgia,"Times New Roman",serif; font-size:clamp(24px, 6.4vw, 34px); letter-spacing:.08em; display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(18px) scale(.98); pointer-events:none; transition:opacity .55s ease, transform .55s ease, filter .25s ease; overflow:hidden; }}
+.cta.show {{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }}
+.cta:disabled {{ filter:saturate(.65) brightness(.70); pointer-events:none; }}
+.cta.ready {{ animation:buttonBreath 2.6s ease-in-out infinite; }}
+.cta::before {{ content:""; position:absolute; inset:-60%; background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.42) 48%, transparent 61%); transform:translateX(-72%); animation:buttonSweep 4.2s ease-in-out 1.8s infinite; }}
+.cta span {{ position:relative; z-index:2; min-height:1.2em; }}
+.footer-note {{ position:absolute; left:8%; right:8%; bottom:calc(env(safe-area-inset-bottom) + 6px); text-align:center; font-size:11px; letter-spacing:.20em; color:rgba(255,238,191,.62); opacity:0; animation:footerIn .8s ease-out 2.2s forwards; }}
+.skip-safe {{ position:absolute; left:0; top:0; width:1px; height:1px; opacity:0; overflow:hidden; }}
+@keyframes bgIn {{ to {{ opacity:1; transform:scale(1); }} }}
+@keyframes bgBreath {{ 0%,100% {{ transform:scale(1); filter:brightness(.82) contrast(1.06) saturate(1.08); }} 50% {{ transform:scale(1.012); filter:brightness(.92) contrast(1.08) saturate(1.14); }} }}
+@keyframes lightWake {{ 0%,100% {{ opacity:.14; transform:translateX(-50%) scale(.92); }} 50% {{ opacity:.44; transform:translateX(-50%) scale(1.12); }} }}
+@keyframes textIn {{ to {{ opacity:1; transform:translateY(0); }} }}
+@keyframes textOut {{ to {{ opacity:0; transform:translateY(-12px); }} }}
+@keyframes blink {{ 50% {{ opacity:0; }} }}
+@keyframes buttonBreath {{ 0%,100% {{ box-shadow:0 0 30px rgba(244,196,107,.45), inset 0 1px 14px rgba(255,255,255,.38); transform:translateY(0) scale(1); }} 50% {{ box-shadow:0 0 48px rgba(244,196,107,.76),0 0 80px rgba(98,207,255,.18), inset 0 1px 18px rgba(255,255,255,.48); transform:translateY(-1px) scale(1.012); }} }}
+@keyframes buttonSweep {{ 0%,62% {{ transform:translateX(-72%); opacity:0; }} 72% {{ opacity:.7; }} 100% {{ transform:translateX(72%); opacity:0; }} }}
+@keyframes footerIn {{ to {{ opacity:1; }} }}
+@media (max-height:700px) {{ .story {{ top:23%; bottom:28%; }} .line {{ font-size:clamp(24px, 6.2vw, 34px); }} .line.small,.line.legal {{ font-size:clamp(17px, 4.4vw, 23px); }} .consent-wrap {{ bottom:calc(env(safe-area-inset-bottom) + 92px); }} .consent {{ min-height:82px; padding-top:13px; padding-bottom:13px; font-size:13px; }} .fake-check,.consent input {{ top:18px; }} .cta {{ min-height:62px; }} }}
+</style>
+</head>
+<body>
+<div class="umbral" id="umbral">
+    <img class="bg" src="{bg_src}" alt="ETERNA" onerror="this.style.display='none'">
+    <div class="vignette"></div>
+    <div class="cine-light"></div>
+
+    <main class="story" aria-live="polite">
+        <div class="story-inner" id="storyInner"></div>
+    </main>
+
+    <form id="startForm" method="post" action="{start_url}">
+        <input type="hidden" name="recipient_token" value="{token}">
+        <div class="consent-wrap" id="consentWrap">
+            <label class="consent">
+                <input id="consentCheck" type="checkbox" autocomplete="off">
+                <span class="fake-check" aria-hidden="true"></span>
+                Entiendo y acepto que <strong>mi imagen y mi voz serán grabadas</strong> durante esta experiencia y enviadas únicamente a la persona que la preparó para mí.
+            </label>
+        </div>
+        <button id="openBtn" class="cta" type="submit" disabled><span id="btnText"></span></button>
+    </form>
+    <div class="footer-note">RESPIRA · DISFRUTA · VIVE ESTE MOMENTO</div>
+</div>
+<script>
+(function() {{
+    const story = document.getElementById('storyInner');
+    const consentWrap = document.getElementById('consentWrap');
+    const consentCheck = document.getElementById('consentCheck');
+    const openBtn = document.getElementById('openBtn');
+    const btnText = document.getElementById('btnText');
+    const form = document.getElementById('startForm');
+
+    const scenes = [
+        {{ html: '<span class="gold">Shhh...</span>', cls: 'line', hold: 1550 }},
+        {{ html: 'Esto no es un vídeo.', cls: 'line', hold: 1700 }},
+        {{ html: 'Alguien ha preparado<br>algo <span class="gold">para ti</span>.', cls: 'line small', hold: 2200 }},
+        {{ html: 'Lo que vas a vivir<br>solo ocurrirá <span class="gold">una vez</span>.', cls: 'line small', hold: 2300 }},
+        {{ html: 'Mientras vivas esta experiencia,<br><span class="gold">tu reacción será grabada</span>.', cls: 'line legal', hold: 2600 }},
+        {{ html: 'Esa grabación volverá<br>únicamente a la persona<br>que creó este momento.', cls: 'line legal', hold: 3000 }},
+        {{ html: 'Tu privacidad está <span class="blue">protegida</span>.', cls: 'line small', hold: 1900 }},
+        {{ html: 'Cuando estés preparado...', cls: 'line small', hold: 1500 }},
+        {{ html: 'abre tu <span class="gold">ETERNA</span>.', cls: 'line', hold: 1200 }}
+    ];
+
+    function sleep(ms) {{ return new Promise(r => setTimeout(r, ms)); }}
+    function typeHtml(el, html, speed) {{
+        return new Promise(resolve => {{
+            let i = 0;
+            let out = '';
+            const cursor = '<span class="cursor"></span>';
+            function step() {{
+                if (i >= html.length) {{ el.innerHTML = out; resolve(); return; }}
+                if (html[i] === '<') {{
+                    const end = html.indexOf('>', i);
+                    if (end !== -1) {{ out += html.slice(i, end + 1); i = end + 1; }}
+                    else {{ out += html[i++]; }}
+                }} else {{ out += html[i++]; }}
+                el.innerHTML = out + cursor;
+                setTimeout(step, speed);
+            }}
+            step();
+        }});
+    }}
+    async function playStory() {{
+        await sleep(1800);
+        for (const scene of scenes) {{
+            const el = document.createElement('div');
+            el.className = scene.cls + ' is-active';
+            story.innerHTML = '';
+            story.appendChild(el);
+            await typeHtml(el, scene.html, scene.cls.includes('line') ? 42 : 38);
+            await sleep(scene.hold);
+            el.classList.add('is-out');
+            await sleep(560);
+        }}
+        story.innerHTML = '<div class="line small is-active">Lee y acepta para continuar.</div>';
+        consentWrap.classList.add('show');
+    }}
+    let buttonTypingStarted = false;
+    function typeButtonText() {{
+        if (buttonTypingStarted) return;
+        buttonTypingStarted = true;
+        const text = 'ABRIR MI ETERNA';
+        btnText.textContent = '';
+        openBtn.classList.add('show');
+        let i = 0;
+        const t = setInterval(function() {{
+            btnText.textContent = text.slice(0, i++);
+            if (i > text.length) {{
+                clearInterval(t);
+                openBtn.disabled = false;
+                openBtn.classList.add('ready');
+            }}
+        }}, 76);
+    }}
+    consentCheck.addEventListener('change', function() {{
+        if (consentCheck.checked) {{ typeButtonText(); }}
+        else {{ buttonTypingStarted = false; openBtn.disabled = true; openBtn.classList.remove('ready'); openBtn.classList.remove('show'); btnText.textContent = ''; }}
+    }});
+    form.addEventListener('submit', async function(e) {{
+        e.preventDefault();
+        if (!consentCheck.checked || openBtn.disabled) return;
+        openBtn.disabled = true;
+        btnText.textContent = 'ABRIENDO...';
+        try {{
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
+                try {{ stream.getTracks().forEach(track => track.stop()); }} catch (_) {{}}
+            }}
+            const fd = new FormData(form);
+            const res = await fetch('/start-experience', {{ method:'POST', body:fd, headers:{{ 'X-ETERNA-AJAX':'1' }} }});
+            if (!res.ok) throw new Error('start_failed');
+            let data = {{}};
+            try {{ data = await res.json(); }} catch (_) {{}}
+            window.location.replace(data.redirect_url || '/experiencia/{token}');
+        }} catch (err) {{
+            openBtn.disabled = false;
+            btnText.textContent = 'ABRIR MI ETERNA';
+            alert('ETERNA necesita acceso a cámara y micrófono para abrir el regalo.');
+        }}
+    }});
+    playStory();
+}})();
+</script>
+</body>
+</html>
+"""
+    response = HTMLResponse(html_page)
+    attach_recipient_session_if_needed(order, request, response)
+    return response
+
+
+def render_recipient_preview_redirect(request: Request, order: dict, recipient_token: str) -> HTMLResponse:
+    """
+    Entrada con metadatos Open Graph para que el SMS/WhatsApp pueda enseñar imagen previa.
+    En humanos redirige inmediatamente al Umbral.
+    """
+    preview_img = PUBLIC_BASE_URL + eterna_asset("home-mobile-v1.png")
+    target = f"/guia/0/{safe_attr(recipient_token)}"
+    title = "ETERNA · Alguien ha preparado algo para ti"
+    desc = "Shhh... Esto no es un vídeo. Es un momento creado para ti."
+    html_page = f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{safe_text(title)}</title>
+<meta name="description" content="{safe_attr(desc)}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{safe_attr(title)}">
+<meta property="og:description" content="{safe_attr(desc)}">
+<meta property="og:image" content="{safe_attr(preview_img)}">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1920">
+<meta property="og:url" content="{safe_attr(recipient_experience_url_from_order(order))}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{safe_attr(title)}">
+<meta name="twitter:description" content="{safe_attr(desc)}">
+<meta name="twitter:image" content="{safe_attr(preview_img)}">
+<meta http-equiv="refresh" content="0;url={target}">
+<style>html,body{{margin:0;background:#02050a;color:#fff;height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}}body{{display:flex;align-items:center;justify-content:center;text-align:center}}a{{color:#f4c46b}}</style>
+<script>window.location.replace('{target}');</script>
+</head>
+<body><a href="{target}">Abrir mi ETERNA</a></body>
+</html>
+"""
+    response = HTMLResponse(html_page)
+    attach_recipient_session_if_needed(order, request, response)
+    return response
 # =========================================================
 # DB
 # =========================================================
@@ -2524,11 +2778,8 @@ def build_recipient_message(order: dict) -> str:
         message += "Shhh…\n\n"
     message += (
         "Esto no es un vídeo.\n\n"
-        "No es solo un momento.\n\n"
-        "Es algo que alguien ha creado para ti.\n\n"
-        "Pero hay algo más…\n\n"
-        "Dentro hay algo que también es tuyo.\n\n"
-        "Ábrelo cuando estés tranquilo:\n\n"
+        "Alguien ha preparado algo para ti.\n\n"
+        "Ábrelo cuando puedas vivirlo con calma.\n\n"
         f"{url}"
     )
     return message.strip()
@@ -6941,9 +7192,7 @@ def pedido(request: Request, recipient_token: str):
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    response = RedirectResponse(url=f"/guia/0/{recipient_token}", status_code=303)
-    attach_recipient_session_if_needed(order, request, response)
-    return response
+    return render_recipient_preview_redirect(request, order, recipient_token)
 
 
 # =========================================================
@@ -7261,12 +7510,9 @@ async def start_experience(request: Request, recipient_token: str = Form(...)):
 @app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
 def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     """
-    GUÍA V3 LIMPIA.
-    Flujo decidido:
-      0 -> Shhh / entrada emocional
-      1 -> Lee y acepta
-      2 -> Busca un lugar tranquilo / empieza experiencia
-    No toca MediaRecorder, chunks, subida, Stripe, SMS ni video engine.
+    RC29 — UMBRAL ÚNICO.
+    Sustituye las 3 pantallas previas por una sola pantalla cinematográfica:
+    pantalla_umbral.v1.png + historia escrita encima + aceptación única + ABRIR MI ETERNA.
     """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
@@ -7279,79 +7525,8 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    try:
-        step = int(step or 0)
-    except Exception:
-        step = 0
-    if step < 0:
-        step = 0
-    if step > 2:
-        step = 2
-
-    if step == 0:
-        insert_order_event(order["id"], "guide_intro_opened", "ok", "Pantalla Shhh limpia")
-        response = render_eterna_image_screen(
-            image_name="intro-shhh-v1.png",
-            fallback_image_name="intro-shhh-v1.png",
-            button_url=f"/guia/1/{recipient_token}",
-            button_label="Continuar",
-        )
-        attach_recipient_session_if_needed(order, request, response)
-        return response
-
-    if step == 1:
-        insert_order_event(order["id"], "guide_terms_opened", "ok", "Pantalla lee y acepta")
-        response = render_eterna_image_screen(
-            image_name="terms-acceptance-v1.png",
-            fallback_image_name="terms-acceptance-v1.png",
-            button_url=f"/guia/2/{recipient_token}",
-            button_label="Acepto y continúo",
-            extra_note="Al continuar aceptas vivir esta experiencia de forma privada y respetuosa.",
-        )
-        attach_recipient_session_if_needed(order, request, response)
-        return response
-
-    insert_order_event(order["id"], "guide_quiet_opened", "ok", "Pantalla final antes de iniciar experiencia")
-    response = render_eterna_image_screen(
-        image_name="quiet-place-v1.png",
-        fallback_image_name="quiet-place-v1.png",
-        form_action="/start-experience",
-        form_method="post",
-        hidden_fields={"recipient_token": recipient_token},
-        button_label="Estoy listo",
-        button_id="startExperienceNow",
-        extra_note="El navegador pedirá cámara y micrófono al empezar.",
-        extra_script=f"""
-        <script>
-        (function() {{
-            const form = document.querySelector('.visual-action-form');
-            const btn = document.getElementById('startExperienceNow');
-            if (!form || !btn) return;
-            form.addEventListener('submit', async function(e) {{
-                e.preventDefault();
-                btn.disabled = true;
-                try {{
-                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
-                        const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
-                        try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
-                    }}
-                    const fd = new FormData(form);
-                    const res = await fetch('/start-experience', {{ method: 'POST', body: fd, headers: {{ 'X-ETERNA-AJAX': '1' }} }});
-                    if (!res.ok) throw new Error('start_experience_failed');
-                    let data = {{}};
-                    try {{ data = await res.json(); }} catch (_) {{}}
-                    window.location.replace(data.redirect_url || '/experiencia/{safe_attr(recipient_token)}');
-                }} catch (err) {{
-                    btn.disabled = false;
-                    alert('ETERNA necesita acceso a cámara y micrófono para continuar.');
-                }}
-            }});
-        }})();
-        </script>
-        """,
-    )
-    attach_recipient_session_if_needed(order, request, response)
-    return response
+    insert_order_event(order["id"], "guide_umbral_opened", "ok", "Pantalla única Umbral abierta: historia + consentimiento + cámara")
+    return render_eterna_umbral_screen(request, order, recipient_token)
 
 
 # =========================================================
@@ -8498,7 +8673,7 @@ startBtn.addEventListener("click", async () => {
             headers: { "X-ETERNA-AJAX": "1" }
         });
 
-        let data = {};
+        let data = {{}};
         try {
             data = await response.json();
         } catch (_) {}
