@@ -7,9 +7,9 @@
 
 # RC29B REVISADO + UMBRAL ÚNICO + PREVIEW SMS + ASSETS BLINDADOS
 # Revisión: AST OK, rutas sin duplicar, gift-ready blindado, botón umbral sin intervalos duplicados.
-# RC29 UMBRAL ÚNICO + PREVIEW SMS + CIRCUITO COMPLETO ESTABLE
-# Base: RC27. Mantiene circuito completo y sustituye guía previa por Umbral cinematográfico.
-# SMS con metadatos OG para vista previa con imagen cuando la app lo permita.
+# RC30 MAGIA LANZAMIENTO + INFORME MEJORAS + UMBRAL PREMIUM
+# Base segura: RC27B/RC29C funcionando. NO toca Stripe, webhook, video engine ni sender pack.
+# Integra el informe: Umbral único, preview SMS OG, eventos/analítica base, accesibilidad, logs y fallback cámara.
 # =========================================================
 
 # RC27 ESTABLE CIRCUITO COMPLETO + VIDEO ARRANCA SIN BUCLE
@@ -251,7 +251,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v17-rc29-umbral-unico-preview-sms"
+ETERNA_VISUAL_VERSION = "eterna-visual-v18-rc30-magia-lanzamiento"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -287,6 +287,11 @@ def _eterna_asset_key(value: str) -> str:
     raw = raw.replace(".jpg.jpg", ".jpg")
     raw = raw.replace(".jpeg.jpeg", ".jpeg")
     raw = raw.replace(".webp.webp", ".webp")
+    # Windows a veces deja nombres tipo pantalla_umbral.v1-png.
+    # Lo normalizamos para que resuelva igual que pantalla_umbral.v1.png.
+    for pseudo_ext in ["-png", "-jpg", "-jpeg", "-webp"]:
+        if raw.endswith(pseudo_ext):
+            raw = raw[:-len(pseudo_ext)]
     for suffix in [" (copy)", " copy", " copia", " - copia"]:
         raw = raw.replace(suffix, "")
     for n in range(1, 20):
@@ -322,6 +327,10 @@ def resolve_eterna_asset_filename(name: str, fallback: str = "error-v1.png") -> 
             c.replace(".png", "(2).png"),
             c.replace(".png", " (1).png"),
             c.replace(".png", " (2).png"),
+            c.replace(".png", "-png"),
+            c.replace(".jpg", "-jpg"),
+            c.replace(".jpeg", "-jpeg"),
+            c.replace(".webp", "-webp"),
             c + "(1)",
             c + " (1)",
             c + " (2)",
@@ -353,11 +362,57 @@ def eterna_asset_file(asset_name: str):
     filename = resolve_eterna_asset_filename(asset_name)
     path = ETERNA_BG_FOLDER / filename
     if not path.exists() or not path.is_file():
+        # Importante para el Umbral: si falta su PNG, no debe aparecer error-v1 debajo
+        # de la historia. El navegador ocultará la imagen y quedará fondo oscuro limpio.
+        if _eterna_asset_key(asset_name) == _eterna_asset_key("pantalla_umbral.v1.png"):
+            raise HTTPException(status_code=404, detail=f"Asset Umbral no encontrado: {asset_name}")
         fallback = ETERNA_BG_FOLDER / resolve_eterna_asset_filename("error-v1.png")
         if fallback.exists() and fallback.is_file():
             return FileResponse(str(fallback), media_type="image/png")
         raise HTTPException(status_code=404, detail=f"Asset no encontrado: {asset_name}")
     return FileResponse(str(path), media_type=guess_media_type_from_path(str(path)))
+
+@app.get("/admin/asset-check")
+def admin_asset_check(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="forbidden")
+    wanted = [
+        "pantalla_umbral.v1.png",
+        "pantalla_umbral.v1-png",
+        "home-mobile-v1.png",
+        "error-v1.png",
+    ]
+    resolved = {}
+    for item in wanted:
+        filename = resolve_eterna_asset_filename(item)
+        path = ETERNA_BG_FOLDER / filename
+        resolved[item] = {
+            "resolved": filename,
+            "exists": path.exists() and path.is_file(),
+            "path": str(path),
+        }
+    return JSONResponse({
+        "ok": True,
+        "visual_version": ETERNA_VISUAL_VERSION,
+        "background_folder": str(ETERNA_BG_FOLDER),
+        "assets": resolved,
+    })
+
+@app.get("/admin/rc30-check")
+def admin_rc30_check(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="forbidden")
+    umbral_file = resolve_eterna_asset_filename("pantalla_umbral.v1.png")
+    umbral_path = ETERNA_BG_FOLDER / umbral_file
+    return JSONResponse({
+        "ok": True,
+        "rc": "RC30_MAGIA_LANZAMIENTO",
+        "base": "RC27B/RC29C estable",
+        "no_tocado": ["Stripe", "webhook", "video_engine", "sender_pack", "DB"],
+        "mejoras": ["umbral_unico", "preview_sms_og", "eventos_cliente", "fallback_camara", "asset_umbral_blindado", "logs_modo_nino"],
+        "umbral_asset": {"resolved": umbral_file, "exists": umbral_path.exists() and umbral_path.is_file(), "path": str(umbral_path)},
+        "visual_version": ETERNA_VISUAL_VERSION,
+    })
 
 
 # =========================================================
@@ -1452,7 +1507,7 @@ def render_eterna_umbral_screen(request: Request, order: dict, recipient_token: 
 * {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
 html, body {{ margin:0; width:100%; min-height:100%; background:#02050a; }}
 body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color:#fff8e8; }}
-.umbral {{ position:relative; width:100vw; height:100svh; min-height:100dvh; overflow:hidden; background:#02050a; }}
+.umbral {{ position:relative; width:100vw; height:100svh; min-height:100dvh; overflow:hidden; background:radial-gradient(circle at 50% 72%, rgba(21,95,145,.26), transparent 28%), radial-gradient(circle at 50% 24%, rgba(8,29,62,.46), transparent 32%), #02050a; }}
 .bg {{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center; opacity:0; transform:scale(1.018); filter:brightness(.82) contrast(1.06) saturate(1.08); animation:bgIn 1.8s ease-out forwards, bgBreath 9s ease-in-out 2s infinite; }}
 .vignette {{ position:absolute; inset:0; background:radial-gradient(circle at 50% 42%, rgba(0,0,0,.04), rgba(0,0,0,.30) 58%, rgba(0,0,0,.70) 100%); pointer-events:none; }}
 .cine-light {{ position:absolute; left:50%; bottom:17%; width:260px; height:260px; transform:translateX(-50%); border-radius:999px; background:radial-gradient(circle, rgba(255,218,126,.28), rgba(42,188,255,.10) 34%, transparent 70%); filter:blur(18px); opacity:.0; mix-blend-mode:screen; animation:lightWake 8s ease-in-out 1.5s infinite; pointer-events:none; }}
@@ -1482,6 +1537,9 @@ body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSy
 .cta::before {{ content:""; position:absolute; inset:-60%; background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.42) 48%, transparent 61%); transform:translateX(-72%); animation:buttonSweep 4.2s ease-in-out 1.8s infinite; }}
 .cta span {{ position:relative; z-index:2; min-height:1.2em; }}
 .footer-note {{ position:absolute; left:8%; right:8%; bottom:calc(env(safe-area-inset-bottom) + 6px); text-align:center; font-size:11px; letter-spacing:.20em; color:rgba(255,238,191,.62); opacity:0; animation:footerIn .8s ease-out 2.2s forwards; }}
+.camera-error {{ position:absolute; left:7.5%; right:7.5%; bottom:calc(env(safe-area-inset-bottom) + 188px); z-index:20; opacity:0; transform:translateY(12px); pointer-events:none; transition:opacity .35s ease, transform .35s ease; padding:16px 16px; border-radius:18px; border:1px solid rgba(255,214,126,.54); background:linear-gradient(180deg, rgba(24,12,4,.84), rgba(4,10,22,.90)); box-shadow:0 0 28px rgba(255,196,84,.18); color:rgba(255,248,232,.94); font-size:14px; line-height:1.38; text-align:center; backdrop-filter:blur(10px); }}
+.camera-error.show {{ opacity:1; transform:translateY(0); pointer-events:auto; }}
+.camera-error button {{ margin-top:10px; border:1px solid rgba(255,226,159,.68); border-radius:999px; background:rgba(255,218,126,.14); color:#fff3d0; padding:10px 16px; font-weight:650; }}
 .skip-safe {{ position:absolute; left:0; top:0; width:1px; height:1px; opacity:0; overflow:hidden; }}
 @keyframes bgIn {{ to {{ opacity:1; transform:scale(1); }} }}
 @keyframes bgBreath {{ 0%,100% {{ transform:scale(1); filter:brightness(.82) contrast(1.06) saturate(1.08); }} 50% {{ transform:scale(1.012); filter:brightness(.92) contrast(1.08) saturate(1.14); }} }}
@@ -1516,6 +1574,10 @@ body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSy
         </div>
         <button id="openBtn" class="cta" type="submit" disabled><span id="btnText"></span></button>
     </form>
+    <div class="camera-error" id="cameraError">
+        ETERNA necesita acceso a cámara y micrófono para abrir este regalo. Revisa los permisos del navegador y vuelve a intentarlo.
+        <br><button type="button" id="retryCameraBtn">REINTENTAR</button>
+    </div>
     <div class="footer-note">RESPIRA · DISFRUTA · VIVE ESTE MOMENTO</div>
 </div>
 <script>
@@ -1526,6 +1588,19 @@ body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSy
     const openBtn = document.getElementById('openBtn');
     const btnText = document.getElementById('btnText');
     const form = document.getElementById('startForm');
+    const cameraError = document.getElementById('cameraError');
+    const retryCameraBtn = document.getElementById('retryCameraBtn');
+
+    function track(step, status='ok', message='', meta={{}}) {{
+        try {{
+            fetch('/experience-event/{token}', {{
+                method:'POST',
+                headers:{{'Content-Type':'application/json'}},
+                body:JSON.stringify({{step, status, message, meta}})
+            }}).catch(function(){{}});
+        }} catch (_) {{}}
+    }}
+    track('umbral_loaded','ok','El Umbral RC30 se ha cargado');
 
     const scenes = [
         {{ html: '<span class="gold">Shhh...</span>', cls: 'line', hold: 1550 }},
@@ -1572,6 +1647,7 @@ body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSy
         }}
         story.innerHTML = '<div class="line small is-active">Lee y acepta para continuar.</div>';
         consentWrap.classList.add('show');
+        track('umbral_story_completed','ok','Narrativa del Umbral completada');
     }}
     let buttonTypingStarted = false;
     function typeButtonText() {{
@@ -1591,18 +1667,21 @@ body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSy
         }}, 76);
     }}
     consentCheck.addEventListener('change', function() {{
-        if (consentCheck.checked) {{ typeButtonText(); }}
+        if (consentCheck.checked) {{ track('umbral_consent_checked','ok','Consentimiento marcado'); typeButtonText(); }}
         else {{ buttonTypingStarted = false; openBtn.disabled = true; openBtn.classList.remove('ready'); openBtn.classList.remove('show'); btnText.textContent = ''; }}
     }});
     form.addEventListener('submit', async function(e) {{
         e.preventDefault();
         if (!consentCheck.checked || openBtn.disabled) return;
+        track('umbral_open_clicked','ok','Ha pulsado Abrir mi ETERNA');
+        if (cameraError) cameraError.classList.remove('show');
         openBtn.disabled = true;
         btnText.textContent = 'ABRIENDO...';
         try {{
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
                 const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
                 try {{ stream.getTracks().forEach(track => track.stop()); }} catch (_) {{}}
+                track('camera_permission_ok','ok','Permiso de cámara y micrófono aceptado');
             }}
             const fd = new FormData(form);
             const res = await fetch('/start-experience', {{ method:'POST', body:fd, headers:{{ 'X-ETERNA-AJAX':'1' }} }});
@@ -1613,9 +1692,12 @@ body {{ min-height:100svh; overflow:hidden; font-family:-apple-system,BlinkMacSy
         }} catch (err) {{
             openBtn.disabled = false;
             btnText.textContent = 'ABRIR MI ETERNA';
-            alert('ETERNA necesita acceso a cámara y micrófono para abrir el regalo.');
+            openBtn.classList.add('ready');
+            track('camera_permission_denied','error','No se pudo abrir cámara/micrófono',{{error:String(err && err.message || err)}});
+            if (cameraError) cameraError.classList.add('show');
         }}
     }});
+    if (retryCameraBtn) retryCameraBtn.addEventListener('click', function(){{ if (cameraError) cameraError.classList.remove('show'); openBtn.click(); }});
     playStory();
 }})();
 </script>
@@ -1632,7 +1714,7 @@ def render_recipient_preview_redirect(request: Request, order: dict, recipient_t
     Entrada con metadatos Open Graph para que el SMS/WhatsApp pueda enseñar imagen previa.
     En humanos redirige inmediatamente al Umbral.
     """
-    preview_img = PUBLIC_BASE_URL + eterna_asset("home-mobile-v1.png")
+    preview_img = PUBLIC_BASE_URL + eterna_asset("pantalla_umbral.v1.png")
     target = f"/guia/0/{safe_attr(recipient_token)}"
     title = "ETERNA · Alguien ha preparado algo para ti"
     desc = "Shhh... Esto no es un vídeo. Es un momento creado para ti."
@@ -3982,7 +4064,7 @@ p { opacity:0.85; }
 <p>El usuario crea una experiencia y el destinatario accede mediante un enlace único.</p>
 
 <h2>3. Consentimiento y grabación</h2>
-<p>Al acceder y continuar en la experiencia, el destinatario acepta que su reacción podrá ser captada mediante cámara y/o micrófono y compartida únicamente con la persona que creó la experiencia.</p>
+<p>Al acceder y continuar en la experiencia, el destinatario acepta que su reacción será grabada mediante cámara y micrófono y compartida únicamente con la persona que creó la experiencia.</p>
 
 <h2>4. Uso de imagen y contenido recibido por el regalante</h2>
 <p>La persona que crea una ETERNA entiende que puede recibir un recuerdo privado de la experiencia, incluyendo imagen, voz o reacción de la persona destinataria, siempre dentro del funcionamiento del servicio.</p>
