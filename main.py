@@ -10,6 +10,11 @@
 # Mantiene formulario actual, Stripe, Video Engine, subida reacción y Sender Pack intactos.
 # =========================================================
 
+# RC32 EXPERIENCIA REGALADO 9:16 + UMBRAL POÉTICO + FOTOS ORIGINALES
+# Base: RC31 funcionando. No toca formulario, pago, Stripe, webhook, callback, workers ni sender pack.
+# Objetivo: corregir zoom visual, hacer el Umbral más emocional y entregar fotos originales al Video Engine.
+# =========================================================
+
 # RC27 ESTABLE CIRCUITO COMPLETO + VIDEO ARRANCA SIN BUCLE
 # Base: RC26. Mantiene pantallas/assets reales y una sola pantalla formulario→Stripe.
 # Arreglo crítico: en /experiencia el botón Estoy listo NO redirige otra vez a /experiencia.
@@ -95,6 +100,7 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
+print("🦋 RC32 EXPERIENCIA REGALADO 9:16 + UMBRAL POÉTICO + FOTOS ORIGINALES 🦋")
 
 import html
 import json
@@ -249,7 +255,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v18-rc31-regalo-umbral-salvavidas"
+ETERNA_VISUAL_VERSION = "eterna-visual-v19-rc32-experiencia-regalado-9x16"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -531,10 +537,11 @@ def render_eterna_image_screen(
     * {{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
     html, body {{ margin:0; width:100%; min-height:100%; background:#02050a; }}
     body {{ min-height:100svh; overflow-x:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#02050a; }}
-    .screen {{ position:relative; width:100vw; min-height:100svh; min-height:100dvh; display:flex; align-items:stretch; justify-content:center; background:#02050a; overflow:hidden; }}
-    .phone {{ position:relative; width:100vw; max-width:none; min-height:100svh; min-height:100dvh; overflow:hidden; background:#02050a; }}
-    .img {{ position:absolute; inset:0; width:100%; height:100%; min-height:100svh; min-height:100dvh; display:block; object-fit:cover; object-position:center center; background:#02050a; }}
-    @media (min-width: 760px) {{ .phone {{ width:min(100vw,520px); }} .img {{ object-fit:cover; }} }}
+    /* RC32 — LEY VISUAL ETERNA: todo asset emocional vive en 9:16 completo, sin recortes ni zoom forzado */
+    .screen {{ position:relative; width:100vw; min-height:100svh; min-height:100dvh; display:flex; align-items:center; justify-content:center; background:#02050a; overflow:hidden; }}
+    .phone {{ position:relative; width:min(100vw, calc(100dvh * 9 / 16)); height:min(100dvh, calc(100vw * 16 / 9)); aspect-ratio:9/16; overflow:hidden; background:#02050a; margin:auto; }}
+    .img {{ position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:contain; object-position:center center; background:#02050a; }}
+    @media (min-width: 760px) {{ .phone {{ width:min(100vw,520px, calc(100dvh * 9 / 16)); height:min(100dvh, calc(520px * 16 / 9)); }} .img {{ object-fit:contain; }} }}
     .soft-halo {{ position:absolute; left:67%; top:22%; width:240px; height:240px; border-radius:999px; transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(34,178,255,.26), rgba(34,178,255,.07) 42%, transparent 70%); filter:blur(16px); opacity:.56; mix-blend-mode:screen; animation:haloBreath 5.6s ease-in-out infinite; pointer-events:none; }}
     .particle {{ position:absolute; width:5px; height:5px; border-radius:50%; background:#62d3ff; box-shadow:0 0 16px #62d3ff, 0 0 34px rgba(98,211,255,.55); opacity:0; animation:floatUp 9s linear infinite; pointer-events:none; }}
     .particle.gold {{ background:#ffd98b; box-shadow:0 0 16px #ffd98b,0 0 34px rgba(255,217,139,.48); }}
@@ -7320,16 +7327,17 @@ html,body {{ margin:0; width:100%; height:100%; background:#02050a; overflow:hid
 body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color:#fff8e8; }}
 .umbral {{
     position:relative; width:100vw; height:100svh; min-height:100dvh; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
     background:
         radial-gradient(circle at 50% 72%, rgba(20,102,165,.25), transparent 34%),
         radial-gradient(circle at 50% 24%, rgba(5,25,58,.55), transparent 36%),
         #02050a;
 }}
 .bg {{
-    position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center;
-    opacity:0; transform:scale(1.018);
-    filter:brightness(.80) contrast(1.08) saturate(1.10);
-    animation:bgIn 1900ms ease-out forwards, bgBreath 11500ms ease-in-out 2200ms infinite;
+    position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center center;
+    opacity:0; transform:scale(1);
+    filter:brightness(.82) contrast(1.06) saturate(1.08);
+    animation:bgIn 1900ms ease-out forwards, bgBreath 14000ms ease-in-out 2400ms infinite;
 }}
 .veil {{
     position:absolute; inset:0; pointer-events:none;
@@ -7345,23 +7353,23 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
     animation:lightBreath 7600ms ease-in-out infinite;
 }}
 .story {{
-    position:absolute; left:8.5%; right:8.5%; top:22.5%; bottom:27%;
+    position:absolute; left:7.5%; right:7.5%; top:19%; bottom:30%;
     display:flex; align-items:center; justify-content:center; text-align:center; z-index:4;
 }}
 .story-inner {{ width:100%; max-width:440px; margin:0 auto; }}
 .line {{
     display:block; opacity:0; transform:translateY(14px);
     font-family:Georgia,"Times New Roman",serif;
-    font-size:clamp(27px,7.4vw,42px); line-height:1.18; letter-spacing:.01em;
+    font-size:clamp(32px,8.6vw,50px); line-height:1.14; letter-spacing:.01em;
     text-shadow:0 2px 20px rgba(0,0,0,.92),0 0 32px rgba(87,207,255,.10);
 }}
 .line.small {{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    font-size:clamp(20px,5.35vw,29px); line-height:1.36; font-weight:340;
+    font-size:clamp(24px,6.55vw,36px); line-height:1.28; font-weight:360;
 }}
 .line.legal {{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    font-size:clamp(18px,4.82vw,25px); line-height:1.43; font-weight:340;
+    font-size:clamp(22px,5.95vw,32px); line-height:1.32; font-weight:360;
 }}
 .gold {{ color:#f2c56f; text-shadow:0 0 22px rgba(242,197,111,.26),0 2px 20px rgba(0,0,0,.92); }}
 .blue {{ color:#67d6ff; text-shadow:0 0 24px rgba(103,214,255,.34),0 2px 20px rgba(0,0,0,.92); }}
@@ -7380,20 +7388,20 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
 .consent-wrap.show {{ opacity:1; transform:translateY(0); pointer-events:auto; }}
 .consent-card {{
     position:relative; display:block; width:100%;
-    min-height:108px; padding:18px 18px 18px 60px;
+    min-height:118px; padding:20px 18px 20px 66px;
     border-radius:20px;
     border:1px solid rgba(103,214,255,.48);
     background:linear-gradient(180deg, rgba(3,16,35,.72), rgba(2,7,16,.88));
     box-shadow:0 0 30px rgba(78,201,255,.18), inset 0 0 24px rgba(255,255,255,.035);
     backdrop-filter:blur(8px);
-    color:rgba(255,248,232,.92); font-size:15px; line-height:1.36;
+    color:rgba(255,248,232,.94); font-size:17px; line-height:1.36;
 }}
 .consent-card strong {{ color:#f2c56f; font-weight:650; }}
 .consent-card input {{
-    position:absolute; left:18px; top:22px; width:30px; height:30px; margin:0; opacity:0; z-index:3;
+    position:absolute; left:20px; top:25px; width:32px; height:32px; margin:0; opacity:0; z-index:3;
 }}
 .fake-check {{
-    position:absolute; left:18px; top:22px; width:30px; height:30px; border-radius:8px;
+    position:absolute; left:20px; top:25px; width:32px; height:32px; border-radius:9px;
     border:1.5px solid rgba(103,214,255,.88);
     background:rgba(2,8,18,.60);
     box-shadow:0 0 18px rgba(103,214,255,.24), inset 0 0 10px rgba(0,0,0,.58);
@@ -7437,7 +7445,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
 }}
 .status.show {{ opacity:1; }}
 @keyframes bgIn {{ to {{ opacity:1; transform:scale(1); }} }}
-@keyframes bgBreath {{ 0%,100% {{ transform:scale(1); filter:brightness(.80) contrast(1.08) saturate(1.10); }} 50% {{ transform:scale(1.014); filter:brightness(.91) contrast(1.10) saturate(1.15); }} }}
+@keyframes bgBreath {{ 0%,100% {{ transform:scale(1); filter:brightness(.82) contrast(1.06) saturate(1.08); }} 50% {{ transform:scale(1); filter:brightness(.90) contrast(1.08) saturate(1.12); }} }}
 @keyframes lightBreath {{ 0%,100% {{ opacity:.16; transform:translateX(-50%) scale(.92); }} 50% {{ opacity:.46; transform:translateX(-50%) scale(1.13); }} }}
 @keyframes textIn {{ to {{ opacity:1; transform:translateY(0); }} }}
 @keyframes textOut {{ to {{ opacity:0; transform:translateY(-14px); }} }}
@@ -7446,8 +7454,8 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
 @keyframes buttonSweep {{ 0%,62% {{ transform:translateX(-72%); opacity:0; }} 72% {{ opacity:.75; }} 100% {{ transform:translateX(72%); opacity:0; }} }}
 @media (max-height:700px) {{
     .story {{ top:21%; bottom:30%; }}
-    .line {{ font-size:clamp(24px,6.3vw,34px); }}
-    .line.small,.line.legal {{ font-size:clamp(17px,4.45vw,23px); }}
+    .line {{ font-size:clamp(27px,7.1vw,38px); }}
+    .line.small,.line.legal {{ font-size:clamp(20px,5.2vw,27px); }}
     .consent-wrap {{ bottom:calc(env(safe-area-inset-bottom) + 92px); }}
     .consent-card {{ min-height:88px; padding-top:13px; padding-bottom:13px; font-size:13px; }}
     .consent-card input,.fake-check {{ top:17px; }}
@@ -7471,7 +7479,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
             <label class="consent-card" for="consentCheck">
                 <input id="consentCheck" type="checkbox" autocomplete="off">
                 <span class="fake-check" aria-hidden="true"></span>
-                Entiendo y acepto que <strong>mi imagen y mi voz serán grabadas</strong> durante esta experiencia y enviadas únicamente a la persona que la preparó para mí.
+                Entiendo y acepto que <strong>mi imagen y mi voz serán grabadas</strong> durante esta experiencia y enviadas únicamente a la persona que preparó este regalo.
             </label>
         </div>
         <button id="openBtn" class="cta" type="submit" disabled><span id="btnText"></span></button>
@@ -7491,15 +7499,15 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
     const statusText = document.getElementById('statusText');
 
     const scenes = [
-        {{ html: '<span class="gold">Shhh...</span>', cls: 'line', hold: 2400, speed: 70 }},
-        {{ html: 'Esto no es un vídeo.', cls: 'line', hold: 2700, speed: 78 }},
-        {{ html: 'Alguien ha preparado<br>algo <span class="gold">para ti</span>.', cls: 'line small', hold: 3300, speed: 62 }},
-        {{ html: 'Lo que vas a vivir<br>solo ocurrirá <span class="gold">una vez</span>.', cls: 'line small', hold: 3600, speed: 62 }},
-        {{ html: 'Mientras vivas esta experiencia,<br><span class="gold">tu reacción será grabada</span>.', cls: 'line legal', hold: 3900, speed: 58 }},
-        {{ html: 'Esa grabación volverá<br>únicamente a la persona<br>que creó este momento.', cls: 'line legal', hold: 4200, speed: 55 }},
-        {{ html: 'Tu privacidad está <span class="blue">protegida</span>.', cls: 'line small', hold: 2800, speed: 64 }},
-        {{ html: 'Cuando estés preparado...', cls: 'line small', hold: 2600, speed: 72 }},
-        {{ html: 'abre tu <span class="gold">ETERNA</span>.', cls: 'line', hold: 1800, speed: 78 }}
+        {{ html: '<span class="gold">Shhh...</span>', cls: 'line', hold: 3200, speed: 105 }},
+        {{ html: 'No tengas prisa.', cls: 'line', hold: 3000, speed: 96 }},
+        {{ html: 'Alguien ha dejado<br>algo <span class="gold">para ti</span>.', cls: 'line small', hold: 4100, speed: 82 }},
+        {{ html: 'No es solo un vídeo.', cls: 'line', hold: 3400, speed: 92 }},
+        {{ html: 'Es un momento<br>hecho para quedarse.', cls: 'line small', hold: 4400, speed: 82 }},
+        {{ html: 'Para que esta emoción pueda volver,<br><span class="gold">tu imagen y tu voz serán grabadas</span>.', cls: 'line legal', hold: 5200, speed: 72 }},
+        {{ html: 'Lo que sientas aquí<br>volverá solo a quien<br>preparó este regalo.', cls: 'line legal', hold: 5200, speed: 72 }},
+        {{ html: 'Cuando estés preparado...', cls: 'line small', hold: 3300, speed: 88 }},
+        {{ html: 'abre tu <span class="gold">ETERNA</span>.', cls: 'line', hold: 2500, speed: 92 }}
     ];
 
     function sleep(ms) {{ return new Promise(resolve => setTimeout(resolve, ms)); }}
@@ -7509,7 +7517,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
             fetch('/experience-event/' + token, {{
                 method:'POST',
                 headers:{{'Content-Type':'application/json'}},
-                body:JSON.stringify(Object.assign({{event:name, source:'umbral_rc31'}}, extra || {{}}))
+                body:JSON.stringify(Object.assign({{event:name, source:'umbral_rc32'}}, extra || {{}}))
             }}).catch(function(){{}});
         }} catch (_) {{}}
     }}
@@ -7556,7 +7564,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,san
             el.classList.add('is-out');
             await sleep(700);
         }}
-        story.innerHTML = '<div class="line small is-active">Lee y acepta para continuar.</div>';
+        story.innerHTML = '<div class="line small is-active">Acepta para abrir este momento.</div>';
         await sleep(500);
         consentWrap.classList.add('show');
         statusText.classList.add('show');
@@ -9777,16 +9785,16 @@ def prepare_photo_for_video_engine(original_path: str, order_id: str, slot_name:
 @app.get("/video/input/{order_id}/{slot_name}")
 def get_video_input(order_id: str, slot_name: str):
     """
-    RC21 MAIN PATCH.
-    Ruta crítica para que el video engine pueda descargar las 6 fotos.
+    RC32 — SALVAVIDAS FOTO ORIGINAL AL VIDEO ENGINE.
 
     Decisión técnica:
     - NO tocamos video engine.
-    - NO tocamos zoompan.
     - NO tocamos Stripe/webhook/SMS/workers/DB.
-    - El main conserva el original y entrega al engine una copia recalculada 360x640.
+    - Entregamos la foto ORIGINAL guardada por el formulario.
+    - Evitamos doble encuadre / doble zoom antes del render.
 
-    Si la preparación falla, entregamos el original como fallback para no romper el render.
+    La función prepare_photo_for_video_engine se mantiene arriba como referencia/fallback histórico,
+    pero esta ruta crítica vuelve al comportamiento salvavidas: original limpio.
     """
     path = get_photo_asset_path(order_id, slot_name)
     if not path:
@@ -9795,33 +9803,16 @@ def get_video_input(order_id: str, slot_name: str):
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
 
-    try:
-        prepared_path = prepare_photo_for_video_engine(path, order_id, slot_name)
-        print(
-            f"🖼️ RC21 /video/input preparado -> "
-            f"order={order_id} slot={slot_name} "
-            f"original={path} prepared={prepared_path} "
-            f"size={os.path.getsize(prepared_path)}"
-        )
-        return FileResponse(
-            prepared_path,
-            media_type="image/jpeg",
-            filename=os.path.basename(prepared_path),
-        )
-
-    except Exception as e:
-        # Fallback salvavidas: jamás bloqueamos el render si PIL falla por una imagen rara.
-        print(
-            f"⚠️ RC21 prepare_photo_for_video_engine falló. "
-            f"Entrego original para no romper render. "
-            f"order={order_id} slot={slot_name} error={e}"
-        )
-        return FileResponse(
-            path,
-            media_type=guess_media_type_from_path(path),
-            filename=os.path.basename(path),
-        )
-
+    print(
+        f"🖼️ RC32 /video/input ORIGINAL -> "
+        f"order={order_id} slot={slot_name} "
+        f"path={path} size={os.path.getsize(path)}"
+    )
+    return FileResponse(
+        path,
+        media_type=guess_media_type_from_path(path),
+        filename=os.path.basename(path),
+    )
 
 @app.get("/video/sender-reaction/{sender_token}")
 def get_sender_reaction_video(sender_token: str):
