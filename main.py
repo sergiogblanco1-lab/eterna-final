@@ -5,6 +5,14 @@
 # Mantiene main preparando fotos para engine. NO toca video engine.
 # =========================================================
 
+# RC37 SENDER PACK CUADRADO + BOTONES REALES
+# Base: RC36. Solo toca /sender: marco vídeo, reacción, replay, guardar, compartir.
+# No toca Stripe, webhook, Video Engine, SMS, DB, workers ni formulario.
+#
+# RC36 CHECKOUT UNA SOLA PANTALLA + MAIN ESTABLE
+# Base: RC35. Quita la pantalla estática previa del formulario y deja solo /checkout-loading cinematográfica.
+# No toca Stripe, webhook, video engine, SMS, DB, workers, formulario ni sender pack.
+#
 # RC34 EXPERIENCIA REGALADO + BOTONES INTEGRADOS + FINAL REGALO PREMIUM
 # Base: RC33/RC27B estable que arrancaba video. Recupera pantallas cinematográficas.
 # Cambios quirúrgicos:
@@ -99,6 +107,7 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
+print("✅ RC37 SENDER PACK CUADRADO + BOTONES REALES ✅")
 
 import html
 import json
@@ -253,7 +262,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v18-rc34-botones-integrados-final-regalo-premium"
+ETERNA_VISUAL_VERSION = "eterna-visual-v19-rc36-checkout-unica-pantalla"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -5588,13 +5597,7 @@ def render_create_form() -> str:
             </div>
         </div>
 
-
-        <div class="payment-overlay" id="paymentOverlay" aria-hidden="true">
-            <div class="payment-cinematic">
-                <img src="{safe_attr(eterna_asset('checkout_loading'))}" alt="Abriendo pago seguro ETERNA">
-                <div class="payment-cinematic-glow" aria-hidden="true"></div>
-            </div>
-        </div>
+        <!-- RC36: pantalla estática del formulario eliminada. Solo queda /checkout-loading cinematográfica. -->
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {{
@@ -6156,17 +6159,13 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (button) {{
             button.disabled = true;
             button.classList.add("is-loading");
-            button.innerText = "Abriendo pago seguro...";
+            button.innerText = "Preparando pago seguro...";
         }}
 
-        // RC34: la espera NO debe quedarse en el formulario.
-        // En cuanto el usuario pulsa, mostramos la pantalla cinematográfica bonita
-        // y mientras tanto el navegador sube fotos / procesa / crea sesión Stripe.
-        const paymentOverlay = document.getElementById("paymentOverlay");
-        if (paymentOverlay) {{
-            paymentOverlay.classList.add("show");
-            paymentOverlay.setAttribute("aria-hidden", "false");
-        }}
+        // RC36:
+        // Eliminamos la pantalla estática previa del formulario para evitar doble transición.
+        // El formulario envía el pedido y la única pantalla visual será /checkout-loading,
+        // que ya contiene la mariposa, línea azul y animación cinematográfica.
     }}
 
     form.addEventListener("submit", function (e) {{
@@ -6194,12 +6193,12 @@ document.addEventListener("DOMContentLoaded", function () {{
             console.error("localStorage remove error", err);
         }}
 
-        // Importante en móvil: dejamos que el navegador pinte la pantalla
-        // Pantalla cinematográfica antes de empezar la subida pesada de las 6 fotos.
+        // RC36: sin overlay estático. Enviamos casi inmediato para llegar cuanto antes
+        // a la única pantalla bonita real: /checkout-loading.
         window.requestAnimationFrame(function () {{
             window.setTimeout(function () {{
                 form.submit();
-            }}, 140);
+            }}, 20);
         }});
     }});
 
@@ -9636,15 +9635,14 @@ def connect_payout(request: Request, recipient_token: str):
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str, view: str = ""):
     """
-    SENDER PACK FINAL — flujo visual limpio y cinematográfico.
+    RC37 SENDER PACK CUADRADO — pantalla aquí vuelve lo que provocaste.
 
-    Decisión de producto:
-      1) Entrada obligatoria con sender-pack-entry-v1.png
-      2) Pack principal con sender-pack-v1.png + vídeo/reacción real encima
-      3) Se elimina la pantalla intermedia tipo "Ya ha pasado"
-      4) Se elimina la pantalla final independiente "Lo que das se queda en alguien"
-
-    No toca Stripe, Twilio, webhooks, pagos, video engine ni DB.
+    Cambio quirúrgico:
+      - Solo toca /sender/{sender_token}.
+      - Mantiene Stripe, webhook, Video Engine, SMS, DB, workers y experiencia intactos.
+      - Coloca el vídeo original en marco grande.
+      - Coloca la reacción real como mini vídeo abajo derecha.
+      - Botones reales: volver a sentirlo, guardar y compartir.
     """
     order = get_order_by_sender_token_or_404(sender_token)
     log_human("REGALANTE HA ABIERTO EL PACK", "🎁 El creador ha abierto el recuerdo", f"🆔 Pedido: {order.get('id')}")
@@ -9672,7 +9670,7 @@ def sender_pack(sender_token: str, view: str = ""):
             extra_note="Tu ETERNA todavía está volviendo. La reacción se está guardando.",
         )
 
-    # Pantalla 1: entrada emocional cinematográfica.
+    # Pantalla de entrada emocional previa al pack.
     if str(view or "").strip().lower() not in {"pack", "open", "1"}:
         return render_eterna_image_screen(
             image_name="sender_pack_entry",
@@ -9701,193 +9699,125 @@ def sender_pack(sender_token: str, view: str = ""):
 <meta name="theme-color" content="#02050a">
 <style>
 *{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
-html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}}
-body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}}
-.shell{{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:#02050a;box-shadow:0 0 80px rgba(0,0,0,.72)}}
-.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;user-select:none;pointer-events:none}}
-.glow{{position:absolute;inset:-10%;z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 32%,rgba(50,190,255,.20),transparent 25%),radial-gradient(circle at 74% 45%,rgba(255,174,56,.18),transparent 18%);mix-blend-mode:screen;animation:breath 6s ease-in-out infinite}}
-@keyframes breath{{0%,100%{{opacity:.45;transform:scale(1)}}50%{{opacity:.9;transform:scale(1.045)}}}}
-.main-video{{position:absolute;z-index:3;left:8.2%;right:8.2%;top:24.6%;height:34.8%;border-radius:25px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.82);box-shadow:0 0 32px rgba(34,174,255,.54), inset 0 0 20px rgba(60,190,255,.18)}}
-.main-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.06) saturate(1.06) brightness(1.03)}}
-.reaction-video{{position:absolute;z-index:5;right:8.4%;top:42.4%;width:30.6%;height:22.6%;border-radius:20px;overflow:hidden;background:#000;border:2px solid rgba(255,204,104,.98);box-shadow:0 0 0 1px rgba(255,245,207,.22),0 0 30px rgba(255,183,70,.72), inset 0 0 16px rgba(255,218,137,.22)}}
-.reaction-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.12) saturate(1.10) brightness(1.08)}}
-.real-hit{{position:absolute;z-index:8;border:0;background:rgba(255,255,255,.001);cursor:pointer;text-indent:-9999px;overflow:hidden;border-radius:999px}}
-.hit-replay{{left:8.6%;right:8.6%;bottom:25.0%;height:7.5%}}
-.hit-save{{left:8.6%;right:8.6%;bottom:16.8%;height:7.5%}}
-.hit-share{{left:8.6%;right:8.6%;bottom:8.6%;height:7.5%}}
-.hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
-.pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
-@keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
-.floating{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#5bd9ff;box-shadow:0 0 16px #5bd9ff;animation:floatUp 7.5s linear infinite;opacity:0;pointer-events:none}}
-.f1{{left:17%;bottom:13%;animation-delay:.2s}}.f2{{left:83%;bottom:22%;animation-delay:1.5s;background:#ffd98c;box-shadow:0 0 16px #ffd98c}}.f3{{left:47%;bottom:7%;animation-delay:3.1s}}.f4{{left:70%;bottom:58%;animation-delay:4.6s}}
-@keyframes floatUp{{0%{{transform:translateY(0) scale(.6);opacity:0}}15%{{opacity:.95}}100%{{transform:translateY(-180px) scale(1.1);opacity:0}}}}
+html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;overflow-x:hidden}}
+body{{min-height:100svh;min-height:100dvh;background:#02050a}}
+.shell{{position:relative;width:100vw;min-height:100svh;min-height:100dvh;margin:0 auto;overflow:hidden;background:#02050a;isolation:isolate}}
+.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:0;pointer-events:none;user-select:none}}
+.veil{{position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 50% 47%,rgba(3,7,14,.05),rgba(1,3,8,.22) 48%,rgba(0,0,0,.48) 100%);pointer-events:none}}
+.glow{{position:absolute;left:50%;top:49%;width:78vw;max-width:440px;height:46vh;transform:translate(-50%,-50%);border-radius:34px;background:radial-gradient(circle,rgba(35,160,255,.17),transparent 66%);filter:blur(18px);z-index:1;mix-blend-mode:screen;animation:packBreath 5.4s ease-in-out infinite;pointer-events:none}}
+@keyframes packBreath{{0%,100%{{opacity:.42;transform:translate(-50%,-50%) scale(.98)}}50%{{opacity:.78;transform:translate(-50%,-50%) scale(1.04)}}}}
 
-.life-line{{position:absolute;z-index:2;left:7%;right:7%;top:21.9%;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(70,210,255,.95),rgba(255,215,126,.85),transparent);box-shadow:0 0 24px rgba(70,210,255,.78),0 0 46px rgba(255,208,105,.34);animation:lifeLine 3.4s ease-in-out infinite;pointer-events:none;mix-blend-mode:screen}}
-.life-line::after{{content:"";position:absolute;top:-5px;left:-12%;width:70px;height:12px;border-radius:999px;background:radial-gradient(circle,#fff,rgba(79,211,255,.86) 34%,transparent 72%);filter:blur(1px);box-shadow:0 0 26px rgba(87,215,255,.94);animation:lineStar 4.8s cubic-bezier(.42,0,.24,1) infinite}}
-.alive-heart{{position:absolute;z-index:4;left:50%;bottom:18.9%;width:92px;height:92px;transform:translateX(-50%);border-radius:999px;pointer-events:none;display:flex;align-items:center;justify-content:center;color:#ffd98a;font-size:36px;text-shadow:0 0 20px rgba(255,212,126,.9),0 0 44px rgba(255,166,54,.5);animation:heartBeat 2.4s ease-in-out infinite}}
-.alive-heart::before{{content:"";position:absolute;inset:2px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.20),rgba(255,198,84,.18) 38%,transparent 70%);filter:blur(3px);animation:heartHalo 3.1s ease-in-out infinite}}
-.alive-heart::after{{content:"";position:absolute;inset:18px;border-radius:999px;border:1px solid rgba(255,213,128,.42);box-shadow:0 0 22px rgba(255,197,82,.38);animation:heartRing 3.7s ease-in-out infinite}}
-.spark{{position:absolute;z-index:4;width:4px;height:4px;border-radius:999px;background:#ffd98a;box-shadow:0 0 14px #ffd98a,0 0 28px rgba(255,217,138,.48);opacity:0;pointer-events:none;animation:sparkFloat 5.2s linear infinite}}
-.s1{{right:22%;top:38%;animation-delay:.1s}}.s2{{right:34%;top:44%;animation-delay:1.1s;background:#69d8ff;box-shadow:0 0 14px #69d8ff,0 0 28px rgba(105,216,255,.46)}}.s3{{right:11%;top:52%;animation-delay:2.0s}}.s4{{left:18%;top:26%;animation-delay:2.8s;background:#7ddfff;box-shadow:0 0 14px #7ddfff,0 0 28px rgba(125,223,255,.46)}}.s5{{left:68%;bottom:30%;animation-delay:3.6s}}
-@keyframes lifeLine{{0%,100%{{opacity:.36;filter:brightness(1)}}50%{{opacity:1;filter:brightness(1.85)}}}}
-@keyframes lineStar{{0%{{left:-14%;opacity:0;transform:scaleX(.62)}}12%{{opacity:1}}82%{{opacity:1}}100%{{left:104%;opacity:0;transform:scaleX(1.18)}}}}
-@keyframes heartBeat{{0%,100%{{transform:translateX(-50%) scale(.96);opacity:.72}}14%{{transform:translateX(-50%) scale(1.08);opacity:1}}28%{{transform:translateX(-50%) scale(.98);opacity:.86}}44%{{transform:translateX(-50%) scale(1.04);opacity:1}}}}
-@keyframes heartHalo{{0%,100%{{opacity:.18;transform:scale(.86)}}50%{{opacity:.46;transform:scale(1.12)}}}}
-@keyframes heartRing{{0%{{opacity:.18;transform:scale(.72)}}55%{{opacity:.56;transform:scale(1.18)}}100%{{opacity:0;transform:scale(1.42)}}}}
-@keyframes sparkFloat{{0%{{opacity:0;transform:translateY(0) scale(.55)}}16%{{opacity:.96}}72%{{opacity:.42}}100%{{opacity:0;transform:translateY(-105px) translateX(24px) scale(1.1)}}}}
-.video-shine{{position:absolute;z-index:6;left:8.2%;right:8.2%;top:24.6%;height:34.8%;border-radius:25px;pointer-events:none;overflow:hidden}}
-.video-shine::before{{content:"";position:absolute;top:-35%;left:-45%;width:28%;height:170%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transform:rotate(18deg);animation:videoShine 7.8s ease-in-out infinite;mix-blend-mode:screen}}
+.main-video{{position:absolute;z-index:3;left:7.2%;right:7.2%;top:19.9%;height:47.1%;border-radius:25px;overflow:hidden;background:#05080d;border:2px solid rgba(63,199,255,.92);box-shadow:0 0 24px rgba(47,190,255,.68),0 0 58px rgba(47,190,255,.28),inset 0 0 18px rgba(63,199,255,.20)}}
+.main-video video{{width:100%;height:100%;display:block;object-fit:cover;background:#000}}
+.video-shine{{position:absolute;z-index:5;left:7.2%;right:7.2%;top:19.9%;height:47.1%;border-radius:25px;overflow:hidden;pointer-events:none}}
+.video-shine:before{{content:"";position:absolute;top:0;bottom:0;left:-45%;width:36%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.20),transparent);filter:blur(1px);animation:videoShine 7.8s ease-in-out infinite;mix-blend-mode:screen}}
 @keyframes videoShine{{0%,62%{{left:-45%;opacity:0}}70%{{opacity:.7}}100%{{left:118%;opacity:0}}}}
 
-.toast{{position:absolute;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center}}
+.reaction-video{{position:absolute;z-index:6;right:8.6%;top:44.8%;width:30.2%;height:19.3%;border-radius:20px;overflow:hidden;background:#030509;border:2px solid rgba(255,181,65,.96);box-shadow:0 0 22px rgba(255,181,65,.75),0 0 48px rgba(255,137,32,.34),inset 0 0 16px rgba(255,214,126,.18)}}
+.reaction-video:before{{content:"♡ Su reacción  ●";position:absolute;left:0;right:0;top:0;height:25px;z-index:2;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(180deg,rgba(0,0,0,.82),rgba(0,0,0,.24));font-size:11px;font-weight:800;color:#fff5d8;text-shadow:0 0 8px rgba(0,0,0,.9)}}
+.reaction-video video{{width:100%;height:100%;display:block;object-fit:cover;background:#000}}
+
+.hit{{position:absolute;z-index:20;border:0;background:rgba(255,255,255,.001);color:transparent;text-indent:-9999px;overflow:hidden;cursor:pointer;touch-action:manipulation;text-decoration:none}}
+.hit-replay{{right:5.5%;top:3.1%;width:30.5%;height:4.5%;border-radius:999px}}
+.hit-save{{right:21.4%;top:68.8%;width:12.8%;height:6.3%;border-radius:16px}}
+.hit-share{{right:6.4%;top:68.8%;width:13.5%;height:6.3%;border-radius:16px}}
+.hit-volume{{right:35.2%;top:68.8%;width:12.5%;height:6.3%;border-radius:16px}}
+
+.toast{{position:absolute;z-index:30;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center;box-shadow:0 0 22px rgba(255,190,75,.18)}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
-@media (min-width:760px){{body{{overflow:auto}}.shell{{width:min(100vw,520px);height:100svh;height:100dvh}}}}
-@media (max-width:420px){{.main-video{{border-radius:20px}}.reaction-video{{border-radius:15px}}}}
+
+@media (min-width:760px){{body{{overflow:auto}}.shell{{width:min(100vw,520px);height:100svh;height:100dvh;min-height:100svh}}}}
+@media (max-width:420px){{.main-video{{border-radius:21px}}.reaction-video{{border-radius:16px}}.reaction-video:before{{height:23px;font-size:10px}}}}
 </style>
 </head>
 <body>
 <main class="shell" aria-label="Sender Pack ETERNA">
     <img class="bg" src="{safe_attr(sender_bg)}" alt="Aquí vuelve lo que provocaste">
+    <div class="veil" aria-hidden="true"></div>
     <div class="glow" aria-hidden="true"></div>
-    <div class="life-line" aria-hidden="true"></div>
-    <i class="floating f1"></i><i class="floating f2"></i><i class="floating f3"></i><i class="floating f4"></i>
-    <i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><i class="spark s5"></i>
+
     <section class="main-video" aria-label="Lo que enviaste">
         <video id="originalVideo" controls playsinline preload="metadata">
             {original_source_html}
         </video>
     </section>
     <div class="video-shine" aria-hidden="true"></div>
-    <section class="reaction-video" aria-label="Su reacción">
+
+    <section class="reaction-video" aria-label="La reacción de {safe_attr(recipient_name)}">
         <video id="reactionVideo" muted playsinline preload="metadata">
             {reaction_source_html}
         </video>
     </section>
-    <div class="alive-heart" aria-hidden="true">♡</div>
-    <div class="pulse" aria-hidden="true"></div>
-    <button class="real-hit hit-replay" id="replayBtn" type="button">Volver a ver esta emoción</button>
-    <a class="real-hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download>Guardar este regreso</a>
-    <button class="real-hit hit-share" id="shareBtn" type="button">Compartir su reacción</button>
-    <a class="real-hit hit-back" href="/sender/{safe_attr(sender_token)}">Volver a sentirlo</a>
+
+    <button class="hit hit-replay" id="replayBtn" type="button" aria-label="Volver a sentirlo">Volver a sentirlo</button>
+    <button class="hit hit-volume" id="volumeBtn" type="button" aria-label="Activar o silenciar audio">Audio</button>
+    <a class="hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download aria-label="Guardar reacción">Guardar</a>
+    <button class="hit hit-share" id="shareBtn" type="button" aria-label="Compartir">Compartir</button>
     <div class="toast" id="toast">Listo</div>
 </main>
 <script>
 (function(){{
   const original = document.getElementById('originalVideo');
   const reaction = document.getElementById('reactionVideo');
-  const replay = document.getElementById('replayBtn');
-  const share = document.getElementById('shareBtn');
+  const replayBtn = document.getElementById('replayBtn');
+  const volumeBtn = document.getElementById('volumeBtn');
+  const shareBtn = document.getElementById('shareBtn');
   const toast = document.getElementById('toast');
+  const shareUrl = {json.dumps(str(share_url))};
+  const reactionUrl = {json.dumps(str(reaction_url))};
+
   function showToast(msg){{
     if(!toast) return;
-    toast.textContent = msg;
+    toast.textContent = msg || 'Listo';
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 1800);
+    window.setTimeout(() => toast.classList.remove('show'), 2200);
   }}
-  function restartBoth(){{
-    try{{ original.currentTime = 0; }}catch(e){{}}
-    try{{ reaction.currentTime = 0; }}catch(e){{}}
-    try{{ original.play(); }}catch(e){{}}
-    try{{ reaction.play(); }}catch(e){{}}
+
+  function safePlay(video){{
+    if(!video) return;
+    const p = video.play();
+    if(p && typeof p.catch === 'function') p.catch(() => {{}});
   }}
-  replay && replay.addEventListener('click', restartBoth);
-  original && original.addEventListener('play', function(){{ try{{ reaction.play(); }}catch(e){{}} }});
-  original && original.addEventListener('pause', function(){{ try{{ reaction.pause(); }}catch(e){{}} }});
-  original && original.addEventListener('ended', function(){{ try{{ reaction.pause(); }}catch(e){{}} }});
-  share && share.addEventListener('click', async function(){{
-    const data = {{title:'ETERNA', text:'Aquí vuelve lo que provocaste.', url:{json.dumps(share_url)}}};
-    try {{
-      if (navigator.share) {{ await navigator.share(data); }}
-      else {{ await navigator.clipboard.writeText(data.url); showToast('Enlace copiado'); }}
-    }} catch(e) {{}}
+
+  replayBtn?.addEventListener('click', () => {{
+    try {{ if(original) original.currentTime = 0; }} catch(_){{}}
+    try {{ if(reaction) reaction.currentTime = 0; }} catch(_){{}}
+    safePlay(original);
+    safePlay(reaction);
+    showToast('Volviendo a sentirlo');
   }});
+
+  volumeBtn?.addEventListener('click', () => {{
+    if(!original) return;
+    original.muted = !original.muted;
+    showToast(original.muted ? 'Audio silenciado' : 'Audio activado');
+  }});
+
+  shareBtn?.addEventListener('click', async () => {{
+    try {{
+      if(navigator.share) {{
+        await navigator.share({{title:'ETERNA', text:'Aquí vuelve lo que provocaste.', url: shareUrl || reactionUrl}});
+        return;
+      }}
+    }} catch(e) {{}}
+    try {{
+      await navigator.clipboard.writeText(shareUrl || reactionUrl);
+      showToast('Enlace copiado');
+    }} catch(e) {{
+      showToast('No se pudo compartir');
+    }}
+  }});
+
+  original?.addEventListener('play', () => {{
+    try {{ reaction.currentTime = original.currentTime || 0; }} catch(_){{}}
+    safePlay(reaction);
+  }});
+  original?.addEventListener('pause', () => {{ try {{ reaction.pause(); }} catch(_){{}} }});
 }})();
 </script>
 </body>
 </html>
-""")
-
-
-
-def prepare_photo_for_video_engine(original_path: str, order_id: str, slot_name: str) -> str:
-    """
-    RC21 MAIN PATCH — prepara la foto para el video engine SIN tocar el video engine.
-
-    Objetivo:
-    - Mantener el original intacto.
-    - Crear una copia vertical 360x640 ya lista para el engine.
-    - No recortar la foto principal.
-    - No deformar.
-    - Rellenar con fondo blur cinematográfico.
-    - Evitar que fotos horizontales/cuadradas lleguen ampliadas o raras al render.
-
-    Importante:
-    - save_upload_original_robust() sigue guardando el archivo original.
-    - Esta función solo crea una copia técnica para /video/input.
-    """
-    TARGET_W = 360
-    TARGET_H = 640
-
-    original_path = str(original_path or "").strip()
-    if not original_path or not os.path.exists(original_path):
-        raise ValueError(f"Original no encontrado: {original_path}")
-
-    safe_slot = safe_slug(slot_name, "photo")
-    prepared_dir = PHOTO_FOLDER / str(order_id) / "engine_prepared"
-    prepared_dir.mkdir(parents=True, exist_ok=True)
-
-    prepared_path = prepared_dir / f"{safe_slot}_engine_360x640.jpg"
-
-    original_mtime = os.path.getmtime(original_path)
-    if prepared_path.exists() and os.path.getsize(prepared_path) > 0:
-        prepared_mtime = os.path.getmtime(prepared_path)
-        if prepared_mtime >= original_mtime:
-            return str(prepared_path)
-
-    with Image.open(original_path) as img:
-        # Respeta orientación EXIF de iPhone/Instagram sin tocar el archivo original.
-        img = ImageOps.exif_transpose(img)
-
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-
-        original_w, original_h = img.size
-        if original_w <= 0 or original_h <= 0:
-            raise ValueError(f"Imagen inválida: {original_path}")
-
-        # 1) Fondo cinematográfico: cubre 360x640 con la misma foto ampliada + blur.
-        bg_ratio = max(TARGET_W / original_w, TARGET_H / original_h)
-        bg_w = max(int(original_w * bg_ratio), TARGET_W)
-        bg_h = max(int(original_h * bg_ratio), TARGET_H)
-
-        bg = img.resize((bg_w, bg_h), Image.LANCZOS)
-
-        left = max((bg_w - TARGET_W) // 2, 0)
-        top = max((bg_h - TARGET_H) // 2, 0)
-        bg = bg.crop((left, top, left + TARGET_W, top + TARGET_H))
-
-        bg = bg.filter(ImageFilter.GaussianBlur(radius=18))
-        bg = ImageEnhance.Brightness(bg).enhance(0.42)
-        bg = ImageEnhance.Contrast(bg).enhance(1.16)
-        bg = ImageEnhance.Color(bg).enhance(1.08)
-
-        # 2) Foto principal: entra COMPLETA dentro del lienzo sin recorte ni deformación.
-        fg_ratio = min(TARGET_W / original_w, TARGET_H / original_h)
-        fg_w = max(int(original_w * fg_ratio), 1)
-        fg_h = max(int(original_h * fg_ratio), 1)
-
-        fg = img.resize((fg_w, fg_h), Image.LANCZOS)
-
-        x = (TARGET_W - fg_w) // 2
-        y = (TARGET_H - fg_h) // 2
-
-        bg.paste(fg, (x, y))
-        bg.save(str(prepared_path), "JPEG", quality=94, optimize=True)
-
-    if not prepared_path.exists() or os.path.getsize(prepared_path) <= 0:
-        raise ValueError(f"No se pudo preparar imagen para engine: {prepared_path}")
-
-    return str(prepared_path)
+    """)
 
 
 @app.get("/video/input/{order_id}/{slot_name}")
