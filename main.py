@@ -254,7 +254,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v44-rc27b-limite-6-fotos-no-ampliadas"
+ETERNA_VISUAL_VERSION = "eterna-visual-v46-sms-delay-senderpack-botones-loading"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -358,6 +358,21 @@ def eterna_asset_file(asset_name: str):
         raise HTTPException(status_code=404, detail=f"Asset no encontrado: {asset_name}")
     return FileResponse(str(path), media_type=guess_media_type_from_path(str(path)))
 
+
+
+@app.get("/favicon.ico")
+def favicon_file():
+    fallback = ETERNA_BG_FOLDER / resolve_eterna_asset_filename("home-mobile-v1.png")
+    if fallback.exists() and fallback.is_file():
+        return FileResponse(str(fallback), media_type="image/png")
+    raise HTTPException(status_code=404, detail="favicon no disponible")
+
+@app.get("/apple-touch-icon.png")
+def apple_touch_icon_file():
+    fallback = ETERNA_BG_FOLDER / resolve_eterna_asset_filename("home-mobile-v1.png")
+    if fallback.exists() and fallback.is_file():
+        return FileResponse(str(fallback), media_type="image/png")
+    raise HTTPException(status_code=404, detail="apple touch icon no disponible")
 
 # =========================================================
 # ETERNA VISUAL V1 — RENDER ÚNICO LIMPIO Y BLINDADO
@@ -2254,10 +2269,10 @@ def complete_reaction_from_local_file(order: dict, local_path: str, extension: s
     insert_order_event(updated_order["id"], "eterna_completed", "ok", "ETERNA completada: reacción segura y pack desbloqueado")
 
     try:
-        print("📩 INTENTANDO ENVÍO AL REGALANTE DESDE REACTION COMPLETE")
+        print("📩 RC46: control SMS regalante; si la reacción aún no está estable, queda para worker")
         result = try_send_sender_sms(updated_order)
-        print("📩 RESULTADO ENVÍO REGALANTE:", result)
-        insert_order_event(updated_order["id"], "sender_sms_attempt", "ok" if result.get("ok") else "warning", str(result), result)
+        print("📩 RESULTADO CONTROLADO REGALANTE:", result)
+        insert_order_event(updated_order["id"], "sender_sms_attempt", "ok" if result.get("ok") else "pending", str(result), result)
     except Exception as e:
         insert_order_event(updated_order["id"], "sender_sms_error", "error", str(e))
         log_error("complete_reaction_try_send_sender_sms", e)
@@ -2331,6 +2346,48 @@ def reaction_exists(order: dict) -> bool:
         return True
     local_path = (order.get("reaction_video_local") or "").strip()
     return bool(local_path) and os.path.exists(local_path)
+
+
+def reaction_file_ready_for_sender(order: dict, min_age_seconds: int = 30, min_size_bytes: int = 4096) -> tuple[bool, str]:
+    """
+    RC46: evita mandar el SMS de vuelta demasiado pronto.
+    El SMS al regalante solo sale cuando la reacción local existe, pesa algo razonable
+    y lleva unos segundos estable en disco. Si aún no está listo, NO consume intento SMS.
+    """
+    local_path = (order.get("reaction_video_local") or "").strip()
+    if not local_path:
+        if order.get("reaction_video_public_url"):
+            return True, "public_url_available"
+        return False, "reaction_local_path_missing"
+
+    if not os.path.exists(local_path):
+        return False, "reaction_local_file_missing"
+
+    try:
+        size_1 = os.path.getsize(local_path)
+    except Exception:
+        return False, "reaction_size_unreadable"
+
+    if size_1 < int(min_size_bytes or 0):
+        return False, "reaction_file_too_small"
+
+    try:
+        age = time.time() - os.path.getmtime(local_path)
+    except Exception:
+        age = 0
+
+    if age < int(min_age_seconds or 0):
+        return False, f"reaction_file_too_recent_{int(age)}s"
+
+    try:
+        time.sleep(1)
+        size_2 = os.path.getsize(local_path)
+        if size_2 != size_1:
+            return False, "reaction_file_size_still_changing"
+    except Exception:
+        return False, "reaction_stability_check_failed"
+
+    return True, "reaction_file_stable"
 
 
 def reaction_is_safe(order: dict) -> bool:
@@ -2639,6 +2696,11 @@ def try_send_sender_sms(order: dict) -> dict:
 
     if not reaction_exists(order):
         return {"ok": False, "reason": "reaction_not_found"}
+
+    ready_for_sender, ready_reason = reaction_file_ready_for_sender(order, min_age_seconds=30)
+    if not ready_for_sender:
+        print("⏳ SMS regalante retenido hasta reacción estable:", ready_reason)
+        return {"ok": False, "reason": ready_reason, "retry": True, "no_attempt_increment": True}
 
     attempts = int(order.get("sender_sms_attempts") or 0)
 
@@ -7672,8 +7734,9 @@ body.video-clean-mode video {
     text-align: center;
     padding: 28px;
     background:
-        radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 30%),
-        linear-gradient(180deg, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.96) 100%);
+        linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.40) 100%),
+        url("__PAYOFF_BG__") center center / cover no-repeat,
+        #02050a;
 }
 
 .payoff.show {
@@ -7684,6 +7747,8 @@ body.video-clean-mode video {
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
+    padding-top: 38vh;
+    text-shadow: 0 0 18px rgba(0,0,0,.92), 0 0 34px rgba(0,0,0,.76);
 }
 
 .payoff-mark {
@@ -8754,6 +8819,7 @@ if (backToStartBtn) {
     html_page = html_page.replace("__HAS_GIFT__", "true" if gift_amount > 0 else "false")
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
+    html_page = html_page.replace("__PAYOFF_BG__", safe_attr(eterna_asset("uploading_reaction")))
 
     return HTMLResponse(html_page)
 
@@ -9426,6 +9492,34 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 .video-shine::before{{content:"";position:absolute;top:-35%;left:-45%;width:28%;height:170%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transform:rotate(18deg);animation:videoShine 7.8s ease-in-out infinite;mix-blend-mode:screen}}
 @keyframes videoShine{{0%,62%{{left:-45%;opacity:0}}70%{{opacity:.7}}100%{{left:118%;opacity:0}}}}
 
+
+/* RC46 — botones reales grandes y visibles en sender pack */
+.hit-save, .hit-share{{
+    text-indent:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    left:8.6%!important;
+    right:8.6%!important;
+    width:auto!important;
+    height:6.3%!important;
+    border-radius:18px!important;
+    font-size:clamp(14px,3.7vw,18px)!important;
+    letter-spacing:.08em!important;
+    font-weight:900!important;
+    text-transform:uppercase!important;
+    text-decoration:none!important;
+    color:#110900!important;
+    background:linear-gradient(135deg,#fff4c7 0%,#f6bd48 42%,#9c640c 100%)!important;
+    border:1px solid rgba(255,238,181,.88)!important;
+    box-shadow:0 0 24px rgba(255,187,65,.62), inset 0 0 18px rgba(255,255,255,.22)!important;
+}}
+.hit-save{{bottom:12.6%!important;}}
+.hit-share{{bottom:5.5%!important;}}
+.hit-save::before{{content:"⬇ ";font-size:1.08em;margin-right:.45em;}}
+.hit-share::before{{content:"↗ ";font-size:1.08em;margin-right:.45em;}}
+.hit-save:active, .hit-share:active{{transform:scale(.985);filter:brightness(1.08);}}
+
 .toast{{position:absolute;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
 @media (min-width:760px){{body{{overflow:auto}}.shell{{width:min(100vw,520px);height:100svh;height:100dvh}}}}
@@ -9453,8 +9547,8 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
     <div class="alive-heart" aria-hidden="true">♡</div>
     <div class="pulse" aria-hidden="true"></div>
     <button class="real-hit hit-replay" id="replayBtn" type="button">Volver a ver esta emoción</button>
-    <a class="real-hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download>Guardar este regreso</a>
-    <button class="real-hit hit-share" id="shareBtn" type="button">Compartir su reacción</button>
+    <a class="real-hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download>Descargar reacción</a>
+    <button class="real-hit hit-share" id="shareBtn" type="button">Compartir experiencia</button>
     <a class="real-hit hit-back" href="/sender/{safe_attr(sender_token)}">Volver a sentirlo</a>
     <div class="toast" id="toast">Listo</div>
 </main>
