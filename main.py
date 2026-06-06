@@ -1,8 +1,9 @@
 # =========================================================
-# RC42 PLANO MAESTRO 9:16 + BOTONES REALES REHECHOS
-# Base: RC41. Elimina hotspots/pulsores antiguos de guía y regalo.
-# Rehace botones sobre un único plano 9:16 para que no se descuadren.
-# NO toca pedido, Stripe, SMS, webhook, vídeo, worker ni sender pack.
+# RC43 BASE RC27B ESTABLE + GUÍA PREVIA LIMPIA
+# Base real: RC27B que funcionaba ayer.
+# Decisión: NO parchear RC42 colgado.
+# Objetivo: conservar flujo funcional y limpiar guía previa.
+# NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni sender pack.
 # =========================================================
 
 # =========================================================
@@ -109,7 +110,6 @@ import uuid
 import hashlib
 import threading
 import time
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -252,7 +252,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v42-plano-maestro-botones-rehechos"
+ETERNA_VISUAL_VERSION = "eterna-visual-v43-base-rc27b-guia-limpia"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -270,8 +270,7 @@ ETERNA_SCREEN_ASSETS = {
     "consent_recording": "terms-acceptance-v1.png",
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
-    "gift_ready": "gift-reveal-v1.png",
-    "gift_reveal": "gift-reveal-v1.png",
+    "gift_ready": "uploading-reaction-v1.png",
     "sender_pack_entry": "sender-pack-entry-v1.png",
     "sender_pack": "sender-pack-v1.png",
     "viral_cta": "viral-cta-v1.png",
@@ -432,12 +431,6 @@ def render_eterna_image_screen(
     elif button_url and button_label:
         if is_terms_screen:
             action_html = f"""
-            <div class="terms-hover-layer" aria-hidden="true">
-                <span class="terms-hover-zone thz1"></span>
-                <span class="terms-hover-zone thz2"></span>
-                <span class="terms-hover-zone thz3"></span>
-                <span class="terms-hover-zone thz4"></span>
-            </div>
             <div class="terms-real-check">
                 <input id="termsRealCheck" type="checkbox" aria-label="He leído y acepto los términos">
                 <label for="termsRealCheck"><span></span></label>
@@ -1236,532 +1229,76 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
 @keyframes senderGlowBreath {{ 0%,100%{{opacity:.16; transform:scale(.82);}} 50%{{opacity:.48; transform:scale(1.08);}} }}
 
 
-/* =========================================================
-   RC40 — GUÍA DESTINATARIO: 3 PANTALLAS ALINEADAS Y VIVAS
-   Solo visual/click layer. NO toca pedido, Stripe, SMS, vídeo, webhook ni sender pack.
-   ========================================================= */
-.screen.intro-mode,
-.screen.terms-mode,
-.screen.quiet-mode {{
-    align-items:center;
-    justify-content:center;
-    overflow:auto;
-    padding:0;
-}}
-.screen.intro-mode .phone,
-.screen.terms-mode .phone,
-.screen.quiet-mode .phone {{
-    width:min(100vw, 520px);
-    max-width:520px;
-    height:auto;
-    min-height:0;
-    aspect-ratio:2 / 3;
-    overflow:hidden;
-    margin:0 auto;
-    background:#02050a;
-    border-radius:0;
-}}
-.screen.intro-mode .img,
-.screen.terms-mode .img,
-.screen.quiet-mode .img {{
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    min-height:0;
-    object-fit:cover;
-    object-position:center center;
-}}
 
-/* Capa de clicks real, siempre encima, sin zonas fantasma */
-.screen.intro-mode .visual-action-form,
-.screen.quiet-mode .visual-action-form {{
-    position:absolute;
-    inset:0;
-    z-index:40;
-    pointer-events:none;
-}}
-.screen.intro-mode .visual-action-form .real-button,
-.screen.quiet-mode .visual-action-form .real-button,
-.screen.intro-mode > .phone > .real-button,
-.screen.quiet-mode > .phone > .real-button {{
-    pointer-events:auto;
-}}
+    /* RC43 — GUÍA LIMPIA SOBRE BASE RC27B
+       Regla: las imágenes y efectos nunca capturan clics.
+       Solo son interactivos el botón real y el checkbox real. */
+    .screen.intro-mode .img,
+    .screen.terms-mode .img,
+    .screen.quiet-mode .img,
+    .screen.intro-mode .soft-halo,
+    .screen.terms-mode .soft-halo,
+    .screen.quiet-mode .soft-halo,
+    .screen.intro-mode .particle,
+    .screen.terms-mode .particle,
+    .screen.quiet-mode .particle,
+    .screen.intro-mode .edge-glow,
+    .screen.terms-mode .edge-glow,
+    .screen.quiet-mode .edge-glow,
+    .screen.intro-mode .star-run,
+    .screen.terms-mode .star-run,
+    .screen.quiet-mode .star-run,
+    .screen.intro-mode .magic-line,
+    .screen.terms-mode .magic-line,
+    .screen.quiet-mode .magic-line,
+    .screen.intro-mode .line-spark-runner,
+    .screen.terms-mode .line-spark-runner,
+    .screen.quiet-mode .line-spark-runner,
+    .screen.intro-mode .blue-orb,
+    .screen.terms-mode .blue-orb,
+    .screen.quiet-mode .blue-orb {
+        pointer-events:none !important;
+    }
 
-/* PANTALLA 1 — SHHH */
-.screen.intro-mode .real-button {{
-    left:15.6%;
-    right:15.6%;
-    bottom:5.6%;
-    min-height:0;
-    height:9.2%;
-    border-radius:18px;
-    z-index:45;
-    background:rgba(255,190,57,.015);
-}}
-.screen.intro-mode .real-button:hover::after,
-.screen.intro-mode .real-button:active::after {{
-    opacity:.52;
-    box-shadow:0 0 38px rgba(255,196,74,.78),0 0 78px rgba(255,225,146,.36), inset 0 0 24px rgba(255,255,255,.18);
-}}
-.screen.intro-mode .soft-halo {{
-    left:69%; top:22%; width:260px; height:260px;
-    animation:rc40ButterflyBreath 4.8s ease-in-out infinite;
-}}
-.screen.intro-mode .particle {{ animation-duration:7.8s; }}
+    .screen.intro-mode .terms-hover-layer,
+    .screen.terms-mode .terms-hover-layer,
+    .screen.quiet-mode .terms-hover-layer,
+    .screen.intro-mode .terms-hover-zone,
+    .screen.terms-mode .terms-hover-zone,
+    .screen.quiet-mode .terms-hover-zone {
+        display:none !important;
+        pointer-events:none !important;
+        visibility:hidden !important;
+        opacity:0 !important;
+    }
 
-/* PANTALLA 2 — TÉRMINOS */
-.screen.terms-mode .terms-hover-layer {{
-    position:absolute;
-    inset:0;
-    z-index:18;
-    pointer-events:none;
-}}
-.screen.terms-mode .terms-hover-zone {{
-    pointer-events:auto;
-    left:21.5%;
-    right:19.5%;
-    height:7.0%;
-    border-radius:16px;
-    background:linear-gradient(90deg, rgba(255,214,116,.00), rgba(255,214,116,.10), rgba(68,210,255,.07), rgba(255,214,116,.00));
-}}
-.screen.terms-mode .terms-hover-zone:hover,
-.screen.terms-mode .terms-hover-zone:active {{
-    opacity:1;
-    border-color:rgba(255,225,154,.82);
-    background:linear-gradient(90deg, rgba(255,214,116,.02), rgba(255,214,116,.18), rgba(69,211,255,.11), rgba(255,214,116,.02));
-    box-shadow:0 0 22px rgba(255,201,83,.48), inset 0 0 18px rgba(255,231,164,.10), 0 0 38px rgba(56,203,255,.20);
-    transform:scale(1.006);
-}}
-.screen.terms-mode .thz1 {{ top:43.9%; }}
-.screen.terms-mode .thz2 {{ top:52.1%; }}
-.screen.terms-mode .thz3 {{ top:60.4%; }}
-.screen.terms-mode .thz4 {{ top:68.6%; }}
-
-/* Casilla real encima de la casilla dibujada */
-.screen.terms-mode .terms-real-check {{
-    left:19.0%;
-    top:79.9%;
-    width:8.8%;
-    height:5.4%;
-    z-index:46;
-    pointer-events:auto;
-}}
-.screen.terms-mode .terms-real-check::after {{
-    inset:12%;
-    border-radius:8px;
-}}
-.screen.terms-mode .terms-real-check:has(input:checked)::after {{
-    opacity:.75;
-    border-color:rgba(255,239,184,.92);
-    box-shadow:0 0 20px rgba(255,201,83,.65),0 0 42px rgba(255,222,142,.28), inset 0 0 10px rgba(255,232,169,.22);
-}}
-.screen.terms-mode .terms-real-check.needs-attention::after {{
-    opacity:.95;
-}}
-.screen.terms-mode .terms-continue {{
-    left:12.2%;
-    right:12.2%;
-    bottom:4.6%;
-    min-height:0;
-    height:9.7%;
-    border-radius:18px;
-    z-index:44;
-    pointer-events:auto;
-}}
-.screen.terms-mode .terms-continue.is-disabled {{
-    filter:saturate(.72) brightness(.70);
-}}
-.screen.terms-mode .terms-continue.is-ready,
-.screen.terms-mode .terms-continue.is-ready:hover {{
-    filter:saturate(1.08) brightness(1.04);
-}}
-.screen.terms-mode .terms-continue.is-ready::after,
-.screen.terms-mode .terms-continue:hover::after {{
-    opacity:.46;
-    box-shadow:0 0 42px rgba(255,194,73,.76),0 0 82px rgba(255,225,146,.38), inset 0 0 24px rgba(255,255,255,.18);
-}}
-.screen.terms-mode .extra-note {{
-    display:none;
-}}
-
-/* PANTALLA 3 — BUSCA UN LUGAR TRANQUILO */
-.screen.quiet-mode .visual-action-form .real-button,
-.screen.quiet-mode .real-button {{
-    left:13.6%;
-    right:13.6%;
-    bottom:7.4%;
-    min-height:0;
-    height:9.5%;
-    border-radius:18px;
-    z-index:45;
-}}
-.screen.quiet-mode .real-button:hover::after,
-.screen.quiet-mode .real-button:active::after {{
-    opacity:.50;
-    box-shadow:0 0 42px rgba(255,190,66,.76),0 0 86px rgba(255,222,142,.34), inset 0 0 22px rgba(255,255,255,.16);
-}}
-.screen.quiet-mode .extra-note {{
-    left:13%;
-    right:13%;
-    bottom:2.5%;
-    font-size:11px;
-    color:rgba(255,232,190,.62);
-}}
-
-/* Vida de cuento sin bloquear clicks */
-.screen.intro-mode .phone::before,
-.screen.terms-mode .phone::before,
-.screen.quiet-mode .phone::before {{
-    content:"";
-    position:absolute;
-    inset:0;
-    z-index:10;
-    pointer-events:none;
-    opacity:.0;
-    mix-blend-mode:screen;
-    background:
-        radial-gradient(circle at 74% 22%, rgba(72,211,255,.30), transparent 17%),
-        radial-gradient(circle at 24% 39%, rgba(72,211,255,.18), transparent 13%),
-        radial-gradient(circle at 50% 88%, rgba(255,198,74,.18), transparent 22%);
-    animation:rc40FairyGlow 5.6s ease-in-out infinite;
-}}
-.screen.intro-mode .phone::after,
-.screen.terms-mode .phone::after,
-.screen.quiet-mode .phone::after {{
-    content:"";
-    position:absolute;
-    inset:0;
-    z-index:11;
-    pointer-events:none;
-    opacity:0;
-    mix-blend-mode:screen;
-    background:linear-gradient(112deg, transparent 0%, transparent 42%, rgba(255,255,255,.42) 45%, rgba(80,214,255,.22) 47%, transparent 52%, transparent 100%);
-    transform:translateX(-78%) skewX(-10deg);
-    animation:rc40SoftPageSweep 8.2s cubic-bezier(.2,.7,.15,1) 1.2s infinite;
-}}
-.screen.intro-mode .star-run.sr1,
-.screen.terms-mode .star-run.sr1,
-.screen.quiet-mode .star-run.sr1 {{
-    top:30%;
-    left:2%;
-    width:130px;
-    height:2px;
-    animation:rc40TinyStarOne 6.4s ease-in-out 1.0s infinite;
-}}
-.screen.intro-mode .star-run.sr2,
-.screen.terms-mode .star-run.sr2,
-.screen.quiet-mode .star-run.sr2 {{
-    right:2%;
-    bottom:28%;
-    width:130px;
-    height:2px;
-    animation:rc40TinyStarTwo 7.0s ease-in-out 2.1s infinite;
-}}
-
-@keyframes rc40ButterflyBreath {{
-    0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.28; }}
-    50% {{ transform:translate(-50%,-50%) scale(1.09); opacity:.74; }}
-}}
-@keyframes rc40FairyGlow {{
-    0%,100% {{ opacity:.14; filter:blur(12px) brightness(.92); }}
-    50% {{ opacity:.48; filter:blur(10px) brightness(1.28); }}
-}}
-@keyframes rc40SoftPageSweep {{
-    0%,70% {{ opacity:0; transform:translateX(-78%) skewX(-10deg); }}
-    80% {{ opacity:.42; }}
-    100% {{ opacity:0; transform:translateX(78%) skewX(-10deg); }}
-}}
-@keyframes rc40TinyStarOne {{
-    0% {{ transform:translateX(-90px) translateY(10px); opacity:0; }}
-    18% {{ opacity:.78; }}
-    100% {{ transform:translateX(390px) translateY(-24px); opacity:0; }}
-}}
-@keyframes rc40TinyStarTwo {{
-    0% {{ transform:translateX(90px) translateY(-10px); opacity:0; }}
-    18% {{ opacity:.66; }}
-    100% {{ transform:translateX(-390px) translateY(24px); opacity:0; }}
-}}
-
-@media (max-width: 420px) {{
-    .screen.intro-mode .phone,
-    .screen.terms-mode .phone,
-    .screen.quiet-mode .phone {{ width:100vw; }}
-    .screen.terms-mode .terms-real-check {{ top:79.8%; }}
-    .screen.terms-mode .terms-continue {{ bottom:4.8%; }}
-}}
-
-
-/* =========================================================
-   RC41 — ARREGLO DEFINITIVO GUÍA: BOTONES REALES, SIN ZONAS FANTASMA
-   ========================================================= */
-.screen.intro-mode,
-.screen.terms-mode,
-.screen.quiet-mode {{
-    overflow:hidden !important;
-    background:#02050a !important;
-}}
-.screen.intro-mode .phone,
-.screen.terms-mode .phone,
-.screen.quiet-mode .phone {{
-    height:100svh !important;
-    height:100dvh !important;
-    min-height:100svh !important;
-    aspect-ratio:auto !important;
-    max-width:520px !important;
-    overflow:hidden !important;
-}}
-.screen.intro-mode .img,
-.screen.terms-mode .img,
-.screen.quiet-mode .img {{
-    height:100% !important;
-    min-height:100% !important;
-    object-fit:cover !important;
-    object-position:center center !important;
-    pointer-events:none !important;
-    user-select:none !important;
-}}
-.screen.terms-mode .terms-hover-layer,
-.screen.terms-mode .terms-hover-zone {{
-    display:none !important;
-    pointer-events:none !important;
-}}
-.screen.intro-mode .phone::before,
-.screen.intro-mode .phone::after,
-.screen.terms-mode .phone::before,
-.screen.terms-mode .phone::after,
-.screen.quiet-mode .phone::before,
-.screen.quiet-mode .phone::after,
-.screen.intro-mode .edge-glow,
-.screen.terms-mode .edge-glow,
-.screen.quiet-mode .edge-glow,
-.screen.intro-mode .star-run,
-.screen.terms-mode .star-run,
-.screen.quiet-mode .star-run,
-.screen.intro-mode .particle,
-.screen.terms-mode .particle,
-.screen.quiet-mode .particle,
-.screen.intro-mode .soft-halo,
-.screen.terms-mode .soft-halo,
-.screen.quiet-mode .soft-halo {{
-    pointer-events:none !important;
-}}
-.screen.intro-mode .visual-action-form,
-.screen.quiet-mode .visual-action-form {{
-    position:absolute !important;
-    inset:0 !important;
-    z-index:100 !important;
-    pointer-events:none !important;
-}}
-.screen.intro-mode .real-button,
-.screen.quiet-mode .real-button,
-.screen.intro-mode .visual-action-form .real-button,
-.screen.quiet-mode .visual-action-form .real-button,
-.screen.terms-mode .terms-continue {{
-    position:absolute !important;
-    left:50% !important;
-    right:auto !important;
-    bottom:calc(env(safe-area-inset-bottom) + 22px) !important;
-    width:min(78vw, 390px) !important;
-    height:64px !important;
-    min-height:64px !important;
-    transform:translateX(-50%) !important;
-    z-index:120 !important;
-    pointer-events:auto !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    border-radius:22px !important;
-    border:1px solid rgba(255,226,155,.88) !important;
-    background:linear-gradient(180deg, rgba(255,226,139,.98), rgba(207,133,32,.98)) !important;
-    box-shadow:0 0 22px rgba(255,184,55,.75),0 0 60px rgba(255,205,92,.36), inset 0 2px 10px rgba(255,255,255,.36) !important;
-    color:#160c03 !important;
-    text-indent:0 !important;
-    overflow:hidden !important;
-    font-family:Georgia,'Times New Roman',serif !important;
-    font-size:0 !important;
-    font-weight:500 !important;
-    text-decoration:none !important;
-    cursor:pointer !important;
-    touch-action:manipulation !important;
-    filter:none !important;
-}}
-.screen.intro-mode .real-button:hover,
-.screen.quiet-mode .real-button:hover,
-.screen.terms-mode .terms-continue:hover,
-.screen.intro-mode .real-button:active,
-.screen.quiet-mode .real-button:active,
-.screen.terms-mode .terms-continue:active {{
-    transform:translateX(-50%) scale(1.018) !important;
-    box-shadow:0 0 32px rgba(255,194,72,.92),0 0 85px rgba(69,205,255,.32), inset 0 2px 12px rgba(255,255,255,.42) !important;
-}}
-.screen.intro-mode .real-button::before,
-.screen.quiet-mode .real-button::before,
-.screen.terms-mode .terms-continue::before {{
-    position:static !important;
-    transform:none !important;
-    font-family:Georgia,'Times New Roman',serif !important;
-    font-size:clamp(25px, 7vw, 36px) !important;
-    color:#160c03 !important;
-    opacity:1 !important;
-    filter:none !important;
-}}
-.screen.intro-mode .real-button::before {{ content:'🦋  Estoy listo' !important; }}
-.screen.quiet-mode .real-button::before {{ content:'🦋  Estoy listo' !important; }}
-.screen.terms-mode .terms-continue::before {{ content:'Aceptar y continuar' !important; font-size:clamp(22px, 6vw, 32px) !important; }}
-.screen.intro-mode .real-button::after,
-.screen.quiet-mode .real-button::after,
-.screen.terms-mode .terms-continue::after {{
-    content:'' !important;
-    position:absolute !important;
-    inset:0 !important;
-    border-radius:inherit !important;
-    opacity:.18 !important;
-    background:linear-gradient(110deg, transparent 0%, transparent 36%, rgba(255,255,255,.42) 48%, transparent 62%, transparent 100%) !important;
-    animation:rc41ButtonShine 3.4s ease-in-out infinite !important;
-    pointer-events:none !important;
-}}
-@keyframes rc41ButtonShine {{
-    0%,62% {{ transform:translateX(-120%); opacity:0; }}
-    76% {{ opacity:.55; }}
-    100% {{ transform:translateX(120%); opacity:0; }}
-}}
-.screen.terms-mode .terms-real-check {{
-    position:absolute !important;
-    left:50% !important;
-    top:auto !important;
-    bottom:calc(env(safe-area-inset-bottom) + 98px) !important;
-    width:min(82vw, 410px) !important;
-    height:58px !important;
-    transform:translateX(-50%) !important;
-    z-index:125 !important;
-    pointer-events:auto !important;
-    border:1px solid rgba(255,216,141,.74) !important;
-    border-radius:18px !important;
-    background:rgba(2,7,14,.86) !important;
-    box-shadow:0 0 20px rgba(255,190,72,.22), inset 0 0 22px rgba(38,151,255,.08) !important;
-    backdrop-filter:blur(8px) !important;
-    cursor:pointer !important;
-}}
-.screen.terms-mode .terms-real-check input {{
-    position:absolute !important;
-    inset:0 !important;
-    opacity:0 !important;
-    z-index:4 !important;
-    cursor:pointer !important;
-}}
-.screen.terms-mode .terms-real-check label {{
-    position:absolute !important;
-    inset:0 !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:flex-start !important;
-    padding-left:62px !important;
-    padding-right:18px !important;
-    color:rgba(255,246,225,.94) !important;
-    font-size:15px !important;
-    line-height:1.15 !important;
-    pointer-events:none !important;
-}}
-.screen.terms-mode .terms-real-check label::before {{ content:'He leído y acepto los términos.'; }}
-.screen.terms-mode .terms-real-check label::after {{
-    content:'';
-    position:absolute;
-    left:18px;
-    width:30px;
-    height:30px;
-    border-radius:9px;
-    border:2px solid rgba(255,218,133,.92);
-    box-shadow:0 0 16px rgba(255,196,65,.28);
-}}
-.screen.terms-mode .terms-real-check:has(input:checked) label::after {{
-    background:linear-gradient(180deg,#ffe392,#c98a27);
-    box-shadow:0 0 20px rgba(255,197,65,.82), inset 0 0 8px rgba(255,255,255,.28);
-}}
-.screen.terms-mode .terms-real-check:has(input:checked) label::before {{
-    content:'Aceptado. Ya puedes continuar.';
-    color:#ffe7ad;
-}}
-.screen.terms-mode .terms-real-check:has(input:checked)::before {{
-    content:'✓';
-    position:absolute;
-    left:26px;
-    top:13px;
-    z-index:3;
-    color:#120900;
-    font-size:24px;
-    font-weight:800;
-}}
-.screen.terms-mode .terms-real-check::after {{ display:none !important; }}
-.screen.terms-mode .terms-continue.is-disabled {{
-    opacity:.55 !important;
-    filter:grayscale(.15) brightness(.78) !important;
-    cursor:not-allowed !important;
-}}
-.screen.terms-mode .terms-continue.is-ready {{
-    opacity:1 !important;
-    filter:none !important;
-}}
-.screen.quiet-mode .extra-note,
-.screen.terms-mode .extra-note,
-.screen.intro-mode .extra-note {{
-    position:absolute !important;
-    left:8% !important;
-    right:8% !important;
-    bottom:calc(env(safe-area-inset-bottom) + 92px) !important;
-    z-index:80 !important;
-    pointer-events:none !important;
-    color:rgba(255,238,199,.82) !important;
-    text-shadow:0 2px 12px rgba(0,0,0,.95) !important;
-}}
-.screen.terms-mode .extra-note {{ display:none !important; }}
-@media (max-height:760px) {{
     .screen.intro-mode .real-button,
     .screen.quiet-mode .real-button,
-    .screen.terms-mode .terms-continue {{
-        height:56px !important;
-        min-height:56px !important;
-        bottom:calc(env(safe-area-inset-bottom) + 14px) !important;
-    }}
-    .screen.terms-mode .terms-real-check {{
-        height:52px !important;
-        bottom:calc(env(safe-area-inset-bottom) + 82px) !important;
-    }}
-    .screen.quiet-mode .extra-note {{ display:none !important; }}
-}}
+    .screen.terms-mode .terms-continue {
+        pointer-events:auto !important;
+        z-index:100 !important;
+        touch-action:manipulation !important;
+    }
 
+    .screen.terms-mode .terms-real-check {
+        pointer-events:auto !important;
+        z-index:110 !important;
+        cursor:pointer !important;
+    }
 
-/* =========================================================
-   RC42 — PLANO MAESTRO DEFINITIVO 9:16
-   ========================================================= */
-.screen.intro-mode,.screen.terms-mode,.screen.quiet-mode{{display:flex!important;align-items:center!important;justify-content:center!important;min-height:100svh!important;min-height:100dvh!important;width:100vw!important;overflow:hidden!important;background:#02050a!important;padding:0!important;}}
-.screen.intro-mode .phone,.screen.terms-mode .phone,.screen.quiet-mode .phone{{position:relative!important;width:min(100vw,calc(100dvh * 0.5625),520px)!important;height:auto!important;aspect-ratio:9/16!important;min-height:0!important;max-height:100dvh!important;margin:auto!important;overflow:hidden!important;background:#02050a!important;box-shadow:0 0 48px rgba(0,0,0,.70)!important;}}
-.screen.intro-mode .img,.screen.terms-mode .img,.screen.quiet-mode .img{{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important;object-fit:contain!important;object-position:center center!important;background:#02050a!important;pointer-events:none!important;z-index:1!important;}}
-.screen.intro-mode .terms-hover-layer,.screen.terms-mode .terms-hover-layer,.screen.quiet-mode .terms-hover-layer,.screen.intro-mode .terms-hover-zone,.screen.terms-mode .terms-hover-zone,.screen.quiet-mode .terms-hover-zone{{display:none!important;pointer-events:none!important;opacity:0!important;visibility:hidden!important;}}
-.screen.intro-mode .visual-action-form,.screen.terms-mode .visual-action-form,.screen.quiet-mode .visual-action-form{{position:absolute!important;inset:0!important;z-index:150!important;pointer-events:none!important;}}
-.screen.intro-mode .real-button,.screen.quiet-mode .real-button,.screen.terms-mode .terms-continue,.screen.intro-mode .visual-action-form .real-button,.screen.quiet-mode .visual-action-form .real-button,.screen.terms-mode .visual-action-form .real-button{{position:absolute!important;left:9.2%!important;right:auto!important;width:81.6%!important;height:7.2%!important;min-height:0!important;bottom:6.8%!important;top:auto!important;transform:none!important;z-index:170!important;border:0!important;border-radius:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;pointer-events:auto!important;cursor:pointer!important;touch-action:manipulation!important;text-indent:0!important;color:#130b03!important;text-decoration:none!important;font-family:Georgia,'Times New Roman',serif!important;font-weight:800!important;letter-spacing:-.02em!important;font-size:clamp(20px,6.2vw,31px)!important;background:linear-gradient(180deg,#fff1ba 0%,#e7b85a 42%,#b9771d 100%)!important;box-shadow:0 0 22px rgba(255,191,69,.54),0 0 54px rgba(80,209,255,.18),inset 0 2px 8px rgba(255,255,255,.38)!important;filter:none!important;opacity:1!important;}}
-.screen.intro-mode .real-button,.screen.quiet-mode .real-button,.screen.terms-mode .terms-continue{{font-size:0!important;}}
-.screen.intro-mode .real-button::before,.screen.quiet-mode .real-button::before,.screen.terms-mode .terms-continue::before{{position:static!important;transform:none!important;opacity:1!important;color:#130b03!important;filter:none!important;text-indent:0!important;}}
-.screen.intro-mode .real-button::before,.screen.quiet-mode .real-button::before{{content:'Estoy listo'!important;font-size:clamp(22px,6.2vw,32px)!important;}}
-.screen.terms-mode .terms-continue::before{{content:'Aceptar y continuar'!important;font-size:clamp(19px,5.8vw,29px)!important;}}
-.screen.intro-mode .real-button::after,.screen.quiet-mode .real-button::after,.screen.terms-mode .terms-continue::after{{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit!important;pointer-events:none!important;background:linear-gradient(110deg,transparent 0%,transparent 35%,rgba(255,255,255,.50) 48%,transparent 61%,transparent 100%)!important;opacity:.22!important;animation:rc42ButtonLight 3.4s ease-in-out infinite!important;}}
-.screen.intro-mode .real-button:hover,.screen.quiet-mode .real-button:hover,.screen.terms-mode .terms-continue:hover,.screen.intro-mode .real-button:active,.screen.quiet-mode .real-button:active,.screen.terms-mode .terms-continue:active{{transform:scale(1.018)!important;box-shadow:0 0 30px rgba(255,191,69,.88),0 0 76px rgba(80,209,255,.28),inset 0 2px 10px rgba(255,255,255,.45)!important;}}
-@keyframes rc42ButtonLight{{0%,60%{{transform:translateX(-130%);opacity:0}}75%{{opacity:.55}}100%{{transform:translateX(130%);opacity:0}}}}
-.screen.terms-mode .terms-real-check{{position:absolute!important;left:9.2%!important;right:auto!important;width:81.6%!important;height:6.6%!important;top:auto!important;bottom:15.4%!important;transform:none!important;z-index:180!important;pointer-events:auto!important;cursor:pointer!important;border-radius:17px!important;border:1px solid rgba(255,219,139,.72)!important;background:rgba(1,6,13,.90)!important;box-shadow:0 0 18px rgba(255,194,70,.24),inset 0 0 20px rgba(62,185,255,.08)!important;backdrop-filter:blur(8px)!important;}}
-.screen.terms-mode .terms-real-check input{{position:absolute!important;inset:0!important;opacity:0!important;z-index:4!important;cursor:pointer!important;}}
-.screen.terms-mode .terms-real-check label{{position:absolute!important;inset:0!important;opacity:1!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;padding:0 14px 0 58px!important;background:transparent!important;border:0!important;box-shadow:none!important;color:rgba(255,244,219,.95)!important;font-size:clamp(12px,3.8vw,16px)!important;line-height:1.1!important;pointer-events:none!important;}}
-.screen.terms-mode .terms-real-check label::before{{content:'Acepto vivir esta experiencia y que mi reacción se envíe al regalante.'!important;}}
-.screen.terms-mode .terms-real-check label::after{{content:''!important;position:absolute!important;left:17px!important;top:50%!important;transform:translateY(-50%)!important;width:28px!important;height:28px!important;border-radius:9px!important;border:2px solid rgba(255,223,147,.96)!important;box-shadow:0 0 15px rgba(255,196,72,.28)!important;background:rgba(0,0,0,.25)!important;display:block!important;}}
-.screen.terms-mode .terms-real-check:has(input:checked){{border-color:rgba(255,235,173,.95)!important;box-shadow:0 0 26px rgba(255,196,72,.52),0 0 52px rgba(74,201,255,.14),inset 0 0 18px rgba(255,226,144,.10)!important;}}
-.screen.terms-mode .terms-real-check:has(input:checked) label::before{{content:'Aceptado. Ya puedes continuar.'!important;color:#ffe7ad!important;}}
-.screen.terms-mode .terms-real-check:has(input:checked) label::after{{background:linear-gradient(180deg,#fff2bd,#d4932e)!important;box-shadow:0 0 22px rgba(255,197,65,.82),inset 0 0 8px rgba(255,255,255,.28)!important;}}
-.screen.terms-mode .terms-real-check:has(input:checked)::before{{content:'✓'!important;position:absolute!important;left:25px!important;top:50%!important;transform:translateY(-54%)!important;z-index:3!important;color:#130b03!important;font-size:24px!important;font-weight:900!important;}}
-.screen.terms-mode .terms-real-check::after{{display:none!important;}}
-.screen.terms-mode .terms-continue.is-disabled{{opacity:.50!important;filter:saturate(.65) brightness(.75)!important;cursor:not-allowed!important;}}
-.screen.terms-mode .terms-continue.is-ready{{opacity:1!important;filter:none!important;}}
-.screen.intro-mode .soft-halo,.screen.terms-mode .soft-halo,.screen.quiet-mode .soft-halo,.screen.intro-mode .edge-glow,.screen.terms-mode .edge-glow,.screen.quiet-mode .edge-glow,.screen.intro-mode .star-run,.screen.terms-mode .star-run,.screen.quiet-mode .star-run,.screen.intro-mode .particle,.screen.terms-mode .particle,.screen.quiet-mode .particle{{pointer-events:none!important;}}
-.screen.intro-mode .extra-note,.screen.terms-mode .extra-note,.screen.quiet-mode .extra-note{{display:none!important;}}
-@media(max-height:760px){{.screen.intro-mode .phone,.screen.terms-mode .phone,.screen.quiet-mode .phone{{width:min(100vw,calc(100dvh * 0.5625),480px)!important}}.screen.terms-mode .terms-real-check{{bottom:15.8%!important;height:6.3%!important}}.screen.intro-mode .real-button,.screen.quiet-mode .real-button,.screen.terms-mode .terms-continue{{bottom:6.7%!important;height:7.0%!important}}}}
+    .screen.terms-mode .terms-real-check input {
+        position:absolute !important;
+        inset:0 !important;
+        width:100% !important;
+        height:100% !important;
+        opacity:0 !important;
+        cursor:pointer !important;
+        z-index:5 !important;
+    }
+
+    .screen.terms-mode .terms-real-check label {
+        pointer-events:none !important;
+    }
 
 </style>
 </head>
@@ -7831,7 +7368,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
             image_name="intro-shhh-v1.png",
             fallback_image_name="intro-shhh-v1.png",
             button_url=f"/guia/1/{recipient_token}",
-            button_label="Continuar",
+            button_label="Estoy listo",
         )
         attach_recipient_session_if_needed(order, request, response)
         return response
@@ -7842,7 +7379,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
             image_name="terms-acceptance-v1.png",
             fallback_image_name="terms-acceptance-v1.png",
             button_url=f"/guia/2/{recipient_token}",
-            button_label="Acepto y continúo",
+            button_label="Aceptar y continuar",
             extra_note="Al continuar aceptas vivir esta experiencia de forma privada y respetuosa.",
         )
         attach_recipient_session_if_needed(order, request, response)
@@ -9688,56 +9225,11 @@ def cobrar(request: Request, recipient_token: str):
     if not cta_html:
         cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver el vídeo</a>'
 
-    gift_bg = safe_attr(eterna_asset("gift-reveal-v1.png"))
-    fallback_bg = safe_attr(eterna_asset("error-v1.png"))
-
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA</title>
-<meta name="theme-color" content="#02050a">
-<style>
-*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
-html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
-body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
-.gift-screen{{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#02050a;overflow:hidden}}
-.gift-phone{{position:relative;width:min(100vw, calc(100dvh * 0.5625), 520px);aspect-ratio:9/16;max-height:100dvh;overflow:hidden;background:#02050a;box-shadow:0 0 48px rgba(0,0,0,.74)}}
-.gift-bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center center;background:#02050a;z-index:1;pointer-events:none}}
-.gift-halo{{position:absolute;left:50%;top:29%;width:72%;height:28%;border-radius:999px;background:radial-gradient(circle,rgba(76,211,255,.24),rgba(255,211,119,.12) 43%,transparent 72%);filter:blur(18px);mix-blend-mode:screen;opacity:.80;animation:giftBreath 5.2s ease-in-out infinite;z-index:2;pointer-events:none}}
-.gift-star{{position:absolute;width:4px;height:4px;border-radius:50%;background:#ffd98b;box-shadow:0 0 14px #ffd98b,0 0 28px rgba(97,211,255,.45);opacity:0;z-index:3;pointer-events:none;animation:giftStar 7s linear infinite}}
-.gs1{{left:22%;bottom:22%;animation-delay:.2s}}.gs2{{left:76%;bottom:28%;animation-delay:1.4s;background:#66d9ff}}.gs3{{left:47%;bottom:16%;animation-delay:2.8s}}.gs4{{left:63%;bottom:41%;animation-delay:4s;background:#66d9ff}}
-@keyframes giftBreath{{0%,100%{{transform:translate(-50%,-50%) scale(.92);opacity:.45}}50%{{transform:translate(-50%,-50%) scale(1.08);opacity:.9}}}}
-@keyframes giftStar{{0%{{transform:translateY(0) scale(.55);opacity:0}}16%{{opacity:.9}}70%{{opacity:.45}}100%{{transform:translateY(-140px) scale(1.15);opacity:0}}}}
-.gift-amount{{position:absolute;left:10%;right:10%;top:48.8%;min-height:8.2%;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 12px;border-radius:18px;background:rgba(0,0,0,.34);border:1px solid rgba(255,218,139,.18);box-shadow:0 0 24px rgba(0,0,0,.35),inset 0 0 18px rgba(255,213,120,.05);backdrop-filter:blur(4px);z-index:10;color:#ffe7ad;font-family:Georgia,'Times New Roman',serif;font-size:clamp(16px,4.8vw,25px);font-weight:700;line-height:1.15;text-shadow:0 2px 12px rgba(0,0,0,.95)}}
-.gift-actions{{position:absolute;left:8.8%;right:8.8%;bottom:5.7%;display:grid;gap:9px;z-index:20}}
-.gift-actions form{{margin:0;width:100%}}
-.gift-actions .btn{{width:100%;min-height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 14px;font-family:Georgia,'Times New Roman',serif;font-size:clamp(15px,4.3vw,22px);font-weight:800;text-decoration:none;border:1px solid rgba(255,218,139,.26);background:rgba(3,8,16,.82);color:#fff4d8;box-shadow:0 0 18px rgba(255,194,70,.16),inset 0 0 18px rgba(75,201,255,.06);cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}}
-.gift-actions .btn.primary{{border:0;background:linear-gradient(180deg,#fff1ba,#e4b65a 42%,#b9771d);color:#130b03;box-shadow:0 0 28px rgba(255,191,69,.54),0 0 54px rgba(80,209,255,.18),inset 0 2px 8px rgba(255,255,255,.38)}}
-.gift-actions .btn:hover,.gift-actions .btn:active{{transform:scale(1.014);box-shadow:0 0 28px rgba(255,191,69,.55),0 0 64px rgba(80,209,255,.18),inset 0 2px 10px rgba(255,255,255,.18)}}
-.gift-actions .btn.primary:hover,.gift-actions .btn.primary:active{{box-shadow:0 0 34px rgba(255,191,69,.84),0 0 74px rgba(80,209,255,.26),inset 0 2px 10px rgba(255,255,255,.45)}}
-@media (max-height:760px){{.gift-phone{{width:min(100vw, calc(100dvh * .5625), 480px)}}.gift-actions{{bottom:4.7%;gap:7px}}.gift-actions .btn{{min-height:43px}}.gift-amount{{top:48.3%;min-height:7.7%}}}}
-</style>
-</head>
-<body>
-<main class="gift-screen">
-    <section class="gift-phone">
-        <img class="gift-bg" src="{gift_bg}" alt="ETERNA" onerror="this.onerror=null;this.src='{fallback_bg}';">
-        <div class="gift-halo" aria-hidden="true"></div>
-        <i class="gift-star gs1" aria-hidden="true"></i><i class="gift-star gs2" aria-hidden="true"></i><i class="gift-star gs3" aria-hidden="true"></i><i class="gift-star gs4" aria-hidden="true"></i>
-        <div class="gift-amount">{safe_text(amount_text)}</div>
-        <nav class="gift-actions">
-            {cta_html}
-            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a>
-            <a class="btn" href="/crear">Crear mi ETERNA</a>
-        </nav>
-    </section>
-</main>
-</body>
-</html>
-""")
+    return HTMLResponse(f'''
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(72,185,255,.24),transparent 30%),radial-gradient(circle at 14% 76%,rgba(255,205,112,.12),transparent 33%),#02050a}}.scene{{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}}.scene:before{{content:"";position:absolute;inset:-18%;background:radial-gradient(circle at 72% 26%,rgba(65,185,255,.22),transparent 26%),radial-gradient(circle at 48% 72%,rgba(255,205,112,.10),transparent 28%);filter:blur(18px);animation:breath 7s ease-in-out infinite}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:.95}}}}.wrap{{position:relative;z-index:1;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 30px) 18px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px}}.logo{{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;text-shadow:0 0 20px rgba(255,196,92,.34)}}.heart{{width:74px;height:74px;border-radius:999px;margin:0 auto;background:radial-gradient(circle,#ffe7a6,#c98b2d 58%,rgba(255,196,77,.12));box-shadow:0 0 44px rgba(255,190,72,.42);display:flex;align-items:center;justify-content:center;font-size:32px;animation:pulse 2.8s ease-in-out infinite}}@keyframes pulse{{0%,100%{{transform:scale(.96);opacity:.82}}50%{{transform:scale(1.06);opacity:1}}}}h1{{font-size:clamp(35px,9vw,54px);line-height:1.02;margin:0;letter-spacing:-.06em;text-shadow:0 0 34px rgba(255,255,255,.16)}}p{{margin:0;color:rgba(255,245,229,.78);font-size:17px;line-height:1.5}}.amount{{font-size:19px;color:#ffe0a0;font-weight:900}}.actions{{display:grid;gap:11px;margin-top:8px}}.btn{{min-height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:15px;padding:12px 16px;border:1px solid rgba(255,213,130,.22);background:rgba(255,255,255,.06);color:#fff;text-decoration:none;box-shadow:0 14px 42px rgba(0,0,0,.28);width:100%}}.btn.primary{{background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;border:0;box-shadow:0 0 34px rgba(255,190,72,.28)}}.small{{font-size:13px;color:rgba(255,245,229,.56)}}
+</style></head><body><div class="scene"></div><main class="wrap"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>Tu momento ya está completo.</h1><p>Lo que acabas de vivir ha quedado guardado.</p><div class="amount">{safe_text(amount_text)}</div><nav class="actions">{cta_html}<a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a><a class="btn" href="/crear">Crear mi ETERNA</a></nav><div class="small">Tu experiencia es privada.</div></main></body></html>
+''')
 
 
 @app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
@@ -9975,95 +9467,83 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 
 def prepare_photo_for_video_engine(original_path: str, order_id: str, slot_name: str) -> str:
     """
-    RC39 — prepara la foto para el video engine SIN tocar el video engine.
+    RC21 MAIN PATCH — prepara la foto para el video engine SIN tocar el video engine.
 
     Objetivo:
-    - Evitar que el motor reciba fotos gigantes/originales sin adaptar.
-    - Evitar zoom roto y frases tapadas en el vídeo.
     - Mantener el original intacto.
-    - Entregar al motor una imagen vertical 9:16 estable.
-    - Encajar la foto completa dentro del lienzo sin deformar.
-    - Rellenar fondo con la misma foto en modo cinematográfico.
+    - Crear una copia vertical 360x640 ya lista para el engine.
+    - No recortar la foto principal.
+    - No deformar.
+    - Rellenar con fondo blur cinematográfico.
+    - Evitar que fotos horizontales/cuadradas lleguen ampliadas o raras al render.
 
-    Fallback salvavidas:
-    - Si PIL o la imagen fallan, devuelve el original para no romper render.
+    Importante:
+    - save_upload_original_robust() sigue guardando el archivo original.
+    - Esta función solo crea una copia técnica para /video/input.
     """
+    TARGET_W = 360
+    TARGET_H = 640
+
     original_path = str(original_path or "").strip()
-    if not original_path:
-        return original_path
+    if not original_path or not os.path.exists(original_path):
+        raise ValueError(f"Original no encontrado: {original_path}")
 
-    try:
-        if not os.path.exists(original_path):
-            print(f"⚠️ RC39 prepare_photo_for_video_engine: original no existe: {original_path}")
-            return original_path
+    safe_slot = safe_slug(slot_name, "photo")
+    prepared_dir = PHOTO_FOLDER / str(order_id) / "engine_prepared"
+    prepared_dir.mkdir(parents=True, exist_ok=True)
 
-        target_w, target_h = 1080, 1920
-        safe_slot = safe_slug(slot_name, "photo")
+    prepared_path = prepared_dir / f"{safe_slot}_engine_360x640.jpg"
 
-        prepared_dir = PHOTO_FOLDER / str(order_id) / "engine_prepared"
-        prepared_dir.mkdir(parents=True, exist_ok=True)
-        prepared_path = prepared_dir / f"{safe_slot}_engine_1080x1920.jpg"
-
-        original_mtime = os.path.getmtime(original_path)
-        if prepared_path.exists() and os.path.getsize(prepared_path) > 0:
-            prepared_mtime = os.path.getmtime(prepared_path)
-            if prepared_mtime >= original_mtime:
-                return str(prepared_path)
-
-        with Image.open(original_path) as img:
-            img = ImageOps.exif_transpose(img)
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-
-            original_w, original_h = img.size
-            if original_w <= 0 or original_h <= 0:
-                print(f"⚠️ RC39 imagen inválida: {original_path}")
-                return original_path
-
-            # 1) Fondo 9:16 cubierto con la misma foto, desenfocado y oscurecido.
-            bg_ratio = max(target_w / original_w, target_h / original_h)
-            bg_w = max(int(original_w * bg_ratio), target_w)
-            bg_h = max(int(original_h * bg_ratio), target_h)
-            bg = img.resize((bg_w, bg_h), Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
-
-            left = max((bg_w - target_w) // 2, 0)
-            top = max((bg_h - target_h) // 2, 0)
-            bg = bg.crop((left, top, left + target_w, top + target_h))
-            bg = bg.filter(ImageFilter.GaussianBlur(radius=36))
-            bg = ImageEnhance.Brightness(bg).enhance(0.38)
-            bg = ImageEnhance.Contrast(bg).enhance(1.12)
-            bg = ImageEnhance.Color(bg).enhance(1.06)
-
-            # 2) Foto principal completa: CONTAIN, nunca COVER.
-            #    Margen extra para que las frases del motor respiren y no queden tapadas.
-            fg_ratio = min(target_w / original_w, target_h / original_h) * 0.86
-            fg_w = max(int(original_w * fg_ratio), 1)
-            fg_h = max(int(original_h * fg_ratio), 1)
-            fg = img.resize((fg_w, fg_h), Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
-
-            x = (target_w - fg_w) // 2
-            y = (target_h - fg_h) // 2
-            bg.paste(fg, (x, y))
-
-            bg.save(str(prepared_path), "JPEG", quality=92, optimize=True)
-
-        if prepared_path.exists() and os.path.getsize(prepared_path) > 0:
-            print(
-                f"✅ RC39 prepare_photo_for_video_engine OK: "
-                f"order={order_id} slot={slot_name} {original_path} -> {prepared_path}"
-            )
+    original_mtime = os.path.getmtime(original_path)
+    if prepared_path.exists() and os.path.getsize(prepared_path) > 0:
+        prepared_mtime = os.path.getmtime(prepared_path)
+        if prepared_mtime >= original_mtime:
             return str(prepared_path)
 
-        print(f"⚠️ RC39 no se generó prepared_path. Devuelvo original: {original_path}")
-        return original_path
+    with Image.open(original_path) as img:
+        # Respeta orientación EXIF de iPhone/Instagram sin tocar el archivo original.
+        img = ImageOps.exif_transpose(img)
 
-    except Exception as e:
-        print(
-            f"⚠️ RC39 prepare_photo_for_video_engine falló. "
-            f"Entrego original para no romper render. "
-            f"order={order_id} slot={slot_name} error={type(e).__name__}: {e}"
-        )
-        return original_path
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+
+        original_w, original_h = img.size
+        if original_w <= 0 or original_h <= 0:
+            raise ValueError(f"Imagen inválida: {original_path}")
+
+        # 1) Fondo cinematográfico: cubre 360x640 con la misma foto ampliada + blur.
+        bg_ratio = max(TARGET_W / original_w, TARGET_H / original_h)
+        bg_w = max(int(original_w * bg_ratio), TARGET_W)
+        bg_h = max(int(original_h * bg_ratio), TARGET_H)
+
+        bg = img.resize((bg_w, bg_h), Image.LANCZOS)
+
+        left = max((bg_w - TARGET_W) // 2, 0)
+        top = max((bg_h - TARGET_H) // 2, 0)
+        bg = bg.crop((left, top, left + TARGET_W, top + TARGET_H))
+
+        bg = bg.filter(ImageFilter.GaussianBlur(radius=18))
+        bg = ImageEnhance.Brightness(bg).enhance(0.42)
+        bg = ImageEnhance.Contrast(bg).enhance(1.16)
+        bg = ImageEnhance.Color(bg).enhance(1.08)
+
+        # 2) Foto principal: entra COMPLETA dentro del lienzo sin recorte ni deformación.
+        fg_ratio = min(TARGET_W / original_w, TARGET_H / original_h)
+        fg_w = max(int(original_w * fg_ratio), 1)
+        fg_h = max(int(original_h * fg_ratio), 1)
+
+        fg = img.resize((fg_w, fg_h), Image.LANCZOS)
+
+        x = (TARGET_W - fg_w) // 2
+        y = (TARGET_H - fg_h) // 2
+
+        bg.paste(fg, (x, y))
+        bg.save(str(prepared_path), "JPEG", quality=94, optimize=True)
+
+    if not prepared_path.exists() or os.path.getsize(prepared_path) <= 0:
+        raise ValueError(f"No se pudo preparar imagen para engine: {prepared_path}")
+
+    return str(prepared_path)
 
 
 @app.get("/video/input/{order_id}/{slot_name}")
