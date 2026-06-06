@@ -1,11 +1,19 @@
+
 # =========================================================
-# RC47 BASE RC46 ESTABLE + AJUSTES SIGUIENTE PRUEBA
+# RC49 — TÉRMINOS EN CÓDIGO + SIN PANTALLA SENDER ENTRY
+# Base: RC48. Mantiene Shhh y sustituye términos por HTML/CSS real.
+# El regalante entra directo al Sender Pack cuando la reacción existe.
+# NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
+# =========================================================
+
+# =========================================================
+# RC44 BASE RC27B ESTABLE + GUÍA PREVIA LIMPIA + LÍMITE 6 FOTOS
 # Base real: RC43/RC27B estable.
 # Decisión: NO parchear RC42 colgado.
 # Objetivo: conservar flujo funcional, limpiar guía previa y blindar formulario.
 # Arreglo crítico: selector múltiple NO permite más de 6 fotos.
 # Arreglo visual/técnico: las fotos se mantienen completas, sin mandarlas ampliadas al engine.
-# NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
+# NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni sender pack.
 # =========================================================
 
 # =========================================================
@@ -254,7 +262,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v47-next-fixes"
+ETERNA_VISUAL_VERSION = "eterna-visual-v46-sms-delay-senderpack-botones-loading"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -2356,18 +2364,8 @@ def reaction_file_ready_for_sender(order: dict, min_age_seconds: int = 30, min_s
     """
     local_path = (order.get("reaction_video_local") or "").strip()
     if not local_path:
-        public_url = (order.get("reaction_video_public_url") or "").strip()
-        if public_url:
-            try:
-                response = requests.head(public_url, timeout=8, allow_redirects=True)
-                if response.status_code >= 200 and response.status_code < 400:
-                    content_length = int(response.headers.get("content-length") or 0)
-                    if content_length >= int(min_size_bytes or 0):
-                        return True, "public_url_available_and_sized"
-                    return False, "public_url_too_small"
-                return False, f"public_url_not_ready_{response.status_code}"
-            except Exception:
-                return False, "public_url_head_failed"
+        if order.get("reaction_video_public_url"):
+            return True, "public_url_available"
         return False, "reaction_local_path_missing"
 
     if not os.path.exists(local_path):
@@ -2390,12 +2388,9 @@ def reaction_file_ready_for_sender(order: dict, min_age_seconds: int = 30, min_s
         return False, f"reaction_file_too_recent_{int(age)}s"
 
     try:
-        # Doble comprobación: evita avisar al regalante mientras Safari/Render aún está cerrando el MP4/WebM.
         time.sleep(1)
         size_2 = os.path.getsize(local_path)
-        time.sleep(1)
-        size_3 = os.path.getsize(local_path)
-        if size_2 != size_1 or size_3 != size_2:
+        if size_2 != size_1:
             return False, "reaction_file_size_still_changing"
     except Exception:
         return False, "reaction_stability_check_failed"
@@ -2710,7 +2705,7 @@ def try_send_sender_sms(order: dict) -> dict:
     if not reaction_exists(order):
         return {"ok": False, "reason": "reaction_not_found"}
 
-    ready_for_sender, ready_reason = reaction_file_ready_for_sender(order, min_age_seconds=75)
+    ready_for_sender, ready_reason = reaction_file_ready_for_sender(order, min_age_seconds=30)
     if not ready_for_sender:
         print("⏳ SMS regalante retenido hasta reacción estable:", ready_reason)
         return {"ok": False, "reason": ready_reason, "retry": True, "no_attempt_increment": True}
@@ -7434,6 +7429,31 @@ async def start_experience(request: Request, recipient_token: str = Form(...)):
 
 
 
+
+
+# =========================================================
+# RC48 — PANTALLAS POR CÓDIGO: TÉRMINOS + REGALO
+# Objetivo:
+# - Evitar zonas fantasma de PNG en aceptación de términos.
+# - Crear pantalla de regalo/cobro con HTML/CSS real, sin depender de imagen.
+# - NO toca Stripe, Twilio, webhooks, DB, video engine, reacción ni sender pack.
+# =========================================================
+
+def render_terms_code_screen(recipient_token: str) -> HTMLResponse:
+    next_url = f"/guia/2/{safe_attr(recipient_token)}"
+    return HTMLResponse(f'''
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 78% 18%,rgba(29,159,255,.28),transparent 28%),radial-gradient(circle at 18% 82%,rgba(255,194,74,.14),transparent 28%),linear-gradient(180deg,#02050a 0%,#030915 52%,#02050a 100%)}}.screen{{position:relative;min-height:100svh;min-height:100dvh;width:100%;max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 26px) 22px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;gap:20px;overflow:hidden}}.screen:before{{content:"";position:absolute;inset:-20%;background:radial-gradient(circle at 70% 22%,rgba(55,195,255,.22),transparent 20%),radial-gradient(circle at 50% 60%,rgba(255,213,126,.10),transparent 26%),conic-gradient(from 230deg at 50% 50%,transparent,rgba(30,150,255,.14),transparent,rgba(255,197,84,.12),transparent);filter:blur(18px);opacity:.85;animation:breath 7s ease-in-out infinite;pointer-events:none}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:1}}}}.star{{position:absolute;border-radius:50%;background:#69d6ff;box-shadow:0 0 18px #69d6ff;opacity:.8;animation:float 7s linear infinite;pointer-events:none}}.s1{{width:5px;height:5px;left:14%;top:20%;animation-delay:.2s}}.s2{{width:4px;height:4px;right:15%;top:34%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:1.4s}}.s3{{width:6px;height:6px;left:18%;bottom:18%;animation-delay:2.2s}}.s4{{width:4px;height:4px;right:20%;bottom:22%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:3.1s}}@keyframes float{{0%,100%{{transform:translateY(0);opacity:.35}}50%{{transform:translateY(-34px);opacity:1}}}}.logo{{position:relative;z-index:1;text-align:center;letter-spacing:.42em;color:#d8b76d;font-size:18px;font-weight:800;text-shadow:0 0 28px rgba(255,197,87,.35);margin-bottom:8px}}.logo:after{{content:"♡";display:block;letter-spacing:0;font-size:20px;margin-top:10px;color:#f4c76e;text-shadow:0 0 22px rgba(255,193,76,.55)}}.content{{position:relative;z-index:1;text-align:center;display:grid;gap:20px}}h1{{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(38px,10vw,56px);line-height:1.04;margin:0;text-shadow:0 0 26px rgba(255,255,255,.15)}}h1 span{{color:#f4c76e;text-shadow:0 0 28px rgba(244,199,110,.28)}}p{{margin:0;color:rgba(255,246,232,.76);font-size:17px;line-height:1.6}}.card{{margin-top:6px;border:1px solid rgba(255,207,112,.26);border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));box-shadow:0 22px 70px rgba(0,0,0,.42),inset 0 0 30px rgba(48,165,255,.06);overflow:hidden;text-align:left}}.row{{display:flex;align-items:center;gap:16px;padding:18px 18px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none;color:#fff}}.row:last-child{{border-bottom:0}}.ico{{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,205,110,.48);color:#f4c76e;font-size:22px;box-shadow:0 0 22px rgba(255,196,82,.12);flex:0 0 auto}}.row strong{{display:block;font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:21px;margin-bottom:4px}}.row small{{display:block;color:rgba(255,246,232,.56);font-size:14px;line-height:1.35}}.chev{{margin-left:auto;color:#f4c76e;font-size:28px}}.accept{{position:relative;z-index:2;display:flex;align-items:center;gap:13px;padding:17px 18px;border-radius:22px;border:1px solid rgba(255,207,112,.30);background:rgba(0,0,0,.38);box-shadow:inset 0 0 24px rgba(255,201,99,.04);text-align:left;cursor:pointer}}.accept input{{position:absolute;opacity:0;pointer-events:none}}.box{{width:34px;height:34px;border-radius:10px;border:2px solid rgba(255,223,151,.78);display:flex;align-items:center;justify-content:center;color:#080603;font-weight:900;flex:0 0 auto;box-shadow:0 0 18px rgba(255,202,91,.22)}}.accept input:checked + .box{{background:linear-gradient(135deg,#fff2bf,#d5942e);box-shadow:0 0 28px rgba(255,198,77,.72)}}.accept input:checked + .box:before{{content:"✓"}}.accept span:last-child{{font-size:16px;color:rgba(255,246,232,.82);line-height:1.35}}.btn{{width:100%;min-height:68px;border:0;border-radius:24px;background:linear-gradient(135deg,#fff0bb,#e4a23d 52%,#9b5e08);color:#120c04;font-family:Georgia,"Times New Roman",serif;font-size:30px;box-shadow:0 0 34px rgba(255,190,72,.34),inset 0 0 24px rgba(255,255,255,.20);opacity:.45;transform:scale(.99);transition:all .18s ease;cursor:not-allowed}}.btn.ready{{opacity:1;transform:scale(1);cursor:pointer}}.note{{position:relative;z-index:1;text-align:center;color:rgba(255,246,232,.48);font-size:12px;line-height:1.5}}
+</style></head><body><main class="screen"><i class="star s1"></i><i class="star s2"></i><i class="star s3"></i><i class="star s4"></i><div class="logo">ETERNA</div><section class="content"><h1>Acepta los <span>términos</span></h1><p>Antes de continuar, lee y acepta las condiciones para vivir esta experiencia de forma privada y respetuosa.</p><div class="card"><a class="row" href="/condiciones" target="_blank" rel="noopener"><div class="ico">▤</div><div><strong>Términos y condiciones</strong><small>Leer las condiciones completas</small></div><div class="chev">›</div></a><a class="row" href="/privacidad" target="_blank" rel="noopener"><div class="ico">◈</div><div><strong>Privacidad</strong><small>Tu experiencia es personal y confidencial</small></div><div class="chev">›</div></a></div><label class="accept"><input id="termsCheck" type="checkbox"><span class="box"></span><span>He leído y acepto los términos anteriores.</span></label><button id="continueBtn" class="btn" type="button">Continuar</button><div class="note">Checkbox y botón reales. Sin capas fantasma.</div></section></main><script>(function(){{const check=document.getElementById('termsCheck');const btn=document.getElementById('continueBtn');function sync(){{btn.classList.toggle('ready',check.checked);}}check.addEventListener('change',sync);btn.addEventListener('click',function(){{if(check.checked)window.location.href={json.dumps(next_url)};}});sync();}})();</script></body></html>
+''')
+
+
+def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: str) -> HTMLResponse:
+    return HTMLResponse(f'''
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 50% 22%,rgba(255,203,94,.18),transparent 24%),radial-gradient(circle at 78% 34%,rgba(31,167,255,.25),transparent 28%),radial-gradient(circle at 18% 78%,rgba(31,167,255,.14),transparent 30%),#02050a}}.wrap{{position:relative;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 28px) 22px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:20px;overflow:hidden}}.wrap:before{{content:"";position:absolute;inset:-20%;background:conic-gradient(from 210deg at 50% 48%,transparent,rgba(28,152,255,.20),transparent,rgba(255,198,83,.18),transparent);filter:blur(18px);animation:spin 13s linear infinite;pointer-events:none}}@keyframes spin{{to{{transform:rotate(360deg)}}}}.logo{{position:relative;z-index:1;letter-spacing:.42em;color:#d8b76d;font-size:17px;font-weight:900;text-shadow:0 0 28px rgba(255,197,87,.36)}}.gift{{position:relative;z-index:1;width:156px;height:156px;margin:0 auto;border-radius:34px;background:linear-gradient(145deg,rgba(4,12,24,.98),rgba(0,0,0,.94));border:1px solid rgba(255,210,116,.34);box-shadow:0 0 55px rgba(38,174,255,.22),0 0 78px rgba(255,190,72,.18),inset 0 0 34px rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:72px;color:#f4c76e;text-shadow:0 0 28px rgba(255,196,76,.70);animation:pulse 2.4s ease-in-out infinite}}.gift:before{{content:"";position:absolute;left:50%;top:-22px;width:82px;height:42px;transform:translateX(-50%);border-radius:50%;border:8px solid #d79a35;border-bottom:0;filter:drop-shadow(0 0 14px rgba(255,198,83,.55))}}@keyframes pulse{{0%,100%{{transform:scale(.97)}}50%{{transform:scale(1.04)}}}}h1{{position:relative;z-index:1;margin:0;font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(38px,10vw,56px);line-height:1.05;text-shadow:0 0 28px rgba(255,255,255,.14)}}p{{position:relative;z-index:1;margin:0;color:rgba(255,246,232,.74);font-size:17px;line-height:1.55}}.amount{{position:relative;z-index:1;margin:4px auto 0;padding:18px;border-radius:24px;width:100%;border:1px solid rgba(255,210,116,.25);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:#ffe0a0;font-weight:900;font-size:19px;box-shadow:0 18px 60px rgba(0,0,0,.30)}}.actions{{position:relative;z-index:1;display:grid;gap:12px;margin-top:4px}}.btn{{min-height:62px;border-radius:20px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:16px;padding:13px 16px;border:1px solid rgba(255,213,130,.24);background:rgba(255,255,255,.055);color:#fff;text-decoration:none;box-shadow:0 16px 44px rgba(0,0,0,.30);width:100%}}.btn.primary,.actions form button{{min-height:66px;border-radius:22px;width:100%;border:0;background:linear-gradient(135deg,#fff0b9,#e4a23d 52%,#9b5e08);color:#150e05;font-weight:950;font-size:18px;box-shadow:0 0 34px rgba(255,190,72,.34),inset 0 0 22px rgba(255,255,255,.18)}}.actions form{{margin:0}}.blue{{border-color:rgba(49,185,255,.38);box-shadow:0 0 28px rgba(43,175,255,.22),0 16px 44px rgba(0,0,0,.30)}}.small{{position:relative;z-index:1;color:rgba(255,246,232,.50);font-size:12px;line-height:1.5}}.spark{{position:absolute;border-radius:50%;background:#69d6ff;box-shadow:0 0 18px #69d6ff;opacity:.85;animation:float 7s linear infinite;pointer-events:none}}.a{{width:6px;height:6px;left:15%;top:18%}}.b{{width:5px;height:5px;right:16%;top:28%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:1.3s}}.c{{width:5px;height:5px;left:22%;bottom:19%;animation-delay:2.2s}}.d{{width:4px;height:4px;right:18%;bottom:26%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:3s}}@keyframes float{{0%,100%{{transform:translateY(0);opacity:.35}}50%{{transform:translateY(-38px);opacity:1}}}}
+</style></head><body><main class="wrap"><i class="spark a"></i><i class="spark b"></i><i class="spark c"></i><i class="spark d"></i><div class="logo">ETERNA</div><div class="gift">🎁</div><h1>Tu regalo está listo.</h1><p>Alguien quiso dejarte algo más. Puedes recibirlo cuando quieras.</p><div class="amount">{safe_text(amount_text)}</div><nav class="actions">{cta_html}<a class="btn blue" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a><a class="btn" href="/crear">Crear mi ETERNA</a></nav><div class="small">Tu experiencia es privada y segura.</div></main></body></html>
+''')
 # =========================================================
 # GUÍA PREVIA A LA EXPERIENCIA — CAPA DELANTE, SIN TOCAR /experiencia
 # =========================================================
@@ -7480,14 +7500,8 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         return response
 
     if step == 1:
-        insert_order_event(order["id"], "guide_terms_opened", "ok", "Pantalla lee y acepta")
-        response = render_eterna_image_screen(
-            image_name="terms-acceptance-v1.png",
-            fallback_image_name="terms-acceptance-v1.png",
-            button_url=f"/guia/2/{recipient_token}",
-            button_label="Aceptar y continuar",
-            extra_note="Al continuar aceptas vivir esta experiencia de forma privada y respetuosa.",
-        )
+        insert_order_event(order["id"], "guide_terms_opened", "ok", "Pantalla términos por código RC49")
+        response = render_terms_code_screen(recipient_token)
         attach_recipient_session_if_needed(order, request, response)
         return response
 
@@ -7588,11 +7602,11 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
     next_ritual_step = min(ritual_step + 1, 7)
 
     if gift_amount > 0:
-        payoff_title = "Shhh…"
-        payoff_text = "Estamos preparando algo especial."
+        payoff_title = "Espere un momento…"
+        payoff_text = "Estamos generando su regalo."
     else:
-        payoff_title = "Shhh…"
-        payoff_text = "Estamos guardando esta emoción para que pueda volver."
+        payoff_title = "Espere un momento…"
+        payoff_text = "Estamos guardando este vídeo para que pueda volver a verlo."
 
     # =========================================================
     # EXPERIENCIA FUNCIONAL RECUPERADA DEL MAIN ESTABLE
@@ -8028,10 +8042,10 @@ function showCinematicLayersAfterVideo() {
 
 const recipientToken = "__RECIPIENT_TOKEN__";
 const hasGift = __HAS_GIFT__;
-const finalWaitingTitle = "Shhh…";
+const finalWaitingTitle = "Espere un momento…";
 const finalWaitingText = hasGift
-    ? "Estamos preparando algo especial."
-    : "Estamos guardando esta emoción para que pueda volver.";
+    ? "Estamos generando su regalo."
+    : "Estamos guardando este vídeo para que pueda volver a verlo.";
 
 let stream = null;
 let mediaRecorder = null;
@@ -9283,7 +9297,7 @@ video{{width:100%;height:100%;display:block;object-fit:contain;background:#000}}
 
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
 def cobrar(request: Request, recipient_token: str):
-    """COBRAR RC8 — final más claro, sin CTA comercial invasivo."""
+    """COBRAR RC48 — pantalla de regalo por código, sin PNG ni overlays."""
     order = get_order_by_recipient_token_or_404(recipient_token)
     log_info("💸 DESTINATARIO ENTRA EN COBROS")
     log_info("🆔 Order ID", order.get("id"))
@@ -9308,18 +9322,19 @@ def cobrar(request: Request, recipient_token: str):
 
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
-    amount_text = ""
-    cta_html = ""
 
     if gift_amount <= 0:
         amount_text = "Este regalo no incluía dinero."
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver mi ETERNA</a>'
     elif cashout_status == "completed":
         amount_text = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver mi ETERNA</a>'
     elif cashout_status == "processing":
         amount_text = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver mi ETERNA</a>'
     elif cashout_status == "ready_to_send":
         amount_text = f"Has recibido {format_amount_display(gift_amount)}."
-        cta_html = f'''<form action="/connect/payout/{safe_attr(recipient_token)}" method="post"><button type="submit" class="btn primary">Recibir mi regalo</button></form>'''
+        cta_html = f'<form action="/connect/payout/{safe_attr(recipient_token)}" method="post"><button type="submit" class="btn primary">Recibir mi regalo</button></form>'
     else:
         amount_text = f"Has recibido {format_amount_display(gift_amount)}."
         connect_url = None
@@ -9332,14 +9347,8 @@ def cobrar(request: Request, recipient_token: str):
         else:
             cta_html = '<a href="" class="btn primary">Intentar recibir mi regalo</a>'
 
-    if not cta_html:
-        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver el vídeo</a>'
+    return render_gift_code_screen(recipient_token, amount_text, cta_html)
 
-    return HTMLResponse(f'''
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
-*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(72,185,255,.24),transparent 30%),radial-gradient(circle at 14% 76%,rgba(255,205,112,.12),transparent 33%),#02050a}}.scene{{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}}.scene:before{{content:"";position:absolute;inset:-18%;background:radial-gradient(circle at 72% 26%,rgba(65,185,255,.22),transparent 26%),radial-gradient(circle at 48% 72%,rgba(255,205,112,.10),transparent 28%);filter:blur(18px);animation:breath 7s ease-in-out infinite}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:.95}}}}.wrap{{position:relative;z-index:1;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 30px) 18px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px}}.logo{{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;text-shadow:0 0 20px rgba(255,196,92,.34)}}.heart{{width:74px;height:74px;border-radius:999px;margin:0 auto;background:radial-gradient(circle,#ffe7a6,#c98b2d 58%,rgba(255,196,77,.12));box-shadow:0 0 44px rgba(255,190,72,.42);display:flex;align-items:center;justify-content:center;font-size:32px;animation:pulse 2.8s ease-in-out infinite}}@keyframes pulse{{0%,100%{{transform:scale(.96);opacity:.82}}50%{{transform:scale(1.06);opacity:1}}}}h1{{font-size:clamp(35px,9vw,54px);line-height:1.02;margin:0;letter-spacing:-.06em;text-shadow:0 0 34px rgba(255,255,255,.16)}}p{{margin:0;color:rgba(255,245,229,.78);font-size:17px;line-height:1.5}}.amount{{font-size:19px;color:#ffe0a0;font-weight:900}}.actions{{display:grid;gap:11px;margin-top:8px}}.btn{{min-height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:15px;padding:12px 16px;border:1px solid rgba(255,213,130,.22);background:rgba(255,255,255,.06);color:#fff;text-decoration:none;box-shadow:0 14px 42px rgba(0,0,0,.28);width:100%}}.btn.primary{{background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;border:0;box-shadow:0 0 34px rgba(255,190,72,.28)}}.small{{font-size:13px;color:rgba(255,245,229,.56)}}
-</style></head><body><div class="scene"></div><main class="wrap"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>Tu momento ya está completo.</h1><p>Lo que acabas de vivir ha quedado guardado.</p><div class="amount">{safe_text(amount_text)}</div><nav class="actions">{cta_html}<a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a><a class="btn" href="/crear">Crear mi ETERNA</a></nav><div class="small">Tu experiencia es privada.</div></main></body></html>
-''')
 
 
 @app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
@@ -9402,13 +9411,12 @@ def connect_payout(request: Request, recipient_token: str):
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str, view: str = ""):
     """
-    SENDER PACK FINAL — flujo visual limpio y cinematográfico.
+    SENDER PACK FINAL — flujo directo y limpio.
 
-    Decisión de producto:
-      1) Entrada obligatoria con sender-pack-entry-v1.png
-      2) Pack principal con sender-pack-v1.png + vídeo/reacción real encima
-      3) Se elimina la pantalla intermedia tipo "Ya ha pasado"
-      4) Se elimina la pantalla final independiente "Lo que das se queda en alguien"
+    Decisión RC49:
+      1) Se elimina la entrada obligatoria sender-pack-entry-v1.png.
+      2) Si la reacción existe, el regalante entra directo al pack principal.
+      3) Si la reacción todavía no existe, se muestra una espera segura.
 
     No toca Stripe, Twilio, webhooks, pagos, video engine ni DB.
     """
@@ -9431,22 +9439,15 @@ def sender_pack(sender_token: str, view: str = ""):
 
     if not reaction_url:
         return render_eterna_image_screen(
-            image_name="sender_pack_entry",
-            fallback_image_name="sender_pack_entry",
+            image_name="uploading_reaction",
+            fallback_image_name="uploading_reaction",
             button_url=f"/sender/{sender_token}",
             button_label="Volver a comprobar",
             extra_note="Tu ETERNA todavía está volviendo. La reacción se está guardando.",
         )
 
-    # Pantalla 1: entrada emocional cinematográfica.
-    if str(view or "").strip().lower() not in {"pack", "open", "1"}:
-        return render_eterna_image_screen(
-            image_name="sender_pack_entry",
-            fallback_image_name="sender_pack_entry",
-            button_url=f"/sender/{sender_token}?view=pack",
-            button_label="Estoy preparado",
-        )
-
+    # RC49: sin pantalla sender-pack-entry.
+    # Si la reacción está disponible, entramos directamente al pack principal.
     share_url = sender_pack_url_from_order(order)
     recipient_name = safe_text(order.get("recipient_name") or "esa persona")
 
@@ -9482,26 +9483,6 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 .hit-save{{left:8.6%;right:8.6%;bottom:16.8%;height:7.5%}}
 .hit-share{{left:8.6%;right:8.6%;bottom:8.6%;height:7.5%}}
 .hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
-.hit-replay,.hit-save,.hit-share{{
-    text-indent:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#fff7e6;
-    font-size:14px;
-    font-weight:800;
-    letter-spacing:.04em;
-    text-transform:uppercase;
-    background:linear-gradient(135deg, rgba(255,219,136,.96), rgba(185,112,28,.96));
-    border:1px solid rgba(255,240,190,.82);
-    box-shadow:0 0 24px rgba(255,190,80,.42), inset 0 0 18px rgba(255,255,255,.18);
-    text-shadow:0 1px 2px rgba(0,0,0,.55);
-    opacity:.96;
-}}
-.hit-replay{{bottom:25.2%;}}
-.hit-save{{bottom:16.5%;}}
-.hit-share{{bottom:7.8%;}}
-.hit-replay:active,.hit-save:active,.hit-share:active{{transform:scale(.985);filter:brightness(1.12);}}
 .pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
 @keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
 .floating{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#5bd9ff;box-shadow:0 0 16px #5bd9ff;animation:floatUp 7.5s linear infinite;opacity:0;pointer-events:none}}
