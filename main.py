@@ -1,8 +1,10 @@
 # =========================================================
-# RC43 BASE RC27B ESTABLE + GUÍA PREVIA LIMPIA
-# Base real: RC27B que funcionaba ayer.
+# RC44 BASE RC27B ESTABLE + GUÍA PREVIA LIMPIA + LÍMITE 6 FOTOS
+# Base real: RC43/RC27B estable.
 # Decisión: NO parchear RC42 colgado.
-# Objetivo: conservar flujo funcional y limpiar guía previa.
+# Objetivo: conservar flujo funcional, limpiar guía previa y blindar formulario.
+# Arreglo crítico: selector múltiple NO permite más de 6 fotos.
+# Arreglo visual/técnico: las fotos se mantienen completas, sin mandarlas ampliadas al engine.
 # NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni sender pack.
 # =========================================================
 
@@ -252,7 +254,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v43-base-rc27b-guia-limpia"
+ETERNA_VISUAL_VERSION = "eterna-visual-v44-rc27b-limite-6-fotos-no-ampliadas"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -4586,10 +4588,12 @@ def render_create_form() -> str:
                 inset: 0;
                 width: 100%;
                 height: 100%;
-                object-fit: cover;
+                object-fit: contain;
+                object-position: center center;
                 display: none;
                 z-index: 2;
                 border-radius: 18px;
+                background: rgba(0,0,0,0.28);
             }}
             .photo-status {{
                 margin-top: 8px;
@@ -6064,20 +6068,38 @@ document.addEventListener("DOMContentLoaded", function () {{
     if (multiPhotoPicker) {{
         multiPhotoPicker.addEventListener("change", function () {{
             clearError();
-            const files = Array.from(multiPhotoPicker.files || []).filter((file) => (file.type || "").startsWith("image/"));
-            if (!files.length) return;
-            if (files.length < 6) {{
-                showError("Elige 6 fotos para crear ETERNA.");
+            const rawFiles = Array.from(multiPhotoPicker.files || []);
+            const files = rawFiles.filter((file) => (file.type || "").startsWith("image/"));
+
+            if (!rawFiles.length) return;
+
+            // RC44: ETERNA trabaja con EXACTAMENTE 6 fotos.
+            // No usamos silenciosamente "las 6 primeras", porque eso confundía al usuario
+            // y podía dejar el formulario en un estado raro después de seleccionar 7/8 fotos en ordenador.
+            if (rawFiles.length > 6 || files.length > 6) {{
+                multiPhotoPicker.value = "";
+                showError("Has elegido más de 6 fotos. Para crear tu ETERNA selecciona exactamente 6 recuerdos.");
+                return;
             }}
-            files.slice(0, 6).forEach((file, index) => {{
+
+            if (files.length < 6) {{
+                showError("Elige exactamente 6 fotos para crear ETERNA.");
+                return;
+            }}
+
+            for (const file of files) {{
+                if (!(file.type || "").startsWith("image/")) {{
+                    multiPhotoPicker.value = "";
+                    showError("Una de las fotos no parece una imagen válida.");
+                    return;
+                }}
+            }}
+
+            files.forEach((file, index) => {{
                 const input = document.getElementById("photo" + (index + 1));
                 setInputFile(input, file);
             }});
-            if ((multiPhotoPicker.files || []).length > 6) {{
-                clearError();
-                const status6 = document.getElementById("status_photo6");
-                if (status6) status6.innerText = "He usado solo las 6 primeras. Puedes cambiar cualquiera una a una.";
-            }}
+
             saveFormState();
         }});
     }}
@@ -6159,8 +6181,17 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
 
         if (!allPhotosPresent()) {{
-            showError("Necesitas elegir las 6 fotos.");
+            showError("Necesitas elegir exactamente 6 fotos.");
             return false;
+        }}
+
+        // RC44: defensa final antes de enviar. Cada slot debe llevar solo una foto.
+        for (const id of ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"]) {{
+            const input = document.getElementById(id);
+            if (!input || !input.files || input.files.length !== 1) {{
+                showError("ETERNA necesita exactamente 6 fotos: una en cada hueco.");
+                return false;
+            }}
         }}
 
         if (manualRadio && manualRadio.checked) {{
@@ -9474,6 +9505,7 @@ def prepare_photo_for_video_engine(original_path: str, order_id: str, slot_name:
     - Crear una copia vertical 360x640 ya lista para el engine.
     - No recortar la foto principal.
     - No deformar.
+    - No mandar la foto principal ampliada.
     - Rellenar con fondo blur cinematográfico.
     - Evitar que fotos horizontales/cuadradas lleguen ampliadas o raras al render.
 
