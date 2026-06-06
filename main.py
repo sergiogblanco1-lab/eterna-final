@@ -1,8 +1,8 @@
 
 # =========================================================
-# RC49 — TÉRMINOS EN CÓDIGO + SIN PANTALLA SENDER ENTRY
-# Base: RC48. Mantiene Shhh y sustituye términos por HTML/CSS real.
-# El regalante entra directo al Sender Pack cuando la reacción existe.
+# RC51 — QUIET PLACE FINAL + BOTÓN ESTOY LISTO CENTRADO
+# Base: RC50. Sustituye la pantalla de lugar tranquilo por la imagen final y centra la zona real de click.
+# No toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
 # NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
 # =========================================================
 
@@ -262,7 +262,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v50-lanzamiento-fix-terminos-intro-legal"
+ETERNA_VISUAL_VERSION = "eterna-visual-v51-quiet-place-final-button-safe"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -275,7 +275,7 @@ ETERNA_SCREEN_ASSETS = {
     "payment_success": "payment-success-v1.png",
     "intro_shhh": "intro-shhh-v1.png",
     "sound_check": "sound-check-v1.png",
-    "quiet_place": "quiet-place-v1.png",
+    "quiet_place": "eterna_lugar_tranquilo_final.png",
     "terms_acceptance": "terms-acceptance-v1.png",
     "consent_recording": "terms-acceptance-v1.png",
     "uploading_reaction": "uploading-reaction-v1.png",
@@ -420,7 +420,7 @@ def render_eterna_image_screen(
 
     is_terms_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("terms-acceptance-v1.png")
     is_payment_success_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("payment-success-v1.png")
-    is_quiet_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("quiet-place-v1.png")
+    is_quiet_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("quiet-place-v1.png"), _eterna_asset_key("eterna_lugar_tranquilo_final.png"), _eterna_asset_key("quiet-place-v2.png")}
     is_intro_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("intro-shhh-v1.png")
     is_sound_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sound-check-v1.png")
     is_uploading_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("uploading-reaction-v1.png")
@@ -1303,6 +1303,34 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
         pointer-events:auto !important;
         z-index:100 !important;
         touch-action:manipulation !important;
+    }}
+
+    /* RC51 — quiet-place final: zona real del botón grande, centrada y sin capas encima */
+    .screen.quiet-mode .real-button {{
+        left:15% !important;
+        right:15% !important;
+        bottom:calc(env(safe-area-inset-bottom) + 112px) !important;
+        min-height:108px !important;
+        border-radius:30px !important;
+        z-index:140 !important;
+        pointer-events:auto !important;
+        touch-action:manipulation !important;
+    }}
+
+    .screen.quiet-mode .visual-action-form {{
+        position:static !important;
+        z-index:140 !important;
+    }}
+
+    .screen.quiet-mode .extra-note {{
+        display:none !important;
+    }}
+
+    @media (max-height: 740px) {{
+        .screen.quiet-mode .real-button {{
+            bottom:calc(env(safe-area-inset-bottom) + 76px) !important;
+            min-height:96px !important;
+        }}
     }}
 
     .screen.terms-mode .terms-real-check {{
@@ -7393,14 +7421,13 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
 
     insert_order_event(order["id"], "guide_quiet_opened", "ok", "Pantalla final antes de iniciar experiencia")
     response = render_eterna_image_screen(
-        image_name="quiet-place-v1.png",
-        fallback_image_name="quiet-place-v1.png",
+        image_name="quiet_place",
+        fallback_image_name="error-v1.png",
         form_action="/start-experience",
         form_method="post",
         hidden_fields={"recipient_token": recipient_token},
         button_label="Estoy listo",
         button_id="startExperienceNow",
-        extra_note="El navegador pedirá cámara y micrófono al empezar.",
         extra_script=f"""
         <script>
         (function() {{
