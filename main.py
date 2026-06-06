@@ -1,4 +1,17 @@
 # =========================================================
+# RC47 ULTIMO + ESTABLES — CONSOLIDADO PARA DEPLOY
+# Base usada: RC46 ultimo subido por Sergio.
+# Referencias estables conservadas: RC27B / Julia 99% / main salvavidas.
+# Mantiene:
+# - fotos no ampliadas
+# - limite exacto de 6 fotos
+# - pantalla loading visual
+# - botones grandes en sender pack
+# - SMS regalante retrasado hasta reaccion estable
+# NO toca Stripe, Twilio, webhooks, base de datos, video engine, cobros ni workers.
+# =========================================================
+
+# =========================================================
 # RC44 BASE RC27B ESTABLE + GUÍA PREVIA LIMPIA + LÍMITE 6 FOTOS
 # Base real: RC43/RC27B estable.
 # Decisión: NO parchear RC42 colgado.
