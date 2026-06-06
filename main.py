@@ -262,7 +262,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v46-sms-delay-senderpack-botones-loading"
+ETERNA_VISUAL_VERSION = "eterna-visual-v50-lanzamiento-fix-terminos-intro-legal"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -3785,128 +3785,12 @@ from fastapi.responses import HTMLResponse
 
 @app.get("/condiciones", response_class=HTMLResponse)
 def condiciones():
-    return HTMLResponse("""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Condiciones — Tu ETERNA</title>
-<style>
-body {
-    margin:0;
-    background:#000;
-    color:#fff;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    padding:24px;
-    line-height:1.7;
-}
-h1 { font-size:28px; margin-bottom:20px; }
-h2 { font-size:18px; margin-top:28px; }
-p { opacity:0.85; }
-</style>
-</head>
-<body>
-
-
-<div aria-hidden="true" data-eterna-cinematic-scene="1" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1;mix-blend-mode:screen;">
-    <div style="position:absolute;inset:-18%;background:radial-gradient(circle at 76% 18%,rgba(92,191,255,.28),transparent 24%),radial-gradient(circle at 63% 52%,rgba(23,82,190,.24),transparent 30%),radial-gradient(circle at 18% 82%,rgba(218,178,92,.12),transparent 28%);filter:blur(2px);opacity:.95;"></div>
-    <svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:-7%;width:114%;height:114%;opacity:.98;filter:drop-shadow(0 0 26px rgba(125,210,255,.72)) drop-shadow(0 0 82px rgba(37,99,235,.42));" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <radialGradient id="cinema_core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="20%" stop-color="#dff6ff" stop-opacity=".92"/>
-                <stop offset="58%" stop-color="#69bfff" stop-opacity=".46"/>
-                <stop offset="100%" stop-color="#061428" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="cinema_wing" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity=".96"/>
-                <stop offset="22%" stop-color="#c7eeff" stop-opacity=".88"/>
-                <stop offset="58%" stop-color="#4aa4ff" stop-opacity=".56"/>
-                <stop offset="100%" stop-color="#071c4b" stop-opacity=".08"/>
-            </linearGradient>
-            <filter id="wingTexture" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.032" numOctaves="4" seed="8" result="noise"/>
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="0.25"/>
-            </filter>
-            <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="14" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <g opacity=".95">
-            <path d="M836 83 C724 138 657 212 597 300 C538 388 476 430 403 461 C310 500 202 506 83 606" fill="none" stroke="#72d8ff" stroke-width="3" stroke-linecap="round" opacity=".28"/>
-            <path d="M812 128 C706 169 638 237 585 318 C532 399 458 460 375 492 C284 528 186 536 91 626" fill="none" stroke="#f6c56f" stroke-width="2" stroke-linecap="round" opacity=".18"/>
-            <path d="M850 178 C743 199 660 259 595 351 C530 443 451 507 360 544" fill="none" stroke="#b6ecff" stroke-width="1.4" stroke-linecap="round" opacity=".20"/>
-        </g>
-        <g opacity=".96">
-            <animateTransform attributeName="transform" type="translate" values="0 0;-14 -20;0 0" dur="12s" repeatCount="indefinite"/>
-            <circle cx="640" cy="222" r="250" fill="url(#cinema_core)" opacity=".28" filter="url(#softGlow)"/>
-            <g filter="url(#wingTexture)" opacity=".96">
-                <path d="M626 226 C535 85 523 12 592 8 C681 2 694 140 642 229 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M655 226 C703 80 810 8 866 57 C928 112 794 211 669 244 Z" fill="url(#cinema_wing)" opacity=".92"/>
-                <path d="M622 244 C508 233 451 278 485 332 C526 398 599 324 637 254 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M667 250 C772 233 849 276 814 337 C776 402 699 326 655 256 Z" fill="url(#cinema_wing)" opacity=".70"/>
-                <path d="M646 168 C655 201 655 242 646 315" stroke="#f9feff" stroke-width="10" stroke-linecap="round" opacity=".72"/>
-                <path d="M590 50 C620 92 632 139 642 199 M735 62 C700 105 675 155 657 205 M515 278 C561 263 600 255 634 251 M791 282 C744 266 704 257 666 252" stroke="#ffffff" stroke-width="2.2" stroke-opacity=".32" fill="none"/>
-            </g>
-        </g>
-        <g opacity=".86">
-            <animate attributeName="opacity" values=".55;.95;.55" dur="5.5s" repeatCount="indefinite"/>
-            <circle cx="796" cy="149" r="2.8" fill="#e8fbff"/><circle cx="752" cy="176" r="1.8" fill="#74d7ff"/><circle cx="706" cy="210" r="2.1" fill="#f7ca78"/><circle cx="650" cy="253" r="1.6" fill="#c8f2ff"/><circle cx="594" cy="300" r="1.7" fill="#82d8ff"/><circle cx="528" cy="359" r="1.9" fill="#f4c771"/><circle cx="456" cy="421" r="1.4" fill="#b8eeff"/><circle cx="375" cy="488" r="1.6" fill="#81d9ff"/><circle cx="284" cy="529" r="1.2" fill="#f7cf83"/>
-        </g>
-        <g opacity=".62" filter="url(#softGlow)">
-            <animateTransform attributeName="transform" type="translate" values="0 0;16 -18;0 0" dur="14s" repeatCount="indefinite"/>
-            <path d="M198 562 C155 492 154 446 190 441 C237 434 242 518 207 565 Z" fill="#dff7ff" opacity=".46"/>
-            <path d="M215 562 C244 494 297 449 326 473 C360 501 292 551 222 573 Z" fill="#7fcfff" opacity=".42"/>
-            <path d="M206 549 C211 570 210 594 204 625" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".52"/>
-        </g>
-    </svg>
-    <div style="position:absolute;right:0;top:0;width:70vw;height:70vh;background:radial-gradient(ellipse at 70% 28%,rgba(185,237,255,.18),transparent 38%);filter:blur(24px);opacity:.88;"></div>
-</div>
-
-
-
-<h1>Condiciones de uso — Tu ETERNA</h1>
-
-<h2>1. Objeto</h2>
-<p>Tu ETERNA permite crear experiencias audiovisuales emocionales personalizadas entre usuarios.</p>
-
-<h2>2. Funcionamiento</h2>
-<p>El usuario crea una experiencia y el destinatario accede mediante un enlace único.</p>
-
-<h2>3. Consentimiento y grabación</h2>
-<p>Al acceder y continuar en la experiencia, el destinatario acepta que su reacción podrá ser captada mediante cámara y/o micrófono y compartida únicamente con la persona que creó la experiencia.</p>
-
-<h2>4. Uso de imagen y contenido recibido por el regalante</h2>
-<p>La persona que crea una ETERNA entiende que puede recibir un recuerdo privado de la experiencia, incluyendo imagen, voz o reacción de la persona destinataria, siempre dentro del funcionamiento del servicio.</p>
-<p>Ese contenido debe ser tratado de forma privada, respetuosa y responsable. No debe difundirse públicamente, usarse de forma ofensiva, humillante, invasiva, comercial o fuera del contexto emocional para el que fue creado, salvo consentimiento adicional de la persona afectada.</p>
-
-<h2>5. Responsabilidad del usuario creador</h2>
-<p>El usuario creador garantiza que dispone de derechos o autorización suficiente sobre las fotografías, frases y datos que introduce, y se compromete a no crear experiencias con fines de acoso, presión, manipulación, burla, exposición pública o cualquier uso contrario a la dignidad de la persona destinataria.</p>
-
-<h2>6. Datos personales</h2>
-<p>Los datos se utilizan únicamente para prestar el servicio.</p>
-
-<h2>7. Pagos</h2>
-<p>Al tratarse de un producto digital personalizado, no se admiten devoluciones tras iniciar el proceso.</p>
-
-<h2>8. Limitación de responsabilidad</h2>
-<p>Tu ETERNA no se responsabiliza de fallos técnicos del dispositivo, conexión o condiciones de grabación.</p>
-
-<h2>9. Aceptación</h2>
-<p>El uso del servicio implica la aceptación de estas condiciones.</p>
-
-</body>
-</html>
-""")
+    return HTMLResponse("""<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Condiciones de uso - Tu ETERNA</title><style>body{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.72;padding:26px;max-width:860px;margin:auto;background-image:radial-gradient(circle at 80% 10%,rgba(32,164,255,.16),transparent 28%),radial-gradient(circle at 10% 90%,rgba(255,194,74,.10),transparent 30%)}h1{font-family:Georgia,'Times New Roman',serif;font-size:34px;margin:0 0 8px;color:#f5d28b}h2{font-size:19px;margin-top:28px;color:#f5d28b}p,li{opacity:.88}.box{border:1px solid rgba(255,207,112,.22);border-radius:18px;padding:18px;background:rgba(255,255,255,.045);margin:20px 0}.small{opacity:.62;font-size:13px}</style></head><body><h1>Condiciones de uso - Tu ETERNA</h1><p class='small'>Version inicial para fase de lanzamiento. Este texto no sustituye la revision de un profesional legal cuando el servicio escale.</p><div class='box'><p><b>Resumen:</b> ETERNA es una experiencia emocional privada. Quien crea una ETERNA declara tener permiso para usar las fotos, frases y datos introducidos. Quien la vive acepta participar voluntariamente y autoriza que su reaccion pueda ser grabada y enviada de forma privada a la persona que creo la experiencia.</p></div><h2>1. Objeto del servicio</h2><p>Tu ETERNA permite crear una experiencia audiovisual personalizada a partir de fotografias, frases, mensajes y, en su caso, un regalo economico asociado. El destinatario accede mediante un enlace unico y puede vivir una experiencia privada preparada para el o ella.</p><h2>2. Uso responsable</h2><p>El servicio debe usarse de forma respetuosa, privada y licita. Queda prohibido utilizar ETERNA para acosar, presionar, humillar, amenazar, manipular, exponer publicamente, vulnerar derechos de terceros o crear contenido ofensivo, discriminatorio, intimo no consentido, ilicito o contrario a la dignidad de cualquier persona.</p><h2>3. Contenido aportado por quien crea la ETERNA</h2><p>La persona creadora declara que dispone de derechos, autorizacion o legitimacion suficiente para usar las fotografias, frases, nombres, telefonos, mensajes y cualquier otro contenido que introduce.</p><h2>4. Consentimiento del destinatario</h2><p>Antes de acceder a la experiencia, el destinatario debe aceptar estos terminos y la politica de privacidad. Al continuar, acepta participar voluntariamente y entiende que el navegador puede solicitar acceso a camara y microfono para registrar su reaccion durante la experiencia.</p><h2>5. Grabacion de reaccion</h2><p>Si el destinatario concede permisos de camara y microfono, su reaccion podra ser grabada y enviada de forma privada a la persona que creo la ETERNA.</p><h2>6. Uso del recuerdo recibido</h2><p>La persona que recibe el sender pack se compromete a tratarlo como contenido privado. No debe publicarlo, reenviarlo, editarlo, comercializarlo o utilizarlo fuera del contexto emocional sin consentimiento adicional de la persona afectada.</p><h2>7. Pagos y regalo economico</h2><p>Cuando exista regalo economico, ETERNA actua como plataforma tecnica de experiencia y gestion del flujo definido.</p><h2>8. Disponibilidad tecnica</h2><p>Pueden existir fallos derivados del dispositivo, navegador, permisos, conexion, servicios externos, pagos, mensajeria, almacenamiento o mantenimiento tecnico.</p><h2>9. Limitacion de responsabilidad</h2><p>ETERNA no verifica individualmente la titularidad de cada imagen, mensaje o dato introducido por los usuarios. La responsabilidad sobre el contenido aportado y el uso posterior del recuerdo corresponde a quien lo aporta o lo utiliza. Nada excluye responsabilidades que legalmente no puedan excluirse.</p><h2>10. Eliminacion de contenido</h2><p>Los usuarios podran solicitar la eliminacion de contenidos o datos escribiendo al correo de contacto indicado en privacidad.</p><h2>11. Aceptacion</h2><p>El uso del servicio implica la aceptacion de estas condiciones y de la politica de privacidad.</p></body></html>""")
 
 
 @app.get("/privacidad", response_class=HTMLResponse)
 def privacidad(request: Request):
-    return templates.TemplateResponse("privacidad.html", {"request": request})
-
+    return HTMLResponse("""<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Privacidad - Tu ETERNA</title><style>body{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.72;padding:26px;max-width:860px;margin:auto;background-image:radial-gradient(circle at 80% 10%,rgba(32,164,255,.16),transparent 28%),radial-gradient(circle at 10% 90%,rgba(255,194,74,.10),transparent 30%)}h1{font-family:Georgia,'Times New Roman',serif;font-size:34px;margin:0 0 8px;color:#f5d28b}h2{font-size:19px;margin-top:28px;color:#f5d28b}p,li{opacity:.88}.box{border:1px solid rgba(255,207,112,.22);border-radius:18px;padding:18px;background:rgba(255,255,255,.045);margin:20px 0}.small{opacity:.62;font-size:13px}</style></head><body><h1>Politica de privacidad - Tu ETERNA</h1><p class='small'>Version inicial para fase de lanzamiento. Recomendable revision legal antes de abrir a gran escala.</p><div class='box'><p><b>Resumen:</b> usamos los datos minimos necesarios para crear, entregar y conservar temporalmente la experiencia ETERNA.</p></div><h2>1. Datos tratados</h2><ul><li>Nombre, telefono y correo si se facilita.</li><li>Fotografias, frases y datos introducidos.</li><li>Video generado y reaccion grabada si se aceptan permisos.</li><li>Datos tecnicos minimos: fecha, navegador, estado de entrega, logs de errores y eventos necesarios para seguridad y soporte.</li></ul><h2>2. Finalidad</h2><p>Crear la experiencia, procesar el pago, entregar el enlace, permitir la visualizacion, guardar la reaccion, enviar el sender pack, resolver incidencias y mejorar la seguridad del sistema.</p><h2>3. Legitimacion</h2><p>Ejecucion del servicio solicitado, consentimiento cuando se aceptan permisos de camara y microfono, e interes legitimo para seguridad y soporte.</p><h2>4. Proveedores</h2><p>Podemos utilizar proveedores de alojamiento, almacenamiento, pagos, SMS/WhatsApp, correo y analitica tecnica minima. No vendemos datos personales.</p><h2>5. Conservacion</h2><p>Los datos se conservaran el tiempo necesario para prestar el servicio, permitir acceso al recuerdo y atender incidencias. Puede solicitarse eliminacion.</p><h2>6. Grabacion de reaccion</h2><p>La reaccion solo se graba si el destinatario concede permisos. Puede enviarse de forma privada a la persona que creo la ETERNA.</p><h2>7. Derechos</h2><p>Puedes solicitar acceso, rectificacion, eliminacion, oposicion o limitacion escribiendo al correo de contacto.</p><h2>8. Seguridad</h2><p>Aplicamos medidas razonables, pero ningun sistema conectado a internet garantiza riesgo cero.</p><h2>9. Contacto</h2><p>Para privacidad o eliminacion: <b>contacto@tueterna.com</b>. Sustituir por el correo definitivo antes del lanzamiento publico.</p></body></html>""")
 
 async def create_order_and_redirect(
     customer_name: str,
@@ -7440,13 +7324,15 @@ async def start_experience(request: Request, recipient_token: str = Form(...)):
 # =========================================================
 
 def render_terms_code_screen(recipient_token: str) -> HTMLResponse:
+    # RC50 - Terminos por codigo, legal ampliado y boton siempre visible.
+    # No toca Stripe, Twilio, webhook, DB, video engine, reaccion, pagos ni sender pack.
     next_url = f"/guia/2/{safe_attr(recipient_token)}"
     return HTMLResponse(f'''
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
-*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 78% 18%,rgba(29,159,255,.28),transparent 28%),radial-gradient(circle at 18% 82%,rgba(255,194,74,.14),transparent 28%),linear-gradient(180deg,#02050a 0%,#030915 52%,#02050a 100%)}}.screen{{position:relative;min-height:100svh;min-height:100dvh;width:100%;max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 26px) 22px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;gap:20px;overflow:hidden}}.screen:before{{content:"";position:absolute;inset:-20%;background:radial-gradient(circle at 70% 22%,rgba(55,195,255,.22),transparent 20%),radial-gradient(circle at 50% 60%,rgba(255,213,126,.10),transparent 26%),conic-gradient(from 230deg at 50% 50%,transparent,rgba(30,150,255,.14),transparent,rgba(255,197,84,.12),transparent);filter:blur(18px);opacity:.85;animation:breath 7s ease-in-out infinite;pointer-events:none}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:1}}}}.star{{position:absolute;border-radius:50%;background:#69d6ff;box-shadow:0 0 18px #69d6ff;opacity:.8;animation:float 7s linear infinite;pointer-events:none}}.s1{{width:5px;height:5px;left:14%;top:20%;animation-delay:.2s}}.s2{{width:4px;height:4px;right:15%;top:34%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:1.4s}}.s3{{width:6px;height:6px;left:18%;bottom:18%;animation-delay:2.2s}}.s4{{width:4px;height:4px;right:20%;bottom:22%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:3.1s}}@keyframes float{{0%,100%{{transform:translateY(0);opacity:.35}}50%{{transform:translateY(-34px);opacity:1}}}}.logo{{position:relative;z-index:1;text-align:center;letter-spacing:.42em;color:#d8b76d;font-size:18px;font-weight:800;text-shadow:0 0 28px rgba(255,197,87,.35);margin-bottom:8px}}.logo:after{{content:"♡";display:block;letter-spacing:0;font-size:20px;margin-top:10px;color:#f4c76e;text-shadow:0 0 22px rgba(255,193,76,.55)}}.content{{position:relative;z-index:1;text-align:center;display:grid;gap:20px}}h1{{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(38px,10vw,56px);line-height:1.04;margin:0;text-shadow:0 0 26px rgba(255,255,255,.15)}}h1 span{{color:#f4c76e;text-shadow:0 0 28px rgba(244,199,110,.28)}}p{{margin:0;color:rgba(255,246,232,.76);font-size:17px;line-height:1.6}}.card{{margin-top:6px;border:1px solid rgba(255,207,112,.26);border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));box-shadow:0 22px 70px rgba(0,0,0,.42),inset 0 0 30px rgba(48,165,255,.06);overflow:hidden;text-align:left}}.row{{display:flex;align-items:center;gap:16px;padding:18px 18px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none;color:#fff}}.row:last-child{{border-bottom:0}}.ico{{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,205,110,.48);color:#f4c76e;font-size:22px;box-shadow:0 0 22px rgba(255,196,82,.12);flex:0 0 auto}}.row strong{{display:block;font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:21px;margin-bottom:4px}}.row small{{display:block;color:rgba(255,246,232,.56);font-size:14px;line-height:1.35}}.chev{{margin-left:auto;color:#f4c76e;font-size:28px}}.accept{{position:relative;z-index:2;display:flex;align-items:center;gap:13px;padding:17px 18px;border-radius:22px;border:1px solid rgba(255,207,112,.30);background:rgba(0,0,0,.38);box-shadow:inset 0 0 24px rgba(255,201,99,.04);text-align:left;cursor:pointer}}.accept input{{position:absolute;opacity:0;pointer-events:none}}.box{{width:34px;height:34px;border-radius:10px;border:2px solid rgba(255,223,151,.78);display:flex;align-items:center;justify-content:center;color:#080603;font-weight:900;flex:0 0 auto;box-shadow:0 0 18px rgba(255,202,91,.22)}}.accept input:checked + .box{{background:linear-gradient(135deg,#fff2bf,#d5942e);box-shadow:0 0 28px rgba(255,198,77,.72)}}.accept input:checked + .box:before{{content:"✓"}}.accept span:last-child{{font-size:16px;color:rgba(255,246,232,.82);line-height:1.35}}.btn{{width:100%;min-height:68px;border:0;border-radius:24px;background:linear-gradient(135deg,#fff0bb,#e4a23d 52%,#9b5e08);color:#120c04;font-family:Georgia,"Times New Roman",serif;font-size:30px;box-shadow:0 0 34px rgba(255,190,72,.34),inset 0 0 24px rgba(255,255,255,.20);opacity:.45;transform:scale(.99);transition:all .18s ease;cursor:not-allowed}}.btn.ready{{opacity:1;transform:scale(1);cursor:pointer}}.note{{position:relative;z-index:1;text-align:center;color:rgba(255,246,232,.48);font-size:12px;line-height:1.5}}
-</style></head><body><main class="screen"><i class="star s1"></i><i class="star s2"></i><i class="star s3"></i><i class="star s4"></i><div class="logo">ETERNA</div><section class="content"><h1>Acepta los <span>términos</span></h1><p>Antes de continuar, lee y acepta las condiciones para vivir esta experiencia de forma privada y respetuosa.</p><div class="card"><a class="row" href="/condiciones" target="_blank" rel="noopener"><div class="ico">▤</div><div><strong>Términos y condiciones</strong><small>Leer las condiciones completas</small></div><div class="chev">›</div></a><a class="row" href="/privacidad" target="_blank" rel="noopener"><div class="ico">◈</div><div><strong>Privacidad</strong><small>Tu experiencia es personal y confidencial</small></div><div class="chev">›</div></a></div><label class="accept"><input id="termsCheck" type="checkbox"><span class="box"></span><span>He leído y acepto los términos anteriores.</span></label><button id="continueBtn" class="btn" type="button">Continuar</button><div class="note">Checkbox y botón reales. Sin capas fantasma.</div></section></main><script>(function(){{const check=document.getElementById('termsCheck');const btn=document.getElementById('continueBtn');function sync(){{btn.classList.toggle('ready',check.checked);}}check.addEventListener('change',sync);btn.addEventListener('click',function(){{if(check.checked)window.location.href={json.dumps(next_url)};}});sync();}})();</script></body></html>
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA - Terminos</title><meta name="theme-color" content="#02050a"><style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;background:radial-gradient(circle at 78% 16%,rgba(26,159,255,.28),transparent 25%),radial-gradient(circle at 12% 82%,rgba(255,194,74,.16),transparent 28%),linear-gradient(180deg,#02050a 0%,#030914 54%,#02050a 100%);overflow:hidden}}.screen{{position:relative;width:100%;max-width:520px;height:100svh;height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 18px);display:flex;flex-direction:column;overflow:hidden}}.scene{{position:absolute;inset:-18%;pointer-events:none;overflow:hidden;opacity:.96}}.scene:before{{content:"";position:absolute;inset:0;background:conic-gradient(from 218deg at 50% 49%,transparent,rgba(38,169,255,.18),transparent,rgba(255,201,90,.16),transparent);filter:blur(18px);animation:breath 8s ease-in-out infinite}}.scene:after{{content:"";position:absolute;right:-8%;top:8%;width:72%;height:58%;background:radial-gradient(ellipse at center,rgba(64,192,255,.22),transparent 58%);filter:blur(18px);animation:halo 5.8s ease-in-out infinite}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:1}}}}@keyframes halo{{0%,100%{{opacity:.38;transform:scale(.96)}}50%{{opacity:.78;transform:scale(1.08)}}}}.spark{{position:absolute;border-radius:50%;background:#6bd7ff;box-shadow:0 0 18px #6bd7ff,0 0 34px rgba(66,189,255,.42);opacity:.82;animation:float 7.5s linear infinite;pointer-events:none}}.s1{{width:5px;height:5px;left:13%;top:17%}}.s2{{width:4px;height:4px;right:16%;top:31%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:1.2s}}.s3{{width:6px;height:6px;left:18%;bottom:17%;animation-delay:2.1s}}.s4{{width:4px;height:4px;right:19%;bottom:23%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:3.1s}}@keyframes float{{0%,100%{{transform:translateY(0);opacity:.30}}50%{{transform:translateY(-30px);opacity:1}}}}.logo{{position:relative;z-index:1;text-align:center;letter-spacing:.42em;color:#d8b76d;font-size:16px;font-weight:900;text-shadow:0 0 28px rgba(255,197,87,.35);margin:2px 0 10px}}.logo:after{{content:"♡";display:block;letter-spacing:0;font-size:18px;margin-top:8px;color:#f4c76e;text-shadow:0 0 22px rgba(255,193,76,.55)}}.content{{position:relative;z-index:1;display:flex;flex-direction:column;min-height:0;flex:1;text-align:center;gap:12px}}h1{{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(34px,8.5vw,52px);line-height:1.04;margin:0;text-shadow:0 0 26px rgba(255,255,255,.15)}}h1 span{{color:#f4c76e;text-shadow:0 0 28px rgba(244,199,110,.28)}}.lead{{margin:0 auto;color:rgba(255,246,232,.78);font-size:15.5px;line-height:1.48;max-width:460px}}.legal-card{{margin-top:2px;border:1px solid rgba(255,207,112,.28);border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.025));box-shadow:0 22px 70px rgba(0,0,0,.42),inset 0 0 30px rgba(48,165,255,.06);overflow:hidden;text-align:left;flex:1;min-height:0}}.legal-scroll{{height:100%;overflow:auto;padding:2px 0;-webkit-overflow-scrolling:touch}}.row{{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.075);text-decoration:none;color:#fff}}.row:last-child{{border-bottom:0}}.ico{{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,205,110,.50);color:#f4c76e;font-size:20px;box-shadow:0 0 22px rgba(255,196,82,.12);flex:0 0 auto}}.row strong{{display:block;font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:19px;margin-bottom:3px}}.row small{{display:block;color:rgba(255,246,232,.62);font-size:13px;line-height:1.34}}.chev{{margin-left:auto;color:#f4c76e;font-size:26px}}.mini-legal{{padding:12px 16px 14px;color:rgba(255,246,232,.70);font-size:12.6px;line-height:1.45;border-top:1px solid rgba(255,255,255,.06)}}.mini-legal b{{color:#f4c76e;font-weight:800}}.actions{{position:relative;z-index:2;display:grid;gap:10px;padding-top:4px;flex:0 0 auto}}.accept{{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:20px;border:1px solid rgba(255,207,112,.34);background:rgba(0,0,0,.46);box-shadow:inset 0 0 24px rgba(255,201,99,.05);text-align:left;cursor:pointer;min-height:62px}}.accept input{{position:absolute;opacity:0;pointer-events:none}}.box{{width:34px;height:34px;border-radius:10px;border:2px solid rgba(255,223,151,.86);display:flex;align-items:center;justify-content:center;color:#080603;font-weight:950;flex:0 0 auto;box-shadow:0 0 18px rgba(255,202,91,.24)}}.accept input:checked + .box{{background:linear-gradient(135deg,#fff2bf,#d5942e);box-shadow:0 0 28px rgba(255,198,77,.72)}}.accept input:checked + .box:before{{content:"✓"}}.accept span:last-child{{font-size:15px;color:rgba(255,246,232,.84);line-height:1.32}}.btn{{width:100%;min-height:62px;border:0;border-radius:22px;background:linear-gradient(135deg,#fff0bb,#e4a23d 52%,#9b5e08);color:#120c04;font-family:Georgia,"Times New Roman",serif;font-size:25px;box-shadow:0 0 34px rgba(255,190,72,.34),inset 0 0 24px rgba(255,255,255,.20);opacity:.42;transform:scale(.992);transition:all .18s ease;cursor:not-allowed}}.btn.ready{{opacity:1;transform:scale(1);cursor:pointer}}.warn{{display:none;color:#ffd98b;font-size:12px;line-height:1.35;text-align:center;margin-top:-2px}}.warn.on{{display:block}}.note{{color:rgba(255,246,232,.42);font-size:11.4px;line-height:1.35;text-align:center;margin-top:-2px}}@media (max-height:760px){{.screen{{padding-top:12px;padding-bottom:10px}}.logo{{font-size:13px;margin-bottom:5px}}.logo:after{{font-size:15px;margin-top:5px}}h1{{font-size:34px}}.lead{{font-size:13.5px;line-height:1.35}}.row{{padding:10px 14px}}.ico{{width:36px;height:36px;font-size:17px}}.row strong{{font-size:17px}}.row small{{font-size:12px}}.mini-legal{{font-size:11.2px;line-height:1.35;padding:9px 14px}}.accept{{min-height:54px;padding:10px 12px}}.btn{{min-height:56px;font-size:22px}}}}
+</style></head><body><main class="screen"><div class="scene" aria-hidden="true"></div><i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><div class="logo">ETERNA</div><section class="content"><h1>Acepta los <span>términos</span></h1><p class="lead">Antes de continuar, lee y acepta las condiciones para vivir esta experiencia de forma privada, respetuosa y segura.</p><div class="legal-card"><div class="legal-scroll"><a class="row" href="/condiciones" target="_blank" rel="noopener"><div class="ico">▤</div><div><strong>Términos y condiciones</strong><small>Uso responsable, consentimiento, contenido y límites del servicio.</small></div><div class="chev">›</div></a><a class="row" href="/privacidad" target="_blank" rel="noopener"><div class="ico">◈</div><div><strong>Privacidad</strong><small>Datos mínimos, finalidad, conservación, borrado y contacto.</small></div><div class="chev">›</div></a><div class="mini-legal">Al continuar declaras que participas voluntariamente en la experiencia, aceptas el uso de cámara y micrófono cuando el navegador lo solicite, y entiendes que tu reacción podrá ser enviada de forma privada a la persona que creó esta ETERNA.<br><br><b>Uso responsable:</b> esta experiencia no debe utilizarse para acosar, humillar, presionar, exponer públicamente o vulnerar derechos de terceros. El contenido recibido debe tratarse como privado.</div></div></div><div class="actions"><label class="accept"><input id="termsCheck" type="checkbox"><span class="box"></span><span>He leído y acepto los términos y la política de privacidad.</span></label><div id="termsWarn" class="warn">Marca la casilla para continuar.</div><button id="continueBtn" class="btn" type="button">Aceptar y continuar</button><div class="note">Checkbox y botón reales. Sin capas fantasma.</div></div></section></main><script>(function(){{const check=document.getElementById('termsCheck');const btn=document.getElementById('continueBtn');const warn=document.getElementById('termsWarn');function sync(){{btn.classList.toggle('ready',check.checked);if(check.checked&&warn)warn.classList.remove('on');}}check.addEventListener('change',sync);btn.addEventListener('click',function(){{if(!check.checked){{if(warn)warn.classList.add('on');return;}}window.location.href={json.dumps(next_url)};}});sync();}})();</script></body></html>
 ''')
-
 
 def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: str) -> HTMLResponse:
     return HTMLResponse(f'''
