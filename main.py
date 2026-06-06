@@ -1,6 +1,7 @@
 # =========================================================
-# RC40 GUIA DESTINATARIO 3 PANTALLAS ALINEADAS + VIDA SUAVE
-# Base: RC39 estable. Solo capa visual/click de intro, términos y quiet-place.
+# RC42 PLANO MAESTRO 9:16 + BOTONES REALES REHECHOS
+# Base: RC41. Elimina hotspots/pulsores antiguos de guía y regalo.
+# Rehace botones sobre un único plano 9:16 para que no se descuadren.
 # NO toca pedido, Stripe, SMS, webhook, vídeo, worker ni sender pack.
 # =========================================================
 
@@ -251,7 +252,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v41-guia-botones-reales-sin-zonas-fantasma"
+ETERNA_VISUAL_VERSION = "eterna-visual-v42-plano-maestro-botones-rehechos"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -269,7 +270,8 @@ ETERNA_SCREEN_ASSETS = {
     "consent_recording": "terms-acceptance-v1.png",
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
-    "gift_ready": "uploading-reaction-v1.png",
+    "gift_ready": "gift-reveal-v1.png",
+    "gift_reveal": "gift-reveal-v1.png",
     "sender_pack_entry": "sender-pack-entry-v1.png",
     "sender_pack": "sender-pack-v1.png",
     "viral_cta": "viral-cta-v1.png",
@@ -1727,6 +1729,39 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
     }}
     .screen.quiet-mode .extra-note {{ display:none !important; }}
 }}
+
+
+/* =========================================================
+   RC42 — PLANO MAESTRO DEFINITIVO 9:16
+   ========================================================= */
+.screen.intro-mode,.screen.terms-mode,.screen.quiet-mode{{display:flex!important;align-items:center!important;justify-content:center!important;min-height:100svh!important;min-height:100dvh!important;width:100vw!important;overflow:hidden!important;background:#02050a!important;padding:0!important;}}
+.screen.intro-mode .phone,.screen.terms-mode .phone,.screen.quiet-mode .phone{{position:relative!important;width:min(100vw,calc(100dvh * 0.5625),520px)!important;height:auto!important;aspect-ratio:9/16!important;min-height:0!important;max-height:100dvh!important;margin:auto!important;overflow:hidden!important;background:#02050a!important;box-shadow:0 0 48px rgba(0,0,0,.70)!important;}}
+.screen.intro-mode .img,.screen.terms-mode .img,.screen.quiet-mode .img{{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important;object-fit:contain!important;object-position:center center!important;background:#02050a!important;pointer-events:none!important;z-index:1!important;}}
+.screen.intro-mode .terms-hover-layer,.screen.terms-mode .terms-hover-layer,.screen.quiet-mode .terms-hover-layer,.screen.intro-mode .terms-hover-zone,.screen.terms-mode .terms-hover-zone,.screen.quiet-mode .terms-hover-zone{{display:none!important;pointer-events:none!important;opacity:0!important;visibility:hidden!important;}}
+.screen.intro-mode .visual-action-form,.screen.terms-mode .visual-action-form,.screen.quiet-mode .visual-action-form{{position:absolute!important;inset:0!important;z-index:150!important;pointer-events:none!important;}}
+.screen.intro-mode .real-button,.screen.quiet-mode .real-button,.screen.terms-mode .terms-continue,.screen.intro-mode .visual-action-form .real-button,.screen.quiet-mode .visual-action-form .real-button,.screen.terms-mode .visual-action-form .real-button{{position:absolute!important;left:9.2%!important;right:auto!important;width:81.6%!important;height:7.2%!important;min-height:0!important;bottom:6.8%!important;top:auto!important;transform:none!important;z-index:170!important;border:0!important;border-radius:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;pointer-events:auto!important;cursor:pointer!important;touch-action:manipulation!important;text-indent:0!important;color:#130b03!important;text-decoration:none!important;font-family:Georgia,'Times New Roman',serif!important;font-weight:800!important;letter-spacing:-.02em!important;font-size:clamp(20px,6.2vw,31px)!important;background:linear-gradient(180deg,#fff1ba 0%,#e7b85a 42%,#b9771d 100%)!important;box-shadow:0 0 22px rgba(255,191,69,.54),0 0 54px rgba(80,209,255,.18),inset 0 2px 8px rgba(255,255,255,.38)!important;filter:none!important;opacity:1!important;}}
+.screen.intro-mode .real-button,.screen.quiet-mode .real-button,.screen.terms-mode .terms-continue{{font-size:0!important;}}
+.screen.intro-mode .real-button::before,.screen.quiet-mode .real-button::before,.screen.terms-mode .terms-continue::before{{position:static!important;transform:none!important;opacity:1!important;color:#130b03!important;filter:none!important;text-indent:0!important;}}
+.screen.intro-mode .real-button::before,.screen.quiet-mode .real-button::before{{content:'Estoy listo'!important;font-size:clamp(22px,6.2vw,32px)!important;}}
+.screen.terms-mode .terms-continue::before{{content:'Aceptar y continuar'!important;font-size:clamp(19px,5.8vw,29px)!important;}}
+.screen.intro-mode .real-button::after,.screen.quiet-mode .real-button::after,.screen.terms-mode .terms-continue::after{{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit!important;pointer-events:none!important;background:linear-gradient(110deg,transparent 0%,transparent 35%,rgba(255,255,255,.50) 48%,transparent 61%,transparent 100%)!important;opacity:.22!important;animation:rc42ButtonLight 3.4s ease-in-out infinite!important;}}
+.screen.intro-mode .real-button:hover,.screen.quiet-mode .real-button:hover,.screen.terms-mode .terms-continue:hover,.screen.intro-mode .real-button:active,.screen.quiet-mode .real-button:active,.screen.terms-mode .terms-continue:active{{transform:scale(1.018)!important;box-shadow:0 0 30px rgba(255,191,69,.88),0 0 76px rgba(80,209,255,.28),inset 0 2px 10px rgba(255,255,255,.45)!important;}}
+@keyframes rc42ButtonLight{{0%,60%{{transform:translateX(-130%);opacity:0}}75%{{opacity:.55}}100%{{transform:translateX(130%);opacity:0}}}}
+.screen.terms-mode .terms-real-check{{position:absolute!important;left:9.2%!important;right:auto!important;width:81.6%!important;height:6.6%!important;top:auto!important;bottom:15.4%!important;transform:none!important;z-index:180!important;pointer-events:auto!important;cursor:pointer!important;border-radius:17px!important;border:1px solid rgba(255,219,139,.72)!important;background:rgba(1,6,13,.90)!important;box-shadow:0 0 18px rgba(255,194,70,.24),inset 0 0 20px rgba(62,185,255,.08)!important;backdrop-filter:blur(8px)!important;}}
+.screen.terms-mode .terms-real-check input{{position:absolute!important;inset:0!important;opacity:0!important;z-index:4!important;cursor:pointer!important;}}
+.screen.terms-mode .terms-real-check label{{position:absolute!important;inset:0!important;opacity:1!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;padding:0 14px 0 58px!important;background:transparent!important;border:0!important;box-shadow:none!important;color:rgba(255,244,219,.95)!important;font-size:clamp(12px,3.8vw,16px)!important;line-height:1.1!important;pointer-events:none!important;}}
+.screen.terms-mode .terms-real-check label::before{{content:'Acepto vivir esta experiencia y que mi reacción se envíe al regalante.'!important;}}
+.screen.terms-mode .terms-real-check label::after{{content:''!important;position:absolute!important;left:17px!important;top:50%!important;transform:translateY(-50%)!important;width:28px!important;height:28px!important;border-radius:9px!important;border:2px solid rgba(255,223,147,.96)!important;box-shadow:0 0 15px rgba(255,196,72,.28)!important;background:rgba(0,0,0,.25)!important;display:block!important;}}
+.screen.terms-mode .terms-real-check:has(input:checked){{border-color:rgba(255,235,173,.95)!important;box-shadow:0 0 26px rgba(255,196,72,.52),0 0 52px rgba(74,201,255,.14),inset 0 0 18px rgba(255,226,144,.10)!important;}}
+.screen.terms-mode .terms-real-check:has(input:checked) label::before{{content:'Aceptado. Ya puedes continuar.'!important;color:#ffe7ad!important;}}
+.screen.terms-mode .terms-real-check:has(input:checked) label::after{{background:linear-gradient(180deg,#fff2bd,#d4932e)!important;box-shadow:0 0 22px rgba(255,197,65,.82),inset 0 0 8px rgba(255,255,255,.28)!important;}}
+.screen.terms-mode .terms-real-check:has(input:checked)::before{{content:'✓'!important;position:absolute!important;left:25px!important;top:50%!important;transform:translateY(-54%)!important;z-index:3!important;color:#130b03!important;font-size:24px!important;font-weight:900!important;}}
+.screen.terms-mode .terms-real-check::after{{display:none!important;}}
+.screen.terms-mode .terms-continue.is-disabled{{opacity:.50!important;filter:saturate(.65) brightness(.75)!important;cursor:not-allowed!important;}}
+.screen.terms-mode .terms-continue.is-ready{{opacity:1!important;filter:none!important;}}
+.screen.intro-mode .soft-halo,.screen.terms-mode .soft-halo,.screen.quiet-mode .soft-halo,.screen.intro-mode .edge-glow,.screen.terms-mode .edge-glow,.screen.quiet-mode .edge-glow,.screen.intro-mode .star-run,.screen.terms-mode .star-run,.screen.quiet-mode .star-run,.screen.intro-mode .particle,.screen.terms-mode .particle,.screen.quiet-mode .particle{{pointer-events:none!important;}}
+.screen.intro-mode .extra-note,.screen.terms-mode .extra-note,.screen.quiet-mode .extra-note{{display:none!important;}}
+@media(max-height:760px){{.screen.intro-mode .phone,.screen.terms-mode .phone,.screen.quiet-mode .phone{{width:min(100vw,calc(100dvh * 0.5625),480px)!important}}.screen.terms-mode .terms-real-check{{bottom:15.8%!important;height:6.3%!important}}.screen.intro-mode .real-button,.screen.quiet-mode .real-button,.screen.terms-mode .terms-continue{{bottom:6.7%!important;height:7.0%!important}}}}
 
 </style>
 </head>
@@ -9653,11 +9688,56 @@ def cobrar(request: Request, recipient_token: str):
     if not cta_html:
         cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver el vídeo</a>'
 
-    return HTMLResponse(f'''
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
-*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(72,185,255,.24),transparent 30%),radial-gradient(circle at 14% 76%,rgba(255,205,112,.12),transparent 33%),#02050a}}.scene{{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}}.scene:before{{content:"";position:absolute;inset:-18%;background:radial-gradient(circle at 72% 26%,rgba(65,185,255,.22),transparent 26%),radial-gradient(circle at 48% 72%,rgba(255,205,112,.10),transparent 28%);filter:blur(18px);animation:breath 7s ease-in-out infinite}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:.95}}}}.wrap{{position:relative;z-index:1;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 30px) 18px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px}}.logo{{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;text-shadow:0 0 20px rgba(255,196,92,.34)}}.heart{{width:74px;height:74px;border-radius:999px;margin:0 auto;background:radial-gradient(circle,#ffe7a6,#c98b2d 58%,rgba(255,196,77,.12));box-shadow:0 0 44px rgba(255,190,72,.42);display:flex;align-items:center;justify-content:center;font-size:32px;animation:pulse 2.8s ease-in-out infinite}}@keyframes pulse{{0%,100%{{transform:scale(.96);opacity:.82}}50%{{transform:scale(1.06);opacity:1}}}}h1{{font-size:clamp(35px,9vw,54px);line-height:1.02;margin:0;letter-spacing:-.06em;text-shadow:0 0 34px rgba(255,255,255,.16)}}p{{margin:0;color:rgba(255,245,229,.78);font-size:17px;line-height:1.5}}.amount{{font-size:19px;color:#ffe0a0;font-weight:900}}.actions{{display:grid;gap:11px;margin-top:8px}}.btn{{min-height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:15px;padding:12px 16px;border:1px solid rgba(255,213,130,.22);background:rgba(255,255,255,.06);color:#fff;text-decoration:none;box-shadow:0 14px 42px rgba(0,0,0,.28);width:100%}}.btn.primary{{background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;border:0;box-shadow:0 0 34px rgba(255,190,72,.28)}}.small{{font-size:13px;color:rgba(255,245,229,.56)}}
-</style></head><body><div class="scene"></div><main class="wrap"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>Tu momento ya está completo.</h1><p>Lo que acabas de vivir ha quedado guardado.</p><div class="amount">{safe_text(amount_text)}</div><nav class="actions">{cta_html}<a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver el vídeo</a><a class="btn" href="/crear">Crear mi ETERNA</a></nav><div class="small">Tu experiencia es privada.</div></main></body></html>
-''')
+    gift_bg = safe_attr(eterna_asset("gift-reveal-v1.png"))
+    fallback_bg = safe_attr(eterna_asset("error-v1.png"))
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<meta name="theme-color" content="#02050a">
+<style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
+body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
+.gift-screen{{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#02050a;overflow:hidden}}
+.gift-phone{{position:relative;width:min(100vw, calc(100dvh * 0.5625), 520px);aspect-ratio:9/16;max-height:100dvh;overflow:hidden;background:#02050a;box-shadow:0 0 48px rgba(0,0,0,.74)}}
+.gift-bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center center;background:#02050a;z-index:1;pointer-events:none}}
+.gift-halo{{position:absolute;left:50%;top:29%;width:72%;height:28%;border-radius:999px;background:radial-gradient(circle,rgba(76,211,255,.24),rgba(255,211,119,.12) 43%,transparent 72%);filter:blur(18px);mix-blend-mode:screen;opacity:.80;animation:giftBreath 5.2s ease-in-out infinite;z-index:2;pointer-events:none}}
+.gift-star{{position:absolute;width:4px;height:4px;border-radius:50%;background:#ffd98b;box-shadow:0 0 14px #ffd98b,0 0 28px rgba(97,211,255,.45);opacity:0;z-index:3;pointer-events:none;animation:giftStar 7s linear infinite}}
+.gs1{{left:22%;bottom:22%;animation-delay:.2s}}.gs2{{left:76%;bottom:28%;animation-delay:1.4s;background:#66d9ff}}.gs3{{left:47%;bottom:16%;animation-delay:2.8s}}.gs4{{left:63%;bottom:41%;animation-delay:4s;background:#66d9ff}}
+@keyframes giftBreath{{0%,100%{{transform:translate(-50%,-50%) scale(.92);opacity:.45}}50%{{transform:translate(-50%,-50%) scale(1.08);opacity:.9}}}}
+@keyframes giftStar{{0%{{transform:translateY(0) scale(.55);opacity:0}}16%{{opacity:.9}}70%{{opacity:.45}}100%{{transform:translateY(-140px) scale(1.15);opacity:0}}}}
+.gift-amount{{position:absolute;left:10%;right:10%;top:48.8%;min-height:8.2%;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 12px;border-radius:18px;background:rgba(0,0,0,.34);border:1px solid rgba(255,218,139,.18);box-shadow:0 0 24px rgba(0,0,0,.35),inset 0 0 18px rgba(255,213,120,.05);backdrop-filter:blur(4px);z-index:10;color:#ffe7ad;font-family:Georgia,'Times New Roman',serif;font-size:clamp(16px,4.8vw,25px);font-weight:700;line-height:1.15;text-shadow:0 2px 12px rgba(0,0,0,.95)}}
+.gift-actions{{position:absolute;left:8.8%;right:8.8%;bottom:5.7%;display:grid;gap:9px;z-index:20}}
+.gift-actions form{{margin:0;width:100%}}
+.gift-actions .btn{{width:100%;min-height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 14px;font-family:Georgia,'Times New Roman',serif;font-size:clamp(15px,4.3vw,22px);font-weight:800;text-decoration:none;border:1px solid rgba(255,218,139,.26);background:rgba(3,8,16,.82);color:#fff4d8;box-shadow:0 0 18px rgba(255,194,70,.16),inset 0 0 18px rgba(75,201,255,.06);cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}}
+.gift-actions .btn.primary{{border:0;background:linear-gradient(180deg,#fff1ba,#e4b65a 42%,#b9771d);color:#130b03;box-shadow:0 0 28px rgba(255,191,69,.54),0 0 54px rgba(80,209,255,.18),inset 0 2px 8px rgba(255,255,255,.38)}}
+.gift-actions .btn:hover,.gift-actions .btn:active{{transform:scale(1.014);box-shadow:0 0 28px rgba(255,191,69,.55),0 0 64px rgba(80,209,255,.18),inset 0 2px 10px rgba(255,255,255,.18)}}
+.gift-actions .btn.primary:hover,.gift-actions .btn.primary:active{{box-shadow:0 0 34px rgba(255,191,69,.84),0 0 74px rgba(80,209,255,.26),inset 0 2px 10px rgba(255,255,255,.45)}}
+@media (max-height:760px){{.gift-phone{{width:min(100vw, calc(100dvh * .5625), 480px)}}.gift-actions{{bottom:4.7%;gap:7px}}.gift-actions .btn{{min-height:43px}}.gift-amount{{top:48.3%;min-height:7.7%}}}}
+</style>
+</head>
+<body>
+<main class="gift-screen">
+    <section class="gift-phone">
+        <img class="gift-bg" src="{gift_bg}" alt="ETERNA" onerror="this.onerror=null;this.src='{fallback_bg}';">
+        <div class="gift-halo" aria-hidden="true"></div>
+        <i class="gift-star gs1" aria-hidden="true"></i><i class="gift-star gs2" aria-hidden="true"></i><i class="gift-star gs3" aria-hidden="true"></i><i class="gift-star gs4" aria-hidden="true"></i>
+        <div class="gift-amount">{safe_text(amount_text)}</div>
+        <nav class="gift-actions">
+            {cta_html}
+            <a class="btn" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a>
+            <a class="btn" href="/crear">Crear mi ETERNA</a>
+        </nav>
+    </section>
+</main>
+</body>
+</html>
+""")
 
 
 @app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
