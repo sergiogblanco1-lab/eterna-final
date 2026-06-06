@@ -1,24 +1,11 @@
 # =========================================================
-# RC47 ULTIMO + ESTABLES — CONSOLIDADO PARA DEPLOY
-# Base usada: RC46 ultimo subido por Sergio.
-# Referencias estables conservadas: RC27B / Julia 99% / main salvavidas.
-# Mantiene:
-# - fotos no ampliadas
-# - limite exacto de 6 fotos
-# - pantalla loading visual
-# - botones grandes en sender pack
-# - SMS regalante retrasado hasta reaccion estable
-# NO toca Stripe, Twilio, webhooks, base de datos, video engine, cobros ni workers.
-# =========================================================
-
-# =========================================================
-# RC44 BASE RC27B ESTABLE + GUÍA PREVIA LIMPIA + LÍMITE 6 FOTOS
+# RC47 BASE RC46 ESTABLE + AJUSTES SIGUIENTE PRUEBA
 # Base real: RC43/RC27B estable.
 # Decisión: NO parchear RC42 colgado.
 # Objetivo: conservar flujo funcional, limpiar guía previa y blindar formulario.
 # Arreglo crítico: selector múltiple NO permite más de 6 fotos.
 # Arreglo visual/técnico: las fotos se mantienen completas, sin mandarlas ampliadas al engine.
-# NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni sender pack.
+# NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
 # =========================================================
 
 # =========================================================
@@ -267,7 +254,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v46-sms-delay-senderpack-botones-loading"
+ETERNA_VISUAL_VERSION = "eterna-visual-v47-next-fixes"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -2369,8 +2356,18 @@ def reaction_file_ready_for_sender(order: dict, min_age_seconds: int = 30, min_s
     """
     local_path = (order.get("reaction_video_local") or "").strip()
     if not local_path:
-        if order.get("reaction_video_public_url"):
-            return True, "public_url_available"
+        public_url = (order.get("reaction_video_public_url") or "").strip()
+        if public_url:
+            try:
+                response = requests.head(public_url, timeout=8, allow_redirects=True)
+                if response.status_code >= 200 and response.status_code < 400:
+                    content_length = int(response.headers.get("content-length") or 0)
+                    if content_length >= int(min_size_bytes or 0):
+                        return True, "public_url_available_and_sized"
+                    return False, "public_url_too_small"
+                return False, f"public_url_not_ready_{response.status_code}"
+            except Exception:
+                return False, "public_url_head_failed"
         return False, "reaction_local_path_missing"
 
     if not os.path.exists(local_path):
@@ -2393,9 +2390,12 @@ def reaction_file_ready_for_sender(order: dict, min_age_seconds: int = 30, min_s
         return False, f"reaction_file_too_recent_{int(age)}s"
 
     try:
+        # Doble comprobación: evita avisar al regalante mientras Safari/Render aún está cerrando el MP4/WebM.
         time.sleep(1)
         size_2 = os.path.getsize(local_path)
-        if size_2 != size_1:
+        time.sleep(1)
+        size_3 = os.path.getsize(local_path)
+        if size_2 != size_1 or size_3 != size_2:
             return False, "reaction_file_size_still_changing"
     except Exception:
         return False, "reaction_stability_check_failed"
@@ -2710,7 +2710,7 @@ def try_send_sender_sms(order: dict) -> dict:
     if not reaction_exists(order):
         return {"ok": False, "reason": "reaction_not_found"}
 
-    ready_for_sender, ready_reason = reaction_file_ready_for_sender(order, min_age_seconds=30)
+    ready_for_sender, ready_reason = reaction_file_ready_for_sender(order, min_age_seconds=75)
     if not ready_for_sender:
         print("⏳ SMS regalante retenido hasta reacción estable:", ready_reason)
         return {"ok": False, "reason": ready_reason, "retry": True, "no_attempt_increment": True}
@@ -7588,11 +7588,11 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
     next_ritual_step = min(ritual_step + 1, 7)
 
     if gift_amount > 0:
-        payoff_title = "Espere un momento…"
-        payoff_text = "Estamos generando su regalo."
+        payoff_title = "Shhh…"
+        payoff_text = "Estamos preparando algo especial."
     else:
-        payoff_title = "Espere un momento…"
-        payoff_text = "Estamos guardando este vídeo para que pueda volver a verlo."
+        payoff_title = "Shhh…"
+        payoff_text = "Estamos guardando esta emoción para que pueda volver."
 
     # =========================================================
     # EXPERIENCIA FUNCIONAL RECUPERADA DEL MAIN ESTABLE
@@ -8028,10 +8028,10 @@ function showCinematicLayersAfterVideo() {
 
 const recipientToken = "__RECIPIENT_TOKEN__";
 const hasGift = __HAS_GIFT__;
-const finalWaitingTitle = "Espere un momento…";
+const finalWaitingTitle = "Shhh…";
 const finalWaitingText = hasGift
-    ? "Estamos generando su regalo."
-    : "Estamos guardando este vídeo para que pueda volver a verlo.";
+    ? "Estamos preparando algo especial."
+    : "Estamos guardando esta emoción para que pueda volver.";
 
 let stream = null;
 let mediaRecorder = null;
@@ -9482,6 +9482,26 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 .hit-save{{left:8.6%;right:8.6%;bottom:16.8%;height:7.5%}}
 .hit-share{{left:8.6%;right:8.6%;bottom:8.6%;height:7.5%}}
 .hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
+.hit-replay,.hit-save,.hit-share{{
+    text-indent:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff7e6;
+    font-size:14px;
+    font-weight:800;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    background:linear-gradient(135deg, rgba(255,219,136,.96), rgba(185,112,28,.96));
+    border:1px solid rgba(255,240,190,.82);
+    box-shadow:0 0 24px rgba(255,190,80,.42), inset 0 0 18px rgba(255,255,255,.18);
+    text-shadow:0 1px 2px rgba(0,0,0,.55);
+    opacity:.96;
+}}
+.hit-replay{{bottom:25.2%;}}
+.hit-save{{bottom:16.5%;}}
+.hit-share{{bottom:7.8%;}}
+.hit-replay:active,.hit-save:active,.hit-share:active{{transform:scale(.985);filter:brightness(1.12);}}
 .pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
 @keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
 .floating{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#5bd9ff;box-shadow:0 0 16px #5bd9ff;animation:floatUp 7.5s linear infinite;opacity:0;pointer-events:none}}
