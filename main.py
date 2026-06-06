@@ -1258,37 +1258,37 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
     .screen.quiet-mode .line-spark-runner,
     .screen.intro-mode .blue-orb,
     .screen.terms-mode .blue-orb,
-    .screen.quiet-mode .blue-orb {
+    .screen.quiet-mode .blue-orb {{
         pointer-events:none !important;
-    }
+    }}
 
     .screen.intro-mode .terms-hover-layer,
     .screen.terms-mode .terms-hover-layer,
     .screen.quiet-mode .terms-hover-layer,
     .screen.intro-mode .terms-hover-zone,
     .screen.terms-mode .terms-hover-zone,
-    .screen.quiet-mode .terms-hover-zone {
+    .screen.quiet-mode .terms-hover-zone {{
         display:none !important;
         pointer-events:none !important;
         visibility:hidden !important;
         opacity:0 !important;
-    }
+    }}
 
     .screen.intro-mode .real-button,
     .screen.quiet-mode .real-button,
-    .screen.terms-mode .terms-continue {
+    .screen.terms-mode .terms-continue {{
         pointer-events:auto !important;
         z-index:100 !important;
         touch-action:manipulation !important;
-    }
+    }}
 
-    .screen.terms-mode .terms-real-check {
+    .screen.terms-mode .terms-real-check {{
         pointer-events:auto !important;
         z-index:110 !important;
         cursor:pointer !important;
-    }
+    }}
 
-    .screen.terms-mode .terms-real-check input {
+    .screen.terms-mode .terms-real-check input {{
         position:absolute !important;
         inset:0 !important;
         width:100% !important;
@@ -1296,11 +1296,11 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
         opacity:0 !important;
         cursor:pointer !important;
         z-index:5 !important;
-    }
+    }}
 
-    .screen.terms-mode .terms-real-check label {
+    .screen.terms-mode .terms-real-check label {{
         pointer-events:none !important;
-    }
+    }}
 
 </style>
 </head>
