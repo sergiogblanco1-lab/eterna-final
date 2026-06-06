@@ -1,4 +1,10 @@
 # =========================================================
+# RC40 GUIA DESTINATARIO 3 PANTALLAS ALINEADAS + VIDA SUAVE
+# Base: RC39 estable. Solo capa visual/click de intro, términos y quiet-place.
+# NO toca pedido, Stripe, SMS, webhook, vídeo, worker ni sender pack.
+# =========================================================
+
+# =========================================================
 # RC23 VIDA PREMIUM + TERMINOS INTERACTIVOS + CORAZON PALPITANTE
 # Base: RC22. Más vida en pago, términos y pantallas visuales.
 # Corrige aceptación con checkbox real y botón activado.
@@ -245,7 +251,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v16-rc27-circuito-completo-video-arranca"
+ETERNA_VISUAL_VERSION = "eterna-visual-v41-guia-botones-reales-sin-zonas-fantasma"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -1226,6 +1232,501 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
 }}
 @keyframes senderLineLife {{ 0%,100%{{opacity:.45; filter:brightness(1);}} 50%{{opacity:1; filter:brightness(1.8);}} }}
 @keyframes senderGlowBreath {{ 0%,100%{{opacity:.16; transform:scale(.82);}} 50%{{opacity:.48; transform:scale(1.08);}} }}
+
+
+/* =========================================================
+   RC40 — GUÍA DESTINATARIO: 3 PANTALLAS ALINEADAS Y VIVAS
+   Solo visual/click layer. NO toca pedido, Stripe, SMS, vídeo, webhook ni sender pack.
+   ========================================================= */
+.screen.intro-mode,
+.screen.terms-mode,
+.screen.quiet-mode {{
+    align-items:center;
+    justify-content:center;
+    overflow:auto;
+    padding:0;
+}}
+.screen.intro-mode .phone,
+.screen.terms-mode .phone,
+.screen.quiet-mode .phone {{
+    width:min(100vw, 520px);
+    max-width:520px;
+    height:auto;
+    min-height:0;
+    aspect-ratio:2 / 3;
+    overflow:hidden;
+    margin:0 auto;
+    background:#02050a;
+    border-radius:0;
+}}
+.screen.intro-mode .img,
+.screen.terms-mode .img,
+.screen.quiet-mode .img {{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    min-height:0;
+    object-fit:cover;
+    object-position:center center;
+}}
+
+/* Capa de clicks real, siempre encima, sin zonas fantasma */
+.screen.intro-mode .visual-action-form,
+.screen.quiet-mode .visual-action-form {{
+    position:absolute;
+    inset:0;
+    z-index:40;
+    pointer-events:none;
+}}
+.screen.intro-mode .visual-action-form .real-button,
+.screen.quiet-mode .visual-action-form .real-button,
+.screen.intro-mode > .phone > .real-button,
+.screen.quiet-mode > .phone > .real-button {{
+    pointer-events:auto;
+}}
+
+/* PANTALLA 1 — SHHH */
+.screen.intro-mode .real-button {{
+    left:15.6%;
+    right:15.6%;
+    bottom:5.6%;
+    min-height:0;
+    height:9.2%;
+    border-radius:18px;
+    z-index:45;
+    background:rgba(255,190,57,.015);
+}}
+.screen.intro-mode .real-button:hover::after,
+.screen.intro-mode .real-button:active::after {{
+    opacity:.52;
+    box-shadow:0 0 38px rgba(255,196,74,.78),0 0 78px rgba(255,225,146,.36), inset 0 0 24px rgba(255,255,255,.18);
+}}
+.screen.intro-mode .soft-halo {{
+    left:69%; top:22%; width:260px; height:260px;
+    animation:rc40ButterflyBreath 4.8s ease-in-out infinite;
+}}
+.screen.intro-mode .particle {{ animation-duration:7.8s; }}
+
+/* PANTALLA 2 — TÉRMINOS */
+.screen.terms-mode .terms-hover-layer {{
+    position:absolute;
+    inset:0;
+    z-index:18;
+    pointer-events:none;
+}}
+.screen.terms-mode .terms-hover-zone {{
+    pointer-events:auto;
+    left:21.5%;
+    right:19.5%;
+    height:7.0%;
+    border-radius:16px;
+    background:linear-gradient(90deg, rgba(255,214,116,.00), rgba(255,214,116,.10), rgba(68,210,255,.07), rgba(255,214,116,.00));
+}}
+.screen.terms-mode .terms-hover-zone:hover,
+.screen.terms-mode .terms-hover-zone:active {{
+    opacity:1;
+    border-color:rgba(255,225,154,.82);
+    background:linear-gradient(90deg, rgba(255,214,116,.02), rgba(255,214,116,.18), rgba(69,211,255,.11), rgba(255,214,116,.02));
+    box-shadow:0 0 22px rgba(255,201,83,.48), inset 0 0 18px rgba(255,231,164,.10), 0 0 38px rgba(56,203,255,.20);
+    transform:scale(1.006);
+}}
+.screen.terms-mode .thz1 {{ top:43.9%; }}
+.screen.terms-mode .thz2 {{ top:52.1%; }}
+.screen.terms-mode .thz3 {{ top:60.4%; }}
+.screen.terms-mode .thz4 {{ top:68.6%; }}
+
+/* Casilla real encima de la casilla dibujada */
+.screen.terms-mode .terms-real-check {{
+    left:19.0%;
+    top:79.9%;
+    width:8.8%;
+    height:5.4%;
+    z-index:46;
+    pointer-events:auto;
+}}
+.screen.terms-mode .terms-real-check::after {{
+    inset:12%;
+    border-radius:8px;
+}}
+.screen.terms-mode .terms-real-check:has(input:checked)::after {{
+    opacity:.75;
+    border-color:rgba(255,239,184,.92);
+    box-shadow:0 0 20px rgba(255,201,83,.65),0 0 42px rgba(255,222,142,.28), inset 0 0 10px rgba(255,232,169,.22);
+}}
+.screen.terms-mode .terms-real-check.needs-attention::after {{
+    opacity:.95;
+}}
+.screen.terms-mode .terms-continue {{
+    left:12.2%;
+    right:12.2%;
+    bottom:4.6%;
+    min-height:0;
+    height:9.7%;
+    border-radius:18px;
+    z-index:44;
+    pointer-events:auto;
+}}
+.screen.terms-mode .terms-continue.is-disabled {{
+    filter:saturate(.72) brightness(.70);
+}}
+.screen.terms-mode .terms-continue.is-ready,
+.screen.terms-mode .terms-continue.is-ready:hover {{
+    filter:saturate(1.08) brightness(1.04);
+}}
+.screen.terms-mode .terms-continue.is-ready::after,
+.screen.terms-mode .terms-continue:hover::after {{
+    opacity:.46;
+    box-shadow:0 0 42px rgba(255,194,73,.76),0 0 82px rgba(255,225,146,.38), inset 0 0 24px rgba(255,255,255,.18);
+}}
+.screen.terms-mode .extra-note {{
+    display:none;
+}}
+
+/* PANTALLA 3 — BUSCA UN LUGAR TRANQUILO */
+.screen.quiet-mode .visual-action-form .real-button,
+.screen.quiet-mode .real-button {{
+    left:13.6%;
+    right:13.6%;
+    bottom:7.4%;
+    min-height:0;
+    height:9.5%;
+    border-radius:18px;
+    z-index:45;
+}}
+.screen.quiet-mode .real-button:hover::after,
+.screen.quiet-mode .real-button:active::after {{
+    opacity:.50;
+    box-shadow:0 0 42px rgba(255,190,66,.76),0 0 86px rgba(255,222,142,.34), inset 0 0 22px rgba(255,255,255,.16);
+}}
+.screen.quiet-mode .extra-note {{
+    left:13%;
+    right:13%;
+    bottom:2.5%;
+    font-size:11px;
+    color:rgba(255,232,190,.62);
+}}
+
+/* Vida de cuento sin bloquear clicks */
+.screen.intro-mode .phone::before,
+.screen.terms-mode .phone::before,
+.screen.quiet-mode .phone::before {{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:10;
+    pointer-events:none;
+    opacity:.0;
+    mix-blend-mode:screen;
+    background:
+        radial-gradient(circle at 74% 22%, rgba(72,211,255,.30), transparent 17%),
+        radial-gradient(circle at 24% 39%, rgba(72,211,255,.18), transparent 13%),
+        radial-gradient(circle at 50% 88%, rgba(255,198,74,.18), transparent 22%);
+    animation:rc40FairyGlow 5.6s ease-in-out infinite;
+}}
+.screen.intro-mode .phone::after,
+.screen.terms-mode .phone::after,
+.screen.quiet-mode .phone::after {{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:11;
+    pointer-events:none;
+    opacity:0;
+    mix-blend-mode:screen;
+    background:linear-gradient(112deg, transparent 0%, transparent 42%, rgba(255,255,255,.42) 45%, rgba(80,214,255,.22) 47%, transparent 52%, transparent 100%);
+    transform:translateX(-78%) skewX(-10deg);
+    animation:rc40SoftPageSweep 8.2s cubic-bezier(.2,.7,.15,1) 1.2s infinite;
+}}
+.screen.intro-mode .star-run.sr1,
+.screen.terms-mode .star-run.sr1,
+.screen.quiet-mode .star-run.sr1 {{
+    top:30%;
+    left:2%;
+    width:130px;
+    height:2px;
+    animation:rc40TinyStarOne 6.4s ease-in-out 1.0s infinite;
+}}
+.screen.intro-mode .star-run.sr2,
+.screen.terms-mode .star-run.sr2,
+.screen.quiet-mode .star-run.sr2 {{
+    right:2%;
+    bottom:28%;
+    width:130px;
+    height:2px;
+    animation:rc40TinyStarTwo 7.0s ease-in-out 2.1s infinite;
+}}
+
+@keyframes rc40ButterflyBreath {{
+    0%,100% {{ transform:translate(-50%,-50%) scale(.92); opacity:.28; }}
+    50% {{ transform:translate(-50%,-50%) scale(1.09); opacity:.74; }}
+}}
+@keyframes rc40FairyGlow {{
+    0%,100% {{ opacity:.14; filter:blur(12px) brightness(.92); }}
+    50% {{ opacity:.48; filter:blur(10px) brightness(1.28); }}
+}}
+@keyframes rc40SoftPageSweep {{
+    0%,70% {{ opacity:0; transform:translateX(-78%) skewX(-10deg); }}
+    80% {{ opacity:.42; }}
+    100% {{ opacity:0; transform:translateX(78%) skewX(-10deg); }}
+}}
+@keyframes rc40TinyStarOne {{
+    0% {{ transform:translateX(-90px) translateY(10px); opacity:0; }}
+    18% {{ opacity:.78; }}
+    100% {{ transform:translateX(390px) translateY(-24px); opacity:0; }}
+}}
+@keyframes rc40TinyStarTwo {{
+    0% {{ transform:translateX(90px) translateY(-10px); opacity:0; }}
+    18% {{ opacity:.66; }}
+    100% {{ transform:translateX(-390px) translateY(24px); opacity:0; }}
+}}
+
+@media (max-width: 420px) {{
+    .screen.intro-mode .phone,
+    .screen.terms-mode .phone,
+    .screen.quiet-mode .phone {{ width:100vw; }}
+    .screen.terms-mode .terms-real-check {{ top:79.8%; }}
+    .screen.terms-mode .terms-continue {{ bottom:4.8%; }}
+}}
+
+
+/* =========================================================
+   RC41 — ARREGLO DEFINITIVO GUÍA: BOTONES REALES, SIN ZONAS FANTASMA
+   ========================================================= */
+.screen.intro-mode,
+.screen.terms-mode,
+.screen.quiet-mode {{
+    overflow:hidden !important;
+    background:#02050a !important;
+}}
+.screen.intro-mode .phone,
+.screen.terms-mode .phone,
+.screen.quiet-mode .phone {{
+    height:100svh !important;
+    height:100dvh !important;
+    min-height:100svh !important;
+    aspect-ratio:auto !important;
+    max-width:520px !important;
+    overflow:hidden !important;
+}}
+.screen.intro-mode .img,
+.screen.terms-mode .img,
+.screen.quiet-mode .img {{
+    height:100% !important;
+    min-height:100% !important;
+    object-fit:cover !important;
+    object-position:center center !important;
+    pointer-events:none !important;
+    user-select:none !important;
+}}
+.screen.terms-mode .terms-hover-layer,
+.screen.terms-mode .terms-hover-zone {{
+    display:none !important;
+    pointer-events:none !important;
+}}
+.screen.intro-mode .phone::before,
+.screen.intro-mode .phone::after,
+.screen.terms-mode .phone::before,
+.screen.terms-mode .phone::after,
+.screen.quiet-mode .phone::before,
+.screen.quiet-mode .phone::after,
+.screen.intro-mode .edge-glow,
+.screen.terms-mode .edge-glow,
+.screen.quiet-mode .edge-glow,
+.screen.intro-mode .star-run,
+.screen.terms-mode .star-run,
+.screen.quiet-mode .star-run,
+.screen.intro-mode .particle,
+.screen.terms-mode .particle,
+.screen.quiet-mode .particle,
+.screen.intro-mode .soft-halo,
+.screen.terms-mode .soft-halo,
+.screen.quiet-mode .soft-halo {{
+    pointer-events:none !important;
+}}
+.screen.intro-mode .visual-action-form,
+.screen.quiet-mode .visual-action-form {{
+    position:absolute !important;
+    inset:0 !important;
+    z-index:100 !important;
+    pointer-events:none !important;
+}}
+.screen.intro-mode .real-button,
+.screen.quiet-mode .real-button,
+.screen.intro-mode .visual-action-form .real-button,
+.screen.quiet-mode .visual-action-form .real-button,
+.screen.terms-mode .terms-continue {{
+    position:absolute !important;
+    left:50% !important;
+    right:auto !important;
+    bottom:calc(env(safe-area-inset-bottom) + 22px) !important;
+    width:min(78vw, 390px) !important;
+    height:64px !important;
+    min-height:64px !important;
+    transform:translateX(-50%) !important;
+    z-index:120 !important;
+    pointer-events:auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    border-radius:22px !important;
+    border:1px solid rgba(255,226,155,.88) !important;
+    background:linear-gradient(180deg, rgba(255,226,139,.98), rgba(207,133,32,.98)) !important;
+    box-shadow:0 0 22px rgba(255,184,55,.75),0 0 60px rgba(255,205,92,.36), inset 0 2px 10px rgba(255,255,255,.36) !important;
+    color:#160c03 !important;
+    text-indent:0 !important;
+    overflow:hidden !important;
+    font-family:Georgia,'Times New Roman',serif !important;
+    font-size:0 !important;
+    font-weight:500 !important;
+    text-decoration:none !important;
+    cursor:pointer !important;
+    touch-action:manipulation !important;
+    filter:none !important;
+}}
+.screen.intro-mode .real-button:hover,
+.screen.quiet-mode .real-button:hover,
+.screen.terms-mode .terms-continue:hover,
+.screen.intro-mode .real-button:active,
+.screen.quiet-mode .real-button:active,
+.screen.terms-mode .terms-continue:active {{
+    transform:translateX(-50%) scale(1.018) !important;
+    box-shadow:0 0 32px rgba(255,194,72,.92),0 0 85px rgba(69,205,255,.32), inset 0 2px 12px rgba(255,255,255,.42) !important;
+}}
+.screen.intro-mode .real-button::before,
+.screen.quiet-mode .real-button::before,
+.screen.terms-mode .terms-continue::before {{
+    position:static !important;
+    transform:none !important;
+    font-family:Georgia,'Times New Roman',serif !important;
+    font-size:clamp(25px, 7vw, 36px) !important;
+    color:#160c03 !important;
+    opacity:1 !important;
+    filter:none !important;
+}}
+.screen.intro-mode .real-button::before {{ content:'🦋  Estoy listo' !important; }}
+.screen.quiet-mode .real-button::before {{ content:'🦋  Estoy listo' !important; }}
+.screen.terms-mode .terms-continue::before {{ content:'Aceptar y continuar' !important; font-size:clamp(22px, 6vw, 32px) !important; }}
+.screen.intro-mode .real-button::after,
+.screen.quiet-mode .real-button::after,
+.screen.terms-mode .terms-continue::after {{
+    content:'' !important;
+    position:absolute !important;
+    inset:0 !important;
+    border-radius:inherit !important;
+    opacity:.18 !important;
+    background:linear-gradient(110deg, transparent 0%, transparent 36%, rgba(255,255,255,.42) 48%, transparent 62%, transparent 100%) !important;
+    animation:rc41ButtonShine 3.4s ease-in-out infinite !important;
+    pointer-events:none !important;
+}}
+@keyframes rc41ButtonShine {{
+    0%,62% {{ transform:translateX(-120%); opacity:0; }}
+    76% {{ opacity:.55; }}
+    100% {{ transform:translateX(120%); opacity:0; }}
+}}
+.screen.terms-mode .terms-real-check {{
+    position:absolute !important;
+    left:50% !important;
+    top:auto !important;
+    bottom:calc(env(safe-area-inset-bottom) + 98px) !important;
+    width:min(82vw, 410px) !important;
+    height:58px !important;
+    transform:translateX(-50%) !important;
+    z-index:125 !important;
+    pointer-events:auto !important;
+    border:1px solid rgba(255,216,141,.74) !important;
+    border-radius:18px !important;
+    background:rgba(2,7,14,.86) !important;
+    box-shadow:0 0 20px rgba(255,190,72,.22), inset 0 0 22px rgba(38,151,255,.08) !important;
+    backdrop-filter:blur(8px) !important;
+    cursor:pointer !important;
+}}
+.screen.terms-mode .terms-real-check input {{
+    position:absolute !important;
+    inset:0 !important;
+    opacity:0 !important;
+    z-index:4 !important;
+    cursor:pointer !important;
+}}
+.screen.terms-mode .terms-real-check label {{
+    position:absolute !important;
+    inset:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    padding-left:62px !important;
+    padding-right:18px !important;
+    color:rgba(255,246,225,.94) !important;
+    font-size:15px !important;
+    line-height:1.15 !important;
+    pointer-events:none !important;
+}}
+.screen.terms-mode .terms-real-check label::before {{ content:'He leído y acepto los términos.'; }}
+.screen.terms-mode .terms-real-check label::after {{
+    content:'';
+    position:absolute;
+    left:18px;
+    width:30px;
+    height:30px;
+    border-radius:9px;
+    border:2px solid rgba(255,218,133,.92);
+    box-shadow:0 0 16px rgba(255,196,65,.28);
+}}
+.screen.terms-mode .terms-real-check:has(input:checked) label::after {{
+    background:linear-gradient(180deg,#ffe392,#c98a27);
+    box-shadow:0 0 20px rgba(255,197,65,.82), inset 0 0 8px rgba(255,255,255,.28);
+}}
+.screen.terms-mode .terms-real-check:has(input:checked) label::before {{
+    content:'Aceptado. Ya puedes continuar.';
+    color:#ffe7ad;
+}}
+.screen.terms-mode .terms-real-check:has(input:checked)::before {{
+    content:'✓';
+    position:absolute;
+    left:26px;
+    top:13px;
+    z-index:3;
+    color:#120900;
+    font-size:24px;
+    font-weight:800;
+}}
+.screen.terms-mode .terms-real-check::after {{ display:none !important; }}
+.screen.terms-mode .terms-continue.is-disabled {{
+    opacity:.55 !important;
+    filter:grayscale(.15) brightness(.78) !important;
+    cursor:not-allowed !important;
+}}
+.screen.terms-mode .terms-continue.is-ready {{
+    opacity:1 !important;
+    filter:none !important;
+}}
+.screen.quiet-mode .extra-note,
+.screen.terms-mode .extra-note,
+.screen.intro-mode .extra-note {{
+    position:absolute !important;
+    left:8% !important;
+    right:8% !important;
+    bottom:calc(env(safe-area-inset-bottom) + 92px) !important;
+    z-index:80 !important;
+    pointer-events:none !important;
+    color:rgba(255,238,199,.82) !important;
+    text-shadow:0 2px 12px rgba(0,0,0,.95) !important;
+}}
+.screen.terms-mode .extra-note {{ display:none !important; }}
+@media (max-height:760px) {{
+    .screen.intro-mode .real-button,
+    .screen.quiet-mode .real-button,
+    .screen.terms-mode .terms-continue {{
+        height:56px !important;
+        min-height:56px !important;
+        bottom:calc(env(safe-area-inset-bottom) + 14px) !important;
+    }}
+    .screen.terms-mode .terms-real-check {{
+        height:52px !important;
+        bottom:calc(env(safe-area-inset-bottom) + 82px) !important;
+    }}
+    .screen.quiet-mode .extra-note {{ display:none !important; }}
+}}
 
 </style>
 </head>
