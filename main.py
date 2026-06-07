@@ -285,7 +285,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v62-consentimiento-intro-safe"
+ETERNA_VISUAL_VERSION = "eterna-visual-v63-prologo-cinematografico"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -311,6 +311,7 @@ ETERNA_SCREEN_ASSETS = {
     "sender_pack": "sender-pack-v2.png",
     "viral_cta": "viral-cta-v1.png",
     "error": "error-v1.png",
+    "guide_butterfly": "ETERNA_GUIDE_BUTTERFLY_V1.png",
 }
 
 def _eterna_asset_key(value: str) -> str:
@@ -7790,6 +7791,182 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 </html>
 ''')
 
+
+# =========================================================
+# RC63 — PRÓLOGO CINEMATOGRÁFICO ETERNA
+# Sustituye las pantallas frías previas al vídeo por una sola experiencia narrativa.
+# NO toca Stripe, Twilio, webhooks, DB, Video Engine, reacción, cobros ni sender pack.
+# =========================================================
+
+def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
+    """
+    Prólogo cinematográfico antes de /experiencia.
+    Filosofía: no es una pantalla; es un umbral.
+    Incluye consentimiento claro de grabación, pero integrado en la historia.
+    """
+    butterfly_src = safe_attr(eterna_asset("guide_butterfly"))
+    recipient_token_safe = safe_attr(recipient_token)
+    recipient_token_json = json.dumps(str(recipient_token))
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<meta name="theme-color" content="#02050a">
+<style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
+body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
+.prologue{{position:relative;width:100vw;height:100svh;height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}}
+.frame{{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:#02050a}}
+.bg-layer{{position:absolute;inset:-4%;opacity:0;pointer-events:none}}
+.bg-night{{background:radial-gradient(circle at 50% 70%,rgba(10,74,120,.20),transparent 34%),radial-gradient(circle at 50% 20%,rgba(34,160,255,.12),transparent 28%),linear-gradient(180deg,#000 0%,#020814 48%,#03101f 100%);opacity:1}}
+.bg-stars{{background:radial-gradient(circle at 30% 18%,rgba(55,184,255,.18),transparent 26%),radial-gradient(circle at 80% 36%,rgba(255,197,83,.12),transparent 22%),radial-gradient(circle at 50% 74%,rgba(14,88,145,.22),transparent 30%);mix-blend-mode:screen;animation:bgStars 22s ease-in-out infinite}}
+.bg-water{{background:radial-gradient(circle at 50% 74%,rgba(255,191,75,.22),transparent 18%),radial-gradient(circle at 50% 82%,rgba(35,154,255,.22),transparent 32%),linear-gradient(180deg,transparent 0 62%,rgba(2,22,45,.72) 72%,rgba(4,8,14,.98) 100%);opacity:.66;animation:waterGlow 11s ease-in-out infinite}}
+.bg-gold{{background:radial-gradient(circle at 50% 50%,rgba(255,207,107,.34),transparent 20%),radial-gradient(circle at 50% 66%,rgba(255,174,45,.18),transparent 34%);mix-blend-mode:screen;animation:goldPulse 8.5s ease-in-out infinite}}
+.stars{{position:absolute;inset:0;pointer-events:none;opacity:.8;background-image:radial-gradient(circle,rgba(255,218,139,.78) 0 1px,transparent 1.5px),radial-gradient(circle,rgba(68,204,255,.75) 0 1px,transparent 1.5px),radial-gradient(circle,rgba(255,255,255,.56) 0 1px,transparent 1.4px);background-size:71px 97px,103px 137px,151px 181px;animation:starsDrift 36s linear infinite}}
+.brand{{position:absolute;top:calc(env(safe-area-inset-top) + 22px);left:0;right:0;text-align:center;z-index:12;letter-spacing:.46em;font-family:Georgia,serif;font-size:clamp(18px,5.6vw,30px);color:#eec36a;text-shadow:0 0 16px rgba(255,200,93,.45);opacity:.86}}
+.brand::after{{content:'♡';display:block;letter-spacing:0;font-size:20px;margin-top:7px;color:#ffd477;text-shadow:0 0 18px rgba(255,204,90,.72)}}
+.butterfly{{position:absolute;z-index:8;left:50%;top:34%;width:min(58vw,310px);transform:translate(-50%,-50%) scale(.18);opacity:0;filter:drop-shadow(0 0 24px rgba(71,198,255,.85)) drop-shadow(0 0 42px rgba(255,199,86,.34));animation:butterflyJourney 92s cubic-bezier(.22,.62,.15,1) forwards}}
+.butterfly-halo{{position:absolute;z-index:6;left:50%;top:42%;width:390px;height:390px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(53,200,255,.28),rgba(255,205,110,.12) 38%,transparent 70%);filter:blur(22px);opacity:0;animation:haloJourney 92s ease-in-out forwards;pointer-events:none}}
+.trail{{position:absolute;z-index:5;inset:0;pointer-events:none;overflow:hidden}}
+.trail i{{position:absolute;width:5px;height:5px;border-radius:999px;background:#58d6ff;box-shadow:0 0 14px #58d6ff,0 0 30px rgba(88,214,255,.45);opacity:0;animation:trailFloat 9s linear infinite}}
+.trail i:nth-child(2n){{background:#ffd483;box-shadow:0 0 14px #ffd483,0 0 30px rgba(255,212,131,.42)}}
+.trail i:nth-child(1){{left:18%;bottom:18%;animation-delay:2s}}.trail i:nth-child(2){{left:76%;bottom:24%;animation-delay:4s}}.trail i:nth-child(3){{left:33%;bottom:42%;animation-delay:7s}}.trail i:nth-child(4){{left:67%;bottom:55%;animation-delay:10s}}.trail i:nth-child(5){{left:48%;bottom:12%;animation-delay:13s}}.trail i:nth-child(6){{left:22%;bottom:70%;animation-delay:17s}}.trail i:nth-child(7){{left:82%;bottom:72%;animation-delay:20s}}.trail i:nth-child(8){{left:58%;bottom:34%;animation-delay:23s}}
+.copy{{position:absolute;z-index:14;left:7%;right:7%;top:50%;transform:translateY(-50%);text-align:center;pointer-events:none}}
+.line{{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);opacity:0;font-family:Georgia,'Times New Roman',serif;font-size:clamp(28px,8.8vw,49px);line-height:1.15;letter-spacing:.01em;color:#fff7e8;text-shadow:0 0 22px rgba(255,255,255,.25),0 0 42px rgba(51,187,255,.18);animation:phrase 8s ease-in-out forwards}}
+.line.small{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:clamp(18px,5.0vw,26px);line-height:1.45;color:#f7ecdc;letter-spacing:.01em}}
+.line.gold,.gold{{color:#f4c46c;text-shadow:0 0 22px rgba(255,199,92,.50),0 0 50px rgba(255,166,41,.18)}}
+.line b{{font-weight:700;color:#f4c46c}}
+.line .eternal{{display:block;margin-top:.34em;font-size:.78em;color:#f4c46c}}
+.l1{{animation-delay:2.2s}}.l2{{animation-delay:10.0s}}.l3{{animation-delay:18.0s}}.l4{{animation-delay:26.0s}}.l5{{animation-delay:34.0s}}.l6{{animation-delay:42.0s}}.l7{{animation-delay:50.0s}}.l8{{animation-delay:58.0s}}.l9{{animation-delay:66.0s}}.l10{{animation-delay:74.0s}}
+.consent-card{{position:absolute;z-index:30;left:6.5%;right:6.5%;top:50%;transform:translateY(-50%) scale(.96);opacity:0;pointer-events:none;padding:26px 20px 22px;border:1px solid rgba(255,215,136,.46);border-radius:28px;background:linear-gradient(180deg,rgba(2,9,20,.86),rgba(1,4,11,.76));box-shadow:0 0 44px rgba(36,171,255,.18),0 0 70px rgba(255,191,83,.13),inset 0 0 28px rgba(255,255,255,.04);backdrop-filter:blur(10px);transition:opacity 1.1s ease,transform 1.1s ease}}
+.prologue.consent-phase .consent-card{{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}}
+.consent-card h1{{font-family:Georgia,serif;margin:0 0 14px;text-align:center;font-size:clamp(30px,8.5vw,44px);font-weight:400;color:#fff5e5;line-height:1.05}}
+.consent-card h1 span{{color:#f4c46c}}
+.consent-card p{{margin:12px 0;font-size:clamp(15px,4.2vw,19px);line-height:1.42;text-align:center;color:#f6ead6;text-shadow:0 0 16px rgba(0,0,0,.8)}}
+.consent-card .clear{{margin:16px 0;padding:14px 13px;border-radius:18px;border:1px solid rgba(255,215,136,.25);background:rgba(0,0,0,.24);font-weight:650}}
+.check-row{{margin-top:18px;display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;border:1px solid rgba(255,218,143,.36);background:rgba(0,0,0,.24);text-align:left;color:#fff7e9;font-size:clamp(14px,3.9vw,17px);line-height:1.25}}
+.check-row input{{appearance:none;width:33px;height:33px;min-width:33px;border-radius:9px;border:2px solid rgba(255,235,184,.88);background:rgba(0,0,0,.4);box-shadow:0 0 18px rgba(255,213,118,.20);position:relative}}
+.check-row input:checked{{background:linear-gradient(135deg,#fff1bb,#e6a43c 58%,#8e5307);box-shadow:0 0 26px rgba(255,196,79,.72)}}
+.check-row input:checked::after{{content:'';position:absolute;left:9px;top:3px;width:10px;height:19px;border:solid #120900;border-width:0 4px 4px 0;transform:rotate(45deg)}}
+.consent-btn,.final-btn{{width:100%;border:0;border-radius:24px;margin-top:18px;min-height:66px;background:linear-gradient(135deg,#fff1bb,#e6a43c 54%,#9c5d08);color:#150b02;font-family:Georgia,serif;font-size:clamp(21px,6.2vw,31px);box-shadow:0 0 34px rgba(255,190,72,.43),inset 0 0 18px rgba(255,255,255,.22);cursor:pointer}}
+.consent-btn:disabled,.final-btn:disabled{{filter:saturate(.45) brightness(.65);cursor:not-allowed}}
+.final-gate{{position:absolute;z-index:35;left:7%;right:7%;bottom:calc(env(safe-area-inset-bottom) + 7%);opacity:0;transform:translateY(24px);pointer-events:none;transition:opacity 1.4s ease,transform 1.4s ease}}
+.prologue.ready-phase .final-gate{{opacity:1;transform:translateY(0);pointer-events:auto}}
+.final-btn{{min-height:78px;text-transform:uppercase;letter-spacing:.05em;font-weight:900}}
+.final-note{{margin-top:14px;text-align:center;color:rgba(255,243,220,.72);font-size:13px;line-height:1.35}}
+.skip-safe{{position:absolute;z-index:50;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 10px);text-align:center;color:rgba(255,255,255,.32);font-size:11px;pointer-events:none}}
+@keyframes phrase{{0%{{opacity:0;filter:blur(12px);transform:translateY(18px) scale(.97)}}18%{{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}}74%{{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}}100%{{opacity:0;filter:blur(12px);transform:translateY(-18px) scale(1.02)}}}}
+@keyframes butterflyJourney{{0%{{left:15%;top:70%;opacity:0;transform:translate(-50%,-50%) scale(.10) rotate(-18deg)}}4%{{opacity:.25}}12%{{opacity:.55;left:28%;top:54%;transform:translate(-50%,-50%) scale(.16) rotate(-8deg)}}26%{{opacity:.78;left:72%;top:28%;transform:translate(-50%,-50%) scale(.25) rotate(10deg)}}44%{{opacity:.9;left:46%;top:31%;transform:translate(-50%,-50%) scale(.38) rotate(-3deg)}}62%{{opacity:.98;left:55%;top:37%;transform:translate(-50%,-50%) scale(.52) rotate(2deg)}}82%{{opacity:1;left:50%;top:34%;transform:translate(-50%,-50%) scale(.74) rotate(0deg)}}100%{{opacity:1;left:50%;top:31%;transform:translate(-50%,-50%) scale(.82) rotate(0deg)}}}}
+@keyframes haloJourney{{0%,10%{{opacity:0;transform:translate(-50%,-50%) scale(.6)}}36%{{opacity:.32;transform:translate(-50%,-50%) scale(.9)}}68%{{opacity:.70;transform:translate(-50%,-50%) scale(1.1)}}100%{{opacity:.90;transform:translate(-50%,-50%) scale(1.18)}}}}
+@keyframes trailFloat{{0%{{opacity:0;transform:translateY(0) scale(.5)}}15%{{opacity:.9}}70%{{opacity:.45}}100%{{opacity:0;transform:translateY(-145px) translateX(22px) scale(1.12)}}}}
+@keyframes starsDrift{{from{{background-position:0 0,0 0,0 0}}to{{background-position:110px -260px,-170px -330px,190px -410px}}}}
+@keyframes bgStars{{0%,100%{{opacity:.28;transform:scale(1)}}50%{{opacity:.72;transform:scale(1.04)}}}}
+@keyframes waterGlow{{0%,100%{{opacity:.38;filter:blur(0)}}50%{{opacity:.88;filter:blur(1px)}}}}
+@keyframes goldPulse{{0%,100%{{opacity:.16;transform:scale(.92)}}50%{{opacity:.78;transform:scale(1.12)}}}}
+@media (max-height:740px){{.consent-card{{top:52%;padding:18px 17px 17px}}.consent-card p{{margin:8px 0}}.check-row{{margin-top:12px;padding:11px}}.consent-btn{{min-height:58px}}.brand{{top:calc(env(safe-area-inset-top) + 14px);font-size:18px}}.butterfly{{width:min(48vw,250px)}}.line{{font-size:clamp(25px,7.8vw,42px)}}}}
+</style>
+</head>
+<body>
+<main id="prologue" class="prologue" aria-label="Prólogo ETERNA">
+  <section class="frame">
+    <div class="bg-layer bg-night"></div>
+    <div class="bg-layer bg-stars"></div>
+    <div class="bg-layer bg-water"></div>
+    <div class="bg-layer bg-gold"></div>
+    <div class="stars"></div>
+    <div class="brand">ETERNA</div>
+    <div class="butterfly-halo"></div>
+    <img class="butterfly" src="{butterfly_src}" alt="" aria-hidden="true">
+    <div class="trail" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+    <div class="copy" aria-hidden="true">
+      <div class="line gold l1">Shhh...</div>
+      <div class="line l2">Dicen que el tiempo<br>se lleva todo.</div>
+      <div class="line l3">Pero no es<br>del todo cierto.</div>
+      <div class="line small l4">Porque algunas cosas<br>encuentran la forma<br>de quedarse.</div>
+      <div class="line l5">Y algunas...<br><span class="eternal">encuentran la forma de volver.</span></div>
+      <div class="line small l6">Lo que estás a punto de descubrir<br>ha viajado hasta aquí.</div>
+      <div class="line small l7">A través de días.<br>A través de recuerdos.<br>A través del tiempo.</div>
+      <div class="line l8">Durante algún tiempo...<br><span class="eternal">esto estuvo esperando.</span></div>
+      <div class="line l9">Esperando este instante.<br><span class="eternal">Esperándote.</span></div>
+      <div class="line l10"><span class="gold">No todo lo que vuelve</span><br>es un recuerdo.<br><span class="eternal">A veces vuelve una emoción.</span></div>
+    </div>
+
+    <div class="consent-card" id="consentCard" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+      <h1 id="consentTitle">Antes de <span>continuar...</span></h1>
+      <p>Hay algo importante que debes saber.</p>
+      <p class="clear">Durante esta experiencia, <b>tu reacción será grabada</b>.</p>
+      <p>Tu dispositivo solicitará acceso a la cámara cuando estés preparado.</p>
+      <p>La grabación podrá compartirse de forma privada con quien preparó este momento para ti. <b>Nadie más tendrá acceso a ella.</b></p>
+      <label class="check-row">
+        <input id="acceptRecording" type="checkbox">
+        <span>He leído y acepto que mi reacción sea grabada para completar esta ETERNA.</span>
+      </label>
+      <button id="acceptConsent" class="consent-btn" disabled>Aceptar y continuar</button>
+    </div>
+
+    <form id="startForm" class="final-gate" method="post" action="/start-experience">
+      <input type="hidden" name="recipient_token" value="{recipient_token_safe}">
+      <button id="startExperienceNow" class="final-btn" type="submit">Estoy preparado</button>
+      <div class="final-note">Espero que esto te encuentre en el momento adecuado.</div>
+    </form>
+    <div class="skip-safe">No cierres esta página. ETERNA está abriendo el camino.</div>
+  </section>
+</main>
+<script>
+(function() {{
+  const root = document.getElementById('prologue');
+  const check = document.getElementById('acceptRecording');
+  const accept = document.getElementById('acceptConsent');
+  const form = document.getElementById('startForm');
+  const btn = document.getElementById('startExperienceNow');
+  const token = {recipient_token_json};
+
+  function showConsent() {{
+    if (!root.classList.contains('story-accepted')) root.classList.add('consent-phase');
+  }}
+  setTimeout(showConsent, 45500);
+
+  check.addEventListener('change', function() {{
+    accept.disabled = !check.checked;
+  }});
+
+  accept.addEventListener('click', function() {{
+    if (!check.checked) return;
+    root.classList.remove('consent-phase');
+    root.classList.add('story-accepted');
+    setTimeout(function() {{ root.classList.add('ready-phase'); }}, 33800);
+  }});
+
+  form.addEventListener('submit', async function(e) {{
+    e.preventDefault();
+    btn.disabled = true;
+    try {{
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
+        const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
+        try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
+      }}
+      const fd = new FormData(form);
+      const res = await fetch('/start-experience', {{ method: 'POST', body: fd, headers: {{ 'X-ETERNA-AJAX': '1' }} }});
+      if (!res.ok) throw new Error('start_experience_failed');
+      let data = {{}};
+      try {{ data = await res.json(); }} catch (_) {{}}
+      window.location.replace(data.redirect_url || ('/experiencia/' + encodeURIComponent(token)));
+    }} catch (err) {{
+      btn.disabled = false;
+      alert('ETERNA necesita acceso a cámara y micrófono para continuar. Tu reacción forma parte de esta experiencia.');
+    }}
+  }});
+}})();
+</script>
+</body>
+</html>
+""")
+
 # =========================================================
 # GUÍA PREVIA A LA EXPERIENCIA — CAPA DELANTE, SIN TOCAR /experiencia
 # =========================================================
@@ -7797,14 +7974,16 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 @app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
 def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     """
-    RC62 — GUÍA PREVIA DEFINITIVA.
-    Flujo decidido y seguro:
-      0 -> Activar sonido
-      1 -> Términos y privacidad
-      2 -> Consentimiento explícito de grabación
-      3 -> Intro emocional Shhh / botón Estoy listo / petición real de cámara
+    RC63 — PRÓLOGO CINEMATOGRÁFICO ETERNA.
+    Sustituye las pantallas frías previas al vídeo por una sola entrada narrativa:
+      - silencio visual
+      - mariposa guía
+      - historia del tiempo
+      - consentimiento claro de grabación
+      - umbral "Estoy preparado"
+      - entrada a /experiencia
 
-    No toca MediaRecorder, chunks, subida, Stripe, SMS, webhooks, cobros ni video engine.
+    NO toca MediaRecorder, chunks, subida, Stripe, SMS, webhooks, cobros ni video engine.
     """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
@@ -7817,81 +7996,8 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
-    try:
-        step = int(step or 0)
-    except Exception:
-        step = 0
-    if step < 0:
-        step = 0
-    if step > 3:
-        step = 3
-
-    if step == 0:
-        insert_order_event(order["id"], "guide_sound_opened", "ok", "Pantalla activar sonido")
-        response = render_eterna_image_screen(
-            image_name="sound_check",
-            fallback_image_name="sound-check-v1.png",
-            button_url=f"/guia/1/{recipient_token}",
-            button_label="Continuar",
-        )
-        attach_recipient_session_if_needed(order, request, response)
-        return response
-
-    if step == 1:
-        insert_order_event(order["id"], "guide_terms_opened", "ok", "Pantalla términos y privacidad")
-        response = render_terms_code_screen(recipient_token)
-        attach_recipient_session_if_needed(order, request, response)
-        return response
-
-    if step == 2:
-        insert_order_event(order["id"], "guide_recording_consent_opened", "ok", "Pantalla consentimiento explícito de grabación")
-        response = render_eterna_image_screen(
-            image_name="recording_consent",
-            fallback_image_name="recording-consent-v1.png",
-            button_url=f"/guia/3/{recipient_token}",
-            button_label="Aceptar y continuar",
-        )
-        attach_recipient_session_if_needed(order, request, response)
-        return response
-
-    insert_order_event(order["id"], "guide_intro_opened", "ok", "Intro Shhh definitiva antes de iniciar experiencia")
-    response = render_eterna_image_screen(
-        image_name="intro_shhh",
-        fallback_image_name="ETERNA_INTRO_SHHH_PROD.png",
-        form_action="/start-experience",
-        form_method="post",
-        hidden_fields={"recipient_token": recipient_token},
-        button_label="Estoy listo",
-        button_id="startExperienceNow",
-        extra_script=f"""
-        <script>
-        (function() {{
-            const form = document.querySelector('.visual-action-form');
-            const btn = document.getElementById('startExperienceNow');
-            if (!form || !btn) return;
-            form.addEventListener('submit', async function(e) {{
-                e.preventDefault();
-                btn.disabled = true;
-                try {{
-                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
-                        const stream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
-                        try {{ stream.getTracks().forEach(function(track) {{ track.stop(); }}); }} catch (_) {{}}
-                    }}
-                    const fd = new FormData(form);
-                    const res = await fetch('/start-experience', {{ method: 'POST', body: fd, headers: {{ 'X-ETERNA-AJAX': '1' }} }});
-                    if (!res.ok) throw new Error('start_experience_failed');
-                    let data = {{}};
-                    try {{ data = await res.json(); }} catch (_) {{}}
-                    window.location.replace(data.redirect_url || '/experiencia/{safe_attr(recipient_token)}');
-                }} catch (err) {{
-                    btn.disabled = false;
-                    alert('ETERNA necesita acceso a cámara y micrófono para continuar.');
-                }}
-            }});
-        }})();
-        </script>
-        """,
-    )
+    insert_order_event(order["id"], "guide_prologue_opened", "ok", "Prólogo cinematográfico ETERNA antes de iniciar experiencia")
+    response = render_eterna_prologo_experience(recipient_token)
     attach_recipient_session_if_needed(order, request, response)
     return response
 
