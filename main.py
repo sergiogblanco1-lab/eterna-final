@@ -1,3 +1,16 @@
+# =========================================================
+# RC61 BLINDAJE VISUAL FINAL SAFE
+# Base: RC60 estabilización prelanzamiento safe.
+# Objetivo: entregar un MAIN listo para probar sin tocar el circuito validado.
+# Incluye SOLO mejoras seguras:
+# - mantiene recuperación/sweep de pedidos pendientes tras deploy
+# - mantiene anti-bucles y auditoría admin
+# - añade alias /admin/audit y /admin/rc61-audit
+# - añade auditoría de assets para detectar PNG faltantes
+# - mantiene sender-pack-v2 y recipient-gift-screen-v3
+# NO toca Stripe, Twilio, webhooks, DB crítica, video engine, cobros ni flujo validado.
+# =========================================================
+
 
 # =========================================================
 # RC53 — BLINDAJE PRELANZAMIENTO + ANTI-BUCLES + RECUPERACIÓN + PANTALLAS V3/V2
@@ -183,6 +196,16 @@ FIXED_PLATFORM_FEE = float(os.getenv("ETERNA_FIXED_FEE", "2"))
 SCHEDULED_DELIVERY_FEE = float(os.getenv("SCHEDULED_DELIVERY_FEE", "2"))
 GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
 
+# RC60: controles seguros de estabilización.
+# Por defecto NO caducamos enlaces para no romper pruebas actuales.
+# Cuando lancemos público, poner ETERNA_LINK_EXPIRY_DAYS=30 y ETERNA_ENFORCE_LINK_EXPIRY=1.
+ETERNA_LINK_EXPIRY_DAYS = int(os.getenv("ETERNA_LINK_EXPIRY_DAYS", "30"))
+ETERNA_ENFORCE_LINK_EXPIRY = os.getenv("ETERNA_ENFORCE_LINK_EXPIRY", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+# RC60: sweep de rescate al arrancar Render. Seguro porque respeta locks, delivered y máximos de intentos.
+ETERNA_STARTUP_SWEEP_ENABLED = os.getenv("ETERNA_STARTUP_SWEEP_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
 R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "").strip()
 R2_SECRET_KEY = os.getenv("R2_SECRET_KEY", "").strip()
 R2_BUCKET = os.getenv("R2_BUCKET", "").strip()
@@ -262,7 +285,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v53-blindaje-prelanzamiento"
+ETERNA_VISUAL_VERSION = "eterna-visual-v61-blindaje-visual-final-safe"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -427,7 +450,7 @@ def render_eterna_image_screen(
     is_uploading_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("uploading-reaction-v1.png")
     is_complete_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("experience-complete-v1.png")
     is_sender_entry_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-entry-v1.png")
-    is_sender_pack_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-v1.png")
+    is_sender_pack_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("sender-pack-v1.png"), _eterna_asset_key("sender-pack-v2.png")}
     is_viral_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("viral-cta-v1.png")
 
     note_html = ""
@@ -1778,6 +1801,32 @@ def now_iso() -> str:
 
 def gift_refund_deadline_iso() -> str:
     return (now_dt() + timedelta(days=GIFT_REFUND_DAYS)).isoformat()
+
+
+def order_age_days(order: dict) -> Optional[float]:
+    """RC60: edad del pedido para auditoría/caducidad futura sin romper pruebas actuales."""
+    try:
+        created = (order.get("created_at") or "").strip()
+        if not created:
+            return None
+        dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return max(0.0, (now_dt() - dt).total_seconds() / 86400.0)
+    except Exception:
+        return None
+
+
+def order_link_expired(order: dict) -> bool:
+    """RC60: expiración opcional. Por defecto está apagada para no romper el circuito probado."""
+    if not ETERNA_ENFORCE_LINK_EXPIRY:
+        return False
+    age = order_age_days(order)
+    return bool(age is not None and age > ETERNA_LINK_EXPIRY_DAYS)
+
+
+def safe_bool(value) -> bool:
+    return bool(int(value or 0)) if str(value or "").strip().isdigit() else bool(value)
 
 
 def safe_text(v: str) -> str:
@@ -7164,13 +7213,32 @@ def ensure_delivery_worker_started():
 
 @app.on_event("startup")
 def startup_event():
-    # RC53 — recuperación tras reinicio/deploy de Render.
+    # RC60 — recuperación tras reinicio/deploy de Render.
     try:
         recover_stale_processing_locks()
         recover_order_states_from_flags()
     except Exception as e:
-        log_error("startup_recovery_rc53", e)
+        log_error("startup_recovery_rc60", e)
+
     ensure_delivery_worker_started()
+
+    # RC60: barrido único de rescate. No cambia negocio: solo procesa pendientes reales.
+    if ETERNA_STARTUP_SWEEP_ENABLED:
+        def _startup_safe_sweep():
+            try:
+                time.sleep(3)
+                log_human("RC60 SWEEP ARRANQUE", "Buscando entregas y avisos pendientes tras deploy/reinicio")
+                delivery_results = process_all_due_scheduled_deliveries()
+                sender_results = process_all_due_sender_notifications()
+                log_human(
+                    "RC60 SWEEP COMPLETADO",
+                    f"📦 Entregas revisadas: {len(delivery_results)}",
+                    f"📩 Avisos regalante revisados: {len(sender_results)}",
+                )
+            except Exception as e:
+                log_error("startup_safe_sweep_rc60", e)
+
+        threading.Thread(target=_startup_safe_sweep, daemon=True, name="eterna-rc60-startup-sweep").start()
 
 
 # =========================================================
@@ -7182,6 +7250,15 @@ def pedido(request: Request, recipient_token: str):
     # Entrada del destinatario con pantallas visuales V1.
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
+        if order_link_expired(order):
+            insert_order_event(order["id"], "recipient_link_expired", "warning", "Enlace de destinatario caducado por configuración RC60")
+            return render_eterna_image_screen(
+                image_name="error-v1.png",
+                title="Este momento no está disponible",
+                subtitle="Puede que el enlace haya expirado o que haya ocurrido un problema temporal.",
+                button_text="Volver al inicio",
+                button_href="/",
+            )
         insert_order_event(order["id"], "recipient_opened", "ok", "El destinatario abrió el enlace recibido")
     except Exception:
         log_info("🚪 ENTRADA ETERNA CON TOKEN INVÁLIDO", recipient_token)
@@ -7562,7 +7639,7 @@ def render_terms_code_screen(recipient_token: str) -> HTMLResponse:
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA - Terminos</title><meta name="theme-color" content="#02050a"><style>
 *{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;background:radial-gradient(circle at 78% 16%,rgba(26,159,255,.28),transparent 25%),radial-gradient(circle at 12% 82%,rgba(255,194,74,.16),transparent 28%),linear-gradient(180deg,#02050a 0%,#030914 54%,#02050a 100%);overflow:hidden}}.screen{{position:relative;width:100%;max-width:520px;height:100svh;height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 18px);display:flex;flex-direction:column;overflow:hidden}}.scene{{position:absolute;inset:-18%;pointer-events:none;overflow:hidden;opacity:.96}}.scene:before{{content:"";position:absolute;inset:0;background:conic-gradient(from 218deg at 50% 49%,transparent,rgba(38,169,255,.18),transparent,rgba(255,201,90,.16),transparent);filter:blur(18px);animation:breath 8s ease-in-out infinite}}.scene:after{{content:"";position:absolute;right:-8%;top:8%;width:72%;height:58%;background:radial-gradient(ellipse at center,rgba(64,192,255,.22),transparent 58%);filter:blur(18px);animation:halo 5.8s ease-in-out infinite}}@keyframes breath{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.08);opacity:1}}}}@keyframes halo{{0%,100%{{opacity:.38;transform:scale(.96)}}50%{{opacity:.78;transform:scale(1.08)}}}}.spark{{position:absolute;border-radius:50%;background:#6bd7ff;box-shadow:0 0 18px #6bd7ff,0 0 34px rgba(66,189,255,.42);opacity:.82;animation:float 7.5s linear infinite;pointer-events:none}}.s1{{width:5px;height:5px;left:13%;top:17%}}.s2{{width:4px;height:4px;right:16%;top:31%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:1.2s}}.s3{{width:6px;height:6px;left:18%;bottom:17%;animation-delay:2.1s}}.s4{{width:4px;height:4px;right:19%;bottom:23%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:3.1s}}@keyframes float{{0%,100%{{transform:translateY(0);opacity:.30}}50%{{transform:translateY(-30px);opacity:1}}}}.logo{{position:relative;z-index:1;text-align:center;letter-spacing:.42em;color:#d8b76d;font-size:16px;font-weight:900;text-shadow:0 0 28px rgba(255,197,87,.35);margin:2px 0 10px}}.logo:after{{content:"♡";display:block;letter-spacing:0;font-size:18px;margin-top:8px;color:#f4c76e;text-shadow:0 0 22px rgba(255,193,76,.55)}}.content{{position:relative;z-index:1;display:flex;flex-direction:column;min-height:0;flex:1;text-align:center;gap:12px}}h1{{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(34px,8.5vw,52px);line-height:1.04;margin:0;text-shadow:0 0 26px rgba(255,255,255,.15)}}h1 span{{color:#f4c76e;text-shadow:0 0 28px rgba(244,199,110,.28)}}.lead{{margin:0 auto;color:rgba(255,246,232,.78);font-size:15.5px;line-height:1.48;max-width:460px}}.legal-card{{margin-top:2px;border:1px solid rgba(255,207,112,.28);border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.025));box-shadow:0 22px 70px rgba(0,0,0,.42),inset 0 0 30px rgba(48,165,255,.06);overflow:hidden;text-align:left;flex:1;min-height:0}}.legal-scroll{{height:100%;overflow:auto;padding:2px 0;-webkit-overflow-scrolling:touch}}.row{{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.075);text-decoration:none;color:#fff}}.row:last-child{{border-bottom:0}}.ico{{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,205,110,.50);color:#f4c76e;font-size:20px;box-shadow:0 0 22px rgba(255,196,82,.12);flex:0 0 auto}}.row strong{{display:block;font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:19px;margin-bottom:3px}}.row small{{display:block;color:rgba(255,246,232,.62);font-size:13px;line-height:1.34}}.chev{{margin-left:auto;color:#f4c76e;font-size:26px}}.mini-legal{{padding:12px 16px 14px;color:rgba(255,246,232,.70);font-size:12.6px;line-height:1.45;border-top:1px solid rgba(255,255,255,.06)}}.mini-legal b{{color:#f4c76e;font-weight:800}}.actions{{position:relative;z-index:2;display:grid;gap:10px;padding-top:4px;flex:0 0 auto}}.accept{{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:20px;border:1px solid rgba(255,207,112,.34);background:rgba(0,0,0,.46);box-shadow:inset 0 0 24px rgba(255,201,99,.05);text-align:left;cursor:pointer;min-height:62px}}.accept input{{position:absolute;opacity:0;pointer-events:none}}.box{{width:34px;height:34px;border-radius:10px;border:2px solid rgba(255,223,151,.86);display:flex;align-items:center;justify-content:center;color:#080603;font-weight:950;flex:0 0 auto;box-shadow:0 0 18px rgba(255,202,91,.24)}}.accept input:checked + .box{{background:linear-gradient(135deg,#fff2bf,#d5942e);box-shadow:0 0 28px rgba(255,198,77,.72)}}.accept input:checked + .box:before{{content:"✓"}}.accept span:last-child{{font-size:15px;color:rgba(255,246,232,.84);line-height:1.32}}.btn{{width:100%;min-height:62px;border:0;border-radius:22px;background:linear-gradient(135deg,#fff0bb,#e4a23d 52%,#9b5e08);color:#120c04;font-family:Georgia,"Times New Roman",serif;font-size:25px;box-shadow:0 0 34px rgba(255,190,72,.34),inset 0 0 24px rgba(255,255,255,.20);opacity:.42;transform:scale(.992);transition:all .18s ease;cursor:not-allowed}}.btn.ready{{opacity:1;transform:scale(1);cursor:pointer}}.warn{{display:none;color:#ffd98b;font-size:12px;line-height:1.35;text-align:center;margin-top:-2px}}.warn.on{{display:block}}.note{{color:rgba(255,246,232,.42);font-size:11.4px;line-height:1.35;text-align:center;margin-top:-2px}}@media (max-height:760px){{.screen{{padding-top:12px;padding-bottom:10px}}.logo{{font-size:13px;margin-bottom:5px}}.logo:after{{font-size:15px;margin-top:5px}}h1{{font-size:34px}}.lead{{font-size:13.5px;line-height:1.35}}.row{{padding:10px 14px}}.ico{{width:36px;height:36px;font-size:17px}}.row strong{{font-size:17px}}.row small{{font-size:12px}}.mini-legal{{font-size:11.2px;line-height:1.35;padding:9px 14px}}.accept{{min-height:54px;padding:10px 12px}}.btn{{min-height:56px;font-size:22px}}}}
-</style></head><body><main class="screen"><div class="scene" aria-hidden="true"></div><i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><div class="logo">ETERNA</div><section class="content"><h1>Acepta los <span>términos</span></h1><p class="lead">Antes de continuar, lee y acepta las condiciones para vivir esta experiencia de forma privada, respetuosa y segura.</p><div class="legal-card"><div class="legal-scroll"><a class="row" href="/condiciones" target="_blank" rel="noopener"><div class="ico">▤</div><div><strong>Términos y condiciones</strong><small>Uso responsable, consentimiento, contenido y límites del servicio.</small></div><div class="chev">›</div></a><a class="row" href="/privacidad" target="_blank" rel="noopener"><div class="ico">◈</div><div><strong>Privacidad</strong><small>Datos mínimos, finalidad, conservación, borrado y contacto.</small></div><div class="chev">›</div></a><div class="mini-legal">Al continuar declaras que participas voluntariamente en la experiencia, aceptas el uso de cámara y micrófono cuando el navegador lo solicite, y entiendes que tu reacción podrá ser enviada de forma privada a la persona que creó esta ETERNA.<br><br><b>Uso responsable:</b> esta experiencia no debe utilizarse para acosar, humillar, presionar, exponer públicamente o vulnerar derechos de terceros. El contenido recibido debe tratarse como privado.</div></div></div><div class="actions"><label class="accept"><input id="termsCheck" type="checkbox"><span class="box"></span><span>He leído y acepto los términos y la política de privacidad.</span></label><div id="termsWarn" class="warn">Marca la casilla para continuar.</div><button id="continueBtn" class="btn" type="button">Aceptar y continuar</button><div class="note">Checkbox y botón reales. Sin capas fantasma.</div></div></section></main><script>(function(){{const check=document.getElementById('termsCheck');const btn=document.getElementById('continueBtn');const warn=document.getElementById('termsWarn');function sync(){{btn.classList.toggle('ready',check.checked);if(check.checked&&warn)warn.classList.remove('on');}}check.addEventListener('change',sync);btn.addEventListener('click',function(){{if(!check.checked){{if(warn)warn.classList.add('on');return;}}window.location.href={json.dumps(next_url)};}});sync();}})();</script></body></html>
+</style></head><body><main class="screen"><div class="scene" aria-hidden="true"></div><i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><div class="logo">ETERNA</div><section class="content"><h1>Acepta los <span>términos</span></h1><p class="lead">Antes de continuar, lee y acepta las condiciones para vivir esta experiencia de forma privada, respetuosa y segura.</p><div class="legal-card"><div class="legal-scroll"><a class="row" href="/condiciones" target="_blank" rel="noopener"><div class="ico">▤</div><div><strong>Términos y condiciones</strong><small>Lo esencial para vivir la experiencia con respeto.</small></div><div class="chev">›</div></a><a class="row" href="/privacidad" target="_blank" rel="noopener"><div class="ico">◈</div><div><strong>Privacidad</strong><small>Tu experiencia es personal y privada.</small></div><div class="chev">›</div></a><div class="mini-legal">Al continuar aceptas vivir esta experiencia de forma privada y respetuosa. El navegador podrá pedir cámara y micrófono para que el momento pueda conservarse y enviarse de forma privada a quien lo creó.<br><br><b>Uso responsable:</b> este recuerdo es personal. Trátalo con respeto y no lo compartas públicamente sin consentimiento.</div></div></div><div class="actions"><label class="accept"><input id="termsCheck" type="checkbox"><span class="box"></span><span>He leído y acepto los términos y la política de privacidad.</span></label><div id="termsWarn" class="warn">Marca la casilla para continuar.</div><button id="continueBtn" class="btn" type="button">Aceptar y continuar</button><div class="note"></div></div></section></main><script>(function(){{const check=document.getElementById('termsCheck');const btn=document.getElementById('continueBtn');const warn=document.getElementById('termsWarn');function sync(){{btn.classList.toggle('ready',check.checked);if(check.checked&&warn)warn.classList.remove('on');}}check.addEventListener('change',sync);btn.addEventListener('click',function(){{if(!check.checked){{if(warn)warn.classList.add('on');return;}}window.location.href={json.dumps(next_url)};}});sync();}})();</script></body></html>
 ''')
 
 def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: str) -> HTMLResponse:
@@ -7585,10 +7662,10 @@ html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;fon
 body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#02050a}}
 .shell{{position:relative;width:100vw;max-width:520px;height:100svh;height:100dvh;overflow:hidden;background:#02050a}}
 .bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;user-select:none;pointer-events:none}}
-.amount{{position:absolute;z-index:3;left:18%;right:18%;top:47.8%;min-height:8.6%;border-radius:22px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 14px;color:#ffe0a0;font-size:clamp(20px,6vw,33px);font-weight:950;line-height:1.15;text-shadow:0 0 18px rgba(255,196,72,.58);background:rgba(0,0,0,.18);border:1px solid rgba(255,212,126,.22);box-shadow:0 0 28px rgba(255,190,72,.18),inset 0 0 20px rgba(0,0,0,.28)}}
-.actions{{position:absolute;z-index:4;left:8.2%;right:8.2%;bottom:calc(env(safe-area-inset-bottom) + 7.5%);display:grid;gap:1.25vh}}
+.amount{{position:absolute;z-index:3;left:18%;right:18%;top:45.8%;min-height:9.4%;border-radius:22px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 14px;color:#ffe0a0;font-size:clamp(20px,6vw,33px);font-weight:950;line-height:1.15;text-shadow:0 0 18px rgba(255,196,72,.58);background:rgba(0,0,0,.18);border:1px solid rgba(255,212,126,.22);box-shadow:0 0 28px rgba(255,190,72,.18),inset 0 0 20px rgba(0,0,0,.28)}}
+.actions{{position:absolute;z-index:4;left:8.2%;right:8.2%;bottom:calc(env(safe-area-inset-bottom) + 7.0%);display:grid;gap:1.15vh}}
 .actions form{{margin:0}}
-.btn,.actions form button{{width:100%;min-height:6.6svh;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;text-transform:uppercase;letter-spacing:.06em;font-weight:950;font-size:clamp(13px,3.6vw,18px);border:1px solid rgba(255,213,130,.42);background:rgba(0,7,15,.64);color:#fff2d6;box-shadow:0 14px 34px rgba(0,0,0,.34),0 0 22px rgba(255,189,75,.12);backdrop-filter:blur(6px)}}
+.btn,.actions form button{{width:100%;min-height:6.9svh;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;text-transform:uppercase;letter-spacing:.06em;font-weight:950;font-size:clamp(13px,3.6vw,18px);border:1px solid rgba(255,213,130,.42);background:rgba(0,7,15,.64);color:#fff2d6;box-shadow:0 14px 34px rgba(0,0,0,.34),0 0 22px rgba(255,189,75,.12);backdrop-filter:blur(6px)}}
 .btn.primary,.actions form button{{background:linear-gradient(135deg,#fff1bb,#e6a43c 52%,#9c5d08);color:#120a02;border:0;box-shadow:0 0 34px rgba(255,190,72,.42),inset 0 0 18px rgba(255,255,255,.22)}}
 .blue{{border-color:rgba(49,185,255,.45);box-shadow:0 0 28px rgba(43,175,255,.25),0 14px 34px rgba(0,0,0,.34)}}
 .small{{position:absolute;z-index:3;left:7%;right:7%;bottom:calc(env(safe-area-inset-bottom) + 1.8%);text-align:center;color:rgba(255,246,232,.58);font-size:12px;line-height:1.35;text-shadow:0 0 14px rgba(0,0,0,.9)}}
@@ -9627,27 +9704,27 @@ def sender_pack(sender_token: str, view: str = ""):
 <style>
 *{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
 html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}}
-body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}}
+body{{min-height:100svh;min-height:100dvh;overflow-x:hidden;overflow-y:auto;background:#02050a;display:flex;align-items:flex-start;justify-content:center}}
 .shell{{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:#02050a;box-shadow:0 0 80px rgba(0,0,0,.72)}}
 .bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;user-select:none;pointer-events:none}}
 .glow{{position:absolute;inset:-10%;z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 32%,rgba(50,190,255,.20),transparent 25%),radial-gradient(circle at 74% 45%,rgba(255,174,56,.18),transparent 18%);mix-blend-mode:screen;animation:breath 6s ease-in-out infinite}}
 @keyframes breath{{0%,100%{{opacity:.45;transform:scale(1)}}50%{{opacity:.9;transform:scale(1.045)}}}}
-.main-video{{position:absolute;z-index:3;left:8.2%;right:8.2%;top:24.6%;height:34.8%;border-radius:25px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.82);box-shadow:0 0 32px rgba(34,174,255,.54), inset 0 0 20px rgba(60,190,255,.18)}}
-.main-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.06) saturate(1.06) brightness(1.03)}}
-.reaction-video{{position:absolute;z-index:5;right:8.4%;top:42.4%;width:30.6%;height:22.6%;border-radius:20px;overflow:hidden;background:#000;border:2px solid rgba(255,204,104,.98);box-shadow:0 0 0 1px rgba(255,245,207,.22),0 0 30px rgba(255,183,70,.72), inset 0 0 16px rgba(255,218,137,.22)}}
+  .main-video{{position:absolute;z-index:3;left:6.2%;right:6.2%;top:25.8%;height:43.0%;border-radius:25px;overflow:hidden;background:#000;border:1px solid rgba(71,192,255,.82);box-shadow:0 0 32px rgba(34,174,255,.54), inset 0 0 20px rgba(60,190,255,.18)}}
+ .main-video video{{width:100%;height:100%;object-fit:contain;object-position:center center;display:block;background:#000;filter:contrast(1.06) saturate(1.06) brightness(1.03)}}
+  .reaction-video{{position:absolute;z-index:5;right:7.2%;top:45.6%;width:30.0%;height:24.0%;border-radius:20px;overflow:hidden;background:#000;border:2px solid rgba(255,204,104,.98);box-shadow:0 0 0 1px rgba(255,245,207,.22),0 0 30px rgba(255,183,70,.72), inset 0 0 16px rgba(255,218,137,.22)}}
 .reaction-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.12) saturate(1.10) brightness(1.08)}}
 .real-hit{{position:absolute;z-index:8;border:0;background:rgba(255,255,255,.001);cursor:pointer;text-indent:-9999px;overflow:hidden;border-radius:999px}}
-.hit-replay{{left:8.6%;right:8.6%;bottom:25.0%;height:7.5%}}
+ .hit-replay{{left:8.6%;right:8.6%;bottom:25.0%;height:7.5%}}
 .hit-save{{left:8.6%;right:8.6%;bottom:16.8%;height:7.5%}}
 .hit-share{{left:8.6%;right:8.6%;bottom:8.6%;height:7.5%}}
 .hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
-.pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
+ .pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:11.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
 @keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
 .floating{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#5bd9ff;box-shadow:0 0 16px #5bd9ff;animation:floatUp 7.5s linear infinite;opacity:0;pointer-events:none}}
 .f1{{left:17%;bottom:13%;animation-delay:.2s}}.f2{{left:83%;bottom:22%;animation-delay:1.5s;background:#ffd98c;box-shadow:0 0 16px #ffd98c}}.f3{{left:47%;bottom:7%;animation-delay:3.1s}}.f4{{left:70%;bottom:58%;animation-delay:4.6s}}
 @keyframes floatUp{{0%{{transform:translateY(0) scale(.6);opacity:0}}15%{{opacity:.95}}100%{{transform:translateY(-180px) scale(1.1);opacity:0}}}}
 
-.life-line{{position:absolute;z-index:2;left:7%;right:7%;top:21.9%;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(70,210,255,.95),rgba(255,215,126,.85),transparent);box-shadow:0 0 24px rgba(70,210,255,.78),0 0 46px rgba(255,208,105,.34);animation:lifeLine 3.4s ease-in-out infinite;pointer-events:none;mix-blend-mode:screen}}
+ .life-line{{position:absolute;z-index:2;left:7%;right:7%;top:26.2%;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(70,210,255,.95),rgba(255,215,126,.85),transparent);box-shadow:0 0 24px rgba(70,210,255,.78),0 0 46px rgba(255,208,105,.34);animation:lifeLine 3.4s ease-in-out infinite;pointer-events:none;mix-blend-mode:screen}}
 .life-line::after{{content:"";position:absolute;top:-5px;left:-12%;width:70px;height:12px;border-radius:999px;background:radial-gradient(circle,#fff,rgba(79,211,255,.86) 34%,transparent 72%);filter:blur(1px);box-shadow:0 0 26px rgba(87,215,255,.94);animation:lineStar 4.8s cubic-bezier(.42,0,.24,1) infinite}}
 .alive-heart{{position:absolute;z-index:4;left:50%;bottom:18.9%;width:92px;height:92px;transform:translateX(-50%);border-radius:999px;pointer-events:none;display:flex;align-items:center;justify-content:center;color:#ffd98a;font-size:36px;text-shadow:0 0 20px rgba(255,212,126,.9),0 0 44px rgba(255,166,54,.5);animation:heartBeat 2.4s ease-in-out infinite}}
 .alive-heart::before{{content:"";position:absolute;inset:2px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.20),rgba(255,198,84,.18) 38%,transparent 70%);filter:blur(3px);animation:heartHalo 3.1s ease-in-out infinite}}
@@ -9660,7 +9737,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 @keyframes heartHalo{{0%,100%{{opacity:.18;transform:scale(.86)}}50%{{opacity:.46;transform:scale(1.12)}}}}
 @keyframes heartRing{{0%{{opacity:.18;transform:scale(.72)}}55%{{opacity:.56;transform:scale(1.18)}}100%{{opacity:0;transform:scale(1.42)}}}}
 @keyframes sparkFloat{{0%{{opacity:0;transform:translateY(0) scale(.55)}}16%{{opacity:.96}}72%{{opacity:.42}}100%{{opacity:0;transform:translateY(-105px) translateX(24px) scale(1.1)}}}}
-.video-shine{{position:absolute;z-index:6;left:8.2%;right:8.2%;top:24.6%;height:34.8%;border-radius:25px;pointer-events:none;overflow:hidden}}
+  .video-shine{{position:absolute;z-index:6;left:6.2%;right:6.2%;top:25.8%;height:43.0%;border-radius:25px;pointer-events:none;overflow:hidden}}
 .video-shine::before{{content:"";position:absolute;top:-35%;left:-45%;width:28%;height:170%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transform:rotate(18deg);animation:videoShine 7.8s ease-in-out infinite;mix-blend-mode:screen}}
 @keyframes videoShine{{0%,62%{{left:-45%;opacity:0}}70%{{opacity:.7}}100%{{left:118%;opacity:0}}}}
 
@@ -9686,11 +9763,14 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
     border:1px solid rgba(255,238,181,.88)!important;
     box-shadow:0 0 24px rgba(255,187,65,.62), inset 0 0 18px rgba(255,255,255,.22)!important;
 }}
-.hit-save{{bottom:12.6%!important;}}
-.hit-share{{bottom:5.5%!important;}}
+ .hit-save{{bottom:12.4%!important;}}
+.hit-share{{bottom:5.2%!important;}}
 .hit-save::before{{content:"⬇ ";font-size:1.08em;margin-right:.45em;}}
 .hit-share::before{{content:"↗ ";font-size:1.08em;margin-right:.45em;}}
 .hit-save:active, .hit-share:active{{transform:scale(.985);filter:brightness(1.08);}}
+
+/* RC60 — encuadre sender pack más grande y estable para vídeo real + reacción vertical. */
+.main-video video:fullscreen, .reaction-video video:fullscreen{{object-fit:contain!important}}
 
 .toast{{position:absolute;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
@@ -10322,6 +10402,190 @@ def admin_reset_recipient_session(order_id: str, token: str = ""):
         "recipient_session_claimed_at": refreshed.get("recipient_session_claimed_at"),
         "recipient_url": recipient_experience_url_from_order(refreshed),
     })
+
+
+
+# =========================================================
+# ADMIN — RC60 AUDITORÍA PRELANZAMIENTO
+# =========================================================
+
+def rc60_order_flags(order: dict) -> dict:
+    return {
+        "id": order.get("id"),
+        "state": order.get("order_state"),
+        "paid": bool(order.get("paid")),
+        "video_ready": original_video_ready(order),
+        "delivery_sent": bool(order.get("delivery_sent")),
+        "delivered_to_recipient": bool(order.get("delivered_to_recipient")),
+        "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+        "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+        "experience_started": bool(order.get("experience_started")),
+        "experience_completed": bool(order.get("experience_completed")),
+        "reaction_uploaded": bool(order.get("reaction_uploaded")),
+        "reaction_exists": reaction_exists(order),
+        "sender_notified": bool(order.get("sender_notified")),
+        "sender_sms_attempts": int(order.get("sender_sms_attempts") or 0),
+        "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+        "age_days": order_age_days(order),
+        "link_expired_now": order_link_expired(order),
+        "updated_at": order.get("updated_at"),
+        "created_at": order.get("created_at"),
+    }
+
+
+def rc60_audit_snapshot(limit: int = 80) -> dict:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (int(limit or 80),))
+    ids = [r["id"] for r in cur.fetchall()]
+    conn.close()
+
+    orders = []
+    counters = {
+        "total_sample": 0,
+        "paid_not_video_ready": 0,
+        "video_ready_not_delivered": 0,
+        "delivered_without_reaction": 0,
+        "reaction_without_sender_notice": 0,
+        "recipient_sms_maxed": 0,
+        "sender_sms_maxed": 0,
+        "completed": 0,
+    }
+
+    for oid in ids:
+        try:
+            order = get_order_by_id(oid)
+            flags = rc60_order_flags(order)
+            orders.append(flags)
+            counters["total_sample"] += 1
+            if flags["paid"] and not flags["video_ready"]:
+                counters["paid_not_video_ready"] += 1
+            if flags["paid"] and flags["video_ready"] and not flags["delivery_sent"]:
+                counters["video_ready_not_delivered"] += 1
+            if flags["delivered_to_recipient"] and not flags["reaction_uploaded"]:
+                counters["delivered_without_reaction"] += 1
+            if flags["reaction_uploaded"] and not flags["sender_notified"]:
+                counters["reaction_without_sender_notice"] += 1
+            if flags["recipient_sms_attempts"] >= 3 and not flags["delivery_sent"]:
+                counters["recipient_sms_maxed"] += 1
+            if flags["sender_sms_attempts"] >= 3 and not flags["sender_notified"]:
+                counters["sender_sms_maxed"] += 1
+            if flags["reaction_uploaded"] and flags["sender_notified"]:
+                counters["completed"] += 1
+        except Exception as e:
+            orders.append({"id": oid, "error": str(e)})
+
+    recommendations = []
+    if counters["video_ready_not_delivered"]:
+        recommendations.append("Hay vídeos listos sin entrega: revisar worker/SMS y usar /admin/process-all-due-deliveries.")
+    if counters["reaction_without_sender_notice"]:
+        recommendations.append("Hay reacciones sin aviso al regalante: revisar Twilio/WhatsApp y worker de sender.")
+    if counters["recipient_sms_maxed"] or counters["sender_sms_maxed"]:
+        recommendations.append("Hay pedidos con máximo de intentos: revisar configuración SMS/WhatsApp antes de reenviar manualmente.")
+    if not recommendations:
+        recommendations.append("Muestra reciente sin bloqueos críticos detectados por RC60.")
+
+    return {
+        "ok": True,
+        "rc": "RC61_BLINDAJE_VISUAL_FINAL_SAFE",
+        "generated_at": now_iso(),
+        "public_base_url": PUBLIC_BASE_URL,
+        "startup_sweep_enabled": ETERNA_STARTUP_SWEEP_ENABLED,
+        "link_expiry_enforced": ETERNA_ENFORCE_LINK_EXPIRY,
+        "link_expiry_days": ETERNA_LINK_EXPIRY_DAYS,
+        "messaging": messaging_config_status() if "messaging_config_status" in globals() else {},
+        "counters": counters,
+        "recommendations": recommendations,
+        "orders": orders,
+    }
+
+
+@app.get("/admin/rc60-audit")
+def admin_rc60_audit(token: str = "", limit: int = 80):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return JSONResponse(rc60_audit_snapshot(limit=limit))
+
+
+@app.get("/admin/rc61-audit")
+def admin_rc61_audit(token: str = "", limit: int = 80):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return JSONResponse(rc60_audit_snapshot(limit=limit))
+
+
+@app.get("/admin/audit")
+def admin_audit_alias(token: str = "", limit: int = 80):
+    # Alias limpio para producción: evita tener que recordar el número de RC.
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return JSONResponse(rc60_audit_snapshot(limit=limit))
+
+
+def rc61_assets_audit_snapshot() -> dict:
+    items = []
+    missing = []
+    for logical_name, configured_name in ETERNA_SCREEN_ASSETS.items():
+        resolved = resolve_eterna_asset_filename(configured_name)
+        exists = bool((ETERNA_BG_FOLDER / resolved).exists())
+        row = {
+            "logical_name": logical_name,
+            "configured_name": configured_name,
+            "resolved_name": resolved,
+            "exists": exists,
+        }
+        items.append(row)
+        if not exists:
+            missing.append(row)
+    return {
+        "ok": len(missing) == 0,
+        "rc": "RC61_BLINDAJE_VISUAL_FINAL_SAFE",
+        "generated_at": now_iso(),
+        "asset_folder": str(ETERNA_BG_FOLDER),
+        "missing_count": len(missing),
+        "missing": missing,
+        "assets": items,
+    }
+
+
+@app.get("/admin/assets-audit")
+def admin_assets_audit(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return JSONResponse(rc61_assets_audit_snapshot())
+
+
+@app.get("/admin/go-live-checklist", response_class=HTMLResponse)
+def admin_go_live_checklist(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    audit = rc60_audit_snapshot(limit=60)
+    c = audit.get("counters", {})
+    items = [
+        ("Circuito completo probado", "Hacer 1 pedido real completo en móvil antes de vender."),
+        ("SMS anti-bucle", "Confirmar que no hay pedidos con recipient_sms_attempts/sender_sms_attempts creciendo sin control."),
+        ("Sender Pack", "Verificar encuadre del vídeo principal y reacción en móvil real."),
+        ("Render recovery", "Reiniciar servicio y comprobar que RC61 sweep no duplica SMS."),
+        ("WhatsApp", "Pendiente hasta aprobación Meta/Twilio; SMS queda como fallback."),
+        ("Legal básico", "Mantener términos/privacidad activos y revisar con profesional antes de escalar."),
+    ]
+    rows = "".join(f"<tr><td>✅</td><td>{safe_text(a)}</td><td>{safe_text(b)}</td></tr>" for a,b in items)
+    recs = "".join(f"<li>{safe_text(r)}</li>" for r in audit.get("recommendations", []))
+
+    return HTMLResponse(f"""
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>RC61 Go Live</title>
+<style>body{{margin:0;background:#05070d;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;padding:24px;line-height:1.55}}.card{{max-width:980px;margin:0 auto 18px;padding:18px;border:1px solid rgba(255,209,118,.22);border-radius:20px;background:rgba(255,255,255,.055)}}h1{{font-family:Georgia,serif;color:#f4ce83}}table{{width:100%;border-collapse:collapse}}td,th{{padding:10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left;vertical-align:top}}code{{color:#7ed7ff}}</style></head>
+<body><section class="card"><h1>ETERNA RC61 — Checklist Go Live</h1><p>Estado generado: <code>{safe_text(audit.get('generated_at'))}</code></p><p>Muestra revisada: <b>{int(c.get('total_sample') or 0)}</b> pedidos recientes.</p></section>
+<section class="card"><h2>Contadores críticos</h2><table><tr><th>Métrica</th><th>Valor</th></tr>{''.join(f'<tr><td>{safe_text(k)}</td><td>{safe_text(v)}</td></tr>' for k,v in c.items())}</table></section>
+<section class="card"><h2>Checklist</h2><table>{rows}</table></section>
+<section class="card"><h2>Recomendaciones RC61</h2><ul>{recs}</ul></section>
+</body></html>""")
 
 
 # =========================================================
