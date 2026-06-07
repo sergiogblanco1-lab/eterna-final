@@ -1,8 +1,8 @@
 
 # =========================================================
-# RC51 — QUIET PLACE FINAL + BOTÓN ESTOY LISTO CENTRADO
-# Base: RC50. Sustituye la pantalla de lugar tranquilo por la imagen final y centra la zona real de click.
-# No toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
+# RC52 — RECIPIENT GIFT V3 + SENDER PACK V2
+# Base: RC51. Integra recipient-gift-screen-v3.png y sender-pack-v2.png.
+# Mantiene quiet place final y no toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
 # NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
 # =========================================================
 
@@ -89,7 +89,7 @@
 # ETERNA PATCH - SENDER PACK CINEMATIC FLOW
 # Objetivo:
 # 1. sender-pack-entry-v1.png
-# 2. sender-pack-v1.png
+# 2. sender-pack-v2.png
 # 3. vídeo reacción
 # 4. botones finales
 # =========================================================
@@ -262,7 +262,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v51-quiet-place-final-button-safe"
+ETERNA_VISUAL_VERSION = "eterna-visual-v52-recipient-gift-v3-sender-pack-v2"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -281,8 +281,10 @@ ETERNA_SCREEN_ASSETS = {
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
     "gift_ready": "uploading-reaction-v1.png",
+    "recipient_gift": "recipient-gift-screen-v3.png",
+    "gift_screen": "recipient-gift-screen-v3.png",
     "sender_pack_entry": "sender-pack-entry-v1.png",
-    "sender_pack": "sender-pack-v1.png",
+    "sender_pack": "sender-pack-v2.png",
     "viral_cta": "viral-cta-v1.png",
     "error": "error-v1.png",
 }
@@ -426,7 +428,7 @@ def render_eterna_image_screen(
     is_uploading_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("uploading-reaction-v1.png")
     is_complete_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("experience-complete-v1.png")
     is_sender_entry_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-entry-v1.png")
-    is_sender_pack_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-v1.png")
+    is_sender_pack_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("sender-pack-v1.png"), _eterna_asset_key("sender-pack-v2.png")}
     is_viral_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("viral-cta-v1.png")
 
     note_html = ""
@@ -7363,10 +7365,101 @@ def render_terms_code_screen(recipient_token: str) -> HTMLResponse:
 ''')
 
 def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: str) -> HTMLResponse:
+    '''
+    RC52 — Pantalla regalo destinatario con fondo definitivo recipient-gift-screen-v3.png.
+    Mantiene la lógica existente de cobro/conexión: solo cambia la capa visual y las zonas de click.
+    '''
+    bg = eterna_asset("recipient_gift")
     return HTMLResponse(f'''
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
-*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:radial-gradient(circle at 50% 22%,rgba(255,203,94,.18),transparent 24%),radial-gradient(circle at 78% 34%,rgba(31,167,255,.25),transparent 28%),radial-gradient(circle at 18% 78%,rgba(31,167,255,.14),transparent 30%),#02050a}}.wrap{{position:relative;width:100%;max-width:520px;min-height:100svh;min-height:100dvh;margin:0 auto;padding:calc(env(safe-area-inset-top) + 28px) 22px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:20px;overflow:hidden}}.wrap:before{{content:"";position:absolute;inset:-20%;background:conic-gradient(from 210deg at 50% 48%,transparent,rgba(28,152,255,.20),transparent,rgba(255,198,83,.18),transparent);filter:blur(18px);animation:spin 13s linear infinite;pointer-events:none}}@keyframes spin{{to{{transform:rotate(360deg)}}}}.logo{{position:relative;z-index:1;letter-spacing:.42em;color:#d8b76d;font-size:17px;font-weight:900;text-shadow:0 0 28px rgba(255,197,87,.36)}}.gift{{position:relative;z-index:1;width:156px;height:156px;margin:0 auto;border-radius:34px;background:linear-gradient(145deg,rgba(4,12,24,.98),rgba(0,0,0,.94));border:1px solid rgba(255,210,116,.34);box-shadow:0 0 55px rgba(38,174,255,.22),0 0 78px rgba(255,190,72,.18),inset 0 0 34px rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:72px;color:#f4c76e;text-shadow:0 0 28px rgba(255,196,76,.70);animation:pulse 2.4s ease-in-out infinite}}.gift:before{{content:"";position:absolute;left:50%;top:-22px;width:82px;height:42px;transform:translateX(-50%);border-radius:50%;border:8px solid #d79a35;border-bottom:0;filter:drop-shadow(0 0 14px rgba(255,198,83,.55))}}@keyframes pulse{{0%,100%{{transform:scale(.97)}}50%{{transform:scale(1.04)}}}}h1{{position:relative;z-index:1;margin:0;font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(38px,10vw,56px);line-height:1.05;text-shadow:0 0 28px rgba(255,255,255,.14)}}p{{position:relative;z-index:1;margin:0;color:rgba(255,246,232,.74);font-size:17px;line-height:1.55}}.amount{{position:relative;z-index:1;margin:4px auto 0;padding:18px;border-radius:24px;width:100%;border:1px solid rgba(255,210,116,.25);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:#ffe0a0;font-weight:900;font-size:19px;box-shadow:0 18px 60px rgba(0,0,0,.30)}}.actions{{position:relative;z-index:1;display:grid;gap:12px;margin-top:4px}}.btn{{min-height:62px;border-radius:20px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:16px;padding:13px 16px;border:1px solid rgba(255,213,130,.24);background:rgba(255,255,255,.055);color:#fff;text-decoration:none;box-shadow:0 16px 44px rgba(0,0,0,.30);width:100%}}.btn.primary,.actions form button{{min-height:66px;border-radius:22px;width:100%;border:0;background:linear-gradient(135deg,#fff0b9,#e4a23d 52%,#9b5e08);color:#150e05;font-weight:950;font-size:18px;box-shadow:0 0 34px rgba(255,190,72,.34),inset 0 0 22px rgba(255,255,255,.18)}}.actions form{{margin:0}}.blue{{border-color:rgba(49,185,255,.38);box-shadow:0 0 28px rgba(43,175,255,.22),0 16px 44px rgba(0,0,0,.30)}}.small{{position:relative;z-index:1;color:rgba(255,246,232,.50);font-size:12px;line-height:1.5}}.spark{{position:absolute;border-radius:50%;background:#69d6ff;box-shadow:0 0 18px #69d6ff;opacity:.85;animation:float 7s linear infinite;pointer-events:none}}.a{{width:6px;height:6px;left:15%;top:18%}}.b{{width:5px;height:5px;right:16%;top:28%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:1.3s}}.c{{width:5px;height:5px;left:22%;bottom:19%;animation-delay:2.2s}}.d{{width:4px;height:4px;right:18%;bottom:26%;background:#ffd98b;box-shadow:0 0 18px #ffd98b;animation-delay:3s}}@keyframes float{{0%,100%{{transform:translateY(0);opacity:.35}}50%{{transform:translateY(-38px);opacity:1}}}}
-</style></head><body><main class="wrap"><i class="spark a"></i><i class="spark b"></i><i class="spark c"></i><i class="spark d"></i><div class="logo">ETERNA</div><div class="gift">🎁</div><h1>Tu regalo está listo.</h1><p>Alguien quiso dejarte algo más. Puedes recibirlo cuando quieras.</p><div class="amount">{safe_text(amount_text)}</div><nav class="actions">{cta_html}<a class="btn blue" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a><a class="btn" href="/crear">Crear mi ETERNA</a></nav><div class="small">Tu experiencia es privada y segura.</div></main></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA — Regalo</title>
+<meta name="theme-color" content="#02050a">
+<style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
+body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}}
+.shell{{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:#02050a;box-shadow:0 0 80px rgba(0,0,0,.72)}}
+.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:0;user-select:none;pointer-events:none}}
+.amount-dynamic{{
+    position:absolute;
+    z-index:6;
+    left:13%;
+    right:13%;
+    top:43.2%;
+    min-height:10.4%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:10px 14px;
+    color:#ffe3a0;
+    font-weight:950;
+    font-size:clamp(18px,5.4vw,28px);
+    line-height:1.16;
+    letter-spacing:.02em;
+    text-shadow:0 0 18px rgba(255,206,112,.55),0 2px 10px rgba(0,0,0,.80);
+    pointer-events:none;
+}}
+.gift-actions{{position:absolute;z-index:8;left:8.5%;right:8.5%;bottom:calc(env(safe-area-inset-bottom) + 46px);display:grid;gap:11px}}
+.gift-actions form{{margin:0;display:block;width:100%}}
+.gift-actions a,
+.gift-actions button{{
+    width:100%;
+    min-height:56px;
+    border-radius:18px;
+    border:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    cursor:pointer;
+    touch-action:manipulation;
+    color:transparent!important;
+    text-indent:-9999px;
+    overflow:hidden;
+    background:rgba(255,255,255,.001)!important;
+    box-shadow:none!important;
+    text-decoration:none!important;
+}}
+.gift-actions a:active,
+.gift-actions button:active{{transform:scale(.985)}}
+.hit-glow{{
+    position:absolute;
+    z-index:3;
+    left:8.5%;
+    right:8.5%;
+    bottom:calc(env(safe-area-inset-bottom) + 46px);
+    height:56px;
+    border-radius:18px;
+    pointer-events:none;
+    box-shadow:0 0 30px rgba(255,190,72,.22);
+    animation:ctaBreath 2.8s ease-in-out infinite;
+}}
+@keyframes ctaBreath{{0%,100%{{opacity:.14;transform:scale(.99)}}50%{{opacity:.38;transform:scale(1.01)}}}}
+.spark{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#6ad8ff;box-shadow:0 0 18px #6ad8ff;opacity:0;animation:floatUp 8s linear infinite;pointer-events:none}}
+.s1{{left:18%;bottom:18%;animation-delay:.2s}}.s2{{right:18%;bottom:28%;animation-delay:1.4s;background:#ffd98c;box-shadow:0 0 18px #ffd98c}}.s3{{left:55%;bottom:9%;animation-delay:3.2s}}
+@keyframes floatUp{{0%{{transform:translateY(0) scale(.55);opacity:0}}15%{{opacity:.85}}100%{{transform:translateY(-150px) scale(1.05);opacity:0}}}}
+@media (min-width:760px){{.shell{{width:min(100vw,520px)}}}}
+</style>
+</head>
+<body>
+<main class="shell" aria-label="Regalo ETERNA">
+    <img class="bg" src="{safe_attr(bg)}" alt="Tu ETERNA aún no ha terminado">
+    <i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i>
+    <div class="amount-dynamic">{safe_text(amount_text)}</div>
+    <div class="hit-glow" aria-hidden="true"></div>
+    <nav class="gift-actions" aria-label="Acciones del regalo">
+        {cta_html}
+        <a class="btn secondary" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a>
+        <a class="btn secondary" href="/crear">Crear mi ETERNA</a>
+    </nav>
+</main>
+</body>
+</html>
 ''')
 # =========================================================
 # GUÍA PREVIA A LA EXPERIENCIA — CAPA DELANTE, SIN TOCAR /experiencia
@@ -9393,8 +9486,9 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 .reaction-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.12) saturate(1.10) brightness(1.08)}}
 .real-hit{{position:absolute;z-index:8;border:0;background:rgba(255,255,255,.001);cursor:pointer;text-indent:-9999px;overflow:hidden;border-radius:999px}}
 .hit-replay{{left:8.6%;right:8.6%;bottom:25.0%;height:7.5%}}
-.hit-save{{left:8.6%;right:8.6%;bottom:16.8%;height:7.5%}}
-.hit-share{{left:8.6%;right:8.6%;bottom:8.6%;height:7.5%}}
+.hit-save{{left:8.6%;right:8.6%;bottom:18.2%;height:6.6%}}
+.hit-share{{left:8.6%;right:8.6%;bottom:10.8%;height:6.6%}}
+.hit-create{{left:8.6%;right:8.6%;bottom:3.4%;height:6.6%}}
 .hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
 .pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
 @keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
@@ -9421,7 +9515,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 
 
 /* RC46 — botones reales grandes y visibles en sender pack */
-.hit-save, .hit-share{{
+.hit-save, .hit-share, .hit-create{{
     text-indent:0!important;
     display:flex!important;
     align-items:center!important;
@@ -9441,11 +9535,13 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
     border:1px solid rgba(255,238,181,.88)!important;
     box-shadow:0 0 24px rgba(255,187,65,.62), inset 0 0 18px rgba(255,255,255,.22)!important;
 }}
-.hit-save{{bottom:12.6%!important;}}
-.hit-share{{bottom:5.5%!important;}}
+.hit-save{{bottom:17.4%!important;}}
+.hit-share{{bottom:10.2%!important;}}
+.hit-create{{bottom:3.0%!important;}}
 .hit-save::before{{content:"⬇ ";font-size:1.08em;margin-right:.45em;}}
 .hit-share::before{{content:"↗ ";font-size:1.08em;margin-right:.45em;}}
-.hit-save:active, .hit-share:active{{transform:scale(.985);filter:brightness(1.08);}}
+.hit-create::before{{content:"✦ ";font-size:1.08em;margin-right:.45em;}}
+.hit-save:active, .hit-share:active, .hit-create:active{{transform:scale(.985);filter:brightness(1.08);}}
 
 .toast{{position:absolute;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
@@ -9476,6 +9572,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
     <button class="real-hit hit-replay" id="replayBtn" type="button">Volver a ver esta emoción</button>
     <a class="real-hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download>Descargar reacción</a>
     <button class="real-hit hit-share" id="shareBtn" type="button">Compartir experiencia</button>
+    <a class="real-hit hit-create" href="/crear">Crear mi ETERNA</a>
     <a class="real-hit hit-back" href="/sender/{safe_attr(sender_token)}">Volver a sentirlo</a>
     <div class="toast" id="toast">Listo</div>
 </main>
