@@ -285,7 +285,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v61-blindaje-visual-final-safe"
+ETERNA_VISUAL_VERSION = "eterna-visual-v62-consentimiento-intro-safe"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -296,11 +296,13 @@ ETERNA_SCREEN_ASSETS = {
     "home_mobile": "home-mobile-v1.png",
     "checkout_loading": "uploading-reaction-v1.png",
     "payment_success": "payment-success-v1.png",
-    "intro_shhh": "intro-shhh-v1.png",
+    "intro_shhh": "ETERNA_INTRO_SHHH_PROD.png",
+    "intro_shhh_legacy": "intro-shhh-v1.png",
     "sound_check": "sound-check-v1.png",
     "quiet_place": "eterna_lugar_tranquilo_final.png",
     "terms_acceptance": "terms-acceptance-v1.png",
-    "consent_recording": "terms-acceptance-v1.png",
+    "consent_recording": "recording-consent-v1.png",
+    "recording_consent": "recording-consent-v1.png",
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
     "gift_ready": "uploading-reaction-v1.png",
@@ -445,7 +447,8 @@ def render_eterna_image_screen(
     is_terms_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("terms-acceptance-v1.png")
     is_payment_success_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("payment-success-v1.png")
     is_quiet_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("quiet-place-v1.png"), _eterna_asset_key("eterna_lugar_tranquilo_final.png"), _eterna_asset_key("quiet-place-v2.png")}
-    is_intro_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("intro-shhh-v1.png")
+    is_intro_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("intro-shhh-v1.png"), _eterna_asset_key("ETERNA_INTRO_SHHH_PROD.png")}
+    is_recording_consent_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("recording-consent-v1.png")
     is_sound_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sound-check-v1.png")
     is_uploading_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("uploading-reaction-v1.png")
     is_complete_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("experience-complete-v1.png")
@@ -478,17 +481,22 @@ def render_eterna_image_screen(
         </form>
         """
     elif button_url and button_label:
-        if is_terms_screen:
+        if is_terms_screen or is_recording_consent_screen:
+            check_id = "recordingConsentCheck" if is_recording_consent_screen else "termsRealCheck"
+            btn_id = "recordingConsentContinueButton" if is_recording_consent_screen else "termsContinueButton"
+            wrapper_class = "recording-consent-real-check" if is_recording_consent_screen else "terms-real-check"
+            disabled_class = "recording-consent-continue" if is_recording_consent_screen else "terms-continue"
+            aria_label = "Acepto la grabación de mi reacción" if is_recording_consent_screen else "He leído y acepto los términos"
             action_html = f"""
-            <div class="terms-real-check">
-                <input id="termsRealCheck" type="checkbox" aria-label="He leído y acepto los términos">
-                <label for="termsRealCheck"><span></span></label>
+            <div class="{wrapper_class}">
+                <input id="{check_id}" type="checkbox" aria-label="{aria_label}">
+                <label for="{check_id}"><span></span></label>
             </div>
-            <a class="real-button terms-continue is-disabled" id="termsContinueButton" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>
+            <a class="real-button {disabled_class} is-disabled" id="{btn_id}" href="{safe_attr(button_url)}" aria-label="{safe_attr(button_label)}">{safe_text(button_label)}</a>
             <script>
             (function() {{
-                const check = document.getElementById('termsRealCheck');
-                const btn = document.getElementById('termsContinueButton');
+                const check = document.getElementById('{check_id}');
+                const btn = document.getElementById('{btn_id}');
                 if (!check || !btn) return;
                 function sync() {{
                     if (check.checked) {{
@@ -502,7 +510,7 @@ def render_eterna_image_screen(
                 btn.addEventListener('click', function(e) {{
                     if (!check.checked) {{
                         e.preventDefault();
-                        const box = document.querySelector('.terms-real-check');
+                        const box = document.querySelector('.{wrapper_class}');
                         if (box) {{
                             box.classList.remove('needs-attention');
                             void box.offsetWidth;
@@ -522,6 +530,8 @@ def render_eterna_image_screen(
     screen_mode_class = " loading-mode" if overlay_kind == "loading" else ""
     if is_terms_screen:
         screen_mode_class += " terms-mode"
+    if is_recording_consent_screen:
+        screen_mode_class += " consent-mode"
     if is_payment_success_screen:
         screen_mode_class += " payment-success-mode"
     if is_quiet_screen:
@@ -991,6 +1001,95 @@ def render_eterna_image_screen(
     @keyframes termsButtonReady {{ 0%,100% {{ filter:brightness(1); transform:scale(.996); }} 50% {{ filter:brightness(1.42); transform:scale(1.012); }} }}
     @keyframes termsCheckShake {{ 0%,100% {{ transform:translateX(0); }} 25% {{ transform:translateX(-6px); }} 50% {{ transform:translateX(5px); }} 75% {{ transform:translateX(-3px); }} }}
 
+
+
+    /* RC62 — consentimiento de grabación: checkbox y botón reales alineados al PNG canónico */
+    .recording-consent-real-check {{
+        position:absolute;
+        left:16.6%;
+        top:76.3%;
+        width:62px;
+        height:58px;
+        z-index:120;
+        pointer-events:auto;
+        cursor:pointer;
+    }}
+    .recording-consent-real-check input {{
+        position:absolute !important;
+        inset:0 !important;
+        width:100% !important;
+        height:100% !important;
+        opacity:0 !important;
+        cursor:pointer !important;
+        z-index:5 !important;
+    }}
+    .recording-consent-real-check label {{
+        position:absolute;
+        inset:0;
+        opacity:0;
+        pointer-events:none !important;
+        background:transparent;
+        border:0;
+        box-shadow:none;
+    }}
+    .recording-consent-real-check::after {{
+        content:"";
+        position:absolute;
+        inset:5px;
+        border-radius:12px;
+        pointer-events:none;
+        opacity:.0;
+        border:1px solid rgba(255,235,176,.0);
+        box-shadow:0 0 0 rgba(255,205,100,0);
+        transition:opacity .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }}
+    .recording-consent-real-check:has(input:checked)::after {{
+        opacity:.62;
+        border-color:rgba(255,232,169,.78);
+        box-shadow:0 0 24px rgba(255,203,94,.58), inset 0 0 10px rgba(255,221,145,.20);
+    }}
+    .recording-consent-real-check.needs-attention {{ animation:termsCheckShake .35s ease-in-out 1; }}
+    .recording-consent-real-check.needs-attention::after {{
+        opacity:.85;
+        border-color:rgba(255,255,255,.96);
+        box-shadow:0 0 28px rgba(255,255,255,.78),0 0 48px rgba(255,191,66,.42);
+    }}
+    .screen.consent-mode .real-button.recording-consent-continue {{
+        left:11% !important;
+        right:11% !important;
+        bottom:calc(env(safe-area-inset-bottom) + 76px) !important;
+        min-height:92px !important;
+        border-radius:30px !important;
+        z-index:130 !important;
+        pointer-events:auto !important;
+        touch-action:manipulation !important;
+    }}
+    .screen.consent-mode .real-button.is-disabled {{ pointer-events:auto !important; }}
+    .screen.consent-mode .real-button.is-ready::after,
+    .screen.consent-mode .real-button:hover::after,
+    .screen.consent-mode .real-button:active::after {{
+        opacity:.42;
+        box-shadow:0 0 46px rgba(255,191,66,.72), 0 0 86px rgba(255,216,132,.40), inset 0 0 26px rgba(255,255,255,.16);
+        animation:termsButtonReady 1.5s ease-in-out infinite;
+    }}
+    .screen.consent-mode .soft-halo {{
+        left:50%; top:26%; width:420px; height:420px;
+        background:radial-gradient(circle, rgba(67,213,255,.32), rgba(29,123,255,.13) 45%, transparent 74%);
+        filter:blur(18px);
+        animation:rc26BlueWingBreath 4.6s ease-in-out infinite;
+        z-index:2;
+    }}
+    @media (max-height: 740px) {{
+        .screen.consent-mode .real-button.recording-consent-continue {{
+            bottom:calc(env(safe-area-inset-bottom) + 52px) !important;
+            min-height:82px !important;
+        }}
+        .recording-consent-real-check {{
+            top:75.4%;
+            height:54px;
+        }}
+    }}
+
     /* RC23 — quiet-place: microvida premium también antes de empezar */
     .screen.quiet-mode .soft-halo {{
         left:50%; top:33%; width:390px; height:390px;
@@ -1322,6 +1421,7 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
     }}
 
     .screen.intro-mode .real-button,
+    .screen.consent-mode .real-button,
     .screen.quiet-mode .real-button,
     .screen.terms-mode .terms-continue {{
         pointer-events:auto !important;
@@ -7697,12 +7797,14 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 @app.get("/guia/{step}/{recipient_token}", response_class=HTMLResponse)
 def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
     """
-    GUÍA V3 LIMPIA.
-    Flujo decidido:
-      0 -> Shhh / entrada emocional
-      1 -> Lee y acepta
-      2 -> Busca un lugar tranquilo / empieza experiencia
-    No toca MediaRecorder, chunks, subida, Stripe, SMS ni video engine.
+    RC62 — GUÍA PREVIA DEFINITIVA.
+    Flujo decidido y seguro:
+      0 -> Activar sonido
+      1 -> Términos y privacidad
+      2 -> Consentimiento explícito de grabación
+      3 -> Intro emocional Shhh / botón Estoy listo / petición real de cámara
+
+    No toca MediaRecorder, chunks, subida, Stripe, SMS, webhooks, cobros ni video engine.
     """
     order = get_order_by_recipient_token_or_404(recipient_token)
 
@@ -7721,30 +7823,41 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         step = 0
     if step < 0:
         step = 0
-    if step > 2:
-        step = 2
+    if step > 3:
+        step = 3
 
     if step == 0:
-        insert_order_event(order["id"], "guide_intro_opened", "ok", "Pantalla Shhh limpia")
+        insert_order_event(order["id"], "guide_sound_opened", "ok", "Pantalla activar sonido")
         response = render_eterna_image_screen(
-            image_name="intro-shhh-v1.png",
-            fallback_image_name="intro-shhh-v1.png",
+            image_name="sound_check",
+            fallback_image_name="sound-check-v1.png",
             button_url=f"/guia/1/{recipient_token}",
-            button_label="Estoy listo",
+            button_label="Continuar",
         )
         attach_recipient_session_if_needed(order, request, response)
         return response
 
     if step == 1:
-        insert_order_event(order["id"], "guide_terms_opened", "ok", "Pantalla términos por código RC49")
+        insert_order_event(order["id"], "guide_terms_opened", "ok", "Pantalla términos y privacidad")
         response = render_terms_code_screen(recipient_token)
         attach_recipient_session_if_needed(order, request, response)
         return response
 
-    insert_order_event(order["id"], "guide_quiet_opened", "ok", "Pantalla final antes de iniciar experiencia")
+    if step == 2:
+        insert_order_event(order["id"], "guide_recording_consent_opened", "ok", "Pantalla consentimiento explícito de grabación")
+        response = render_eterna_image_screen(
+            image_name="recording_consent",
+            fallback_image_name="recording-consent-v1.png",
+            button_url=f"/guia/3/{recipient_token}",
+            button_label="Aceptar y continuar",
+        )
+        attach_recipient_session_if_needed(order, request, response)
+        return response
+
+    insert_order_event(order["id"], "guide_intro_opened", "ok", "Intro Shhh definitiva antes de iniciar experiencia")
     response = render_eterna_image_screen(
-        image_name="quiet_place",
-        fallback_image_name="error-v1.png",
+        image_name="intro_shhh",
+        fallback_image_name="ETERNA_INTRO_SHHH_PROD.png",
         form_action="/start-experience",
         form_method="post",
         hidden_fields={"recipient_token": recipient_token},
