@@ -1,8 +1,8 @@
 
 # =========================================================
-# RC52 — RECIPIENT GIFT V3 + SENDER PACK V2
-# Base: RC51. Integra recipient-gift-screen-v3.png y sender-pack-v2.png.
-# Mantiene quiet place final y no toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
+# RC53 — BLINDAJE PRELANZAMIENTO + ANTI-BUCLES + RECUPERACIÓN + PANTALLAS V3/V2
+# Base: RC50. Sustituye la pantalla de lugar tranquilo por la imagen final y centra la zona real de click.
+# No toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
 # NO toca Stripe, Twilio, webhooks, base de datos, video engine, reacción, workers ni cobros.
 # =========================================================
 
@@ -89,7 +89,7 @@
 # ETERNA PATCH - SENDER PACK CINEMATIC FLOW
 # Objetivo:
 # 1. sender-pack-entry-v1.png
-# 2. sender-pack-v2.png
+# 2. sender-pack-v1.png
 # 3. vídeo reacción
 # 4. botones finales
 # =========================================================
@@ -262,7 +262,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v52-recipient-gift-v3-sender-pack-v2"
+ETERNA_VISUAL_VERSION = "eterna-visual-v53-blindaje-prelanzamiento"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -281,9 +281,8 @@ ETERNA_SCREEN_ASSETS = {
     "uploading_reaction": "uploading-reaction-v1.png",
     "experience_complete": "experience-complete-v1.png",
     "gift_ready": "uploading-reaction-v1.png",
-    "recipient_gift": "recipient-gift-screen-v3.png",
-    "gift_screen": "recipient-gift-screen-v3.png",
     "sender_pack_entry": "sender-pack-entry-v1.png",
+    "recipient_gift": "recipient-gift-screen-v3.png",
     "sender_pack": "sender-pack-v2.png",
     "viral_cta": "viral-cta-v1.png",
     "error": "error-v1.png",
@@ -428,7 +427,7 @@ def render_eterna_image_screen(
     is_uploading_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("uploading-reaction-v1.png")
     is_complete_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("experience-complete-v1.png")
     is_sender_entry_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-entry-v1.png")
-    is_sender_pack_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("sender-pack-v1.png"), _eterna_asset_key("sender-pack-v2.png")}
+    is_sender_pack_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-v1.png")
     is_viral_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("viral-cta-v1.png")
 
     note_html = ""
@@ -1750,6 +1749,16 @@ def init_db():
     add_column_if_missing("orders", "delivery_sent_at", "ALTER TABLE orders ADD COLUMN delivery_sent_at TEXT")
     add_column_if_missing("orders", "video_render_requested", "ALTER TABLE orders ADD COLUMN video_render_requested INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "video_render_requested_at", "ALTER TABLE orders ADD COLUMN video_render_requested_at TEXT")
+    # RC53 — BLINDAJE PRELANZAMIENTO: estados, locks, idempotencia y recuperación
+    add_column_if_missing("orders", "order_state", "ALTER TABLE orders ADD COLUMN order_state TEXT NOT NULL DEFAULT 'CREATED'")
+    add_column_if_missing("orders", "stripe_event_id", "ALTER TABLE orders ADD COLUMN stripe_event_id TEXT")
+    add_column_if_missing("orders", "stripe_event_processed_at", "ALTER TABLE orders ADD COLUMN stripe_event_processed_at TEXT")
+    add_column_if_missing("orders", "delivery_processing_lock", "ALTER TABLE orders ADD COLUMN delivery_processing_lock INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "delivery_processing_lock_at", "ALTER TABLE orders ADD COLUMN delivery_processing_lock_at TEXT")
+    add_column_if_missing("orders", "sender_sms_processing_lock", "ALTER TABLE orders ADD COLUMN sender_sms_processing_lock INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "sender_sms_processing_lock_at", "ALTER TABLE orders ADD COLUMN sender_sms_processing_lock_at TEXT")
+    add_column_if_missing("orders", "last_recovery_at", "ALTER TABLE orders ADD COLUMN last_recovery_at TEXT")
+    add_column_if_missing("orders", "last_recovery_reason", "ALTER TABLE orders ADD COLUMN last_recovery_reason TEXT")
     add_column_if_missing("orders", "recipient_session_token", "ALTER TABLE orders ADD COLUMN recipient_session_token TEXT")
     add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
 init_db()
@@ -2676,6 +2685,137 @@ def update_order(order_id: str, **fields):
     conn.close()
 
 
+
+# =========================================================
+# RC53 — BLINDAJE PRELANZAMIENTO
+# Estados únicos, locks anti-bucle y recuperación tras reinicio.
+# No cambia Stripe/Twilio/video engine; solo añade cinturón de seguridad.
+# =========================================================
+
+ORDER_STATES = {
+    "CREATED",
+    "PAID",
+    "RENDERING",
+    "VIDEO_READY",
+    "DELIVERED_TO_RECIPIENT",
+    "EXPERIENCE_STARTED",
+    "REACTION_UPLOADED",
+    "SENDER_PACK_READY",
+    "COMPLETED",
+    "FAILED",
+}
+
+def set_order_state(order_id: str, state: str, reason: str = ""):
+    state = (state or "").strip().upper()
+    if state not in ORDER_STATES:
+        state = "FAILED"
+    try:
+        update_order(order_id, order_state=state)
+        insert_order_event(order_id, "state_change", "ok", state, {"reason": reason})
+    except Exception as e:
+        print("⚠️ No pude marcar estado:", order_id, state, e)
+
+def acquire_order_processing_lock(order_id: str, field: str, at_field: str, max_age_seconds: int = 600) -> bool:
+    """
+    Lock SQLite atómico:
+    - evita dos SMS duplicados
+    - evita dos workers pisándose
+    - libera locks viejos tras reinicio/caída
+    """
+    now = now_iso()
+    cutoff = (now_dt() - timedelta(seconds=max_age_seconds)).isoformat()
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(f"""
+            UPDATE orders
+            SET {field}=1, {at_field}=?, updated_at=?
+            WHERE id=?
+              AND (
+                    COALESCE({field},0)=0
+                    OR {at_field} IS NULL
+                    OR {at_field} < ?
+              )
+        """, (now, now, order_id, cutoff))
+        conn.commit()
+        return cur.rowcount == 1
+    finally:
+        conn.close()
+
+def release_order_processing_lock(order_id: str, field: str, at_field: str):
+    try:
+        update_order(order_id, **{field: 0, at_field: None})
+    except Exception as e:
+        print("⚠️ No pude liberar lock:", order_id, field, e)
+
+def recover_stale_processing_locks(max_age_minutes: int = 15):
+    """
+    Al arrancar Render, limpia locks antiguos para que un deploy no deje pedidos muertos.
+    """
+    cutoff = (now_dt() - timedelta(minutes=max_age_minutes)).isoformat()
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE orders
+            SET delivery_processing_lock=0,
+                delivery_processing_lock_at=NULL,
+                sender_sms_processing_lock=0,
+                sender_sms_processing_lock_at=NULL,
+                last_recovery_at=?,
+                last_recovery_reason='stale_processing_lock_released',
+                updated_at=?
+            WHERE
+                (COALESCE(delivery_processing_lock,0)=1 AND delivery_processing_lock_at IS NOT NULL AND delivery_processing_lock_at < ?)
+                OR
+                (COALESCE(sender_sms_processing_lock,0)=1 AND sender_sms_processing_lock_at IS NOT NULL AND sender_sms_processing_lock_at < ?)
+        """, (now_iso(), now_iso(), cutoff, cutoff))
+        changed = cur.rowcount
+        conn.commit()
+        if changed:
+            print(f"🛡️ RC53 recuperación: locks antiguos liberados: {changed}")
+    except Exception as e:
+        print("⚠️ RC53 recuperación locks falló:", e)
+    finally:
+        conn.close()
+
+def normalize_order_state_from_flags(order: dict) -> str:
+    if bool(order.get("eterna_completed")):
+        return "COMPLETED"
+    if bool(order.get("reaction_uploaded")) and reaction_exists(order):
+        return "SENDER_PACK_READY"
+    if bool(order.get("experience_started")):
+        return "EXPERIENCE_STARTED"
+    if bool(order.get("delivery_sent")) or bool(order.get("delivered_to_recipient")):
+        return "DELIVERED_TO_RECIPIENT"
+    if original_video_ready(order):
+        return "VIDEO_READY"
+    if bool(order.get("video_render_requested")):
+        return "RENDERING"
+    if bool(order.get("paid")):
+        return "PAID"
+    return "CREATED"
+
+def recover_order_states_from_flags():
+    """
+    No cambia negocio: solo rellena order_state para trazabilidad y rescate.
+    """
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM orders")
+        ids = [r["id"] for r in cur.fetchall()]
+    finally:
+        conn.close()
+    for oid in ids:
+        try:
+            order = get_order_by_id(oid)
+            state = normalize_order_state_from_flags(order)
+            if (order.get("order_state") or "") != state:
+                update_order(oid, order_state=state)
+        except Exception as e:
+            print("⚠️ No pude normalizar estado:", oid, e)
+
 def sender_pack_url_from_order(order: dict) -> str:
     return f"{PUBLIC_BASE_URL}/sender/{order['sender_token']}"
 
@@ -2743,6 +2883,7 @@ def try_send_sender_sms(order: dict) -> dict:
     attempts = int(order.get("sender_sms_attempts") or 0)
 
     if bool(order.get("sender_sms_sent_at")):
+        set_order_state(order["id"], "SENDER_PACK_READY", "sender_sms_already_sent")
         return {
             "ok": True,
             "reason": "already_sent",
@@ -2753,6 +2894,7 @@ def try_send_sender_sms(order: dict) -> dict:
         }
 
     if attempts >= 3:
+        insert_order_event(order["id"], "sender_sms_error", "warning", "Máximo de intentos de SMS al regalante alcanzado", {"attempts": attempts})
         return {
             "ok": False,
             "reason": "max_attempts_reached",
@@ -2761,49 +2903,83 @@ def try_send_sender_sms(order: dict) -> dict:
             "sender_sms_error": order.get("sender_sms_error"),
         }
 
-    message = build_sender_ready_message(order)
-    print("📩 RC14 ENVIANDO MENSAJE REGALANTE A:", order.get("sender_phone", ""))
-    result = send_message_best_effort(order.get("sender_phone", ""), message)
+    locked = acquire_order_processing_lock(
+        order["id"],
+        "sender_sms_processing_lock",
+        "sender_sms_processing_lock_at",
+        max_age_seconds=600,
+    )
+    if not locked:
+        return {"ok": False, "reason": "sender_sms_locked", "retry": True, "no_attempt_increment": True}
 
-    attempts = attempts + 1
+    try:
+        order = get_order_by_id(order["id"])
+        attempts = int(order.get("sender_sms_attempts") or 0)
 
-    if result.get("ok"):
-        sent_at = now_iso()
+        if bool(order.get("sender_sms_sent_at")):
+            return {
+                "ok": True,
+                "reason": "already_sent_after_lock",
+                "sid": order.get("sender_sms_sid"),
+                "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+                "sender_sms_attempts": attempts,
+                "sender_sms_error": order.get("sender_sms_error"),
+            }
+
+        if attempts >= 3:
+            return {
+                "ok": False,
+                "reason": "max_attempts_reached",
+                "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+                "sender_sms_attempts": attempts,
+                "sender_sms_error": order.get("sender_sms_error"),
+            }
+
+        message = build_sender_ready_message(order)
+        print("📩 RC53 ENVIANDO MENSAJE REGALANTE A:", order.get("sender_phone", ""))
+        result = send_message_best_effort(order.get("sender_phone", ""), message)
+
+        attempts = attempts + 1
+
+        if result.get("ok"):
+            sent_at = now_iso()
+
+            update_order(
+                order["id"],
+                sender_sms_attempts=attempts,
+                sender_sms_error=None,
+                sender_sms_sid=result.get("sid"),
+                sender_sms_sent_at=sent_at,
+                sender_notified=1,
+            )
+            set_order_state(order["id"], "SENDER_PACK_READY", "sender_sms_sent")
+
+            refreshed = get_order_by_id(order["id"])
+            return {
+                "ok": True,
+                "reason": "sent",
+                "sid": refreshed.get("sender_sms_sid"),
+                "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
+                "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
+                "sender_sms_error": refreshed.get("sender_sms_error"),
+            }
 
         update_order(
             order["id"],
             sender_sms_attempts=attempts,
-            sender_sms_error=None,
-            sender_sms_sid=result.get("sid"),
-            sender_sms_sent_at=sent_at,
-            sender_notified=1,
+            sender_sms_error=result.get("error") or "sms_error",
         )
 
         refreshed = get_order_by_id(order["id"])
         return {
-            "ok": True,
-            "reason": "sent",
-            "sid": refreshed.get("sender_sms_sid"),
+            "ok": False,
+            "reason": result.get("error") or "sms_error",
             "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
             "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
             "sender_sms_error": refreshed.get("sender_sms_error"),
         }
-
-    update_order(
-        order["id"],
-        sender_sms_attempts=attempts,
-        sender_sms_error=result.get("error") or "sms_error",
-    )
-
-    refreshed = get_order_by_id(order["id"])
-    return {
-        "ok": False,
-        "reason": result.get("error") or "sms_error",
-        "sender_sms_sent_at": refreshed.get("sender_sms_sent_at"),
-        "sender_sms_attempts": int(refreshed.get("sender_sms_attempts") or 0),
-        "sender_sms_error": refreshed.get("sender_sms_error"),
-    }
-
+    finally:
+        release_order_processing_lock(order["id"], "sender_sms_processing_lock", "sender_sms_processing_lock_at")
 
 def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     gift_amount = max(0.0, round(float(gift_amount or 0), 2))
@@ -3024,10 +3200,8 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     print("📦 PROCESS RECIPIENT DELIVERY START")
     print("➡️ order_id:", order_id)
 
-    # =========================================================
-    # YA ENVIADO
-    # =========================================================
     if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
+        set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_delivery_already_sent")
         return {
             "ok": True,
             "reason": "already_sent",
@@ -3038,126 +3212,134 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
 
-    # =========================================================
-    # VALIDACIONES PREVIAS
-    # =========================================================
-    attempts = int(order.get("recipient_sms_attempts") or 0)
-
-    if attempts >= 3:
+    locked = acquire_order_processing_lock(
+        order_id,
+        "delivery_processing_lock",
+        "delivery_processing_lock_at",
+        max_age_seconds=600,
+    )
+    if not locked:
         return {
             "ok": False,
-            "reason": "max_attempts_reached",
+            "reason": "delivery_processing_locked",
             "delivery_sent": False,
-            "delivery_sent_at": order.get("delivery_sent_at"),
-            "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
-            "recipient_sms_attempts": attempts,
-            "recipient_sms_error": order.get("recipient_sms_error"),
+            "retry": True,
+            "no_attempt_increment": True,
         }
 
-    if not bool(order.get("paid")):
-        return {
-            "ok": False,
-            "reason": "order_not_paid",
-            "delivery_sent": False,
-        }
+    try:
+        order = get_order_by_id(order_id)
 
-    if not original_video_ready(order):
-        return {
-            "ok": False,
-            "reason": "original_video_not_ready",
-            "delivery_sent": False,
-        }
+        if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
+            set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_delivery_already_sent_after_lock")
+            return {
+                "ok": True,
+                "reason": "already_sent_after_lock",
+                "delivery_sent": True,
+                "delivery_sent_at": order.get("delivery_sent_at"),
+                "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+                "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+                "recipient_sms_error": order.get("recipient_sms_error"),
+            }
 
-    if not delivery_is_unlocked(order):
-        return {
-            "ok": False,
-            "reason": "scheduled_delivery_not_ready",
-            "delivery_sent": False,
-            "scheduled_delivery_at": order.get("scheduled_delivery_at"),
-            "scheduled_delivery_display": scheduled_delivery_display(order),
-        }
+        attempts = int(order.get("recipient_sms_attempts") or 0)
 
-    # =========================================================
-    # SMS
-    # =========================================================
-    message = build_recipient_message(order)
-    print("📩 RC14 ENVIANDO MENSAJE DESTINATARIO A:", order.get("recipient_phone", ""))
-    result = send_message_best_effort(order.get("recipient_phone", ""), message)
+        if attempts >= 3:
+            insert_order_event(order_id, "recipient_sms_failed", "warning", "Máximo de intentos al destinatario alcanzado", {"attempts": attempts})
+            return {
+                "ok": False,
+                "reason": "max_attempts_reached",
+                "delivery_sent": False,
+                "delivery_sent_at": order.get("delivery_sent_at"),
+                "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+                "recipient_sms_attempts": attempts,
+                "recipient_sms_error": order.get("recipient_sms_error"),
+            }
 
-    print("📩 RECIPIENT SMS RESULT:", result)
+        if not bool(order.get("paid")):
+            return {"ok": False, "reason": "order_not_paid", "delivery_sent": False}
 
-    attempts = attempts + 1
+        if not original_video_ready(order):
+            set_order_state(order_id, "RENDERING" if bool(order.get("video_render_requested")) else "PAID", "original_video_not_ready")
+            return {"ok": False, "reason": "original_video_not_ready", "delivery_sent": False}
 
-    sms_ok = bool(result.get("ok"))
-    sms_sid = (result.get("sid") or "").strip() or None
-    sms_error = (result.get("error") or "").strip() or None
-    sms_reason = (result.get("reason") or "").strip().lower()
+        if not delivery_is_unlocked(order):
+            return {
+                "ok": False,
+                "reason": "scheduled_delivery_not_ready",
+                "delivery_sent": False,
+                "scheduled_delivery_at": order.get("scheduled_delivery_at"),
+                "scheduled_delivery_display": scheduled_delivery_display(order),
+            }
 
-    # =========================================================
-    # ÉXITO REAL
-    # =========================================================
-    success = False
+        message = build_recipient_message(order)
+        print("📩 RC53 ENVIANDO MENSAJE DESTINATARIO A:", order.get("recipient_phone", ""))
+        result = send_message_best_effort(order.get("recipient_phone", ""), message)
 
-    if sms_ok:
-        success = True
-    elif sms_reason in {"accepted", "queued", "sent"}:
-        success = True
-    elif sms_sid:
-        success = True
+        print("📩 RECIPIENT SMS RESULT:", result)
 
-    if success:
-        sent_at = now_iso()
+        attempts = attempts + 1
+
+        sms_ok = bool(result.get("ok"))
+        sms_sid = (result.get("sid") or "").strip() or None
+        sms_error = (result.get("error") or "").strip() or None
+        sms_reason = (result.get("reason") or "").strip().lower()
+
+        success = bool(sms_ok or sms_sid or sms_reason in {"accepted", "queued", "sent"})
+
+        if success:
+            sent_at = now_iso()
+
+            update_order(
+                order_id,
+                recipient_sms_attempts=attempts,
+                recipient_sms_error=None,
+                recipient_sms_sid=sms_sid,
+                recipient_sms_sent_at=sent_at,
+                delivery_sent=1,
+                delivery_sent_at=sent_at,
+                delivered_to_recipient=1,
+            )
+            set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_sms_sent")
+
+            updated = get_order_by_id(order_id)
+            insert_order_event(order_id, "recipient_sms_sent", "ok", "SMS/enlace enviado al destinatario", {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0)})
+
+            return {
+                "ok": True,
+                "reason": "sent",
+                "delivery_sent": True,
+                "delivery_sent_at": updated.get("delivery_sent_at"),
+                "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+                "recipient_sms_sid": updated.get("recipient_sms_sid"),
+                "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
+                "recipient_sms_error": updated.get("recipient_sms_error"),
+            }
+
+        final_error = sms_error or sms_reason or "sms_error"
 
         update_order(
             order_id,
             recipient_sms_attempts=attempts,
-            recipient_sms_error=None,
-            recipient_sms_sid=sms_sid,
-            recipient_sms_sent_at=sent_at,
-            delivery_sent=1,
-            delivery_sent_at=sent_at,
-            delivered_to_recipient=1,
+            recipient_sms_error=final_error,
         )
 
         updated = get_order_by_id(order_id)
-        insert_order_event(order_id, "recipient_sms_sent", "ok", "SMS/enlace enviado al destinatario", {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0)})
+        insert_order_event(order_id, "recipient_sms_failed", "error", final_error, {"attempts": int(updated.get("recipient_sms_attempts") or 0)})
 
         return {
-            "ok": True,
-            "reason": "sent",
-            "delivery_sent": True,
+            "ok": False,
+            "reason": final_error,
+            "delivery_sent": bool(updated.get("delivery_sent")),
             "delivery_sent_at": updated.get("delivery_sent_at"),
             "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
             "recipient_sms_sid": updated.get("recipient_sms_sid"),
             "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
             "recipient_sms_error": updated.get("recipient_sms_error"),
         }
+    finally:
+        release_order_processing_lock(order_id, "delivery_processing_lock", "delivery_processing_lock_at")
 
-    # =========================================================
-    # FALLO REAL
-    # =========================================================
-    final_error = sms_error or sms_reason or "sms_error"
-
-    update_order(
-        order_id,
-        recipient_sms_attempts=attempts,
-        recipient_sms_error=final_error,
-    )
-
-    updated = get_order_by_id(order_id)
-    insert_order_event(order_id, "recipient_sms_failed", "error", final_error, {"attempts": int(updated.get("recipient_sms_attempts") or 0)})
-
-    return {
-        "ok": False,
-        "reason": final_error,
-        "delivery_sent": bool(updated.get("delivery_sent")),
-        "delivery_sent_at": updated.get("delivery_sent_at"),
-        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
-        "recipient_sms_sid": updated.get("recipient_sms_sid"),
-        "recipient_sms_attempts": int(updated.get("recipient_sms_attempts") or 0),
-        "recipient_sms_error": updated.get("recipient_sms_error"),
-    }
-    
 # =========================================================
 # RESCATE AUTOMÁTICO DE REACCIÓN POR CHUNKS
 # =========================================================
@@ -6982,6 +7164,12 @@ def ensure_delivery_worker_started():
 
 @app.on_event("startup")
 def startup_event():
+    # RC53 — recuperación tras reinicio/deploy de Render.
+    try:
+        recover_stale_processing_locks()
+        recover_order_states_from_flags()
+    except Exception as e:
+        log_error("startup_recovery_rc53", e)
     ensure_delivery_worker_started()
 
 
@@ -7069,6 +7257,7 @@ async def stripe_webhook(request: Request):
     if event["type"] != "checkout.session.completed":
         return {"status": "ignored"}
 
+    stripe_event_id = (event.get("id") or "").strip()
     session = event["data"]["object"]
 
     order_id = (session.get("client_reference_id") or "").strip()
@@ -7092,6 +7281,11 @@ async def stripe_webhook(request: Request):
 
     try:
         order = get_order_by_id(order_id)
+
+        # RC53 — idempotencia webhook Stripe: si Stripe reenvía el mismo evento, no relanzamos motor ni SMS.
+        if stripe_event_id and (order.get("stripe_event_id") or "") == stripe_event_id and order.get("stripe_event_processed_at"):
+            return {"status": "ok", "reason": "stripe_event_already_processed", "order_id": order_id}
+
         log_info("💳 PAGO RECIBIDO EN STRIPE")
         log_info("🆔 Order ID", order_id)
         log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
@@ -7113,11 +7307,15 @@ async def stripe_webhook(request: Request):
             stripe_payment_intent_id=stripe_payment_intent_id,
             gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
             delivery_locked=1 if (order.get("delivery_mode") or "instant") == "scheduled" else 0,
+            stripe_event_id=stripe_event_id or order.get("stripe_event_id"),
+            stripe_event_processed_at=now_iso() if stripe_event_id else order.get("stripe_event_processed_at"),
+            order_state="PAID",
         )
 
         order = get_order_by_id(order_id)
 
         if original_video_ready(order):
+            set_order_state(order_id, "VIDEO_READY", "stripe_webhook_video_already_ready")
             return {
                 "status": "ok",
                 "reason": "video_already_ready",
@@ -7139,6 +7337,7 @@ async def stripe_webhook(request: Request):
 
         try:
             mark_video_render_requested(order_id)
+            set_order_state(order_id, "RENDERING", "stripe_webhook_render_requested")
             data = trigger_video_engine(order_id, phrases)
             print("✅ Video engine aceptó el trabajo:", data)
         except Exception as e:
@@ -7215,6 +7414,7 @@ async def internal_video_ready(request: Request):
             order_id,
             experience_video_url=final_video_url,
             video_render_requested=0,
+            order_state="VIDEO_READY",
         )
 
         video_url = final_video_url
@@ -7317,7 +7517,8 @@ async def start_experience(request: Request, recipient_token: str = Form(...)):
 
         update_order(
             order["id"],
-            experience_started=1
+            experience_started=1,
+            order_state="EXPERIENCE_STARTED",
         )
 
         redirect_url = f"/experiencia/{recipient_token}"
@@ -7365,10 +7566,10 @@ def render_terms_code_screen(recipient_token: str) -> HTMLResponse:
 ''')
 
 def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: str) -> HTMLResponse:
-    '''
-    RC52 — Pantalla regalo destinatario con fondo definitivo recipient-gift-screen-v3.png.
-    Mantiene la lógica existente de cobro/conexión: solo cambia la capa visual y las zonas de click.
-    '''
+    """
+    RC53 — pantalla recipient-gift-screen-v3 como fondo definitivo.
+    Los botones y el importe siguen siendo HTML real encima: no dependen del PNG.
+    """
     bg = eterna_asset("recipient_gift")
     return HTMLResponse(f'''
 <!DOCTYPE html>
@@ -7376,91 +7577,42 @@ def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: st
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETERNA — Regalo</title>
+<title>ETERNA</title>
 <meta name="theme-color" content="#02050a">
 <style>
 *{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
 html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
-body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}}
-.shell{{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:#02050a;box-shadow:0 0 80px rgba(0,0,0,.72)}}
-.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:0;user-select:none;pointer-events:none}}
-.amount-dynamic{{
-    position:absolute;
-    z-index:6;
-    left:13%;
-    right:13%;
-    top:43.2%;
-    min-height:10.4%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:10px 14px;
-    color:#ffe3a0;
-    font-weight:950;
-    font-size:clamp(18px,5.4vw,28px);
-    line-height:1.16;
-    letter-spacing:.02em;
-    text-shadow:0 0 18px rgba(255,206,112,.55),0 2px 10px rgba(0,0,0,.80);
-    pointer-events:none;
-}}
-.gift-actions{{position:absolute;z-index:8;left:8.5%;right:8.5%;bottom:calc(env(safe-area-inset-bottom) + 46px);display:grid;gap:11px}}
-.gift-actions form{{margin:0;display:block;width:100%}}
-.gift-actions a,
-.gift-actions button{{
-    width:100%;
-    min-height:56px;
-    border-radius:18px;
-    border:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    cursor:pointer;
-    touch-action:manipulation;
-    color:transparent!important;
-    text-indent:-9999px;
-    overflow:hidden;
-    background:rgba(255,255,255,.001)!important;
-    box-shadow:none!important;
-    text-decoration:none!important;
-}}
-.gift-actions a:active,
-.gift-actions button:active{{transform:scale(.985)}}
-.hit-glow{{
-    position:absolute;
-    z-index:3;
-    left:8.5%;
-    right:8.5%;
-    bottom:calc(env(safe-area-inset-bottom) + 46px);
-    height:56px;
-    border-radius:18px;
-    pointer-events:none;
-    box-shadow:0 0 30px rgba(255,190,72,.22);
-    animation:ctaBreath 2.8s ease-in-out infinite;
-}}
-@keyframes ctaBreath{{0%,100%{{opacity:.14;transform:scale(.99)}}50%{{opacity:.38;transform:scale(1.01)}}}}
-.spark{{position:absolute;z-index:2;width:5px;height:5px;border-radius:999px;background:#6ad8ff;box-shadow:0 0 18px #6ad8ff;opacity:0;animation:floatUp 8s linear infinite;pointer-events:none}}
-.s1{{left:18%;bottom:18%;animation-delay:.2s}}.s2{{right:18%;bottom:28%;animation-delay:1.4s;background:#ffd98c;box-shadow:0 0 18px #ffd98c}}.s3{{left:55%;bottom:9%;animation-delay:3.2s}}
-@keyframes floatUp{{0%{{transform:translateY(0) scale(.55);opacity:0}}15%{{opacity:.85}}100%{{transform:translateY(-150px) scale(1.05);opacity:0}}}}
+body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#02050a}}
+.shell{{position:relative;width:100vw;max-width:520px;height:100svh;height:100dvh;overflow:hidden;background:#02050a}}
+.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;user-select:none;pointer-events:none}}
+.amount{{position:absolute;z-index:3;left:18%;right:18%;top:47.8%;min-height:8.6%;border-radius:22px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 14px;color:#ffe0a0;font-size:clamp(20px,6vw,33px);font-weight:950;line-height:1.15;text-shadow:0 0 18px rgba(255,196,72,.58);background:rgba(0,0,0,.18);border:1px solid rgba(255,212,126,.22);box-shadow:0 0 28px rgba(255,190,72,.18),inset 0 0 20px rgba(0,0,0,.28)}}
+.actions{{position:absolute;z-index:4;left:8.2%;right:8.2%;bottom:calc(env(safe-area-inset-bottom) + 7.5%);display:grid;gap:1.25vh}}
+.actions form{{margin:0}}
+.btn,.actions form button{{width:100%;min-height:6.6svh;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;text-transform:uppercase;letter-spacing:.06em;font-weight:950;font-size:clamp(13px,3.6vw,18px);border:1px solid rgba(255,213,130,.42);background:rgba(0,7,15,.64);color:#fff2d6;box-shadow:0 14px 34px rgba(0,0,0,.34),0 0 22px rgba(255,189,75,.12);backdrop-filter:blur(6px)}}
+.btn.primary,.actions form button{{background:linear-gradient(135deg,#fff1bb,#e6a43c 52%,#9c5d08);color:#120a02;border:0;box-shadow:0 0 34px rgba(255,190,72,.42),inset 0 0 18px rgba(255,255,255,.22)}}
+.blue{{border-color:rgba(49,185,255,.45);box-shadow:0 0 28px rgba(43,175,255,.25),0 14px 34px rgba(0,0,0,.34)}}
+.small{{position:absolute;z-index:3;left:7%;right:7%;bottom:calc(env(safe-area-inset-bottom) + 1.8%);text-align:center;color:rgba(255,246,232,.58);font-size:12px;line-height:1.35;text-shadow:0 0 14px rgba(0,0,0,.9)}}
+.glow{{position:absolute;z-index:1;inset:-10%;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(circle at 50% 37%,rgba(51,196,255,.18),transparent 24%),radial-gradient(circle at 50% 58%,rgba(255,196,73,.17),transparent 20%);animation:breath 5.6s ease-in-out infinite}}
+@keyframes breath{{0%,100%{{opacity:.45;transform:scale(1)}}50%{{opacity:.92;transform:scale(1.04)}}}}
 @media (min-width:760px){{.shell{{width:min(100vw,520px)}}}}
 </style>
 </head>
 <body>
-<main class="shell" aria-label="Regalo ETERNA">
-    <img class="bg" src="{safe_attr(bg)}" alt="Tu ETERNA aún no ha terminado">
-    <i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i>
-    <div class="amount-dynamic">{safe_text(amount_text)}</div>
-    <div class="hit-glow" aria-hidden="true"></div>
-    <nav class="gift-actions" aria-label="Acciones del regalo">
-        {cta_html}
-        <a class="btn secondary" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a>
-        <a class="btn secondary" href="/crear">Crear mi ETERNA</a>
-    </nav>
+<main class="shell">
+  <img class="bg" src="{safe_attr(bg)}" alt="Tu ETERNA aún no ha terminado">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="amount">{safe_text(amount_text)}</div>
+  <nav class="actions">
+    {cta_html}
+    <a class="btn blue" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a>
+    <a class="btn" href="/crear">Crear mi ETERNA</a>
+  </nav>
+  <div class="small">Privado y seguro · Un gesto que permanece</div>
 </main>
 </body>
 </html>
 ''')
+
 # =========================================================
 # GUÍA PREVIA A LA EXPERIENCIA — CAPA DELANTE, SIN TOCAR /experiencia
 # =========================================================
@@ -9486,9 +9638,8 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 .reaction-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000;filter:contrast(1.12) saturate(1.10) brightness(1.08)}}
 .real-hit{{position:absolute;z-index:8;border:0;background:rgba(255,255,255,.001);cursor:pointer;text-indent:-9999px;overflow:hidden;border-radius:999px}}
 .hit-replay{{left:8.6%;right:8.6%;bottom:25.0%;height:7.5%}}
-.hit-save{{left:8.6%;right:8.6%;bottom:18.2%;height:6.6%}}
-.hit-share{{left:8.6%;right:8.6%;bottom:10.8%;height:6.6%}}
-.hit-create{{left:8.6%;right:8.6%;bottom:3.4%;height:6.6%}}
+.hit-save{{left:8.6%;right:8.6%;bottom:16.8%;height:7.5%}}
+.hit-share{{left:8.6%;right:8.6%;bottom:8.6%;height:7.5%}}
 .hit-back{{right:5.8%;top:4.8%;width:36%;height:6.8%}}
 .pulse{{position:absolute;z-index:2;left:11%;right:11%;bottom:26.8%;height:7%;border-radius:999px;pointer-events:none;box-shadow:0 0 28px rgba(255,196,78,.28);animation:btnPulse 3.2s ease-in-out infinite}}
 @keyframes btnPulse{{0%,100%{{opacity:.10;transform:scale(.99)}}50%{{opacity:.36;transform:scale(1.01)}}}}
@@ -9515,7 +9666,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
 
 
 /* RC46 — botones reales grandes y visibles en sender pack */
-.hit-save, .hit-share, .hit-create{{
+.hit-save, .hit-share{{
     text-indent:0!important;
     display:flex!important;
     align-items:center!important;
@@ -9535,13 +9686,11 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
     border:1px solid rgba(255,238,181,.88)!important;
     box-shadow:0 0 24px rgba(255,187,65,.62), inset 0 0 18px rgba(255,255,255,.22)!important;
 }}
-.hit-save{{bottom:17.4%!important;}}
-.hit-share{{bottom:10.2%!important;}}
-.hit-create{{bottom:3.0%!important;}}
+.hit-save{{bottom:12.6%!important;}}
+.hit-share{{bottom:5.5%!important;}}
 .hit-save::before{{content:"⬇ ";font-size:1.08em;margin-right:.45em;}}
 .hit-share::before{{content:"↗ ";font-size:1.08em;margin-right:.45em;}}
-.hit-create::before{{content:"✦ ";font-size:1.08em;margin-right:.45em;}}
-.hit-save:active, .hit-share:active, .hit-create:active{{transform:scale(.985);filter:brightness(1.08);}}
+.hit-save:active, .hit-share:active{{transform:scale(.985);filter:brightness(1.08);}}
 
 .toast{{position:absolute;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);max-width:86%;padding:11px 15px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,214,134,.28);color:#fff7df;font-size:13px;font-weight:800;opacity:0;transition:.25s ease;pointer-events:none;text-align:center}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
@@ -9572,7 +9721,6 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a;dis
     <button class="real-hit hit-replay" id="replayBtn" type="button">Volver a ver esta emoción</button>
     <a class="real-hit hit-save" id="saveBtn" href="{safe_attr(reaction_url)}" download>Descargar reacción</a>
     <button class="real-hit hit-share" id="shareBtn" type="button">Compartir experiencia</button>
-    <a class="real-hit hit-create" href="/crear">Crear mi ETERNA</a>
     <a class="real-hit hit-back" href="/sender/{safe_attr(sender_token)}">Volver a sentirlo</a>
     <div class="toast" id="toast">Listo</div>
 </main>
