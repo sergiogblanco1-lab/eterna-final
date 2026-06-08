@@ -1,11 +1,15 @@
 # =========================================================
-# RC64 RIS + LUGAR PARA VOLVER SAFE
-# Base: RC63 prólogo cinematográfico.
-# Añade SOLO mejoras seguras:
-# - campo opcional memory_place / "Un lugar para volver"
-# - Ris como mariposa narradora
-# - prólogo modular por tipo de relación + lugar
-# - asset ETERA_MASTER_WINGS_V1.png
+# RC69 PRELAUNCH CANDIDATE SAFE
+# Base: RC68 BLINDAJE 99 PRELAUNCH SAFE sobre RC65/RC63 salvavidas.
+# Objetivo: MAIN bueno para avanzar y probar en deploy controlado.
+# Incluye:
+# - Ris/Yul-ready + memory_place / "Un lugar para volver"
+# - Dashboard CEO
+# - /health
+# - /admin/order-health
+# - /admin/recover-order/{order_id} con dry-run por defecto
+# - failed_order_jobs
+# - frase final oficial: "El único techo es el cielo."
 # NO toca Stripe, Twilio, webhooks, DB crítica, video engine, cobros, reacción ni sender pack.
 # =========================================================
 
@@ -132,6 +136,7 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
+print("🚀 RC69 PRELAUNCH CANDIDATE SAFE 🚀")
 
 import html
 import json
@@ -271,6 +276,12 @@ DELIVERY_WORKER_ENABLED = os.getenv("DELIVERY_WORKER_ENABLED", "1").strip() != "
 DELIVERY_WORKER_STARTED = False
 DELIVERY_WORKER_LOCK = threading.Lock()
 
+# RC68 — límites de seguridad operativa. Solo observabilidad/guardrails.
+MAX_SMS_PER_ORDER_HARD = int(os.getenv("MAX_SMS_PER_ORDER_HARD", "3"))
+MAX_SMS_PER_DAY_HARD = int(os.getenv("MAX_SMS_PER_DAY_HARD", "80"))
+MAX_WHATSAPP_PER_ORDER_HARD = int(os.getenv("MAX_WHATSAPP_PER_ORDER_HARD", "3"))
+HEALTH_DEEP_TIMEOUT_SECONDS = float(os.getenv("HEALTH_DEEP_TIMEOUT_SECONDS", "2.0"))
+
 COOKIE_SECURE = PUBLIC_BASE_URL.startswith("https://")
 
 KNOWN_COUNTRY_CODES = [
@@ -296,9 +307,13 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v64-ris-lugar-para-volver"
+ETERNA_VISUAL_VERSION = "eterna-visual-v69-prelaunch-candidate-safe"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
+
+# RC69 — cierre creativo oficial de ETERNA.
+ETERNA_FINAL_TAGLINE = "El único techo es el cielo."
+ETERNA_BUTTERFLY_NAME = "Yul"
 
 # Pantallas canónicas aprobadas.
 # Las claves que no tienen PNG definitivo se redirigen a una pantalla buena para evitar 404.
@@ -1841,6 +1856,22 @@ def init_db():
         meta_json TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(order_id) REFERENCES orders(id)
+    )
+    """)
+
+    # RC68 — Dead Letter Queue operativa: nada se pierde, todo queda visible y recuperable.
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS failed_order_jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id TEXT,
+        area TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open',
+        error TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        payload_json TEXT,
+        last_attempt_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
     )
     """)
 
@@ -10366,6 +10397,397 @@ def get_sender_reaction_video(sender_token: str):
 # =========================================================
 # OPTIONAL ADMIN
 # =========================================================
+
+
+# =========================================================
+# RC68 — BLINDAJE 99%: OBSERVABILIDAD + RESCATE SAFE
+# No toca negocio validado; añade ojos, diagnóstico y recuperación manual controlada.
+# =========================================================
+
+def rc68_now_date_prefix() -> str:
+    return now_iso()[:10]
+
+
+def rc68_json_dumps(data) -> str:
+    try:
+        return json.dumps(data or {}, ensure_ascii=False, default=str)
+    except Exception:
+        return "{}"
+
+
+def rc68_record_failed_job(order_id: str, area: str, error: str, payload: Optional[dict] = None, status: str = "open") -> None:
+    try:
+        now = now_iso()
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO failed_order_jobs (
+                order_id, area, status, error, attempts, payload_json, last_attempt_at, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)
+        """, (
+            str(order_id or ""),
+            str(area or "unknown"),
+            str(status or "open"),
+            str(error or ""),
+            rc68_json_dumps(payload or {}),
+            now,
+            now,
+            now,
+        ))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("⚠️ RC68 no pudo registrar failed_order_job:", e)
+
+
+def rc68_list_recent_orders(limit: int = 80) -> list[dict]:
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            o.*,
+            s.name AS sender_name,
+            s.email AS sender_email,
+            s.phone AS sender_phone,
+            r.name AS recipient_name,
+            r.phone AS recipient_phone
+        FROM orders o
+        JOIN senders s ON s.id = o.sender_id
+        JOIN recipients r ON r.id = o.recipient_id
+        ORDER BY o.created_at DESC
+        LIMIT ?
+    """, (max(1, min(int(limit or 80), 300)),))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def rc68_count_open_failed_jobs() -> int:
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS c FROM failed_order_jobs WHERE status IN ('open','retry','pending')")
+        row = cur.fetchone()
+        conn.close()
+        return int(row["c"] if row else 0)
+    except Exception:
+        return 0
+
+
+def rc68_today_counts() -> dict:
+    today = rc68_now_date_prefix()
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN COALESCE(paid,0)=1 THEN 1 ELSE 0 END) AS paid,
+            SUM(CASE WHEN COALESCE(delivery_sent,0)=1 OR COALESCE(delivered_to_recipient,0)=1 THEN 1 ELSE 0 END) AS delivered,
+            SUM(CASE WHEN COALESCE(experience_started,0)=1 THEN 1 ELSE 0 END) AS started,
+            SUM(CASE WHEN COALESCE(reaction_uploaded,0)=1 THEN 1 ELSE 0 END) AS reactions,
+            SUM(CASE WHEN COALESCE(sender_notified,0)=1 OR COALESCE(sender_sms_sent_at,'')<>'' THEN 1 ELSE 0 END) AS sender_packs,
+            SUM(CASE WHEN COALESCE(eterna_completed,0)=1 THEN 1 ELSE 0 END) AS completed
+        FROM orders
+        WHERE substr(created_at, 1, 10)=?
+    """, (today,))
+    row = cur.fetchone()
+    conn.close()
+    data = dict(row) if row else {}
+    return {k: int(v or 0) for k, v in data.items()}
+
+
+def rc68_sms_today_counts() -> dict:
+    today = rc68_now_date_prefix()
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            COUNT(*) AS orders_today,
+            SUM(COALESCE(recipient_sms_attempts,0)) AS recipient_sms_attempts,
+            SUM(COALESCE(sender_sms_attempts,0)) AS sender_sms_attempts
+        FROM orders
+        WHERE substr(created_at, 1, 10)=?
+    """, (today,))
+    row = cur.fetchone()
+    conn.close()
+    data = dict(row) if row else {}
+    recipient_attempts = int(data.get("recipient_sms_attempts") or 0)
+    sender_attempts = int(data.get("sender_sms_attempts") or 0)
+    return {
+        "recipient_sms_attempts": recipient_attempts,
+        "sender_sms_attempts": sender_attempts,
+        "total_sms_attempts": recipient_attempts + sender_attempts,
+        "max_sms_per_day_hard": MAX_SMS_PER_DAY_HARD,
+        "near_daily_limit": (recipient_attempts + sender_attempts) >= int(MAX_SMS_PER_DAY_HARD * 0.8),
+    }
+
+
+def rc68_compute_order_health(order: dict) -> dict:
+    paid = bool(order.get("paid"))
+    video_ready = original_video_ready(order)
+    reaction_ready = reaction_is_safe(order)
+    delivered = bool(order.get("delivery_sent")) or bool(order.get("delivered_to_recipient")) or bool(order.get("recipient_sms_sent_at"))
+    sender_pack_sent = bool(order.get("sender_notified")) or bool(order.get("sender_sms_sent_at"))
+    completed = bool(order.get("eterna_completed"))
+
+    problems = []
+    next_action = "none"
+
+    if not paid:
+        phase = "WAITING_PAYMENT"
+        next_action = "wait_payment"
+    elif paid and not bool(order.get("video_render_requested")) and not video_ready:
+        phase = "PAID_RENDER_NOT_REQUESTED"
+        problems.append("paid_without_render_request")
+        next_action = "recover_render"
+    elif paid and bool(order.get("video_render_requested")) and not video_ready:
+        phase = "RENDERING_OR_WAITING_CALLBACK"
+        next_action = "wait_or_check_video_engine"
+    elif video_ready and not delivered:
+        phase = "VIDEO_READY_NOT_DELIVERED"
+        next_action = "recover_recipient_delivery"
+    elif delivered and not bool(order.get("experience_started")):
+        phase = "DELIVERED_WAITING_OPEN"
+        next_action = "wait_recipient"
+    elif bool(order.get("experience_started")) and not reaction_ready:
+        phase = "EXPERIENCE_STARTED_WAITING_REACTION"
+        next_action = "recover_reaction_chunks"
+    elif reaction_ready and not sender_pack_sent:
+        phase = "REACTION_READY_SENDER_PENDING"
+        next_action = "recover_sender_pack"
+    elif sender_pack_sent and not completed:
+        phase = "SENDER_PACK_SENT_COMPLETION_PENDING"
+        next_action = "mark_completed_if_safe"
+    else:
+        phase = "COMPLETED" if completed else str(order.get("order_state") or "UNKNOWN")
+        next_action = "none"
+
+    if int(order.get("recipient_sms_attempts") or 0) >= MAX_SMS_PER_ORDER_HARD and not delivered:
+        problems.append("recipient_sms_attempt_limit")
+    if int(order.get("sender_sms_attempts") or 0) >= MAX_SMS_PER_ORDER_HARD and reaction_ready and not sender_pack_sent:
+        problems.append("sender_sms_attempt_limit")
+    if bool(order.get("delivery_processing_lock")):
+        problems.append("delivery_lock_active")
+    if bool(order.get("sender_sms_processing_lock")):
+        problems.append("sender_lock_active")
+    if order.get("reaction_upload_error"):
+        problems.append("reaction_upload_error")
+
+    return {
+        "order_id": order.get("id"),
+        "phase": phase,
+        "next_action": next_action,
+        "problems": problems,
+        "paid": paid,
+        "video_ready": video_ready,
+        "delivered": delivered,
+        "experience_started": bool(order.get("experience_started")),
+        "reaction_ready": reaction_ready,
+        "sender_pack_sent": sender_pack_sent,
+        "completed": completed,
+        "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+        "sender_sms_attempts": int(order.get("sender_sms_attempts") or 0),
+        "created_at": order.get("created_at"),
+        "updated_at": order.get("updated_at"),
+    }
+
+
+def rc68_recover_order_safe(order_id: str, dry_run: bool = True) -> dict:
+    order = get_order_by_id(order_id)
+    health = rc68_compute_order_health(order)
+    actions = []
+
+    if dry_run:
+        return {"ok": True, "dry_run": True, "health": health, "actions": actions}
+
+    try:
+        if health["next_action"] == "recover_render":
+            phrases = [order.get("phrase_1") or "", order.get("phrase_2") or "", order.get("phrase_3") or ""]
+            result = trigger_video_engine(order_id, phrases)
+            update_order(order_id, video_render_requested=1, video_render_requested_at=now_iso())
+            insert_order_event(order_id, "rc68_manual_recover_render", "ok", "Render solicitado manualmente desde RC68", result)
+            actions.append({"action": "render_requested", "result": result})
+
+        elif health["next_action"] == "recover_recipient_delivery":
+            result = process_scheduled_recipient_delivery(order_id)
+            insert_order_event(order_id, "rc68_manual_recover_delivery", "ok" if result.get("ok") else "warning", str(result), result)
+            actions.append({"action": "recipient_delivery", "result": result})
+
+        elif health["next_action"] == "recover_reaction_chunks":
+            result = recover_reaction_from_chunks_if_possible(order_id, min_idle_seconds=20, source="rc68_manual_recover")
+            insert_order_event(order_id, "rc68_manual_recover_reaction", "ok" if result.get("ok") else "warning", str(result), result)
+            actions.append({"action": "reaction_recovery", "result": result})
+
+        elif health["next_action"] == "recover_sender_pack":
+            fresh_order = maybe_mark_eterna_completed(order_id)
+            result = try_send_sender_sms(fresh_order)
+            insert_order_event(order_id, "rc68_manual_recover_sender", "ok" if result.get("ok") else "warning", str(result), result)
+            actions.append({"action": "sender_pack", "result": result})
+
+        elif health["next_action"] == "mark_completed_if_safe":
+            fresh_order = maybe_mark_eterna_completed(order_id)
+            actions.append({"action": "mark_completed_if_safe", "result": rc68_compute_order_health(fresh_order)})
+
+        else:
+            actions.append({"action": "none", "reason": "no_safe_action_for_current_phase"})
+
+        fresh_order = get_order_by_id(order_id)
+        return {"ok": True, "dry_run": False, "before": health, "after": rc68_compute_order_health(fresh_order), "actions": actions}
+
+    except Exception as e:
+        rc68_record_failed_job(order_id, "manual_recovery", str(e), {"health": health, "actions": actions}, status="open")
+        insert_order_event(order_id, "rc68_manual_recover_error", "error", str(e), {"health": health, "actions": actions})
+        raise
+
+
+@app.get("/health")
+def health(deep: int = 0):
+    result = {
+        "ok": True,
+        "version": "RC69_PRELAUNCH_CANDIDATE_SAFE",
+        "time": now_iso(),
+        "final_tagline": ETERNA_FINAL_TAGLINE,
+        "butterfly_name": ETERNA_BUTTERFLY_NAME,
+        "checks": {},
+    }
+
+    try:
+        conn = db_conn()
+        conn.execute("SELECT 1")
+        conn.close()
+        result["checks"]["db"] = "ok"
+    except Exception as e:
+        result["ok"] = False
+        result["checks"]["db"] = f"error:{e}"
+
+    try:
+        missing = audit_eterna_assets().get("missing", [])
+        result["checks"]["assets_missing"] = len(missing)
+        if missing:
+            result["ok"] = False
+            result["checks"]["assets_missing_list"] = missing[:12]
+    except Exception as e:
+        result["checks"]["assets"] = f"warning:{e}"
+
+    result["checks"]["worker_enabled"] = bool(DELIVERY_WORKER_ENABLED)
+    result["checks"]["worker_started"] = bool(DELIVERY_WORKER_STARTED)
+    result["checks"]["open_failed_jobs"] = rc68_count_open_failed_jobs()
+
+    if int(deep or 0) == 1:
+        try:
+            r = requests.get(f"{VIDEO_ENGINE_URL}/health", timeout=HEALTH_DEEP_TIMEOUT_SECONDS)
+            result["checks"]["video_engine"] = "ok" if r.ok else f"http_{r.status_code}"
+        except Exception as e:
+            result["checks"]["video_engine"] = f"warning:{e}"
+
+        result["checks"]["stripe_configured"] = bool(STRIPE_SECRET_KEY)
+        result["checks"]["twilio_configured"] = bool(twilio_enabled())
+        result["checks"]["r2_configured"] = bool(r2_enabled())
+
+    status_code = 200 if result.get("ok") else 503
+    return JSONResponse(status_code=status_code, content=result)
+
+
+@app.get("/admin/ceo-dashboard", response_class=HTMLResponse)
+def admin_ceo_dashboard(token: str):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="unauthorized")
+
+    counts = rc68_today_counts()
+    sms = rc68_sms_today_counts()
+    open_failed = rc68_count_open_failed_jobs()
+
+    def box(label, value, note=""):
+        return f"""
+        <div class="box">
+            <div class="label">{safe_text(label)}</div>
+            <div class="value">{safe_text(value)}</div>
+            <div class="note">{safe_text(note)}</div>
+        </div>
+        """
+
+    html_boxes = "".join([
+        box("Pedidos hoy", counts.get("total", 0)),
+        box("Pagados", counts.get("paid", 0)),
+        box("Entregados", counts.get("delivered", 0)),
+        box("Experiencias iniciadas", counts.get("started", 0)),
+        box("Reacciones", counts.get("reactions", 0)),
+        box("Sender packs", counts.get("sender_packs", 0)),
+        box("Completadas", counts.get("completed", 0)),
+        box("Errores abiertos", open_failed),
+        box("SMS intentos hoy", sms.get("total_sms_attempts", 0), f"límite: {sms.get('max_sms_per_day_hard')}"),
+    ])
+
+    return HTMLResponse(f"""
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA CEO Dashboard</title>
+<style>
+body {{ margin:0; padding:24px; background:#05070c; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }}
+h1 {{ margin:0 0 18px; }}
+.grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }}
+.box {{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:18px; }}
+.label {{ color:rgba(255,255,255,.62); font-size:13px; }}
+.value {{ font-size:34px; font-weight:800; margin-top:6px; }}
+.note {{ color:rgba(255,255,255,.45); font-size:12px; margin-top:6px; }}
+a {{ color:#8bdfff; }}
+</style></head><body>
+<h1>🛡️ ETERNA RC68 — Dashboard CEO</h1>
+<div class="grid">{html_boxes}</div>
+<p><a href="/admin/order-health?token={safe_attr(token)}">Ver salud de pedidos</a></p>
+</body></html>
+""")
+
+
+@app.get("/admin/order-health", response_class=HTMLResponse)
+def admin_order_health(token: str, limit: int = 80):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="unauthorized")
+
+    orders = rc68_list_recent_orders(limit=limit)
+    rows = ""
+    for order in orders:
+        h = rc68_compute_order_health(order)
+        problems = ", ".join(h.get("problems") or []) or "—"
+        icon = "✅" if not h.get("problems") and h.get("phase") in {"COMPLETED", "DELIVERED_WAITING_OPEN", "WAITING_PAYMENT"} else ("⚠️" if h.get("problems") else "🟦")
+        rows += f"""
+        <tr>
+            <td>{icon}</td>
+            <td><a href="/admin/order-status/{safe_attr(order.get('id'))}?token={safe_attr(token)}">{safe_text(order.get('id'))}</a></td>
+            <td>{safe_text(order.get('recipient_name'))}</td>
+            <td>{safe_text(h.get('phase'))}</td>
+            <td>{safe_text(h.get('next_action'))}</td>
+            <td>{safe_text(problems)}</td>
+            <td>{safe_text(order.get('created_at'))}</td>
+        </tr>
+        """
+
+    return HTMLResponse(f"""
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salud pedidos ETERNA</title>
+<style>
+body {{ margin:0; padding:22px; background:#05070c; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }}
+table {{ width:100%; border-collapse:collapse; font-size:13px; }}
+td, th {{ border-bottom:1px solid rgba(255,255,255,.10); padding:10px; text-align:left; vertical-align:top; }}
+a {{ color:#8bdfff; }}
+.small {{ color:rgba(255,255,255,.58); }}
+</style></head><body>
+<h1>🛡️ ETERNA RC68 — Salud de pedidos</h1>
+<p class="small">Diagnóstico read-only de los últimos {int(limit or 80)} pedidos.</p>
+<table>
+<thead><tr><th></th><th>Pedido</th><th>Destinatario</th><th>Fase</th><th>Siguiente acción</th><th>Problemas</th><th>Creado</th></tr></thead>
+<tbody>{rows}</tbody>
+</table>
+</body></html>
+""")
+
+
+@app.get("/admin/recover-order/{order_id}")
+def admin_recover_order(order_id: str, token: str, dry_run: int = 1):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="unauthorized")
+    return rc68_recover_order_safe(order_id, dry_run=bool(int(dry_run or 0)))
+
 
 @app.get("/admin/order-status/{order_id}", response_class=HTMLResponse)
 def admin_order_status(order_id: str, token: str):
