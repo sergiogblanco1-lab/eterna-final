@@ -1,16 +1,13 @@
 # =========================================================
-# RC69 PRELAUNCH CANDIDATE SAFE
-# Base: RC68 BLINDAJE 99 PRELAUNCH SAFE sobre RC65/RC63 salvavidas.
-# Objetivo: MAIN bueno para avanzar y probar en deploy controlado.
-# Incluye:
-# - Ris/Yul-ready + memory_place / "Un lugar para volver"
-# - Dashboard CEO
-# - /health
-# - /admin/order-health
-# - /admin/recover-order/{order_id} con dry-run por defecto
-# - failed_order_jobs
-# - frase final oficial: "El único techo es el cielo."
-# NO toca Stripe, Twilio, webhooks, DB crítica, video engine, cobros, reacción ni sender pack.
+# RC72_YUL_ALMA_LIGHT_SAFE
+# Base: RC63 PROLOGO CINEMATOGRAFICO BIGFISH SAFE.
+# Objetivo: NO crear otro main. Solo añadir atmósfera viva a la pre-experiencia.
+# Toca únicamente capa visual del renderizador común para:
+# - intro_shhh
+# - sound_check
+# - quiet_place
+# - recording_consent
+# NO toca Stripe, Twilio, webhooks, DB, video engine, sender pack, reacción, cobros ni workers.
 # =========================================================
 
 # =========================================================
@@ -136,7 +133,7 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🚀 RC69 PRELAUNCH CANDIDATE SAFE 🚀")
+print("🦋 RC71 PRE-EXPERIENCE MAGIC SAFE — SOLO ATMÓSFERA + YUL V1 🦋")
 
 import html
 import json
@@ -276,12 +273,6 @@ DELIVERY_WORKER_ENABLED = os.getenv("DELIVERY_WORKER_ENABLED", "1").strip() != "
 DELIVERY_WORKER_STARTED = False
 DELIVERY_WORKER_LOCK = threading.Lock()
 
-# RC68 — límites de seguridad operativa. Solo observabilidad/guardrails.
-MAX_SMS_PER_ORDER_HARD = int(os.getenv("MAX_SMS_PER_ORDER_HARD", "3"))
-MAX_SMS_PER_DAY_HARD = int(os.getenv("MAX_SMS_PER_DAY_HARD", "80"))
-MAX_WHATSAPP_PER_ORDER_HARD = int(os.getenv("MAX_WHATSAPP_PER_ORDER_HARD", "3"))
-HEALTH_DEEP_TIMEOUT_SECONDS = float(os.getenv("HEALTH_DEEP_TIMEOUT_SECONDS", "2.0"))
-
 COOKIE_SECURE = PUBLIC_BASE_URL.startswith("https://")
 
 KNOWN_COUNTRY_CODES = [
@@ -307,13 +298,9 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v69-prelaunch-candidate-safe"
+ETERNA_VISUAL_VERSION = "eterna-visual-v72-yul-alma-light-safe"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
-
-# RC69 — cierre creativo oficial de ETERNA.
-ETERNA_FINAL_TAGLINE = "El único techo es el cielo."
-ETERNA_BUTTERFLY_NAME = "Yul"
 
 # Pantallas canónicas aprobadas.
 # Las claves que no tienen PNG definitivo se redirigen a una pantalla buena para evitar 404.
@@ -338,7 +325,6 @@ ETERNA_SCREEN_ASSETS = {
     "viral_cta": "viral-cta-v1.png",
     "error": "error-v1.png",
     "guide_butterfly": "ETERNA_GUIDE_BUTTERFLY_V1.png",
-    "ris_master_wings": "ETERA_MASTER_WINGS_V1.png",
 }
 
 def _eterna_asset_key(value: str) -> str:
@@ -471,6 +457,7 @@ def render_eterna_image_screen(
 
     image_src = safe_attr(eterna_asset(clean_image))
     fallback_src = safe_attr(eterna_asset(clean_fallback))
+    yul_src = safe_attr(eterna_asset("guide_butterfly"))
 
     is_terms_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("terms-acceptance-v1.png")
     is_payment_success_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("payment-success-v1.png")
@@ -1505,16 +1492,557 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
         pointer-events:none !important;
     }}
 
+
+    /* =========================================================
+       RC71 PRE-EXPERIENCE MAGIC SAFE
+       Solo atmósfera viva para: intro, sonido, lugar tranquilo y consentimiento.
+       No cambia rutas, botones, formularios, Stripe, Twilio, DB, reacción ni sender pack.
+       ========================================================= */
+    .pre-magic {{
+        position:absolute;
+        inset:0;
+        z-index:4;
+        pointer-events:none;
+        display:none;
+        overflow:hidden;
+        opacity:1;
+        contain:paint;
+    }}
+    .screen.intro-mode .pre-magic,
+    .screen.sound-mode .pre-magic,
+    .screen.quiet-mode .pre-magic,
+    .screen.consent-mode .pre-magic {{
+        display:block;
+    }}
+    .pre-depth {{
+        position:absolute;
+        inset:-8%;
+        opacity:.62;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(55,207,255,.16), transparent 24%),
+            radial-gradient(circle at 80% 26%, rgba(255,211,121,.12), transparent 25%),
+            radial-gradient(circle at 51% 72%, rgba(72,198,255,.10), transparent 31%),
+            linear-gradient(180deg, rgba(2,5,10,.08), transparent 38%, rgba(2,5,10,.20));
+        filter:blur(1px);
+        animation:rc71DepthBreath 9.8s ease-in-out infinite;
+    }}
+    .pre-fog {{
+        position:absolute;
+        left:-32%;
+        right:-32%;
+        height:44%;
+        border-radius:999px;
+        opacity:.0;
+        filter:blur(23px);
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(93,211,255,.12), rgba(255,221,144,.08), rgba(93,211,255,.11), transparent);
+        animation:rc71FogDrift 18s ease-in-out infinite;
+    }}
+    .pre-fog.fog-a {{ top:15%; animation-delay:.2s; }}
+    .pre-fog.fog-b {{ bottom:8%; opacity:.0; animation-duration:22s; animation-delay:4.2s; transform:scaleY(.72); }}
+    .pre-spark {{
+        position:absolute;
+        width:4px;
+        height:4px;
+        border-radius:999px;
+        opacity:0;
+        background:rgba(117,221,255,.96);
+        box-shadow:0 0 13px rgba(117,221,255,.95), 0 0 28px rgba(117,221,255,.36);
+        animation:rc71SparkRise 10.5s linear infinite;
+    }}
+    .pre-spark.gold {{
+        background:rgba(255,221,145,.95);
+        box-shadow:0 0 13px rgba(255,221,145,.90), 0 0 28px rgba(255,196,74,.34);
+    }}
+    .ps1 {{ left:13%; bottom:11%; animation-delay:.1s; animation-duration:11.8s; transform:scale(.75); }}
+    .ps2 {{ left:28%; bottom:25%; animation-delay:2.8s; animation-duration:13.2s; transform:scale(.55); }}
+    .ps3 {{ left:47%; bottom:10%; animation-delay:1.4s; animation-duration:12.6s; transform:scale(.68); }}
+    .ps4 {{ left:69%; bottom:19%; animation-delay:4.1s; animation-duration:14.4s; transform:scale(.5); }}
+    .ps5 {{ left:83%; bottom:33%; animation-delay:6.0s; animation-duration:12.8s; transform:scale(.62); }}
+    .ps6 {{ left:56%; bottom:46%; animation-delay:7.2s; animation-duration:15.2s; transform:scale(.45); }}
+    .pre-glint {{
+        position:absolute;
+        width:92px;
+        height:2px;
+        border-radius:999px;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,.88), rgba(255,220,135,.70), transparent);
+        box-shadow:0 0 18px rgba(255,227,155,.52), 0 0 35px rgba(84,211,255,.20);
+        animation:rc71GlintCross 7.6s ease-in-out infinite;
+    }}
+    .glint-a {{ left:4%; top:31%; animation-delay:2.1s; }}
+    .glint-b {{ right:-2%; bottom:27%; animation-delay:5.4s; animation-direction:reverse; }}
+    .yul-live {{
+        position:absolute;
+        width:74px;
+        height:auto;
+        left:66%;
+        top:22%;
+        opacity:0;
+        z-index:5;
+        pointer-events:none;
+        transform-origin:center center;
+        filter:drop-shadow(0 0 14px rgba(92,216,255,.65)) drop-shadow(0 0 22px rgba(255,214,124,.30));
+        mix-blend-mode:screen;
+        animation:rc71YulAlive 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .yul-trail {{
+        position:absolute;
+        left:66%;
+        top:22%;
+        width:120px;
+        height:32px;
+        border-radius:999px;
+        z-index:4;
+        opacity:0;
+        pointer-events:none;
+        mix-blend-mode:screen;
+        background:radial-gradient(circle at 20% 50%, rgba(255,222,142,.38), transparent 18%), radial-gradient(circle at 48% 48%, rgba(99,219,255,.28), transparent 21%), linear-gradient(90deg, rgba(255,219,130,.00), rgba(255,219,130,.20), rgba(83,211,255,.14), transparent);
+        filter:blur(7px);
+        animation:rc71YulTrail 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .screen.sound-mode .yul-live,
+    .screen.sound-mode .yul-trail {{ top:19%; left:71%; animation-delay:1.6s; animation-duration:15s; }}
+    .screen.quiet-mode .yul-live,
+    .screen.quiet-mode .yul-trail {{ top:24%; left:18%; animation-delay:2.4s; animation-duration:16.5s; }}
+    .screen.consent-mode .yul-live,
+    .screen.consent-mode .yul-trail {{ top:18%; left:70%; animation-delay:3.2s; animation-duration:17s; opacity:0; }}
+    .screen.consent-mode .pre-magic {{ opacity:.72; }}
+    .screen.consent-mode .pre-spark {{ animation-duration:14.8s; }}
+    .screen.quiet-mode .pre-fog {{ opacity:.0; filter:blur(27px); }}
+    .screen.quiet-mode .pre-depth {{ opacity:.75; }}
+
+    @keyframes rc71DepthBreath {{
+        0%,100% {{ transform:scale(1) translate3d(0,0,0); opacity:.42; }}
+        45% {{ transform:scale(1.045) translate3d(-1.8%,1.2%,0); opacity:.74; }}
+        72% {{ opacity:.55; }}
+    }}
+    @keyframes rc71FogDrift {{
+        0% {{ transform:translateX(-14%) translateY(10px) scaleX(.92); opacity:0; }}
+        18% {{ opacity:.40; }}
+        54% {{ opacity:.30; }}
+        100% {{ transform:translateX(14%) translateY(-12px) scaleX(1.08); opacity:0; }}
+    }}
+    @keyframes rc71SparkRise {{
+        0% {{ opacity:0; transform:translate3d(0,0,0) scale(.42); }}
+        12% {{ opacity:.78; }}
+        58% {{ opacity:.42; transform:translate3d(18px,-88px,0) scale(.82); }}
+        100% {{ opacity:0; transform:translate3d(34px,-178px,0) scale(1.05); }}
+    }}
+    @keyframes rc71GlintCross {{
+        0%,68% {{ opacity:0; transform:translateX(-80px) translateY(14px) rotate(-9deg) scaleX(.45); }}
+        75% {{ opacity:.76; }}
+        100% {{ opacity:0; transform:translateX(330px) translateY(-24px) rotate(-9deg) scaleX(1.15); }}
+    }}
+    @keyframes rc71YulAlive {{
+        0% {{ opacity:0; transform:translate3d(-18px,12px,0) rotate(-7deg) scale(.78) skewX(0deg); }}
+        10% {{ opacity:.0; }}
+        18% {{ opacity:.82; transform:translate3d(0,0,0) rotate(-2deg) scale(.92) skewX(2deg); }}
+        30% {{ transform:translate3d(-9px,-12px,0) rotate(4deg) scale(.98) skewX(-3deg); }}
+        42% {{ transform:translate3d(7px,-4px,0) rotate(-3deg) scale(.94) skewX(3deg); }}
+        55% {{ opacity:.76; transform:translate3d(-4px,10px,0) rotate(3deg) scale(.99) skewX(-2deg); }}
+        68% {{ transform:translate3d(12px,-8px,0) rotate(-4deg) scale(.93) skewX(2deg); }}
+        80% {{ opacity:.58; transform:translate3d(22px,4px,0) rotate(2deg) scale(.86) skewX(-1deg); }}
+        100% {{ opacity:0; transform:translate3d(44px,-18px,0) rotate(8deg) scale(.72) skewX(0deg); }}
+    }}
+    @keyframes rc71YulTrail {{
+        0%,12% {{ opacity:0; transform:translate3d(-40px,20px,0) rotate(-8deg) scale(.72); }}
+        24% {{ opacity:.34; }}
+        52% {{ opacity:.22; transform:translate3d(-28px,2px,0) rotate(-4deg) scale(.95); }}
+        78% {{ opacity:.14; }}
+        100% {{ opacity:0; transform:translate3d(14px,-12px,0) rotate(7deg) scale(.82); }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        .screen.intro-mode .pre-magic,
+        .screen.sound-mode .pre-magic,
+        .screen.quiet-mode .pre-magic,
+        .screen.consent-mode .pre-magic {{
+            opacity:.42;
+        }}
+        .pre-depth,
+        .pre-fog,
+        .pre-spark,
+        .pre-glint,
+        .yul-live,
+        .yul-trail {{
+            animation:none !important;
+        }}
+        .yul-live {{ opacity:.32; }}
+    }}
+
+
+    /* =========================================================
+       RC72 YUL ALMA LIGHT SAFE
+       Dirección visual:
+       - Forrest Gump: presencia ligera, casi espiritual.
+       - Cenicienta: polvo mágico, transformación, luz dorada.
+       - Tonight Tonight: viaje onírico, mundo que cambia.
+       - Legend: misterio, bruma, luz viva.
+       No copia ninguna obra: solo toma lenguaje cinematográfico.
+       No toca Stripe, Twilio, webhooks, DB, reacción, sender pack ni video engine.
+       ========================================================= */
+
+    .screen.intro-mode .particle,
+    .screen.sound-mode .particle,
+    .screen.quiet-mode .particle,
+    .screen.consent-mode .particle {
+        display:none !important;
+    }
+
+    .screen.intro-mode .pre-spark,
+    .screen.sound-mode .pre-spark,
+    .screen.quiet-mode .pre-spark,
+    .screen.consent-mode .pre-spark {
+        opacity:0 !important;
+        animation:none !important;
+    }
+
+    .screen.intro-mode .pre-depth,
+    .screen.sound-mode .pre-depth,
+    .screen.quiet-mode .pre-depth,
+    .screen.consent-mode .pre-depth {
+        opacity:.78;
+        background:
+            radial-gradient(circle at 50% 16%, rgba(255,236,185,.12), transparent 23%),
+            radial-gradient(circle at 17% 76%, rgba(61,205,255,.14), transparent 27%),
+            radial-gradient(circle at 84% 64%, rgba(255,199,86,.10), transparent 27%),
+            linear-gradient(180deg, rgba(2,5,10,.06), rgba(5,15,28,.22) 46%, rgba(1,3,8,.15));
+        animation:rc72WorldBreath 14s ease-in-out infinite;
+    }
+
+    .screen.intro-mode .pre-depth::before,
+    .screen.sound-mode .pre-depth::before,
+    .screen.quiet-mode .pre-depth::before,
+    .screen.consent-mode .pre-depth::before {
+        content:"";
+        position:absolute;
+        inset:-18%;
+        opacity:.0;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 24% 28%, rgba(255,232,171,.18), transparent 19%),
+            radial-gradient(circle at 76% 31%, rgba(68,211,255,.17), transparent 22%),
+            radial-gradient(circle at 52% 74%, rgba(255,198,83,.12), transparent 29%);
+        filter:blur(18px);
+        animation:rc72WorldPhraseShift 22s ease-in-out infinite;
+    }
+
+    .screen.intro-mode .pre-depth::after,
+    .screen.sound-mode .pre-depth::after,
+    .screen.quiet-mode .pre-depth::after,
+    .screen.consent-mode .pre-depth::after {
+        content:"";
+        position:absolute;
+        inset:-10%;
+        opacity:.22;
+        mix-blend-mode:screen;
+        background:
+            linear-gradient(115deg, transparent 0%, transparent 37%, rgba(255,255,255,.18) 43%, rgba(75,211,255,.11) 48%, transparent 55%),
+            linear-gradient(70deg, transparent 0%, transparent 57%, rgba(255,215,129,.15) 62%, transparent 69%);
+        transform:translateX(-32%);
+        animation:rc72WideLightSweep 18s cubic-bezier(.2,.7,.15,1) infinite;
+    }
+
+    .screen.intro-mode .pre-fog,
+    .screen.sound-mode .pre-fog,
+    .screen.quiet-mode .pre-fog,
+    .screen.consent-mode .pre-fog {
+        opacity:.58;
+        background:
+            radial-gradient(ellipse at 45% 30%, rgba(255,255,255,.08), transparent 30%),
+            radial-gradient(ellipse at 62% 70%, rgba(54,200,255,.10), transparent 32%),
+            linear-gradient(90deg, transparent, rgba(255,217,136,.075), transparent);
+        filter:blur(18px);
+        transform:scale(1.08);
+        animation:rc72LivingMist 19s ease-in-out infinite;
+    }
+
+    .screen.intro-mode .yul-trail,
+    .screen.sound-mode .yul-trail,
+    .screen.quiet-mode .yul-trail,
+    .screen.consent-mode .yul-trail,
+    .screen.intro-mode .yul-live,
+    .screen.sound-mode .yul-live,
+    .screen.quiet-mode .yul-live,
+    .screen.consent-mode .yul-live {
+        display:none !important;
+    }
+
+    .screen.intro-mode .yul-soul,
+    .screen.sound-mode .yul-soul,
+    .screen.quiet-mode .yul-soul,
+    .screen.consent-mode .yul-soul {
+        position:absolute;
+        left:50%;
+        top:43%;
+        width:138px;
+        height:108px;
+        z-index:7;
+        pointer-events:none;
+        transform-origin:center center;
+        filter:
+            drop-shadow(0 0 18px rgba(255,232,170,.72))
+            drop-shadow(0 0 34px rgba(72,211,255,.44));
+        mix-blend-mode:screen;
+        animation:rc72SoulFlight 16s cubic-bezier(.42,0,.18,1) infinite;
+    }
+
+    .screen.sound-mode .yul-soul { animation-duration:18s; opacity:.88; }
+    .screen.quiet-mode .yul-soul { animation-duration:20s; opacity:.72; top:39%; }
+    .screen.consent-mode .yul-soul { animation-duration:21s; opacity:.44; top:30%; transform:scale(.78); }
+
+    .yul-wing {
+        position:absolute;
+        top:21px;
+        width:64px;
+        height:56px;
+        border-radius:70% 18% 70% 26%;
+        opacity:.82;
+        background:
+            radial-gradient(circle at 44% 38%, rgba(255,255,255,.96), rgba(255,236,178,.66) 18%, rgba(79,218,255,.36) 43%, transparent 72%),
+            radial-gradient(circle at 70% 62%, rgba(255,205,88,.50), transparent 56%);
+        filter:blur(.2px);
+        box-shadow:
+            inset 0 0 22px rgba(255,255,255,.35),
+            0 0 24px rgba(255,229,166,.58),
+            0 0 46px rgba(62,207,255,.30);
+    }
+
+    .yul-wing-left {
+        left:8px;
+        transform-origin:82% 52%;
+        transform:rotate(-22deg) scaleX(1);
+        animation:rc72WingLeft 1.18s ease-in-out infinite;
+    }
+
+    .yul-wing-right {
+        right:8px;
+        transform-origin:18% 52%;
+        border-radius:18% 70% 26% 70%;
+        transform:rotate(22deg) scaleX(1);
+        animation:rc72WingRight 1.18s ease-in-out infinite;
+    }
+
+    .yul-core {
+        position:absolute;
+        left:50%;
+        top:44px;
+        width:22px;
+        height:38px;
+        transform:translateX(-50%);
+        border-radius:999px;
+        background:
+            radial-gradient(circle at 45% 18%, rgba(255,255,255,1), rgba(255,241,190,.95) 21%, rgba(255,185,58,.72) 46%, rgba(65,211,255,.40) 70%, transparent 100%);
+        box-shadow:
+            0 0 18px rgba(255,255,255,.86),
+            0 0 34px rgba(255,203,94,.72),
+            0 0 58px rgba(61,205,255,.34);
+        animation:rc72CorePulse 2.2s ease-in-out infinite;
+    }
+
+    .yul-tail {
+        position:absolute;
+        left:50%;
+        top:70px;
+        width:10px;
+        height:92px;
+        transform:translateX(-50%) rotate(4deg);
+        border-radius:999px;
+        opacity:.72;
+        background:linear-gradient(180deg, rgba(255,241,188,.68), rgba(79,217,255,.55), transparent);
+        filter:blur(5px);
+        box-shadow:0 0 24px rgba(74,210,255,.55);
+        animation:rc72TailBlue 2.8s ease-in-out infinite;
+    }
+
+    .yul-ember {
+        position:absolute;
+        left:50%;
+        top:82px;
+        width:5px;
+        height:5px;
+        border-radius:999px;
+        background:rgba(255,219,130,.96);
+        box-shadow:
+            0 0 14px rgba(255,219,130,.92),
+            0 0 28px rgba(69,210,255,.36);
+        opacity:0;
+        animation:rc72EmberFall 3.4s linear infinite;
+    }
+
+    .ye1 { margin-left:-18px; animation-delay:.15s; }
+    .ye2 { margin-left:8px; animation-delay:.85s; background:rgba(82,218,255,.92); }
+    .ye3 { margin-left:22px; animation-delay:1.55s; transform:scale(.72); }
+    .ye4 { margin-left:-4px; animation-delay:2.25s; transform:scale(.58); background:rgba(255,255,255,.96); }
+
+    .screen.intro-mode .phone::after,
+    .screen.sound-mode .phone::after,
+    .screen.quiet-mode .phone::after {
+        content:"";
+        position:absolute;
+        inset:0;
+        pointer-events:none;
+        z-index:5;
+        opacity:.0;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 50% 42%, rgba(255,255,255,.12), transparent 13%),
+            radial-gradient(circle at 45% 46%, rgba(255,218,132,.10), transparent 22%),
+            radial-gradient(circle at 56% 48%, rgba(54,203,255,.10), transparent 24%);
+        filter:blur(12px);
+        animation:rc72PhraseGlow 15s ease-in-out infinite;
+    }
+
+    @keyframes rc72SoulFlight {
+        0%   { transform:translate(-50%,-50%) translate(-118px,38px) scale(.58) rotate(-13deg); opacity:0; filter:drop-shadow(0 0 8px rgba(255,232,170,.2)); }
+        8%   { opacity:.82; }
+        18%  { transform:translate(-50%,-50%) translate(-62px,-18px) scale(.86) rotate(7deg); opacity:.96; }
+        32%  { transform:translate(-50%,-50%) translate(42px,-54px) scale(1.12) rotate(-4deg); opacity:.88; }
+        48%  { transform:translate(-50%,-50%) translate(112px,8px) scale(.78) rotate(12deg); opacity:.68; }
+        62%  { transform:translate(-50%,-50%) translate(26px,58px) scale(1.03) rotate(-8deg); opacity:.92; }
+        78%  { transform:translate(-50%,-50%) translate(-74px,14px) scale(.72) rotate(9deg); opacity:.55; }
+        92%  { opacity:.80; }
+        100% { transform:translate(-50%,-50%) translate(-118px,38px) scale(.58) rotate(-13deg); opacity:0; }
+    }
+
+    @keyframes rc72WingLeft {
+        0%,100% { transform:rotate(-19deg) scaleX(.78) scaleY(1.10); opacity:.66; filter:blur(.8px) brightness(1); }
+        38% { transform:rotate(-48deg) scaleX(1.22) scaleY(.84); opacity:.98; filter:blur(.1px) brightness(1.75); }
+        62% { transform:rotate(-7deg) scaleX(.66) scaleY(1.18); opacity:.76; filter:blur(1px) brightness(1.18); }
+    }
+
+    @keyframes rc72WingRight {
+        0%,100% { transform:rotate(19deg) scaleX(.78) scaleY(1.10); opacity:.66; filter:blur(.8px) brightness(1); }
+        38% { transform:rotate(48deg) scaleX(1.22) scaleY(.84); opacity:.98; filter:blur(.1px) brightness(1.75); }
+        62% { transform:rotate(7deg) scaleX(.66) scaleY(1.18); opacity:.76; filter:blur(1px) brightness(1.18); }
+    }
+
+    @keyframes rc72CorePulse {
+        0%,100% { transform:translateX(-50%) scale(.86); opacity:.74; filter:brightness(1); }
+        42% { transform:translateX(-50%) scale(1.18); opacity:1; filter:brightness(1.85); }
+        70% { transform:translateX(-50%) scale(.96); opacity:.88; }
+    }
+
+    @keyframes rc72TailBlue {
+        0%,100% { opacity:.30; height:60px; transform:translateX(-50%) rotate(-8deg); }
+        48% { opacity:.90; height:112px; transform:translateX(-50%) rotate(8deg); }
+    }
+
+    @keyframes rc72EmberFall {
+        0% { opacity:0; transform:translate(0,0) scale(.35); }
+        12% { opacity:.95; }
+        45% { opacity:.74; transform:translate(18px,54px) scale(1); }
+        100% { opacity:0; transform:translate(-16px,148px) scale(.18); }
+    }
+
+    @keyframes rc72WorldBreath {
+        0%,100% { opacity:.50; filter:brightness(.92) saturate(1); transform:scale(1); }
+        33% { opacity:.78; filter:brightness(1.12) saturate(1.18); transform:scale(1.018); }
+        66% { opacity:.64; filter:brightness(1.04) saturate(1.08); transform:scale(1.008); }
+    }
+
+    @keyframes rc72WorldPhraseShift {
+        0%,100% { opacity:.06; transform:translate(-10px,10px) scale(.98); }
+        28% { opacity:.44; transform:translate(16px,-18px) scale(1.06); }
+        54% { opacity:.18; transform:translate(-18px,-4px) scale(1.02); }
+        78% { opacity:.36; transform:translate(10px,18px) scale(1.08); }
+    }
+
+    @keyframes rc72WideLightSweep {
+        0% { opacity:0; transform:translateX(-52%) skewX(-8deg); }
+        18% { opacity:.0; }
+        34% { opacity:.34; }
+        58% { opacity:.16; }
+        100% { opacity:0; transform:translateX(52%) skewX(-8deg); }
+    }
+
+    @keyframes rc72LivingMist {
+        0%,100% { opacity:.28; transform:translateX(-22px) translateY(6px) scale(1.08); }
+        45% { opacity:.70; transform:translateX(24px) translateY(-14px) scale(1.14); }
+        72% { opacity:.46; transform:translateX(-8px) translateY(12px) scale(1.10); }
+    }
+
+    @keyframes rc72PhraseGlow {
+        0%,100% { opacity:.05; transform:scale(.96); }
+        24% { opacity:.32; transform:scale(1.05); }
+        48% { opacity:.10; transform:scale(1.00); }
+        72% { opacity:.26; transform:scale(1.08); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .screen.intro-mode .yul-soul,
+        .screen.sound-mode .yul-soul,
+        .screen.quiet-mode .yul-soul,
+        .screen.consent-mode .yul-soul,
+        .screen.intro-mode .pre-depth,
+        .screen.sound-mode .pre-depth,
+        .screen.quiet-mode .pre-depth,
+        .screen.consent-mode .pre-depth,
+        .screen.intro-mode .pre-fog,
+        .screen.sound-mode .pre-fog,
+        .screen.quiet-mode .pre-fog,
+        .screen.consent-mode .pre-fog {
+            animation:none !important;
+        }
+    }
+
+
+    /* RC72 — consentimiento entra como capítulo limpio, no encima de frases anteriores */
+    .screen.consent-mode .img {
+        animation:rc72ConsentChapterIn 1.2s ease-out forwards;
+    }
+    .screen.consent-mode .phone {
+        animation:rc72ConsentPause 2.2s ease-out forwards;
+    }
+    @keyframes rc72ConsentPause {
+        0% { opacity:0; filter:blur(8px) brightness(.62); }
+        38% { opacity:0; filter:blur(8px) brightness(.62); }
+        100% { opacity:1; filter:blur(0) brightness(1); }
+    }
+    @keyframes rc72ConsentChapterIn {
+        0% { opacity:0; transform:scale(1.018); }
+        100% { opacity:1; transform:scale(1); }
+    }
+
 </style>
 </head>
 <body>
 <main class="screen{screen_mode_class}">
     <section class="phone">
         <img class="img" src="{image_src}" alt="ETERNA" onerror="this.onerror=null; this.src='{fallback_src}';">
+        <div class="pre-magic" aria-hidden="true">
+            <div class="pre-depth"></div>
+            <div class="pre-fog fog-a"></div>
+            <div class="pre-fog fog-b"></div>
+            <i class="pre-spark ps1"></i>
+            <i class="pre-spark gold ps2"></i>
+            <i class="pre-spark ps3"></i>
+            <i class="pre-spark gold ps4"></i>
+            <i class="pre-spark ps5"></i>
+            <i class="pre-spark gold ps6"></i>
+            <span class="pre-glint glint-a"></span>
+            <span class="pre-glint glint-b"></span>
+            <span class="yul-trail"></span>
+            <img class="yul-live" src="{yul_src}" alt="" loading="eager">
+        </div>
         <i class="particle p1" aria-hidden="true"></i>
         <i class="particle p2" aria-hidden="true"></i>
         <i class="particle p3" aria-hidden="true"></i>
         <i class="particle gold p4" aria-hidden="true"></i>
+
+            <span class="yul-soul" aria-hidden="true">
+                <span class="yul-wing yul-wing-left"></span>
+                <span class="yul-wing yul-wing-right"></span>
+                <span class="yul-core"></span>
+                <span class="yul-tail"></span>
+                <i class="yul-ember ye1"></i>
+                <i class="yul-ember ye2"></i>
+                <i class="yul-ember ye3"></i>
+                <i class="yul-ember ye4"></i>
+            </span>
         <div class="soft-halo" aria-hidden="true"></div>
         <div class="edge-glow eg1" aria-hidden="true"></div>
         <div class="edge-glow eg2" aria-hidden="true"></div>
@@ -1859,22 +2387,6 @@ def init_db():
     )
     """)
 
-    # RC68 — Dead Letter Queue operativa: nada se pierde, todo queda visible y recuperable.
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS failed_order_jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        order_id TEXT,
-        area TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'open',
-        error TEXT,
-        attempts INTEGER NOT NULL DEFAULT 0,
-        payload_json TEXT,
-        last_attempt_at TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-    )
-    """)
-
     conn.commit()
     conn.close()
 
@@ -1928,7 +2440,6 @@ def init_db():
     add_column_if_missing("orders", "last_recovery_reason", "ALTER TABLE orders ADD COLUMN last_recovery_reason TEXT")
     add_column_if_missing("orders", "recipient_session_token", "ALTER TABLE orders ADD COLUMN recipient_session_token TEXT")
     add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
-    add_column_if_missing("orders", "memory_place", "ALTER TABLE orders ADD COLUMN memory_place TEXT")
 init_db()
 
 
@@ -2864,105 +3375,19 @@ def get_order_by_sender_token_or_404(token: str):
     return dict(row)
 
 
-ORDER_UPDATE_ALLOWED_COLUMNS = {
-    "cashout_completed",
-    "connect_onboarding_completed",
-    "created_at",
-    "delivered_to_recipient",
-    "delivery_locked",
-    "delivery_mode",
-    "delivery_processing_lock",
-    "delivery_processing_lock_at",
-    "delivery_sent",
-    "delivery_sent_at",
-    "eterna_completed",
-    "experience_completed",
-    "experience_started",
-    "experience_video_url",
-    "gift_amount",
-    "gift_refund_deadline_at",
-    "gift_refunded",
-    "id",
-    "last_recovery_at",
-    "last_recovery_reason",
-    "memory_place",
-    "message_type",
-    "order_state",
-    "paid",
-    "phrase_1",
-    "phrase_2",
-    "phrase_3",
-    "phrase_mode",
-    "platform_fixed_fee",
-    "platform_total_fee",
-    "platform_variable_fee",
-    "reaction_upload_error",
-    "reaction_upload_pending",
-    "reaction_uploaded",
-    "reaction_video_local",
-    "reaction_video_public_url",
-    "recipient_id",
-    "recipient_session_claimed_at",
-    "recipient_session_token",
-    "recipient_sms_attempts",
-    "recipient_sms_error",
-    "recipient_sms_sent_at",
-    "recipient_sms_sid",
-    "recipient_token",
-    "scheduled_delivery_at",
-    "scheduled_delivery_fee",
-    "sender_id",
-    "sender_notified",
-    "sender_sms_attempts",
-    "sender_sms_error",
-    "sender_sms_processing_lock",
-    "sender_sms_processing_lock_at",
-    "sender_sms_sent_at",
-    "sender_sms_sid",
-    "sender_token",
-    "share_video_url",
-    "stripe_connected_account_id",
-    "stripe_event_id",
-    "stripe_event_processed_at",
-    "stripe_gift_refund_id",
-    "stripe_payment_intent_id",
-    "stripe_payment_status",
-    "stripe_session_id",
-    "stripe_transfer_id",
-    "total_amount",
-    "transfer_completed",
-    "transfer_in_progress",
-    "transfer_started_at",
-    "updated_at",
-    "video_render_requested",
-    "video_render_requested_at",
-}
-
-def ensure_order_update_column_allowed(column_name: str) -> str:
-    column = str(column_name or "").strip()
-    if column not in ORDER_UPDATE_ALLOWED_COLUMNS:
-        raise ValueError(f"Campo no permitido en update_order: {column}")
-    return column
-
 def update_order(order_id: str, **fields):
     if not fields:
         return
 
-    safe_fields = {}
-    for k, v in fields.items():
-        safe_fields[ensure_order_update_column_allowed(k)] = v
-
-    safe_fields["updated_at"] = now_iso()
-    columns = ", ".join([f"{k} = ?" for k in safe_fields.keys()])
-    values = list(safe_fields.values()) + [order_id]
+    fields["updated_at"] = now_iso()
+    columns = ", ".join([f"{k} = ?" for k in fields.keys()])
+    values = list(fields.values()) + [order_id]
 
     conn = db_conn()
     cur = conn.cursor()
-    try:
-        cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
-        conn.commit()
-    finally:
-        conn.close()
+    cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
+    conn.commit()
+    conn.close()
 
 
 
@@ -3002,8 +3427,6 @@ def acquire_order_processing_lock(order_id: str, field: str, at_field: str, max_
     - evita dos workers pisándose
     - libera locks viejos tras reinicio/caída
     """
-    field = ensure_order_update_column_allowed(field)
-    at_field = ensure_order_update_column_allowed(at_field)
     now = now_iso()
     cutoff = (now_dt() - timedelta(seconds=max_age_seconds)).isoformat()
     conn = db_conn()
@@ -3026,8 +3449,6 @@ def acquire_order_processing_lock(order_id: str, field: str, at_field: str, max_
 
 def release_order_processing_lock(order_id: str, field: str, at_field: str):
     try:
-        field = ensure_order_update_column_allowed(field)
-        at_field = ensure_order_update_column_allowed(at_field)
         update_order(order_id, **{field: 0, at_field: None})
     except Exception as e:
         print("⚠️ No pude liberar lock:", order_id, field, e)
@@ -4311,7 +4732,6 @@ async def create_order_and_redirect(
     photo4: UploadFile,
     photo5: UploadFile,
     photo6: UploadFile,
-    memory_place: str = "",
     responsible_use_accepted: str = "",
 ):
     customer_name = (customer_name or "").strip()
@@ -4322,10 +4742,6 @@ async def create_order_and_redirect(
     recipient_name = (recipient_name or "").strip()
     recipient_country_code = (recipient_country_code or "").strip()
     recipient_phone = (recipient_phone or "").strip()
-
-    memory_place = (memory_place or "").strip()
-    if len(memory_place) > 90:
-        memory_place = memory_place[:90].strip()
 
     message_type = (message_type or "").strip()
     phrase_mode = (phrase_mode or "auto").strip().lower()
@@ -4504,9 +4920,6 @@ async def create_order_and_redirect(
             ),
         )
 
-        if memory_place:
-            cur.execute("UPDATE orders SET memory_place = ?, updated_at = ? WHERE id = ?", (memory_place, now_iso(), order_id))
-
         conn.commit()
         insert_order_event(order_id, "order_created", "ok", "Pedido creado y pendiente de pago")
 
@@ -4520,7 +4933,6 @@ async def create_order_and_redirect(
             f"💸 Total: {fees['total_amount']}€",
             f"🎁 Dinero regalo: {fees['gift_amount']}€",
             f"🕒 Entrega: {'programada' if delivery_mode == 'scheduled' else 'inmediata'}",
-            f"📍 Lugar para volver: {memory_place if memory_place else 'no indicado'}",
             f"🆔 Pedido: {order_id}",
             "✅ Uso responsable aceptado"
         )
@@ -5812,15 +6224,6 @@ def render_create_form() -> str:
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="section s2b">
-                        <div class="section-title">Un lugar para volver <span style="color:rgba(255,255,255,.45);font-weight:500;">(opcional)</span></div>
-                        <div class="soft-copy">
-                            Piensa en un lugar que pueda despertar un recuerdo bonito en quien recibirá esta ETERNA.
-                            No tiene que ser importante para nadie más. Solo para vosotros.
-                        </div>
-                        <input name="memory_place" id="memory_place" maxlength="90" placeholder="Ej: la playa de invierno, el banco del parque, la casa de la abuela">
                     </div>
 
                     <div class="section s3">
@@ -7223,7 +7626,6 @@ async def crear_post(
     delivery_date: str = Form(""),
     delivery_time: str = Form(""),
     gift_amount: float = Form(0),
-    memory_place: str = Form(""),
     photo1: UploadFile = File(...),
     photo2: UploadFile = File(...),
     photo3: UploadFile = File(...),
@@ -7257,7 +7659,6 @@ async def crear_post(
             photo4,
             photo5,
             photo6,
-            memory_place,
             responsible_use_accepted or responsible_use,
         )
 
@@ -7927,6 +8328,187 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 .glow{{position:absolute;z-index:1;inset:-10%;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(circle at 50% 37%,rgba(51,196,255,.18),transparent 24%),radial-gradient(circle at 50% 58%,rgba(255,196,73,.17),transparent 20%);animation:breath 5.6s ease-in-out infinite}}
 @keyframes breath{{0%,100%{{opacity:.45;transform:scale(1)}}50%{{opacity:.92;transform:scale(1.04)}}}}
 @media (min-width:760px){{.shell{{width:min(100vw,520px)}}}}
+
+    /* =========================================================
+       RC71 PRE-EXPERIENCE MAGIC SAFE
+       Solo atmósfera viva para: intro, sonido, lugar tranquilo y consentimiento.
+       No cambia rutas, botones, formularios, Stripe, Twilio, DB, reacción ni sender pack.
+       ========================================================= */
+    .pre-magic {{
+        position:absolute;
+        inset:0;
+        z-index:4;
+        pointer-events:none;
+        display:none;
+        overflow:hidden;
+        opacity:1;
+        contain:paint;
+    }}
+    .screen.intro-mode .pre-magic,
+    .screen.sound-mode .pre-magic,
+    .screen.quiet-mode .pre-magic,
+    .screen.consent-mode .pre-magic {{
+        display:block;
+    }}
+    .pre-depth {{
+        position:absolute;
+        inset:-8%;
+        opacity:.62;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(55,207,255,.16), transparent 24%),
+            radial-gradient(circle at 80% 26%, rgba(255,211,121,.12), transparent 25%),
+            radial-gradient(circle at 51% 72%, rgba(72,198,255,.10), transparent 31%),
+            linear-gradient(180deg, rgba(2,5,10,.08), transparent 38%, rgba(2,5,10,.20));
+        filter:blur(1px);
+        animation:rc71DepthBreath 9.8s ease-in-out infinite;
+    }}
+    .pre-fog {{
+        position:absolute;
+        left:-32%;
+        right:-32%;
+        height:44%;
+        border-radius:999px;
+        opacity:.0;
+        filter:blur(23px);
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(93,211,255,.12), rgba(255,221,144,.08), rgba(93,211,255,.11), transparent);
+        animation:rc71FogDrift 18s ease-in-out infinite;
+    }}
+    .pre-fog.fog-a {{ top:15%; animation-delay:.2s; }}
+    .pre-fog.fog-b {{ bottom:8%; opacity:.0; animation-duration:22s; animation-delay:4.2s; transform:scaleY(.72); }}
+    .pre-spark {{
+        position:absolute;
+        width:4px;
+        height:4px;
+        border-radius:999px;
+        opacity:0;
+        background:rgba(117,221,255,.96);
+        box-shadow:0 0 13px rgba(117,221,255,.95), 0 0 28px rgba(117,221,255,.36);
+        animation:rc71SparkRise 10.5s linear infinite;
+    }}
+    .pre-spark.gold {{
+        background:rgba(255,221,145,.95);
+        box-shadow:0 0 13px rgba(255,221,145,.90), 0 0 28px rgba(255,196,74,.34);
+    }}
+    .ps1 {{ left:13%; bottom:11%; animation-delay:.1s; animation-duration:11.8s; transform:scale(.75); }}
+    .ps2 {{ left:28%; bottom:25%; animation-delay:2.8s; animation-duration:13.2s; transform:scale(.55); }}
+    .ps3 {{ left:47%; bottom:10%; animation-delay:1.4s; animation-duration:12.6s; transform:scale(.68); }}
+    .ps4 {{ left:69%; bottom:19%; animation-delay:4.1s; animation-duration:14.4s; transform:scale(.5); }}
+    .ps5 {{ left:83%; bottom:33%; animation-delay:6.0s; animation-duration:12.8s; transform:scale(.62); }}
+    .ps6 {{ left:56%; bottom:46%; animation-delay:7.2s; animation-duration:15.2s; transform:scale(.45); }}
+    .pre-glint {{
+        position:absolute;
+        width:92px;
+        height:2px;
+        border-radius:999px;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,.88), rgba(255,220,135,.70), transparent);
+        box-shadow:0 0 18px rgba(255,227,155,.52), 0 0 35px rgba(84,211,255,.20);
+        animation:rc71GlintCross 7.6s ease-in-out infinite;
+    }}
+    .glint-a {{ left:4%; top:31%; animation-delay:2.1s; }}
+    .glint-b {{ right:-2%; bottom:27%; animation-delay:5.4s; animation-direction:reverse; }}
+    .yul-live {{
+        position:absolute;
+        width:74px;
+        height:auto;
+        left:66%;
+        top:22%;
+        opacity:0;
+        z-index:5;
+        pointer-events:none;
+        transform-origin:center center;
+        filter:drop-shadow(0 0 14px rgba(92,216,255,.65)) drop-shadow(0 0 22px rgba(255,214,124,.30));
+        mix-blend-mode:screen;
+        animation:rc71YulAlive 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .yul-trail {{
+        position:absolute;
+        left:66%;
+        top:22%;
+        width:120px;
+        height:32px;
+        border-radius:999px;
+        z-index:4;
+        opacity:0;
+        pointer-events:none;
+        mix-blend-mode:screen;
+        background:radial-gradient(circle at 20% 50%, rgba(255,222,142,.38), transparent 18%), radial-gradient(circle at 48% 48%, rgba(99,219,255,.28), transparent 21%), linear-gradient(90deg, rgba(255,219,130,.00), rgba(255,219,130,.20), rgba(83,211,255,.14), transparent);
+        filter:blur(7px);
+        animation:rc71YulTrail 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .screen.sound-mode .yul-live,
+    .screen.sound-mode .yul-trail {{ top:19%; left:71%; animation-delay:1.6s; animation-duration:15s; }}
+    .screen.quiet-mode .yul-live,
+    .screen.quiet-mode .yul-trail {{ top:24%; left:18%; animation-delay:2.4s; animation-duration:16.5s; }}
+    .screen.consent-mode .yul-live,
+    .screen.consent-mode .yul-trail {{ top:18%; left:70%; animation-delay:3.2s; animation-duration:17s; opacity:0; }}
+    .screen.consent-mode .pre-magic {{ opacity:.72; }}
+    .screen.consent-mode .pre-spark {{ animation-duration:14.8s; }}
+    .screen.quiet-mode .pre-fog {{ opacity:.0; filter:blur(27px); }}
+    .screen.quiet-mode .pre-depth {{ opacity:.75; }}
+
+    @keyframes rc71DepthBreath {{
+        0%,100% {{ transform:scale(1) translate3d(0,0,0); opacity:.42; }}
+        45% {{ transform:scale(1.045) translate3d(-1.8%,1.2%,0); opacity:.74; }}
+        72% {{ opacity:.55; }}
+    }}
+    @keyframes rc71FogDrift {{
+        0% {{ transform:translateX(-14%) translateY(10px) scaleX(.92); opacity:0; }}
+        18% {{ opacity:.40; }}
+        54% {{ opacity:.30; }}
+        100% {{ transform:translateX(14%) translateY(-12px) scaleX(1.08); opacity:0; }}
+    }}
+    @keyframes rc71SparkRise {{
+        0% {{ opacity:0; transform:translate3d(0,0,0) scale(.42); }}
+        12% {{ opacity:.78; }}
+        58% {{ opacity:.42; transform:translate3d(18px,-88px,0) scale(.82); }}
+        100% {{ opacity:0; transform:translate3d(34px,-178px,0) scale(1.05); }}
+    }}
+    @keyframes rc71GlintCross {{
+        0%,68% {{ opacity:0; transform:translateX(-80px) translateY(14px) rotate(-9deg) scaleX(.45); }}
+        75% {{ opacity:.76; }}
+        100% {{ opacity:0; transform:translateX(330px) translateY(-24px) rotate(-9deg) scaleX(1.15); }}
+    }}
+    @keyframes rc71YulAlive {{
+        0% {{ opacity:0; transform:translate3d(-18px,12px,0) rotate(-7deg) scale(.78) skewX(0deg); }}
+        10% {{ opacity:.0; }}
+        18% {{ opacity:.82; transform:translate3d(0,0,0) rotate(-2deg) scale(.92) skewX(2deg); }}
+        30% {{ transform:translate3d(-9px,-12px,0) rotate(4deg) scale(.98) skewX(-3deg); }}
+        42% {{ transform:translate3d(7px,-4px,0) rotate(-3deg) scale(.94) skewX(3deg); }}
+        55% {{ opacity:.76; transform:translate3d(-4px,10px,0) rotate(3deg) scale(.99) skewX(-2deg); }}
+        68% {{ transform:translate3d(12px,-8px,0) rotate(-4deg) scale(.93) skewX(2deg); }}
+        80% {{ opacity:.58; transform:translate3d(22px,4px,0) rotate(2deg) scale(.86) skewX(-1deg); }}
+        100% {{ opacity:0; transform:translate3d(44px,-18px,0) rotate(8deg) scale(.72) skewX(0deg); }}
+    }}
+    @keyframes rc71YulTrail {{
+        0%,12% {{ opacity:0; transform:translate3d(-40px,20px,0) rotate(-8deg) scale(.72); }}
+        24% {{ opacity:.34; }}
+        52% {{ opacity:.22; transform:translate3d(-28px,2px,0) rotate(-4deg) scale(.95); }}
+        78% {{ opacity:.14; }}
+        100% {{ opacity:0; transform:translate3d(14px,-12px,0) rotate(7deg) scale(.82); }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        .screen.intro-mode .pre-magic,
+        .screen.sound-mode .pre-magic,
+        .screen.quiet-mode .pre-magic,
+        .screen.consent-mode .pre-magic {{
+            opacity:.42;
+        }}
+        .pre-depth,
+        .pre-fog,
+        .pre-spark,
+        .pre-glint,
+        .yul-live,
+        .yul-trail {{
+            animation:none !important;
+        }}
+        .yul-live {{ opacity:.32; }}
+    }}
+
 </style>
 </head>
 <body>
@@ -7952,46 +8534,13 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 # NO toca Stripe, Twilio, webhooks, DB, Video Engine, reacción, cobros ni sender pack.
 # =========================================================
 
-def render_eterna_prologo_experience(recipient_token: str, order: Optional[dict] = None) -> HTMLResponse:
+def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     """
     Prólogo cinematográfico antes de /experiencia.
     Filosofía: no es una pantalla; es un umbral.
     Incluye consentimiento claro de grabación, pero integrado en la historia.
     """
-    butterfly_src = safe_attr(eterna_asset("ris_master_wings"))
-    if not order:
-        try:
-            order = get_order_by_recipient_token_or_404(recipient_token)
-        except Exception:
-            order = {}
-
-    recipient_name_raw = (order.get("recipient_name") or "").strip() if isinstance(order, dict) else ""
-    recipient_first = recipient_name_raw.split()[0].strip() if recipient_name_raw else ""
-    recipient_call = safe_text((recipient_first + "...") if recipient_first else "Por fin...")
-
-    memory_place_raw = (order.get("memory_place") or "").strip() if isinstance(order, dict) else ""
-    memory_place = safe_text(memory_place_raw)
-
-    message_type_raw = (order.get("message_type") or "no_se_decirlo").strip().lower() if isinstance(order, dict) else "no_se_decirlo"
-    relation_lines = {
-        "madre": "Hay personas a las que siempre se puede volver.",
-        "padre": "Hay personas que nos enseñan el camino incluso sin saberlo.",
-        "hijo": "Hay vidas que empiezan pequeñas y acaban llenándolo todo.",
-        "hija": "Hay vidas que empiezan pequeñas y acaban llenándolo todo.",
-        "amistad": "Algunas historias no necesitaron promesas. Solo tiempo.",
-        "amor": "Hay encuentros que parecen casualidad hasta que miras atrás.",
-        "superacion": "A veces olvidamos lo lejos que hemos llegado.",
-        "cumpleanos": "Hay días que vuelven cada año. Y recuerdos que vuelven una sola vez.",
-        "familia": "Hay lugares que viven dentro de una familia.",
-        "gracias": "Hay cosas que a veces tardamos demasiado en agradecer.",
-    }
-    relation_line = safe_text(relation_lines.get(message_type_raw, "Hay cosas que el tiempo nunca consiguió llevarse."))
-
-    if memory_place_raw:
-        place_line = f"Hace mucho tiempo que no paso por allí.<br><span class='eternal'>...{memory_place}.</span>"
-    else:
-        place_line = "Hay un lugar al que quiero llevarte.<br><span class='eternal'>Solo por un momento.</span>"
-
+    butterfly_src = safe_attr(eterna_asset("guide_butterfly"))
     recipient_token_safe = safe_attr(recipient_token)
     recipient_token_json = json.dumps(str(recipient_token))
     return HTMLResponse(f"""
@@ -8055,6 +8604,187 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
 @keyframes waterGlow{{0%,100%{{opacity:.38;filter:blur(0)}}50%{{opacity:.88;filter:blur(1px)}}}}
 @keyframes goldPulse{{0%,100%{{opacity:.16;transform:scale(.92)}}50%{{opacity:.78;transform:scale(1.12)}}}}
 @media (max-height:740px){{.consent-card{{top:52%;padding:18px 17px 17px}}.consent-card p{{margin:8px 0}}.check-row{{margin-top:12px;padding:11px}}.consent-btn{{min-height:58px}}.brand{{top:calc(env(safe-area-inset-top) + 14px);font-size:18px}}.butterfly{{width:min(48vw,250px)}}.line{{font-size:clamp(25px,7.8vw,42px)}}}}
+
+    /* =========================================================
+       RC71 PRE-EXPERIENCE MAGIC SAFE
+       Solo atmósfera viva para: intro, sonido, lugar tranquilo y consentimiento.
+       No cambia rutas, botones, formularios, Stripe, Twilio, DB, reacción ni sender pack.
+       ========================================================= */
+    .pre-magic {{
+        position:absolute;
+        inset:0;
+        z-index:4;
+        pointer-events:none;
+        display:none;
+        overflow:hidden;
+        opacity:1;
+        contain:paint;
+    }}
+    .screen.intro-mode .pre-magic,
+    .screen.sound-mode .pre-magic,
+    .screen.quiet-mode .pre-magic,
+    .screen.consent-mode .pre-magic {{
+        display:block;
+    }}
+    .pre-depth {{
+        position:absolute;
+        inset:-8%;
+        opacity:.62;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(55,207,255,.16), transparent 24%),
+            radial-gradient(circle at 80% 26%, rgba(255,211,121,.12), transparent 25%),
+            radial-gradient(circle at 51% 72%, rgba(72,198,255,.10), transparent 31%),
+            linear-gradient(180deg, rgba(2,5,10,.08), transparent 38%, rgba(2,5,10,.20));
+        filter:blur(1px);
+        animation:rc71DepthBreath 9.8s ease-in-out infinite;
+    }}
+    .pre-fog {{
+        position:absolute;
+        left:-32%;
+        right:-32%;
+        height:44%;
+        border-radius:999px;
+        opacity:.0;
+        filter:blur(23px);
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(93,211,255,.12), rgba(255,221,144,.08), rgba(93,211,255,.11), transparent);
+        animation:rc71FogDrift 18s ease-in-out infinite;
+    }}
+    .pre-fog.fog-a {{ top:15%; animation-delay:.2s; }}
+    .pre-fog.fog-b {{ bottom:8%; opacity:.0; animation-duration:22s; animation-delay:4.2s; transform:scaleY(.72); }}
+    .pre-spark {{
+        position:absolute;
+        width:4px;
+        height:4px;
+        border-radius:999px;
+        opacity:0;
+        background:rgba(117,221,255,.96);
+        box-shadow:0 0 13px rgba(117,221,255,.95), 0 0 28px rgba(117,221,255,.36);
+        animation:rc71SparkRise 10.5s linear infinite;
+    }}
+    .pre-spark.gold {{
+        background:rgba(255,221,145,.95);
+        box-shadow:0 0 13px rgba(255,221,145,.90), 0 0 28px rgba(255,196,74,.34);
+    }}
+    .ps1 {{ left:13%; bottom:11%; animation-delay:.1s; animation-duration:11.8s; transform:scale(.75); }}
+    .ps2 {{ left:28%; bottom:25%; animation-delay:2.8s; animation-duration:13.2s; transform:scale(.55); }}
+    .ps3 {{ left:47%; bottom:10%; animation-delay:1.4s; animation-duration:12.6s; transform:scale(.68); }}
+    .ps4 {{ left:69%; bottom:19%; animation-delay:4.1s; animation-duration:14.4s; transform:scale(.5); }}
+    .ps5 {{ left:83%; bottom:33%; animation-delay:6.0s; animation-duration:12.8s; transform:scale(.62); }}
+    .ps6 {{ left:56%; bottom:46%; animation-delay:7.2s; animation-duration:15.2s; transform:scale(.45); }}
+    .pre-glint {{
+        position:absolute;
+        width:92px;
+        height:2px;
+        border-radius:999px;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,.88), rgba(255,220,135,.70), transparent);
+        box-shadow:0 0 18px rgba(255,227,155,.52), 0 0 35px rgba(84,211,255,.20);
+        animation:rc71GlintCross 7.6s ease-in-out infinite;
+    }}
+    .glint-a {{ left:4%; top:31%; animation-delay:2.1s; }}
+    .glint-b {{ right:-2%; bottom:27%; animation-delay:5.4s; animation-direction:reverse; }}
+    .yul-live {{
+        position:absolute;
+        width:74px;
+        height:auto;
+        left:66%;
+        top:22%;
+        opacity:0;
+        z-index:5;
+        pointer-events:none;
+        transform-origin:center center;
+        filter:drop-shadow(0 0 14px rgba(92,216,255,.65)) drop-shadow(0 0 22px rgba(255,214,124,.30));
+        mix-blend-mode:screen;
+        animation:rc71YulAlive 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .yul-trail {{
+        position:absolute;
+        left:66%;
+        top:22%;
+        width:120px;
+        height:32px;
+        border-radius:999px;
+        z-index:4;
+        opacity:0;
+        pointer-events:none;
+        mix-blend-mode:screen;
+        background:radial-gradient(circle at 20% 50%, rgba(255,222,142,.38), transparent 18%), radial-gradient(circle at 48% 48%, rgba(99,219,255,.28), transparent 21%), linear-gradient(90deg, rgba(255,219,130,.00), rgba(255,219,130,.20), rgba(83,211,255,.14), transparent);
+        filter:blur(7px);
+        animation:rc71YulTrail 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .screen.sound-mode .yul-live,
+    .screen.sound-mode .yul-trail {{ top:19%; left:71%; animation-delay:1.6s; animation-duration:15s; }}
+    .screen.quiet-mode .yul-live,
+    .screen.quiet-mode .yul-trail {{ top:24%; left:18%; animation-delay:2.4s; animation-duration:16.5s; }}
+    .screen.consent-mode .yul-live,
+    .screen.consent-mode .yul-trail {{ top:18%; left:70%; animation-delay:3.2s; animation-duration:17s; opacity:0; }}
+    .screen.consent-mode .pre-magic {{ opacity:.72; }}
+    .screen.consent-mode .pre-spark {{ animation-duration:14.8s; }}
+    .screen.quiet-mode .pre-fog {{ opacity:.0; filter:blur(27px); }}
+    .screen.quiet-mode .pre-depth {{ opacity:.75; }}
+
+    @keyframes rc71DepthBreath {{
+        0%,100% {{ transform:scale(1) translate3d(0,0,0); opacity:.42; }}
+        45% {{ transform:scale(1.045) translate3d(-1.8%,1.2%,0); opacity:.74; }}
+        72% {{ opacity:.55; }}
+    }}
+    @keyframes rc71FogDrift {{
+        0% {{ transform:translateX(-14%) translateY(10px) scaleX(.92); opacity:0; }}
+        18% {{ opacity:.40; }}
+        54% {{ opacity:.30; }}
+        100% {{ transform:translateX(14%) translateY(-12px) scaleX(1.08); opacity:0; }}
+    }}
+    @keyframes rc71SparkRise {{
+        0% {{ opacity:0; transform:translate3d(0,0,0) scale(.42); }}
+        12% {{ opacity:.78; }}
+        58% {{ opacity:.42; transform:translate3d(18px,-88px,0) scale(.82); }}
+        100% {{ opacity:0; transform:translate3d(34px,-178px,0) scale(1.05); }}
+    }}
+    @keyframes rc71GlintCross {{
+        0%,68% {{ opacity:0; transform:translateX(-80px) translateY(14px) rotate(-9deg) scaleX(.45); }}
+        75% {{ opacity:.76; }}
+        100% {{ opacity:0; transform:translateX(330px) translateY(-24px) rotate(-9deg) scaleX(1.15); }}
+    }}
+    @keyframes rc71YulAlive {{
+        0% {{ opacity:0; transform:translate3d(-18px,12px,0) rotate(-7deg) scale(.78) skewX(0deg); }}
+        10% {{ opacity:.0; }}
+        18% {{ opacity:.82; transform:translate3d(0,0,0) rotate(-2deg) scale(.92) skewX(2deg); }}
+        30% {{ transform:translate3d(-9px,-12px,0) rotate(4deg) scale(.98) skewX(-3deg); }}
+        42% {{ transform:translate3d(7px,-4px,0) rotate(-3deg) scale(.94) skewX(3deg); }}
+        55% {{ opacity:.76; transform:translate3d(-4px,10px,0) rotate(3deg) scale(.99) skewX(-2deg); }}
+        68% {{ transform:translate3d(12px,-8px,0) rotate(-4deg) scale(.93) skewX(2deg); }}
+        80% {{ opacity:.58; transform:translate3d(22px,4px,0) rotate(2deg) scale(.86) skewX(-1deg); }}
+        100% {{ opacity:0; transform:translate3d(44px,-18px,0) rotate(8deg) scale(.72) skewX(0deg); }}
+    }}
+    @keyframes rc71YulTrail {{
+        0%,12% {{ opacity:0; transform:translate3d(-40px,20px,0) rotate(-8deg) scale(.72); }}
+        24% {{ opacity:.34; }}
+        52% {{ opacity:.22; transform:translate3d(-28px,2px,0) rotate(-4deg) scale(.95); }}
+        78% {{ opacity:.14; }}
+        100% {{ opacity:0; transform:translate3d(14px,-12px,0) rotate(7deg) scale(.82); }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        .screen.intro-mode .pre-magic,
+        .screen.sound-mode .pre-magic,
+        .screen.quiet-mode .pre-magic,
+        .screen.consent-mode .pre-magic {{
+            opacity:.42;
+        }}
+        .pre-depth,
+        .pre-fog,
+        .pre-spark,
+        .pre-glint,
+        .yul-live,
+        .yul-trail {{
+            animation:none !important;
+        }}
+        .yul-live {{ opacity:.32; }}
+    }}
+
 </style>
 </head>
 <body>
@@ -8072,14 +8802,14 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
 
     <div class="copy" aria-hidden="true">
       <div class="line gold l1">Shhh...</div>
-      <div class="line l2">Ven conmigo.</div>
-      <div class="line small l3">Los recuerdos no desaparecen.<br>Solo esperan.</div>
-      <div class="line small l4">Yo los guardo<br>hasta que llega el momento<br>de devolverlos.</div>
-      <div class="line l5">{recipient_call}</div>
-      <div class="line small l6">{relation_line}</div>
-      <div class="line small l7">{place_line}</div>
-      <div class="line l8">Creo que ha llegado<br><span class="eternal">el momento.</span></div>
-      <div class="line l9">No vengo a enseñarte algo.<br><span class="eternal">Vengo a devolverte algo.</span></div>
+      <div class="line l2">Dicen que el tiempo<br>se lleva todo.</div>
+      <div class="line l3">Pero no es<br>del todo cierto.</div>
+      <div class="line small l4">Porque algunas cosas<br>encuentran la forma<br>de quedarse.</div>
+      <div class="line l5">Y algunas...<br><span class="eternal">encuentran la forma de volver.</span></div>
+      <div class="line small l6">Lo que estás a punto de descubrir<br>ha viajado hasta aquí.</div>
+      <div class="line small l7">A través de días.<br>A través de recuerdos.<br>A través del tiempo.</div>
+      <div class="line l8">Durante algún tiempo...<br><span class="eternal">esto estuvo esperando.</span></div>
+      <div class="line l9">Esperando este instante.<br><span class="eternal">Esperándote.</span></div>
       <div class="line l10"><span class="gold">No todo lo que vuelve</span><br>es un recuerdo.<br><span class="eternal">A veces vuelve una emoción.</span></div>
     </div>
 
@@ -8101,7 +8831,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
       <button id="startExperienceNow" class="final-btn" type="submit">Estoy preparado</button>
       <div class="final-note">Espero que esto te encuentre en el momento adecuado.</div>
     </form>
-    <div class="skip-safe">No cierres esta página. Ris está abriendo el camino.</div>
+    <div class="skip-safe">No cierres esta página. ETERNA está abriendo el camino.</div>
   </section>
 </main>
 <script>
@@ -8184,7 +8914,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     insert_order_event(order["id"], "guide_prologue_opened", "ok", "Prólogo cinematográfico ETERNA antes de iniciar experiencia")
-    response = render_eterna_prologo_experience(recipient_token, order)
+    response = render_eterna_prologo_experience(recipient_token)
     attach_recipient_session_if_needed(order, request, response)
     return response
 
@@ -8532,6 +9262,187 @@ body.video-clean-mode video {
         font-size: 19px;
     }
 }
+
+    /* =========================================================
+       RC71 PRE-EXPERIENCE MAGIC SAFE
+       Solo atmósfera viva para: intro, sonido, lugar tranquilo y consentimiento.
+       No cambia rutas, botones, formularios, Stripe, Twilio, DB, reacción ni sender pack.
+       ========================================================= */
+    .pre-magic {{
+        position:absolute;
+        inset:0;
+        z-index:4;
+        pointer-events:none;
+        display:none;
+        overflow:hidden;
+        opacity:1;
+        contain:paint;
+    }}
+    .screen.intro-mode .pre-magic,
+    .screen.sound-mode .pre-magic,
+    .screen.quiet-mode .pre-magic,
+    .screen.consent-mode .pre-magic {{
+        display:block;
+    }}
+    .pre-depth {{
+        position:absolute;
+        inset:-8%;
+        opacity:.62;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(55,207,255,.16), transparent 24%),
+            radial-gradient(circle at 80% 26%, rgba(255,211,121,.12), transparent 25%),
+            radial-gradient(circle at 51% 72%, rgba(72,198,255,.10), transparent 31%),
+            linear-gradient(180deg, rgba(2,5,10,.08), transparent 38%, rgba(2,5,10,.20));
+        filter:blur(1px);
+        animation:rc71DepthBreath 9.8s ease-in-out infinite;
+    }}
+    .pre-fog {{
+        position:absolute;
+        left:-32%;
+        right:-32%;
+        height:44%;
+        border-radius:999px;
+        opacity:.0;
+        filter:blur(23px);
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(93,211,255,.12), rgba(255,221,144,.08), rgba(93,211,255,.11), transparent);
+        animation:rc71FogDrift 18s ease-in-out infinite;
+    }}
+    .pre-fog.fog-a {{ top:15%; animation-delay:.2s; }}
+    .pre-fog.fog-b {{ bottom:8%; opacity:.0; animation-duration:22s; animation-delay:4.2s; transform:scaleY(.72); }}
+    .pre-spark {{
+        position:absolute;
+        width:4px;
+        height:4px;
+        border-radius:999px;
+        opacity:0;
+        background:rgba(117,221,255,.96);
+        box-shadow:0 0 13px rgba(117,221,255,.95), 0 0 28px rgba(117,221,255,.36);
+        animation:rc71SparkRise 10.5s linear infinite;
+    }}
+    .pre-spark.gold {{
+        background:rgba(255,221,145,.95);
+        box-shadow:0 0 13px rgba(255,221,145,.90), 0 0 28px rgba(255,196,74,.34);
+    }}
+    .ps1 {{ left:13%; bottom:11%; animation-delay:.1s; animation-duration:11.8s; transform:scale(.75); }}
+    .ps2 {{ left:28%; bottom:25%; animation-delay:2.8s; animation-duration:13.2s; transform:scale(.55); }}
+    .ps3 {{ left:47%; bottom:10%; animation-delay:1.4s; animation-duration:12.6s; transform:scale(.68); }}
+    .ps4 {{ left:69%; bottom:19%; animation-delay:4.1s; animation-duration:14.4s; transform:scale(.5); }}
+    .ps5 {{ left:83%; bottom:33%; animation-delay:6.0s; animation-duration:12.8s; transform:scale(.62); }}
+    .ps6 {{ left:56%; bottom:46%; animation-delay:7.2s; animation-duration:15.2s; transform:scale(.45); }}
+    .pre-glint {{
+        position:absolute;
+        width:92px;
+        height:2px;
+        border-radius:999px;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,.88), rgba(255,220,135,.70), transparent);
+        box-shadow:0 0 18px rgba(255,227,155,.52), 0 0 35px rgba(84,211,255,.20);
+        animation:rc71GlintCross 7.6s ease-in-out infinite;
+    }}
+    .glint-a {{ left:4%; top:31%; animation-delay:2.1s; }}
+    .glint-b {{ right:-2%; bottom:27%; animation-delay:5.4s; animation-direction:reverse; }}
+    .yul-live {{
+        position:absolute;
+        width:74px;
+        height:auto;
+        left:66%;
+        top:22%;
+        opacity:0;
+        z-index:5;
+        pointer-events:none;
+        transform-origin:center center;
+        filter:drop-shadow(0 0 14px rgba(92,216,255,.65)) drop-shadow(0 0 22px rgba(255,214,124,.30));
+        mix-blend-mode:screen;
+        animation:rc71YulAlive 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .yul-trail {{
+        position:absolute;
+        left:66%;
+        top:22%;
+        width:120px;
+        height:32px;
+        border-radius:999px;
+        z-index:4;
+        opacity:0;
+        pointer-events:none;
+        mix-blend-mode:screen;
+        background:radial-gradient(circle at 20% 50%, rgba(255,222,142,.38), transparent 18%), radial-gradient(circle at 48% 48%, rgba(99,219,255,.28), transparent 21%), linear-gradient(90deg, rgba(255,219,130,.00), rgba(255,219,130,.20), rgba(83,211,255,.14), transparent);
+        filter:blur(7px);
+        animation:rc71YulTrail 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .screen.sound-mode .yul-live,
+    .screen.sound-mode .yul-trail {{ top:19%; left:71%; animation-delay:1.6s; animation-duration:15s; }}
+    .screen.quiet-mode .yul-live,
+    .screen.quiet-mode .yul-trail {{ top:24%; left:18%; animation-delay:2.4s; animation-duration:16.5s; }}
+    .screen.consent-mode .yul-live,
+    .screen.consent-mode .yul-trail {{ top:18%; left:70%; animation-delay:3.2s; animation-duration:17s; opacity:0; }}
+    .screen.consent-mode .pre-magic {{ opacity:.72; }}
+    .screen.consent-mode .pre-spark {{ animation-duration:14.8s; }}
+    .screen.quiet-mode .pre-fog {{ opacity:.0; filter:blur(27px); }}
+    .screen.quiet-mode .pre-depth {{ opacity:.75; }}
+
+    @keyframes rc71DepthBreath {{
+        0%,100% {{ transform:scale(1) translate3d(0,0,0); opacity:.42; }}
+        45% {{ transform:scale(1.045) translate3d(-1.8%,1.2%,0); opacity:.74; }}
+        72% {{ opacity:.55; }}
+    }}
+    @keyframes rc71FogDrift {{
+        0% {{ transform:translateX(-14%) translateY(10px) scaleX(.92); opacity:0; }}
+        18% {{ opacity:.40; }}
+        54% {{ opacity:.30; }}
+        100% {{ transform:translateX(14%) translateY(-12px) scaleX(1.08); opacity:0; }}
+    }}
+    @keyframes rc71SparkRise {{
+        0% {{ opacity:0; transform:translate3d(0,0,0) scale(.42); }}
+        12% {{ opacity:.78; }}
+        58% {{ opacity:.42; transform:translate3d(18px,-88px,0) scale(.82); }}
+        100% {{ opacity:0; transform:translate3d(34px,-178px,0) scale(1.05); }}
+    }}
+    @keyframes rc71GlintCross {{
+        0%,68% {{ opacity:0; transform:translateX(-80px) translateY(14px) rotate(-9deg) scaleX(.45); }}
+        75% {{ opacity:.76; }}
+        100% {{ opacity:0; transform:translateX(330px) translateY(-24px) rotate(-9deg) scaleX(1.15); }}
+    }}
+    @keyframes rc71YulAlive {{
+        0% {{ opacity:0; transform:translate3d(-18px,12px,0) rotate(-7deg) scale(.78) skewX(0deg); }}
+        10% {{ opacity:.0; }}
+        18% {{ opacity:.82; transform:translate3d(0,0,0) rotate(-2deg) scale(.92) skewX(2deg); }}
+        30% {{ transform:translate3d(-9px,-12px,0) rotate(4deg) scale(.98) skewX(-3deg); }}
+        42% {{ transform:translate3d(7px,-4px,0) rotate(-3deg) scale(.94) skewX(3deg); }}
+        55% {{ opacity:.76; transform:translate3d(-4px,10px,0) rotate(3deg) scale(.99) skewX(-2deg); }}
+        68% {{ transform:translate3d(12px,-8px,0) rotate(-4deg) scale(.93) skewX(2deg); }}
+        80% {{ opacity:.58; transform:translate3d(22px,4px,0) rotate(2deg) scale(.86) skewX(-1deg); }}
+        100% {{ opacity:0; transform:translate3d(44px,-18px,0) rotate(8deg) scale(.72) skewX(0deg); }}
+    }}
+    @keyframes rc71YulTrail {{
+        0%,12% {{ opacity:0; transform:translate3d(-40px,20px,0) rotate(-8deg) scale(.72); }}
+        24% {{ opacity:.34; }}
+        52% {{ opacity:.22; transform:translate3d(-28px,2px,0) rotate(-4deg) scale(.95); }}
+        78% {{ opacity:.14; }}
+        100% {{ opacity:0; transform:translate3d(14px,-12px,0) rotate(7deg) scale(.82); }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        .screen.intro-mode .pre-magic,
+        .screen.sound-mode .pre-magic,
+        .screen.quiet-mode .pre-magic,
+        .screen.consent-mode .pre-magic {{
+            opacity:.42;
+        }}
+        .pre-depth,
+        .pre-fog,
+        .pre-spark,
+        .pre-glint,
+        .yul-live,
+        .yul-trail {{
+            animation:none !important;
+        }}
+        .yul-live {{ opacity:.32; }}
+    }}
+
 </style>
 </head>
 <body>
@@ -9910,6 +10821,187 @@ video{{width:100%;height:100%;display:block;object-fit:contain;background:#000}}
 .btn{{min-height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:15px;padding:12px 16px;border:1px solid rgba(255,213,130,.22);background:rgba(255,255,255,.06);color:#fff;text-decoration:none;box-shadow:0 14px 42px rgba(0,0,0,.28)}}
 .btn.primary{{background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;border:0;box-shadow:0 0 34px rgba(255,190,72,.28)}}
 @media (orientation:landscape){{body{{overflow:auto}}.wrap{{max-width:980px;display:grid;grid-template-columns:.58fr 1.42fr;grid-template-areas:"logo video" "title video" "actions video";align-items:center}}.logo{{grid-area:logo}}h1{{grid-area:title;text-align:left}}.video-shell{{grid-area:video;height:82vh;flex:none}}.actions{{grid-area:actions}}}}
+
+    /* =========================================================
+       RC71 PRE-EXPERIENCE MAGIC SAFE
+       Solo atmósfera viva para: intro, sonido, lugar tranquilo y consentimiento.
+       No cambia rutas, botones, formularios, Stripe, Twilio, DB, reacción ni sender pack.
+       ========================================================= */
+    .pre-magic {{
+        position:absolute;
+        inset:0;
+        z-index:4;
+        pointer-events:none;
+        display:none;
+        overflow:hidden;
+        opacity:1;
+        contain:paint;
+    }}
+    .screen.intro-mode .pre-magic,
+    .screen.sound-mode .pre-magic,
+    .screen.quiet-mode .pre-magic,
+    .screen.consent-mode .pre-magic {{
+        display:block;
+    }}
+    .pre-depth {{
+        position:absolute;
+        inset:-8%;
+        opacity:.62;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(55,207,255,.16), transparent 24%),
+            radial-gradient(circle at 80% 26%, rgba(255,211,121,.12), transparent 25%),
+            radial-gradient(circle at 51% 72%, rgba(72,198,255,.10), transparent 31%),
+            linear-gradient(180deg, rgba(2,5,10,.08), transparent 38%, rgba(2,5,10,.20));
+        filter:blur(1px);
+        animation:rc71DepthBreath 9.8s ease-in-out infinite;
+    }}
+    .pre-fog {{
+        position:absolute;
+        left:-32%;
+        right:-32%;
+        height:44%;
+        border-radius:999px;
+        opacity:.0;
+        filter:blur(23px);
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(93,211,255,.12), rgba(255,221,144,.08), rgba(93,211,255,.11), transparent);
+        animation:rc71FogDrift 18s ease-in-out infinite;
+    }}
+    .pre-fog.fog-a {{ top:15%; animation-delay:.2s; }}
+    .pre-fog.fog-b {{ bottom:8%; opacity:.0; animation-duration:22s; animation-delay:4.2s; transform:scaleY(.72); }}
+    .pre-spark {{
+        position:absolute;
+        width:4px;
+        height:4px;
+        border-radius:999px;
+        opacity:0;
+        background:rgba(117,221,255,.96);
+        box-shadow:0 0 13px rgba(117,221,255,.95), 0 0 28px rgba(117,221,255,.36);
+        animation:rc71SparkRise 10.5s linear infinite;
+    }}
+    .pre-spark.gold {{
+        background:rgba(255,221,145,.95);
+        box-shadow:0 0 13px rgba(255,221,145,.90), 0 0 28px rgba(255,196,74,.34);
+    }}
+    .ps1 {{ left:13%; bottom:11%; animation-delay:.1s; animation-duration:11.8s; transform:scale(.75); }}
+    .ps2 {{ left:28%; bottom:25%; animation-delay:2.8s; animation-duration:13.2s; transform:scale(.55); }}
+    .ps3 {{ left:47%; bottom:10%; animation-delay:1.4s; animation-duration:12.6s; transform:scale(.68); }}
+    .ps4 {{ left:69%; bottom:19%; animation-delay:4.1s; animation-duration:14.4s; transform:scale(.5); }}
+    .ps5 {{ left:83%; bottom:33%; animation-delay:6.0s; animation-duration:12.8s; transform:scale(.62); }}
+    .ps6 {{ left:56%; bottom:46%; animation-delay:7.2s; animation-duration:15.2s; transform:scale(.45); }}
+    .pre-glint {{
+        position:absolute;
+        width:92px;
+        height:2px;
+        border-radius:999px;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,.88), rgba(255,220,135,.70), transparent);
+        box-shadow:0 0 18px rgba(255,227,155,.52), 0 0 35px rgba(84,211,255,.20);
+        animation:rc71GlintCross 7.6s ease-in-out infinite;
+    }}
+    .glint-a {{ left:4%; top:31%; animation-delay:2.1s; }}
+    .glint-b {{ right:-2%; bottom:27%; animation-delay:5.4s; animation-direction:reverse; }}
+    .yul-live {{
+        position:absolute;
+        width:74px;
+        height:auto;
+        left:66%;
+        top:22%;
+        opacity:0;
+        z-index:5;
+        pointer-events:none;
+        transform-origin:center center;
+        filter:drop-shadow(0 0 14px rgba(92,216,255,.65)) drop-shadow(0 0 22px rgba(255,214,124,.30));
+        mix-blend-mode:screen;
+        animation:rc71YulAlive 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .yul-trail {{
+        position:absolute;
+        left:66%;
+        top:22%;
+        width:120px;
+        height:32px;
+        border-radius:999px;
+        z-index:4;
+        opacity:0;
+        pointer-events:none;
+        mix-blend-mode:screen;
+        background:radial-gradient(circle at 20% 50%, rgba(255,222,142,.38), transparent 18%), radial-gradient(circle at 48% 48%, rgba(99,219,255,.28), transparent 21%), linear-gradient(90deg, rgba(255,219,130,.00), rgba(255,219,130,.20), rgba(83,211,255,.14), transparent);
+        filter:blur(7px);
+        animation:rc71YulTrail 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .screen.sound-mode .yul-live,
+    .screen.sound-mode .yul-trail {{ top:19%; left:71%; animation-delay:1.6s; animation-duration:15s; }}
+    .screen.quiet-mode .yul-live,
+    .screen.quiet-mode .yul-trail {{ top:24%; left:18%; animation-delay:2.4s; animation-duration:16.5s; }}
+    .screen.consent-mode .yul-live,
+    .screen.consent-mode .yul-trail {{ top:18%; left:70%; animation-delay:3.2s; animation-duration:17s; opacity:0; }}
+    .screen.consent-mode .pre-magic {{ opacity:.72; }}
+    .screen.consent-mode .pre-spark {{ animation-duration:14.8s; }}
+    .screen.quiet-mode .pre-fog {{ opacity:.0; filter:blur(27px); }}
+    .screen.quiet-mode .pre-depth {{ opacity:.75; }}
+
+    @keyframes rc71DepthBreath {{
+        0%,100% {{ transform:scale(1) translate3d(0,0,0); opacity:.42; }}
+        45% {{ transform:scale(1.045) translate3d(-1.8%,1.2%,0); opacity:.74; }}
+        72% {{ opacity:.55; }}
+    }}
+    @keyframes rc71FogDrift {{
+        0% {{ transform:translateX(-14%) translateY(10px) scaleX(.92); opacity:0; }}
+        18% {{ opacity:.40; }}
+        54% {{ opacity:.30; }}
+        100% {{ transform:translateX(14%) translateY(-12px) scaleX(1.08); opacity:0; }}
+    }}
+    @keyframes rc71SparkRise {{
+        0% {{ opacity:0; transform:translate3d(0,0,0) scale(.42); }}
+        12% {{ opacity:.78; }}
+        58% {{ opacity:.42; transform:translate3d(18px,-88px,0) scale(.82); }}
+        100% {{ opacity:0; transform:translate3d(34px,-178px,0) scale(1.05); }}
+    }}
+    @keyframes rc71GlintCross {{
+        0%,68% {{ opacity:0; transform:translateX(-80px) translateY(14px) rotate(-9deg) scaleX(.45); }}
+        75% {{ opacity:.76; }}
+        100% {{ opacity:0; transform:translateX(330px) translateY(-24px) rotate(-9deg) scaleX(1.15); }}
+    }}
+    @keyframes rc71YulAlive {{
+        0% {{ opacity:0; transform:translate3d(-18px,12px,0) rotate(-7deg) scale(.78) skewX(0deg); }}
+        10% {{ opacity:.0; }}
+        18% {{ opacity:.82; transform:translate3d(0,0,0) rotate(-2deg) scale(.92) skewX(2deg); }}
+        30% {{ transform:translate3d(-9px,-12px,0) rotate(4deg) scale(.98) skewX(-3deg); }}
+        42% {{ transform:translate3d(7px,-4px,0) rotate(-3deg) scale(.94) skewX(3deg); }}
+        55% {{ opacity:.76; transform:translate3d(-4px,10px,0) rotate(3deg) scale(.99) skewX(-2deg); }}
+        68% {{ transform:translate3d(12px,-8px,0) rotate(-4deg) scale(.93) skewX(2deg); }}
+        80% {{ opacity:.58; transform:translate3d(22px,4px,0) rotate(2deg) scale(.86) skewX(-1deg); }}
+        100% {{ opacity:0; transform:translate3d(44px,-18px,0) rotate(8deg) scale(.72) skewX(0deg); }}
+    }}
+    @keyframes rc71YulTrail {{
+        0%,12% {{ opacity:0; transform:translate3d(-40px,20px,0) rotate(-8deg) scale(.72); }}
+        24% {{ opacity:.34; }}
+        52% {{ opacity:.22; transform:translate3d(-28px,2px,0) rotate(-4deg) scale(.95); }}
+        78% {{ opacity:.14; }}
+        100% {{ opacity:0; transform:translate3d(14px,-12px,0) rotate(7deg) scale(.82); }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        .screen.intro-mode .pre-magic,
+        .screen.sound-mode .pre-magic,
+        .screen.quiet-mode .pre-magic,
+        .screen.consent-mode .pre-magic {{
+            opacity:.42;
+        }}
+        .pre-depth,
+        .pre-fog,
+        .pre-spark,
+        .pre-glint,
+        .yul-live,
+        .yul-trail {{
+            animation:none !important;
+        }}
+        .yul-live {{ opacity:.32; }}
+    }}
+
 </style>
 </head>
 <body>
@@ -10182,6 +11274,187 @@ body{{min-height:100svh;min-height:100dvh;overflow-x:hidden;overflow-y:auto;back
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
 @media (min-width:760px){{body{{overflow:auto}}.shell{{width:min(100vw,520px);height:100svh;height:100dvh}}}}
 @media (max-width:420px){{.main-video{{border-radius:20px}}.reaction-video{{border-radius:15px}}}}
+
+    /* =========================================================
+       RC71 PRE-EXPERIENCE MAGIC SAFE
+       Solo atmósfera viva para: intro, sonido, lugar tranquilo y consentimiento.
+       No cambia rutas, botones, formularios, Stripe, Twilio, DB, reacción ni sender pack.
+       ========================================================= */
+    .pre-magic {{
+        position:absolute;
+        inset:0;
+        z-index:4;
+        pointer-events:none;
+        display:none;
+        overflow:hidden;
+        opacity:1;
+        contain:paint;
+    }}
+    .screen.intro-mode .pre-magic,
+    .screen.sound-mode .pre-magic,
+    .screen.quiet-mode .pre-magic,
+    .screen.consent-mode .pre-magic {{
+        display:block;
+    }}
+    .pre-depth {{
+        position:absolute;
+        inset:-8%;
+        opacity:.62;
+        mix-blend-mode:screen;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(55,207,255,.16), transparent 24%),
+            radial-gradient(circle at 80% 26%, rgba(255,211,121,.12), transparent 25%),
+            radial-gradient(circle at 51% 72%, rgba(72,198,255,.10), transparent 31%),
+            linear-gradient(180deg, rgba(2,5,10,.08), transparent 38%, rgba(2,5,10,.20));
+        filter:blur(1px);
+        animation:rc71DepthBreath 9.8s ease-in-out infinite;
+    }}
+    .pre-fog {{
+        position:absolute;
+        left:-32%;
+        right:-32%;
+        height:44%;
+        border-radius:999px;
+        opacity:.0;
+        filter:blur(23px);
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(93,211,255,.12), rgba(255,221,144,.08), rgba(93,211,255,.11), transparent);
+        animation:rc71FogDrift 18s ease-in-out infinite;
+    }}
+    .pre-fog.fog-a {{ top:15%; animation-delay:.2s; }}
+    .pre-fog.fog-b {{ bottom:8%; opacity:.0; animation-duration:22s; animation-delay:4.2s; transform:scaleY(.72); }}
+    .pre-spark {{
+        position:absolute;
+        width:4px;
+        height:4px;
+        border-radius:999px;
+        opacity:0;
+        background:rgba(117,221,255,.96);
+        box-shadow:0 0 13px rgba(117,221,255,.95), 0 0 28px rgba(117,221,255,.36);
+        animation:rc71SparkRise 10.5s linear infinite;
+    }}
+    .pre-spark.gold {{
+        background:rgba(255,221,145,.95);
+        box-shadow:0 0 13px rgba(255,221,145,.90), 0 0 28px rgba(255,196,74,.34);
+    }}
+    .ps1 {{ left:13%; bottom:11%; animation-delay:.1s; animation-duration:11.8s; transform:scale(.75); }}
+    .ps2 {{ left:28%; bottom:25%; animation-delay:2.8s; animation-duration:13.2s; transform:scale(.55); }}
+    .ps3 {{ left:47%; bottom:10%; animation-delay:1.4s; animation-duration:12.6s; transform:scale(.68); }}
+    .ps4 {{ left:69%; bottom:19%; animation-delay:4.1s; animation-duration:14.4s; transform:scale(.5); }}
+    .ps5 {{ left:83%; bottom:33%; animation-delay:6.0s; animation-duration:12.8s; transform:scale(.62); }}
+    .ps6 {{ left:56%; bottom:46%; animation-delay:7.2s; animation-duration:15.2s; transform:scale(.45); }}
+    .pre-glint {{
+        position:absolute;
+        width:92px;
+        height:2px;
+        border-radius:999px;
+        opacity:0;
+        mix-blend-mode:screen;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,.88), rgba(255,220,135,.70), transparent);
+        box-shadow:0 0 18px rgba(255,227,155,.52), 0 0 35px rgba(84,211,255,.20);
+        animation:rc71GlintCross 7.6s ease-in-out infinite;
+    }}
+    .glint-a {{ left:4%; top:31%; animation-delay:2.1s; }}
+    .glint-b {{ right:-2%; bottom:27%; animation-delay:5.4s; animation-direction:reverse; }}
+    .yul-live {{
+        position:absolute;
+        width:74px;
+        height:auto;
+        left:66%;
+        top:22%;
+        opacity:0;
+        z-index:5;
+        pointer-events:none;
+        transform-origin:center center;
+        filter:drop-shadow(0 0 14px rgba(92,216,255,.65)) drop-shadow(0 0 22px rgba(255,214,124,.30));
+        mix-blend-mode:screen;
+        animation:rc71YulAlive 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .yul-trail {{
+        position:absolute;
+        left:66%;
+        top:22%;
+        width:120px;
+        height:32px;
+        border-radius:999px;
+        z-index:4;
+        opacity:0;
+        pointer-events:none;
+        mix-blend-mode:screen;
+        background:radial-gradient(circle at 20% 50%, rgba(255,222,142,.38), transparent 18%), radial-gradient(circle at 48% 48%, rgba(99,219,255,.28), transparent 21%), linear-gradient(90deg, rgba(255,219,130,.00), rgba(255,219,130,.20), rgba(83,211,255,.14), transparent);
+        filter:blur(7px);
+        animation:rc71YulTrail 13.5s cubic-bezier(.45,0,.25,1) infinite;
+    }}
+    .screen.sound-mode .yul-live,
+    .screen.sound-mode .yul-trail {{ top:19%; left:71%; animation-delay:1.6s; animation-duration:15s; }}
+    .screen.quiet-mode .yul-live,
+    .screen.quiet-mode .yul-trail {{ top:24%; left:18%; animation-delay:2.4s; animation-duration:16.5s; }}
+    .screen.consent-mode .yul-live,
+    .screen.consent-mode .yul-trail {{ top:18%; left:70%; animation-delay:3.2s; animation-duration:17s; opacity:0; }}
+    .screen.consent-mode .pre-magic {{ opacity:.72; }}
+    .screen.consent-mode .pre-spark {{ animation-duration:14.8s; }}
+    .screen.quiet-mode .pre-fog {{ opacity:.0; filter:blur(27px); }}
+    .screen.quiet-mode .pre-depth {{ opacity:.75; }}
+
+    @keyframes rc71DepthBreath {{
+        0%,100% {{ transform:scale(1) translate3d(0,0,0); opacity:.42; }}
+        45% {{ transform:scale(1.045) translate3d(-1.8%,1.2%,0); opacity:.74; }}
+        72% {{ opacity:.55; }}
+    }}
+    @keyframes rc71FogDrift {{
+        0% {{ transform:translateX(-14%) translateY(10px) scaleX(.92); opacity:0; }}
+        18% {{ opacity:.40; }}
+        54% {{ opacity:.30; }}
+        100% {{ transform:translateX(14%) translateY(-12px) scaleX(1.08); opacity:0; }}
+    }}
+    @keyframes rc71SparkRise {{
+        0% {{ opacity:0; transform:translate3d(0,0,0) scale(.42); }}
+        12% {{ opacity:.78; }}
+        58% {{ opacity:.42; transform:translate3d(18px,-88px,0) scale(.82); }}
+        100% {{ opacity:0; transform:translate3d(34px,-178px,0) scale(1.05); }}
+    }}
+    @keyframes rc71GlintCross {{
+        0%,68% {{ opacity:0; transform:translateX(-80px) translateY(14px) rotate(-9deg) scaleX(.45); }}
+        75% {{ opacity:.76; }}
+        100% {{ opacity:0; transform:translateX(330px) translateY(-24px) rotate(-9deg) scaleX(1.15); }}
+    }}
+    @keyframes rc71YulAlive {{
+        0% {{ opacity:0; transform:translate3d(-18px,12px,0) rotate(-7deg) scale(.78) skewX(0deg); }}
+        10% {{ opacity:.0; }}
+        18% {{ opacity:.82; transform:translate3d(0,0,0) rotate(-2deg) scale(.92) skewX(2deg); }}
+        30% {{ transform:translate3d(-9px,-12px,0) rotate(4deg) scale(.98) skewX(-3deg); }}
+        42% {{ transform:translate3d(7px,-4px,0) rotate(-3deg) scale(.94) skewX(3deg); }}
+        55% {{ opacity:.76; transform:translate3d(-4px,10px,0) rotate(3deg) scale(.99) skewX(-2deg); }}
+        68% {{ transform:translate3d(12px,-8px,0) rotate(-4deg) scale(.93) skewX(2deg); }}
+        80% {{ opacity:.58; transform:translate3d(22px,4px,0) rotate(2deg) scale(.86) skewX(-1deg); }}
+        100% {{ opacity:0; transform:translate3d(44px,-18px,0) rotate(8deg) scale(.72) skewX(0deg); }}
+    }}
+    @keyframes rc71YulTrail {{
+        0%,12% {{ opacity:0; transform:translate3d(-40px,20px,0) rotate(-8deg) scale(.72); }}
+        24% {{ opacity:.34; }}
+        52% {{ opacity:.22; transform:translate3d(-28px,2px,0) rotate(-4deg) scale(.95); }}
+        78% {{ opacity:.14; }}
+        100% {{ opacity:0; transform:translate3d(14px,-12px,0) rotate(7deg) scale(.82); }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        .screen.intro-mode .pre-magic,
+        .screen.sound-mode .pre-magic,
+        .screen.quiet-mode .pre-magic,
+        .screen.consent-mode .pre-magic {{
+            opacity:.42;
+        }}
+        .pre-depth,
+        .pre-fog,
+        .pre-spark,
+        .pre-glint,
+        .yul-live,
+        .yul-trail {{
+            animation:none !important;
+        }}
+        .yul-live {{ opacity:.32; }}
+    }}
+
 </style>
 </head>
 <body>
@@ -10397,397 +11670,6 @@ def get_sender_reaction_video(sender_token: str):
 # =========================================================
 # OPTIONAL ADMIN
 # =========================================================
-
-
-# =========================================================
-# RC68 — BLINDAJE 99%: OBSERVABILIDAD + RESCATE SAFE
-# No toca negocio validado; añade ojos, diagnóstico y recuperación manual controlada.
-# =========================================================
-
-def rc68_now_date_prefix() -> str:
-    return now_iso()[:10]
-
-
-def rc68_json_dumps(data) -> str:
-    try:
-        return json.dumps(data or {}, ensure_ascii=False, default=str)
-    except Exception:
-        return "{}"
-
-
-def rc68_record_failed_job(order_id: str, area: str, error: str, payload: Optional[dict] = None, status: str = "open") -> None:
-    try:
-        now = now_iso()
-        conn = db_conn()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO failed_order_jobs (
-                order_id, area, status, error, attempts, payload_json, last_attempt_at, created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)
-        """, (
-            str(order_id or ""),
-            str(area or "unknown"),
-            str(status or "open"),
-            str(error or ""),
-            rc68_json_dumps(payload or {}),
-            now,
-            now,
-            now,
-        ))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print("⚠️ RC68 no pudo registrar failed_order_job:", e)
-
-
-def rc68_list_recent_orders(limit: int = 80) -> list[dict]:
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            o.*,
-            s.name AS sender_name,
-            s.email AS sender_email,
-            s.phone AS sender_phone,
-            r.name AS recipient_name,
-            r.phone AS recipient_phone
-        FROM orders o
-        JOIN senders s ON s.id = o.sender_id
-        JOIN recipients r ON r.id = o.recipient_id
-        ORDER BY o.created_at DESC
-        LIMIT ?
-    """, (max(1, min(int(limit or 80), 300)),))
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def rc68_count_open_failed_jobs() -> int:
-    try:
-        conn = db_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) AS c FROM failed_order_jobs WHERE status IN ('open','retry','pending')")
-        row = cur.fetchone()
-        conn.close()
-        return int(row["c"] if row else 0)
-    except Exception:
-        return 0
-
-
-def rc68_today_counts() -> dict:
-    today = rc68_now_date_prefix()
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            COUNT(*) AS total,
-            SUM(CASE WHEN COALESCE(paid,0)=1 THEN 1 ELSE 0 END) AS paid,
-            SUM(CASE WHEN COALESCE(delivery_sent,0)=1 OR COALESCE(delivered_to_recipient,0)=1 THEN 1 ELSE 0 END) AS delivered,
-            SUM(CASE WHEN COALESCE(experience_started,0)=1 THEN 1 ELSE 0 END) AS started,
-            SUM(CASE WHEN COALESCE(reaction_uploaded,0)=1 THEN 1 ELSE 0 END) AS reactions,
-            SUM(CASE WHEN COALESCE(sender_notified,0)=1 OR COALESCE(sender_sms_sent_at,'')<>'' THEN 1 ELSE 0 END) AS sender_packs,
-            SUM(CASE WHEN COALESCE(eterna_completed,0)=1 THEN 1 ELSE 0 END) AS completed
-        FROM orders
-        WHERE substr(created_at, 1, 10)=?
-    """, (today,))
-    row = cur.fetchone()
-    conn.close()
-    data = dict(row) if row else {}
-    return {k: int(v or 0) for k, v in data.items()}
-
-
-def rc68_sms_today_counts() -> dict:
-    today = rc68_now_date_prefix()
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            COUNT(*) AS orders_today,
-            SUM(COALESCE(recipient_sms_attempts,0)) AS recipient_sms_attempts,
-            SUM(COALESCE(sender_sms_attempts,0)) AS sender_sms_attempts
-        FROM orders
-        WHERE substr(created_at, 1, 10)=?
-    """, (today,))
-    row = cur.fetchone()
-    conn.close()
-    data = dict(row) if row else {}
-    recipient_attempts = int(data.get("recipient_sms_attempts") or 0)
-    sender_attempts = int(data.get("sender_sms_attempts") or 0)
-    return {
-        "recipient_sms_attempts": recipient_attempts,
-        "sender_sms_attempts": sender_attempts,
-        "total_sms_attempts": recipient_attempts + sender_attempts,
-        "max_sms_per_day_hard": MAX_SMS_PER_DAY_HARD,
-        "near_daily_limit": (recipient_attempts + sender_attempts) >= int(MAX_SMS_PER_DAY_HARD * 0.8),
-    }
-
-
-def rc68_compute_order_health(order: dict) -> dict:
-    paid = bool(order.get("paid"))
-    video_ready = original_video_ready(order)
-    reaction_ready = reaction_is_safe(order)
-    delivered = bool(order.get("delivery_sent")) or bool(order.get("delivered_to_recipient")) or bool(order.get("recipient_sms_sent_at"))
-    sender_pack_sent = bool(order.get("sender_notified")) or bool(order.get("sender_sms_sent_at"))
-    completed = bool(order.get("eterna_completed"))
-
-    problems = []
-    next_action = "none"
-
-    if not paid:
-        phase = "WAITING_PAYMENT"
-        next_action = "wait_payment"
-    elif paid and not bool(order.get("video_render_requested")) and not video_ready:
-        phase = "PAID_RENDER_NOT_REQUESTED"
-        problems.append("paid_without_render_request")
-        next_action = "recover_render"
-    elif paid and bool(order.get("video_render_requested")) and not video_ready:
-        phase = "RENDERING_OR_WAITING_CALLBACK"
-        next_action = "wait_or_check_video_engine"
-    elif video_ready and not delivered:
-        phase = "VIDEO_READY_NOT_DELIVERED"
-        next_action = "recover_recipient_delivery"
-    elif delivered and not bool(order.get("experience_started")):
-        phase = "DELIVERED_WAITING_OPEN"
-        next_action = "wait_recipient"
-    elif bool(order.get("experience_started")) and not reaction_ready:
-        phase = "EXPERIENCE_STARTED_WAITING_REACTION"
-        next_action = "recover_reaction_chunks"
-    elif reaction_ready and not sender_pack_sent:
-        phase = "REACTION_READY_SENDER_PENDING"
-        next_action = "recover_sender_pack"
-    elif sender_pack_sent and not completed:
-        phase = "SENDER_PACK_SENT_COMPLETION_PENDING"
-        next_action = "mark_completed_if_safe"
-    else:
-        phase = "COMPLETED" if completed else str(order.get("order_state") or "UNKNOWN")
-        next_action = "none"
-
-    if int(order.get("recipient_sms_attempts") or 0) >= MAX_SMS_PER_ORDER_HARD and not delivered:
-        problems.append("recipient_sms_attempt_limit")
-    if int(order.get("sender_sms_attempts") or 0) >= MAX_SMS_PER_ORDER_HARD and reaction_ready and not sender_pack_sent:
-        problems.append("sender_sms_attempt_limit")
-    if bool(order.get("delivery_processing_lock")):
-        problems.append("delivery_lock_active")
-    if bool(order.get("sender_sms_processing_lock")):
-        problems.append("sender_lock_active")
-    if order.get("reaction_upload_error"):
-        problems.append("reaction_upload_error")
-
-    return {
-        "order_id": order.get("id"),
-        "phase": phase,
-        "next_action": next_action,
-        "problems": problems,
-        "paid": paid,
-        "video_ready": video_ready,
-        "delivered": delivered,
-        "experience_started": bool(order.get("experience_started")),
-        "reaction_ready": reaction_ready,
-        "sender_pack_sent": sender_pack_sent,
-        "completed": completed,
-        "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
-        "sender_sms_attempts": int(order.get("sender_sms_attempts") or 0),
-        "created_at": order.get("created_at"),
-        "updated_at": order.get("updated_at"),
-    }
-
-
-def rc68_recover_order_safe(order_id: str, dry_run: bool = True) -> dict:
-    order = get_order_by_id(order_id)
-    health = rc68_compute_order_health(order)
-    actions = []
-
-    if dry_run:
-        return {"ok": True, "dry_run": True, "health": health, "actions": actions}
-
-    try:
-        if health["next_action"] == "recover_render":
-            phrases = [order.get("phrase_1") or "", order.get("phrase_2") or "", order.get("phrase_3") or ""]
-            result = trigger_video_engine(order_id, phrases)
-            update_order(order_id, video_render_requested=1, video_render_requested_at=now_iso())
-            insert_order_event(order_id, "rc68_manual_recover_render", "ok", "Render solicitado manualmente desde RC68", result)
-            actions.append({"action": "render_requested", "result": result})
-
-        elif health["next_action"] == "recover_recipient_delivery":
-            result = process_scheduled_recipient_delivery(order_id)
-            insert_order_event(order_id, "rc68_manual_recover_delivery", "ok" if result.get("ok") else "warning", str(result), result)
-            actions.append({"action": "recipient_delivery", "result": result})
-
-        elif health["next_action"] == "recover_reaction_chunks":
-            result = recover_reaction_from_chunks_if_possible(order_id, min_idle_seconds=20, source="rc68_manual_recover")
-            insert_order_event(order_id, "rc68_manual_recover_reaction", "ok" if result.get("ok") else "warning", str(result), result)
-            actions.append({"action": "reaction_recovery", "result": result})
-
-        elif health["next_action"] == "recover_sender_pack":
-            fresh_order = maybe_mark_eterna_completed(order_id)
-            result = try_send_sender_sms(fresh_order)
-            insert_order_event(order_id, "rc68_manual_recover_sender", "ok" if result.get("ok") else "warning", str(result), result)
-            actions.append({"action": "sender_pack", "result": result})
-
-        elif health["next_action"] == "mark_completed_if_safe":
-            fresh_order = maybe_mark_eterna_completed(order_id)
-            actions.append({"action": "mark_completed_if_safe", "result": rc68_compute_order_health(fresh_order)})
-
-        else:
-            actions.append({"action": "none", "reason": "no_safe_action_for_current_phase"})
-
-        fresh_order = get_order_by_id(order_id)
-        return {"ok": True, "dry_run": False, "before": health, "after": rc68_compute_order_health(fresh_order), "actions": actions}
-
-    except Exception as e:
-        rc68_record_failed_job(order_id, "manual_recovery", str(e), {"health": health, "actions": actions}, status="open")
-        insert_order_event(order_id, "rc68_manual_recover_error", "error", str(e), {"health": health, "actions": actions})
-        raise
-
-
-@app.get("/health")
-def health(deep: int = 0):
-    result = {
-        "ok": True,
-        "version": "RC69_PRELAUNCH_CANDIDATE_SAFE",
-        "time": now_iso(),
-        "final_tagline": ETERNA_FINAL_TAGLINE,
-        "butterfly_name": ETERNA_BUTTERFLY_NAME,
-        "checks": {},
-    }
-
-    try:
-        conn = db_conn()
-        conn.execute("SELECT 1")
-        conn.close()
-        result["checks"]["db"] = "ok"
-    except Exception as e:
-        result["ok"] = False
-        result["checks"]["db"] = f"error:{e}"
-
-    try:
-        missing = audit_eterna_assets().get("missing", [])
-        result["checks"]["assets_missing"] = len(missing)
-        if missing:
-            result["ok"] = False
-            result["checks"]["assets_missing_list"] = missing[:12]
-    except Exception as e:
-        result["checks"]["assets"] = f"warning:{e}"
-
-    result["checks"]["worker_enabled"] = bool(DELIVERY_WORKER_ENABLED)
-    result["checks"]["worker_started"] = bool(DELIVERY_WORKER_STARTED)
-    result["checks"]["open_failed_jobs"] = rc68_count_open_failed_jobs()
-
-    if int(deep or 0) == 1:
-        try:
-            r = requests.get(f"{VIDEO_ENGINE_URL}/health", timeout=HEALTH_DEEP_TIMEOUT_SECONDS)
-            result["checks"]["video_engine"] = "ok" if r.ok else f"http_{r.status_code}"
-        except Exception as e:
-            result["checks"]["video_engine"] = f"warning:{e}"
-
-        result["checks"]["stripe_configured"] = bool(STRIPE_SECRET_KEY)
-        result["checks"]["twilio_configured"] = bool(twilio_enabled())
-        result["checks"]["r2_configured"] = bool(r2_enabled())
-
-    status_code = 200 if result.get("ok") else 503
-    return JSONResponse(status_code=status_code, content=result)
-
-
-@app.get("/admin/ceo-dashboard", response_class=HTMLResponse)
-def admin_ceo_dashboard(token: str):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="unauthorized")
-
-    counts = rc68_today_counts()
-    sms = rc68_sms_today_counts()
-    open_failed = rc68_count_open_failed_jobs()
-
-    def box(label, value, note=""):
-        return f"""
-        <div class="box">
-            <div class="label">{safe_text(label)}</div>
-            <div class="value">{safe_text(value)}</div>
-            <div class="note">{safe_text(note)}</div>
-        </div>
-        """
-
-    html_boxes = "".join([
-        box("Pedidos hoy", counts.get("total", 0)),
-        box("Pagados", counts.get("paid", 0)),
-        box("Entregados", counts.get("delivered", 0)),
-        box("Experiencias iniciadas", counts.get("started", 0)),
-        box("Reacciones", counts.get("reactions", 0)),
-        box("Sender packs", counts.get("sender_packs", 0)),
-        box("Completadas", counts.get("completed", 0)),
-        box("Errores abiertos", open_failed),
-        box("SMS intentos hoy", sms.get("total_sms_attempts", 0), f"límite: {sms.get('max_sms_per_day_hard')}"),
-    ])
-
-    return HTMLResponse(f"""
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETERNA CEO Dashboard</title>
-<style>
-body {{ margin:0; padding:24px; background:#05070c; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }}
-h1 {{ margin:0 0 18px; }}
-.grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }}
-.box {{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:18px; }}
-.label {{ color:rgba(255,255,255,.62); font-size:13px; }}
-.value {{ font-size:34px; font-weight:800; margin-top:6px; }}
-.note {{ color:rgba(255,255,255,.45); font-size:12px; margin-top:6px; }}
-a {{ color:#8bdfff; }}
-</style></head><body>
-<h1>🛡️ ETERNA RC68 — Dashboard CEO</h1>
-<div class="grid">{html_boxes}</div>
-<p><a href="/admin/order-health?token={safe_attr(token)}">Ver salud de pedidos</a></p>
-</body></html>
-""")
-
-
-@app.get("/admin/order-health", response_class=HTMLResponse)
-def admin_order_health(token: str, limit: int = 80):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="unauthorized")
-
-    orders = rc68_list_recent_orders(limit=limit)
-    rows = ""
-    for order in orders:
-        h = rc68_compute_order_health(order)
-        problems = ", ".join(h.get("problems") or []) or "—"
-        icon = "✅" if not h.get("problems") and h.get("phase") in {"COMPLETED", "DELIVERED_WAITING_OPEN", "WAITING_PAYMENT"} else ("⚠️" if h.get("problems") else "🟦")
-        rows += f"""
-        <tr>
-            <td>{icon}</td>
-            <td><a href="/admin/order-status/{safe_attr(order.get('id'))}?token={safe_attr(token)}">{safe_text(order.get('id'))}</a></td>
-            <td>{safe_text(order.get('recipient_name'))}</td>
-            <td>{safe_text(h.get('phase'))}</td>
-            <td>{safe_text(h.get('next_action'))}</td>
-            <td>{safe_text(problems)}</td>
-            <td>{safe_text(order.get('created_at'))}</td>
-        </tr>
-        """
-
-    return HTMLResponse(f"""
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Salud pedidos ETERNA</title>
-<style>
-body {{ margin:0; padding:22px; background:#05070c; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }}
-table {{ width:100%; border-collapse:collapse; font-size:13px; }}
-td, th {{ border-bottom:1px solid rgba(255,255,255,.10); padding:10px; text-align:left; vertical-align:top; }}
-a {{ color:#8bdfff; }}
-.small {{ color:rgba(255,255,255,.58); }}
-</style></head><body>
-<h1>🛡️ ETERNA RC68 — Salud de pedidos</h1>
-<p class="small">Diagnóstico read-only de los últimos {int(limit or 80)} pedidos.</p>
-<table>
-<thead><tr><th></th><th>Pedido</th><th>Destinatario</th><th>Fase</th><th>Siguiente acción</th><th>Problemas</th><th>Creado</th></tr></thead>
-<tbody>{rows}</tbody>
-</table>
-</body></html>
-""")
-
-
-@app.get("/admin/recover-order/{order_id}")
-def admin_recover_order(order_id: str, token: str, dry_run: int = 1):
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="unauthorized")
-    return rc68_recover_order_safe(order_id, dry_run=bool(int(dry_run or 0)))
-
 
 @app.get("/admin/order-status/{order_id}", response_class=HTMLResponse)
 def admin_order_status(order_id: str, token: str):
