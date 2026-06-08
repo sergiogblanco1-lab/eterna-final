@@ -1,4 +1,15 @@
 # =========================================================
+# RC64 RIS + LUGAR PARA VOLVER SAFE
+# Base: RC63 prólogo cinematográfico.
+# Añade SOLO mejoras seguras:
+# - campo opcional memory_place / "Un lugar para volver"
+# - Ris como mariposa narradora
+# - prólogo modular por tipo de relación + lugar
+# - asset ETERA_MASTER_WINGS_V1.png
+# NO toca Stripe, Twilio, webhooks, DB crítica, video engine, cobros, reacción ni sender pack.
+# =========================================================
+
+# =========================================================
 # RC61 BLINDAJE VISUAL FINAL SAFE
 # Base: RC60 estabilización prelanzamiento safe.
 # Objetivo: entregar un MAIN listo para probar sin tocar el circuito validado.
@@ -285,7 +296,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v63-prologo-cinematografico"
+ETERNA_VISUAL_VERSION = "eterna-visual-v64-ris-lugar-para-volver"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -312,6 +323,7 @@ ETERNA_SCREEN_ASSETS = {
     "viral_cta": "viral-cta-v1.png",
     "error": "error-v1.png",
     "guide_butterfly": "ETERNA_GUIDE_BUTTERFLY_V1.png",
+    "ris_master_wings": "ETERA_MASTER_WINGS_V1.png",
 }
 
 def _eterna_asset_key(value: str) -> str:
@@ -1885,6 +1897,7 @@ def init_db():
     add_column_if_missing("orders", "last_recovery_reason", "ALTER TABLE orders ADD COLUMN last_recovery_reason TEXT")
     add_column_if_missing("orders", "recipient_session_token", "ALTER TABLE orders ADD COLUMN recipient_session_token TEXT")
     add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
+    add_column_if_missing("orders", "memory_place", "ALTER TABLE orders ADD COLUMN memory_place TEXT")
 init_db()
 
 
@@ -2820,19 +2833,105 @@ def get_order_by_sender_token_or_404(token: str):
     return dict(row)
 
 
+ORDER_UPDATE_ALLOWED_COLUMNS = {
+    "cashout_completed",
+    "connect_onboarding_completed",
+    "created_at",
+    "delivered_to_recipient",
+    "delivery_locked",
+    "delivery_mode",
+    "delivery_processing_lock",
+    "delivery_processing_lock_at",
+    "delivery_sent",
+    "delivery_sent_at",
+    "eterna_completed",
+    "experience_completed",
+    "experience_started",
+    "experience_video_url",
+    "gift_amount",
+    "gift_refund_deadline_at",
+    "gift_refunded",
+    "id",
+    "last_recovery_at",
+    "last_recovery_reason",
+    "memory_place",
+    "message_type",
+    "order_state",
+    "paid",
+    "phrase_1",
+    "phrase_2",
+    "phrase_3",
+    "phrase_mode",
+    "platform_fixed_fee",
+    "platform_total_fee",
+    "platform_variable_fee",
+    "reaction_upload_error",
+    "reaction_upload_pending",
+    "reaction_uploaded",
+    "reaction_video_local",
+    "reaction_video_public_url",
+    "recipient_id",
+    "recipient_session_claimed_at",
+    "recipient_session_token",
+    "recipient_sms_attempts",
+    "recipient_sms_error",
+    "recipient_sms_sent_at",
+    "recipient_sms_sid",
+    "recipient_token",
+    "scheduled_delivery_at",
+    "scheduled_delivery_fee",
+    "sender_id",
+    "sender_notified",
+    "sender_sms_attempts",
+    "sender_sms_error",
+    "sender_sms_processing_lock",
+    "sender_sms_processing_lock_at",
+    "sender_sms_sent_at",
+    "sender_sms_sid",
+    "sender_token",
+    "share_video_url",
+    "stripe_connected_account_id",
+    "stripe_event_id",
+    "stripe_event_processed_at",
+    "stripe_gift_refund_id",
+    "stripe_payment_intent_id",
+    "stripe_payment_status",
+    "stripe_session_id",
+    "stripe_transfer_id",
+    "total_amount",
+    "transfer_completed",
+    "transfer_in_progress",
+    "transfer_started_at",
+    "updated_at",
+    "video_render_requested",
+    "video_render_requested_at",
+}
+
+def ensure_order_update_column_allowed(column_name: str) -> str:
+    column = str(column_name or "").strip()
+    if column not in ORDER_UPDATE_ALLOWED_COLUMNS:
+        raise ValueError(f"Campo no permitido en update_order: {column}")
+    return column
+
 def update_order(order_id: str, **fields):
     if not fields:
         return
 
-    fields["updated_at"] = now_iso()
-    columns = ", ".join([f"{k} = ?" for k in fields.keys()])
-    values = list(fields.values()) + [order_id]
+    safe_fields = {}
+    for k, v in fields.items():
+        safe_fields[ensure_order_update_column_allowed(k)] = v
+
+    safe_fields["updated_at"] = now_iso()
+    columns = ", ".join([f"{k} = ?" for k in safe_fields.keys()])
+    values = list(safe_fields.values()) + [order_id]
 
     conn = db_conn()
     cur = conn.cursor()
-    cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
-    conn.commit()
-    conn.close()
+    try:
+        cur.execute(f"UPDATE orders SET {columns} WHERE id = ?", values)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 
@@ -2872,6 +2971,8 @@ def acquire_order_processing_lock(order_id: str, field: str, at_field: str, max_
     - evita dos workers pisándose
     - libera locks viejos tras reinicio/caída
     """
+    field = ensure_order_update_column_allowed(field)
+    at_field = ensure_order_update_column_allowed(at_field)
     now = now_iso()
     cutoff = (now_dt() - timedelta(seconds=max_age_seconds)).isoformat()
     conn = db_conn()
@@ -2894,6 +2995,8 @@ def acquire_order_processing_lock(order_id: str, field: str, at_field: str, max_
 
 def release_order_processing_lock(order_id: str, field: str, at_field: str):
     try:
+        field = ensure_order_update_column_allowed(field)
+        at_field = ensure_order_update_column_allowed(at_field)
         update_order(order_id, **{field: 0, at_field: None})
     except Exception as e:
         print("⚠️ No pude liberar lock:", order_id, field, e)
@@ -4177,6 +4280,7 @@ async def create_order_and_redirect(
     photo4: UploadFile,
     photo5: UploadFile,
     photo6: UploadFile,
+    memory_place: str = "",
     responsible_use_accepted: str = "",
 ):
     customer_name = (customer_name or "").strip()
@@ -4187,6 +4291,10 @@ async def create_order_and_redirect(
     recipient_name = (recipient_name or "").strip()
     recipient_country_code = (recipient_country_code or "").strip()
     recipient_phone = (recipient_phone or "").strip()
+
+    memory_place = (memory_place or "").strip()
+    if len(memory_place) > 90:
+        memory_place = memory_place[:90].strip()
 
     message_type = (message_type or "").strip()
     phrase_mode = (phrase_mode or "auto").strip().lower()
@@ -4365,6 +4473,9 @@ async def create_order_and_redirect(
             ),
         )
 
+        if memory_place:
+            cur.execute("UPDATE orders SET memory_place = ?, updated_at = ? WHERE id = ?", (memory_place, now_iso(), order_id))
+
         conn.commit()
         insert_order_event(order_id, "order_created", "ok", "Pedido creado y pendiente de pago")
 
@@ -4378,6 +4489,7 @@ async def create_order_and_redirect(
             f"💸 Total: {fees['total_amount']}€",
             f"🎁 Dinero regalo: {fees['gift_amount']}€",
             f"🕒 Entrega: {'programada' if delivery_mode == 'scheduled' else 'inmediata'}",
+            f"📍 Lugar para volver: {memory_place if memory_place else 'no indicado'}",
             f"🆔 Pedido: {order_id}",
             "✅ Uso responsable aceptado"
         )
@@ -5669,6 +5781,15 @@ def render_create_form() -> str:
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="section s2b">
+                        <div class="section-title">Un lugar para volver <span style="color:rgba(255,255,255,.45);font-weight:500;">(opcional)</span></div>
+                        <div class="soft-copy">
+                            Piensa en un lugar que pueda despertar un recuerdo bonito en quien recibirá esta ETERNA.
+                            No tiene que ser importante para nadie más. Solo para vosotros.
+                        </div>
+                        <input name="memory_place" id="memory_place" maxlength="90" placeholder="Ej: la playa de invierno, el banco del parque, la casa de la abuela">
                     </div>
 
                     <div class="section s3">
@@ -7071,6 +7192,7 @@ async def crear_post(
     delivery_date: str = Form(""),
     delivery_time: str = Form(""),
     gift_amount: float = Form(0),
+    memory_place: str = Form(""),
     photo1: UploadFile = File(...),
     photo2: UploadFile = File(...),
     photo3: UploadFile = File(...),
@@ -7104,6 +7226,7 @@ async def crear_post(
             photo4,
             photo5,
             photo6,
+            memory_place,
             responsible_use_accepted or responsible_use,
         )
 
@@ -7798,13 +7921,46 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 # NO toca Stripe, Twilio, webhooks, DB, Video Engine, reacción, cobros ni sender pack.
 # =========================================================
 
-def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
+def render_eterna_prologo_experience(recipient_token: str, order: Optional[dict] = None) -> HTMLResponse:
     """
     Prólogo cinematográfico antes de /experiencia.
     Filosofía: no es una pantalla; es un umbral.
     Incluye consentimiento claro de grabación, pero integrado en la historia.
     """
-    butterfly_src = safe_attr(eterna_asset("guide_butterfly"))
+    butterfly_src = safe_attr(eterna_asset("ris_master_wings"))
+    if not order:
+        try:
+            order = get_order_by_recipient_token_or_404(recipient_token)
+        except Exception:
+            order = {}
+
+    recipient_name_raw = (order.get("recipient_name") or "").strip() if isinstance(order, dict) else ""
+    recipient_first = recipient_name_raw.split()[0].strip() if recipient_name_raw else ""
+    recipient_call = safe_text((recipient_first + "...") if recipient_first else "Por fin...")
+
+    memory_place_raw = (order.get("memory_place") or "").strip() if isinstance(order, dict) else ""
+    memory_place = safe_text(memory_place_raw)
+
+    message_type_raw = (order.get("message_type") or "no_se_decirlo").strip().lower() if isinstance(order, dict) else "no_se_decirlo"
+    relation_lines = {
+        "madre": "Hay personas a las que siempre se puede volver.",
+        "padre": "Hay personas que nos enseñan el camino incluso sin saberlo.",
+        "hijo": "Hay vidas que empiezan pequeñas y acaban llenándolo todo.",
+        "hija": "Hay vidas que empiezan pequeñas y acaban llenándolo todo.",
+        "amistad": "Algunas historias no necesitaron promesas. Solo tiempo.",
+        "amor": "Hay encuentros que parecen casualidad hasta que miras atrás.",
+        "superacion": "A veces olvidamos lo lejos que hemos llegado.",
+        "cumpleanos": "Hay días que vuelven cada año. Y recuerdos que vuelven una sola vez.",
+        "familia": "Hay lugares que viven dentro de una familia.",
+        "gracias": "Hay cosas que a veces tardamos demasiado en agradecer.",
+    }
+    relation_line = safe_text(relation_lines.get(message_type_raw, "Hay cosas que el tiempo nunca consiguió llevarse."))
+
+    if memory_place_raw:
+        place_line = f"Hace mucho tiempo que no paso por allí.<br><span class='eternal'>...{memory_place}.</span>"
+    else:
+        place_line = "Hay un lugar al que quiero llevarte.<br><span class='eternal'>Solo por un momento.</span>"
+
     recipient_token_safe = safe_attr(recipient_token)
     recipient_token_json = json.dumps(str(recipient_token))
     return HTMLResponse(f"""
@@ -7885,14 +8041,14 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
 
     <div class="copy" aria-hidden="true">
       <div class="line gold l1">Shhh...</div>
-      <div class="line l2">Dicen que el tiempo<br>se lleva todo.</div>
-      <div class="line l3">Pero no es<br>del todo cierto.</div>
-      <div class="line small l4">Porque algunas cosas<br>encuentran la forma<br>de quedarse.</div>
-      <div class="line l5">Y algunas...<br><span class="eternal">encuentran la forma de volver.</span></div>
-      <div class="line small l6">Lo que estás a punto de descubrir<br>ha viajado hasta aquí.</div>
-      <div class="line small l7">A través de días.<br>A través de recuerdos.<br>A través del tiempo.</div>
-      <div class="line l8">Durante algún tiempo...<br><span class="eternal">esto estuvo esperando.</span></div>
-      <div class="line l9">Esperando este instante.<br><span class="eternal">Esperándote.</span></div>
+      <div class="line l2">Ven conmigo.</div>
+      <div class="line small l3">Los recuerdos no desaparecen.<br>Solo esperan.</div>
+      <div class="line small l4">Yo los guardo<br>hasta que llega el momento<br>de devolverlos.</div>
+      <div class="line l5">{recipient_call}</div>
+      <div class="line small l6">{relation_line}</div>
+      <div class="line small l7">{place_line}</div>
+      <div class="line l8">Creo que ha llegado<br><span class="eternal">el momento.</span></div>
+      <div class="line l9">No vengo a enseñarte algo.<br><span class="eternal">Vengo a devolverte algo.</span></div>
       <div class="line l10"><span class="gold">No todo lo que vuelve</span><br>es un recuerdo.<br><span class="eternal">A veces vuelve una emoción.</span></div>
     </div>
 
@@ -7914,7 +8070,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
       <button id="startExperienceNow" class="final-btn" type="submit">Estoy preparado</button>
       <div class="final-note">Espero que esto te encuentre en el momento adecuado.</div>
     </form>
-    <div class="skip-safe">No cierres esta página. ETERNA está abriendo el camino.</div>
+    <div class="skip-safe">No cierres esta página. Ris está abriendo el camino.</div>
   </section>
 </main>
 <script>
@@ -7997,7 +8153,7 @@ def guia_previa_experiencia(request: Request, step: int, recipient_token: str):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     insert_order_event(order["id"], "guide_prologue_opened", "ok", "Prólogo cinematográfico ETERNA antes de iniciar experiencia")
-    response = render_eterna_prologo_experience(recipient_token)
+    response = render_eterna_prologo_experience(recipient_token, order)
     attach_recipient_session_if_needed(order, request, response)
     return response
 
