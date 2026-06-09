@@ -1,11 +1,24 @@
 # =========================================================
-# RC75H_FIX_CREAR_FORM_FINAL_SAFE
-# Base: RC75F runtime rescue.
-# Corrige GET /crear 500:
-# - CSS Yul dentro de f-string necesitaba llaves dobles {{ }}
-# - error visto: NameError: name 'border' is not defined
-# NO toca Stripe, Twilio, SMS, WhatsApp, webhooks, video engine, reacción,
-# sender pack, workers ni cobros.
+# RC76_ALL_IN_REVIEW_SAFE
+# GOLDEN MASTER CONSERVADO APARTE:
+# - ETERNA_MAIN_GOLDEN_MASTER_SALVAVIDAS_DO_NOT_TOUCH.py
+#
+# Base funcional de trabajo:
+# - RC75H corregido
+#
+# Contiene:
+# - MAIN largo
+# - RC74 core / recovery / render queue / health / confidence / orphans
+# - Yul / Umbral
+# - formulario emocional Yul
+# - runtime rescue para carpetas /data
+# - fix GET /crear por CSS dentro de f-string
+#
+# REGLA:
+# - Este archivo es candidato de revisión.
+# - No sustituye al golden master hasta probar circuito completo.
+# - No tocar Stripe, Twilio, SMS, WhatsApp, webhooks, video engine,
+#   reacción, sender pack, workers ni cobros salvo auditoría explícita.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -22,11 +35,12 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC75H FIX CREAR FORM FINAL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC76 ALL IN REVIEW SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC75H FIX CREAR FORM FINAL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC75H FIX CREAR FORM FINAL SAFE — CARPETAS BLINDADAS 🛟")
-print("🛟 RC75H FIX CREAR FORM FINAL SAFE — /CREAR OK 🛟")
+print("🛟 RC76 ALL IN REVIEW SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC76 ALL IN REVIEW SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC76 ALL IN REVIEW SAFE — /CREAR OK 🛟")
+print("🛟 RC76 ALL IN REVIEW SAFE — TODO METIDO PARA REVISAR 🛟")
 import html
 import json
 import mimetypes
@@ -183,7 +197,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC75H_FIX_CREAR_FORM_FINAL_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC76_ALL_IN_REVIEW_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -8070,13 +8084,31 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
+        "version": "RC76_ALL_IN_REVIEW_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
         "formulario_emocional": True,
         "consent_delay_ms": 55000,
         "touches_core": False,
+    }
+
+
+
+@app.get("/admin/rc76-version")
+def admin_rc76_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC76_ALL_IN_REVIEW_SAFE",
+        "golden_master_preserved": True,
+        "contains_rc74_core": True,
+        "contains_yul_umbral": True,
+        "contains_yul_emotional_form": True,
+        "contains_runtime_folder_rescue": True,
+        "contains_crear_css_fix": True,
+        "review_candidate": True,
+        "touches_critical_core": False,
     }
 
 
@@ -8675,7 +8707,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 
 def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     """
-    RC75H_FIX_CREAR_FORM_FINAL_SAFE.
+    RC76_ALL_IN_REVIEW_SAFE.
     Sustituye únicamente la pre-experiencia /guia por EL UMBRAL.
     No toca Stripe, Twilio, webhooks, DB crítica, video engine, reaction upload,
     sender pack, cola RC74 ni recovery worker.
@@ -12523,7 +12555,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
+        "version": "RC76_ALL_IN_REVIEW_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -12575,7 +12607,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
+        "version": "RC76_ALL_IN_REVIEW_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -12653,7 +12685,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
+        "version": "RC76_ALL_IN_REVIEW_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -12708,7 +12740,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
+        "version": "RC76_ALL_IN_REVIEW_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
