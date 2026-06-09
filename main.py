@@ -1,12 +1,12 @@
 # =========================================================
-# RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE
-# Base: RC74B largo subido por Sergio.
+# RC75F_RUNTIME_RESCUE_SAFE
+# Base: RC75F_RUNTIME_RESCUE_SAFE que fallaba.
 # Objetivo:
-# - conservar main completo largo de 12.000+ líneas
-# - conservar núcleo autónomo RC74
-# - añadir magia Yul + formulario emocional
+# - mantener RC75 largo + Yul + formulario emocional
 # - NO tocar Stripe, Twilio, SMS, WhatsApp, webhooks, video engine, reacción,
-#   sender pack, workers ni cobros.
+#   sender pack, workers ni cobros
+# - blindar carpetas runtime (/data/reactions, /data/reaction_chunks) con fallback
+#   si Render no tiene disco montado/permisos.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -23,9 +23,10 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC75 MAGIA YUL FORMULARIO SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC75F RUNTIME RESCUE SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC75 MAGIA YUL FORMULARIO SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC75F RUNTIME RESCUE SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC75F RUNTIME RESCUE SAFE — CARPETAS BLINDADAS 🛟")
 import html
 import json
 import mimetypes
@@ -139,17 +140,32 @@ ALLOWED_VIDEO_TYPES = {
     "application/octet-stream",
 }
 
+
+# =========================================================
+# RC75F — RUNTIME FOLDER RESCUE
+# Si /data no existe o no tiene permisos, ETERNA no debe caerse al arrancar.
+# Cae a ./data/<fallback> y deja log claro.
+# =========================================================
+
+def ensure_runtime_folder(path_value: str, fallback_name: str) -> Path:
+    requested = Path(str(path_value or "").strip() or str(DATA_FOLDER / fallback_name))
+    try:
+        requested.mkdir(parents=True, exist_ok=True)
+        return requested
+    except Exception as e:
+        fallback = DATA_FOLDER / fallback_name
+        fallback.mkdir(parents=True, exist_ok=True)
+        print(f"[WARN] Runtime folder fallback: {requested} -> {fallback} ({e})")
+        return fallback
+
 DATA_FOLDER = Path("data")
 DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 
 VIDEO_FOLDER = Path("videos")
 VIDEO_FOLDER.mkdir(parents=True, exist_ok=True)
 
-REACTIONS_FOLDER = Path(os.getenv("REACTIONS_FOLDER", "/data/reactions"))
-REACTIONS_FOLDER.mkdir(parents=True, exist_ok=True)
-
-REACTION_CHUNKS_FOLDER = Path(os.getenv("REACTION_CHUNKS_FOLDER", "/data/reaction_chunks"))
-REACTION_CHUNKS_FOLDER.mkdir(parents=True, exist_ok=True)
+REACTIONS_FOLDER = ensure_runtime_folder(os.getenv("REACTIONS_FOLDER", "/data/reactions"), "reactions")
+REACTION_CHUNKS_FOLDER = ensure_runtime_folder(os.getenv("REACTION_CHUNKS_FOLDER", "/data/reaction_chunks"), "reaction_chunks")
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -167,7 +183,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC75F_RUNTIME_RESCUE_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -8054,8 +8070,8 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
-        "base": "RC74B_LONG",
+        "version": "RC75F_RUNTIME_RESCUE_SAFE",
+        "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
         "formulario_emocional": True,
@@ -8659,7 +8675,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 
 def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     """
-    RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE.
+    RC75F_RUNTIME_RESCUE_SAFE.
     Sustituye únicamente la pre-experiencia /guia por EL UMBRAL.
     No toca Stripe, Twilio, webhooks, DB crítica, video engine, reaction upload,
     sender pack, cola RC74 ni recovery worker.
@@ -12507,7 +12523,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
+        "version": "RC75F_RUNTIME_RESCUE_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -12559,7 +12575,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
+        "version": "RC75F_RUNTIME_RESCUE_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -12637,7 +12653,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
+        "version": "RC75F_RUNTIME_RESCUE_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -12692,7 +12708,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
+        "version": "RC75F_RUNTIME_RESCUE_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
