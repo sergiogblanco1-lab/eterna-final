@@ -1,5 +1,46 @@
 # =========================================================
-# RC72_YUL_ALMA_LIGHT_SAFE
+# RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3
+# Base: MAIN completo largo (RC71/RC74A) que compila, NO RC72 roto.
+# Objetivo: conservar el main completo de 12.000+ líneas y añadir núcleo autónomo.
+# Filosofía:
+# - Todo puede fallar.
+# - Ningún pedido puede perderse jamás.
+# - ETERNA debe funcionar sola, verse sola y recuperarse antes de avisar.
+# Incluye:
+# - columnas RC74 reales
+# - cola persistente de render
+# - recovery worker
+# - safe mode real
+# - callback marca render como listo
+# - health / orphans / confidence / go-live
+# - no toca Stripe, Twilio, video engine separado, reacción ni sender pack experimental.
+# =========================================================
+
+# =========================================================
+# RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3
+# Base: RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3.
+# Objetivo: jugarla un poco SIN romper circuito.
+# Añade observabilidad avanzada:
+# - cola de render en modo lectura
+# - pedidos huérfanos
+# - confianza ETERNA
+# - validador producción
+# NO reintenta automáticamente.
+# NO envía SMS.
+# NO toca Stripe, Twilio, webhooks, DB, video engine, reacción, sender pack ni cobros.
+# =========================================================
+
+# =========================================================
+# RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3
+# Base: RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3 compilado OK.
+# Decisión: RC72_YUL_ALMA_LIGHT_SAFE queda descartado por fallo de sintaxis en f-string/CSS.
+# Objetivo: volver a una base segura para Render.
+# NO toca Stripe, Twilio, WhatsApp, webhooks, DB, video engine, sender pack,
+# reacción, cobros, workers, tokens ni sesiones.
+# =========================================================
+
+# =========================================================
+# RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3
 # Base: RC63 PROLOGO CINEMATOGRAFICO BIGFISH SAFE.
 # Objetivo: NO crear otro main. Solo añadir atmósfera viva a la pre-experiencia.
 # Toca únicamente capa visual del renderizador común para:
@@ -133,7 +174,7 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🦋 RC71 PRE-EXPERIENCE MAGIC SAFE — SOLO ATMÓSFERA + YUL V1 🦋")
+print("🛟 RC74 FULL AUTONOMOUS DEPLOY SAFE V3 — MAIN COMPLETO + COLA + RECOVERY 🛟")
 
 import html
 import json
@@ -273,6 +314,17 @@ DELIVERY_WORKER_ENABLED = os.getenv("DELIVERY_WORKER_ENABLED", "1").strip() != "
 DELIVERY_WORKER_STARTED = False
 DELIVERY_WORKER_LOCK = threading.Lock()
 
+# =========================================================
+# RC74 FULL — AUTONOMÍA OPERATIVA
+# =========================================================
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3").strip()
+ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_RENDER_STUCK_MINUTES = int(os.getenv("ETERNA_RENDER_STUCK_MINUTES", "25"))
+ETERNA_RENDER_MAX_ATTEMPTS = int(os.getenv("ETERNA_RENDER_MAX_ATTEMPTS", "3"))
+ETERNA_RENDER_QUEUE_BATCH_SIZE = int(os.getenv("ETERNA_RENDER_QUEUE_BATCH_SIZE", "1"))
+
 COOKIE_SECURE = PUBLIC_BASE_URL.startswith("https://")
 
 KNOWN_COUNTRY_CODES = [
@@ -298,7 +350,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_FOLDER)), name="static")
 # ETERNA VISUAL V1 — PANTALLAS CANÓNICAS
 # =========================================================
 
-ETERNA_VISUAL_VERSION = "eterna-visual-v72-yul-alma-light-safe"
+ETERNA_VISUAL_VERSION = "eterna-visual-v74a-observability-plus-safe"
 ETERNA_BG_BASE = "/static/eterna-cinematic/backgrounds"
 ETERNA_BG_FOLDER = STATIC_FOLDER / "eterna-cinematic" / "backgrounds"
 
@@ -1673,340 +1725,6 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
         .yul-live {{ opacity:.32; }}
     }}
 
-
-    /* =========================================================
-       RC72 YUL ALMA LIGHT SAFE
-       Dirección visual:
-       - Forrest Gump: presencia ligera, casi espiritual.
-       - Cenicienta: polvo mágico, transformación, luz dorada.
-       - Tonight Tonight: viaje onírico, mundo que cambia.
-       - Legend: misterio, bruma, luz viva.
-       No copia ninguna obra: solo toma lenguaje cinematográfico.
-       No toca Stripe, Twilio, webhooks, DB, reacción, sender pack ni video engine.
-       ========================================================= */
-
-    .screen.intro-mode .particle,
-    .screen.sound-mode .particle,
-    .screen.quiet-mode .particle,
-    .screen.consent-mode .particle {
-        display:none !important;
-    }
-
-    .screen.intro-mode .pre-spark,
-    .screen.sound-mode .pre-spark,
-    .screen.quiet-mode .pre-spark,
-    .screen.consent-mode .pre-spark {
-        opacity:0 !important;
-        animation:none !important;
-    }
-
-    .screen.intro-mode .pre-depth,
-    .screen.sound-mode .pre-depth,
-    .screen.quiet-mode .pre-depth,
-    .screen.consent-mode .pre-depth {
-        opacity:.78;
-        background:
-            radial-gradient(circle at 50% 16%, rgba(255,236,185,.12), transparent 23%),
-            radial-gradient(circle at 17% 76%, rgba(61,205,255,.14), transparent 27%),
-            radial-gradient(circle at 84% 64%, rgba(255,199,86,.10), transparent 27%),
-            linear-gradient(180deg, rgba(2,5,10,.06), rgba(5,15,28,.22) 46%, rgba(1,3,8,.15));
-        animation:rc72WorldBreath 14s ease-in-out infinite;
-    }
-
-    .screen.intro-mode .pre-depth::before,
-    .screen.sound-mode .pre-depth::before,
-    .screen.quiet-mode .pre-depth::before,
-    .screen.consent-mode .pre-depth::before {
-        content:"";
-        position:absolute;
-        inset:-18%;
-        opacity:.0;
-        mix-blend-mode:screen;
-        background:
-            radial-gradient(circle at 24% 28%, rgba(255,232,171,.18), transparent 19%),
-            radial-gradient(circle at 76% 31%, rgba(68,211,255,.17), transparent 22%),
-            radial-gradient(circle at 52% 74%, rgba(255,198,83,.12), transparent 29%);
-        filter:blur(18px);
-        animation:rc72WorldPhraseShift 22s ease-in-out infinite;
-    }
-
-    .screen.intro-mode .pre-depth::after,
-    .screen.sound-mode .pre-depth::after,
-    .screen.quiet-mode .pre-depth::after,
-    .screen.consent-mode .pre-depth::after {
-        content:"";
-        position:absolute;
-        inset:-10%;
-        opacity:.22;
-        mix-blend-mode:screen;
-        background:
-            linear-gradient(115deg, transparent 0%, transparent 37%, rgba(255,255,255,.18) 43%, rgba(75,211,255,.11) 48%, transparent 55%),
-            linear-gradient(70deg, transparent 0%, transparent 57%, rgba(255,215,129,.15) 62%, transparent 69%);
-        transform:translateX(-32%);
-        animation:rc72WideLightSweep 18s cubic-bezier(.2,.7,.15,1) infinite;
-    }
-
-    .screen.intro-mode .pre-fog,
-    .screen.sound-mode .pre-fog,
-    .screen.quiet-mode .pre-fog,
-    .screen.consent-mode .pre-fog {
-        opacity:.58;
-        background:
-            radial-gradient(ellipse at 45% 30%, rgba(255,255,255,.08), transparent 30%),
-            radial-gradient(ellipse at 62% 70%, rgba(54,200,255,.10), transparent 32%),
-            linear-gradient(90deg, transparent, rgba(255,217,136,.075), transparent);
-        filter:blur(18px);
-        transform:scale(1.08);
-        animation:rc72LivingMist 19s ease-in-out infinite;
-    }
-
-    .screen.intro-mode .yul-trail,
-    .screen.sound-mode .yul-trail,
-    .screen.quiet-mode .yul-trail,
-    .screen.consent-mode .yul-trail,
-    .screen.intro-mode .yul-live,
-    .screen.sound-mode .yul-live,
-    .screen.quiet-mode .yul-live,
-    .screen.consent-mode .yul-live {
-        display:none !important;
-    }
-
-    .screen.intro-mode .yul-soul,
-    .screen.sound-mode .yul-soul,
-    .screen.quiet-mode .yul-soul,
-    .screen.consent-mode .yul-soul {
-        position:absolute;
-        left:50%;
-        top:43%;
-        width:138px;
-        height:108px;
-        z-index:7;
-        pointer-events:none;
-        transform-origin:center center;
-        filter:
-            drop-shadow(0 0 18px rgba(255,232,170,.72))
-            drop-shadow(0 0 34px rgba(72,211,255,.44));
-        mix-blend-mode:screen;
-        animation:rc72SoulFlight 16s cubic-bezier(.42,0,.18,1) infinite;
-    }
-
-    .screen.sound-mode .yul-soul { animation-duration:18s; opacity:.88; }
-    .screen.quiet-mode .yul-soul { animation-duration:20s; opacity:.72; top:39%; }
-    .screen.consent-mode .yul-soul { animation-duration:21s; opacity:.44; top:30%; transform:scale(.78); }
-
-    .yul-wing {
-        position:absolute;
-        top:21px;
-        width:64px;
-        height:56px;
-        border-radius:70% 18% 70% 26%;
-        opacity:.82;
-        background:
-            radial-gradient(circle at 44% 38%, rgba(255,255,255,.96), rgba(255,236,178,.66) 18%, rgba(79,218,255,.36) 43%, transparent 72%),
-            radial-gradient(circle at 70% 62%, rgba(255,205,88,.50), transparent 56%);
-        filter:blur(.2px);
-        box-shadow:
-            inset 0 0 22px rgba(255,255,255,.35),
-            0 0 24px rgba(255,229,166,.58),
-            0 0 46px rgba(62,207,255,.30);
-    }
-
-    .yul-wing-left {
-        left:8px;
-        transform-origin:82% 52%;
-        transform:rotate(-22deg) scaleX(1);
-        animation:rc72WingLeft 1.18s ease-in-out infinite;
-    }
-
-    .yul-wing-right {
-        right:8px;
-        transform-origin:18% 52%;
-        border-radius:18% 70% 26% 70%;
-        transform:rotate(22deg) scaleX(1);
-        animation:rc72WingRight 1.18s ease-in-out infinite;
-    }
-
-    .yul-core {
-        position:absolute;
-        left:50%;
-        top:44px;
-        width:22px;
-        height:38px;
-        transform:translateX(-50%);
-        border-radius:999px;
-        background:
-            radial-gradient(circle at 45% 18%, rgba(255,255,255,1), rgba(255,241,190,.95) 21%, rgba(255,185,58,.72) 46%, rgba(65,211,255,.40) 70%, transparent 100%);
-        box-shadow:
-            0 0 18px rgba(255,255,255,.86),
-            0 0 34px rgba(255,203,94,.72),
-            0 0 58px rgba(61,205,255,.34);
-        animation:rc72CorePulse 2.2s ease-in-out infinite;
-    }
-
-    .yul-tail {
-        position:absolute;
-        left:50%;
-        top:70px;
-        width:10px;
-        height:92px;
-        transform:translateX(-50%) rotate(4deg);
-        border-radius:999px;
-        opacity:.72;
-        background:linear-gradient(180deg, rgba(255,241,188,.68), rgba(79,217,255,.55), transparent);
-        filter:blur(5px);
-        box-shadow:0 0 24px rgba(74,210,255,.55);
-        animation:rc72TailBlue 2.8s ease-in-out infinite;
-    }
-
-    .yul-ember {
-        position:absolute;
-        left:50%;
-        top:82px;
-        width:5px;
-        height:5px;
-        border-radius:999px;
-        background:rgba(255,219,130,.96);
-        box-shadow:
-            0 0 14px rgba(255,219,130,.92),
-            0 0 28px rgba(69,210,255,.36);
-        opacity:0;
-        animation:rc72EmberFall 3.4s linear infinite;
-    }
-
-    .ye1 { margin-left:-18px; animation-delay:.15s; }
-    .ye2 { margin-left:8px; animation-delay:.85s; background:rgba(82,218,255,.92); }
-    .ye3 { margin-left:22px; animation-delay:1.55s; transform:scale(.72); }
-    .ye4 { margin-left:-4px; animation-delay:2.25s; transform:scale(.58); background:rgba(255,255,255,.96); }
-
-    .screen.intro-mode .phone::after,
-    .screen.sound-mode .phone::after,
-    .screen.quiet-mode .phone::after {
-        content:"";
-        position:absolute;
-        inset:0;
-        pointer-events:none;
-        z-index:5;
-        opacity:.0;
-        mix-blend-mode:screen;
-        background:
-            radial-gradient(circle at 50% 42%, rgba(255,255,255,.12), transparent 13%),
-            radial-gradient(circle at 45% 46%, rgba(255,218,132,.10), transparent 22%),
-            radial-gradient(circle at 56% 48%, rgba(54,203,255,.10), transparent 24%);
-        filter:blur(12px);
-        animation:rc72PhraseGlow 15s ease-in-out infinite;
-    }
-
-    @keyframes rc72SoulFlight {
-        0%   { transform:translate(-50%,-50%) translate(-118px,38px) scale(.58) rotate(-13deg); opacity:0; filter:drop-shadow(0 0 8px rgba(255,232,170,.2)); }
-        8%   { opacity:.82; }
-        18%  { transform:translate(-50%,-50%) translate(-62px,-18px) scale(.86) rotate(7deg); opacity:.96; }
-        32%  { transform:translate(-50%,-50%) translate(42px,-54px) scale(1.12) rotate(-4deg); opacity:.88; }
-        48%  { transform:translate(-50%,-50%) translate(112px,8px) scale(.78) rotate(12deg); opacity:.68; }
-        62%  { transform:translate(-50%,-50%) translate(26px,58px) scale(1.03) rotate(-8deg); opacity:.92; }
-        78%  { transform:translate(-50%,-50%) translate(-74px,14px) scale(.72) rotate(9deg); opacity:.55; }
-        92%  { opacity:.80; }
-        100% { transform:translate(-50%,-50%) translate(-118px,38px) scale(.58) rotate(-13deg); opacity:0; }
-    }
-
-    @keyframes rc72WingLeft {
-        0%,100% { transform:rotate(-19deg) scaleX(.78) scaleY(1.10); opacity:.66; filter:blur(.8px) brightness(1); }
-        38% { transform:rotate(-48deg) scaleX(1.22) scaleY(.84); opacity:.98; filter:blur(.1px) brightness(1.75); }
-        62% { transform:rotate(-7deg) scaleX(.66) scaleY(1.18); opacity:.76; filter:blur(1px) brightness(1.18); }
-    }
-
-    @keyframes rc72WingRight {
-        0%,100% { transform:rotate(19deg) scaleX(.78) scaleY(1.10); opacity:.66; filter:blur(.8px) brightness(1); }
-        38% { transform:rotate(48deg) scaleX(1.22) scaleY(.84); opacity:.98; filter:blur(.1px) brightness(1.75); }
-        62% { transform:rotate(7deg) scaleX(.66) scaleY(1.18); opacity:.76; filter:blur(1px) brightness(1.18); }
-    }
-
-    @keyframes rc72CorePulse {
-        0%,100% { transform:translateX(-50%) scale(.86); opacity:.74; filter:brightness(1); }
-        42% { transform:translateX(-50%) scale(1.18); opacity:1; filter:brightness(1.85); }
-        70% { transform:translateX(-50%) scale(.96); opacity:.88; }
-    }
-
-    @keyframes rc72TailBlue {
-        0%,100% { opacity:.30; height:60px; transform:translateX(-50%) rotate(-8deg); }
-        48% { opacity:.90; height:112px; transform:translateX(-50%) rotate(8deg); }
-    }
-
-    @keyframes rc72EmberFall {
-        0% { opacity:0; transform:translate(0,0) scale(.35); }
-        12% { opacity:.95; }
-        45% { opacity:.74; transform:translate(18px,54px) scale(1); }
-        100% { opacity:0; transform:translate(-16px,148px) scale(.18); }
-    }
-
-    @keyframes rc72WorldBreath {
-        0%,100% { opacity:.50; filter:brightness(.92) saturate(1); transform:scale(1); }
-        33% { opacity:.78; filter:brightness(1.12) saturate(1.18); transform:scale(1.018); }
-        66% { opacity:.64; filter:brightness(1.04) saturate(1.08); transform:scale(1.008); }
-    }
-
-    @keyframes rc72WorldPhraseShift {
-        0%,100% { opacity:.06; transform:translate(-10px,10px) scale(.98); }
-        28% { opacity:.44; transform:translate(16px,-18px) scale(1.06); }
-        54% { opacity:.18; transform:translate(-18px,-4px) scale(1.02); }
-        78% { opacity:.36; transform:translate(10px,18px) scale(1.08); }
-    }
-
-    @keyframes rc72WideLightSweep {
-        0% { opacity:0; transform:translateX(-52%) skewX(-8deg); }
-        18% { opacity:.0; }
-        34% { opacity:.34; }
-        58% { opacity:.16; }
-        100% { opacity:0; transform:translateX(52%) skewX(-8deg); }
-    }
-
-    @keyframes rc72LivingMist {
-        0%,100% { opacity:.28; transform:translateX(-22px) translateY(6px) scale(1.08); }
-        45% { opacity:.70; transform:translateX(24px) translateY(-14px) scale(1.14); }
-        72% { opacity:.46; transform:translateX(-8px) translateY(12px) scale(1.10); }
-    }
-
-    @keyframes rc72PhraseGlow {
-        0%,100% { opacity:.05; transform:scale(.96); }
-        24% { opacity:.32; transform:scale(1.05); }
-        48% { opacity:.10; transform:scale(1.00); }
-        72% { opacity:.26; transform:scale(1.08); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .screen.intro-mode .yul-soul,
-        .screen.sound-mode .yul-soul,
-        .screen.quiet-mode .yul-soul,
-        .screen.consent-mode .yul-soul,
-        .screen.intro-mode .pre-depth,
-        .screen.sound-mode .pre-depth,
-        .screen.quiet-mode .pre-depth,
-        .screen.consent-mode .pre-depth,
-        .screen.intro-mode .pre-fog,
-        .screen.sound-mode .pre-fog,
-        .screen.quiet-mode .pre-fog,
-        .screen.consent-mode .pre-fog {
-            animation:none !important;
-        }
-    }
-
-
-    /* RC72 — consentimiento entra como capítulo limpio, no encima de frases anteriores */
-    .screen.consent-mode .img {
-        animation:rc72ConsentChapterIn 1.2s ease-out forwards;
-    }
-    .screen.consent-mode .phone {
-        animation:rc72ConsentPause 2.2s ease-out forwards;
-    }
-    @keyframes rc72ConsentPause {
-        0% { opacity:0; filter:blur(8px) brightness(.62); }
-        38% { opacity:0; filter:blur(8px) brightness(.62); }
-        100% { opacity:1; filter:blur(0) brightness(1); }
-    }
-    @keyframes rc72ConsentChapterIn {
-        0% { opacity:0; transform:scale(1.018); }
-        100% { opacity:1; transform:scale(1); }
-    }
-
 </style>
 </head>
 <body>
@@ -2032,17 +1750,6 @@ video:hover::-webkit-media-controls-panel, video:focus::-webkit-media-controls-p
         <i class="particle p2" aria-hidden="true"></i>
         <i class="particle p3" aria-hidden="true"></i>
         <i class="particle gold p4" aria-hidden="true"></i>
-
-            <span class="yul-soul" aria-hidden="true">
-                <span class="yul-wing yul-wing-left"></span>
-                <span class="yul-wing yul-wing-right"></span>
-                <span class="yul-core"></span>
-                <span class="yul-tail"></span>
-                <i class="yul-ember ye1"></i>
-                <i class="yul-ember ye2"></i>
-                <i class="yul-ember ye3"></i>
-                <i class="yul-ember ye4"></i>
-            </span>
         <div class="soft-halo" aria-hidden="true"></div>
         <div class="edge-glow eg1" aria-hidden="true"></div>
         <div class="edge-glow eg2" aria-hidden="true"></div>
@@ -2440,6 +2147,15 @@ def init_db():
     add_column_if_missing("orders", "last_recovery_reason", "ALTER TABLE orders ADD COLUMN last_recovery_reason TEXT")
     add_column_if_missing("orders", "recipient_session_token", "ALTER TABLE orders ADD COLUMN recipient_session_token TEXT")
     add_column_if_missing("orders", "recipient_session_claimed_at", "ALTER TABLE orders ADD COLUMN recipient_session_claimed_at TEXT")
+
+    # RC74 FULL — columnas de supervivencia / cola / recuperación.
+    add_column_if_missing("orders", "order_version", "ALTER TABLE orders ADD COLUMN order_version TEXT")
+    add_column_if_missing("orders", "render_status", "ALTER TABLE orders ADD COLUMN render_status TEXT NOT NULL DEFAULT 'PENDING_RENDER'")
+    add_column_if_missing("orders", "render_attempts", "ALTER TABLE orders ADD COLUMN render_attempts INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "render_started_at", "ALTER TABLE orders ADD COLUMN render_started_at TEXT")
+    add_column_if_missing("orders", "render_last_error", "ALTER TABLE orders ADD COLUMN render_last_error TEXT")
+    add_column_if_missing("orders", "recovery_last_checked_at", "ALTER TABLE orders ADD COLUMN recovery_last_checked_at TEXT")
+    add_column_if_missing("orders", "recovery_notes", "ALTER TABLE orders ADD COLUMN recovery_notes TEXT")
 init_db()
 
 
@@ -4327,19 +4043,48 @@ def render_request_already_marked(order: dict) -> bool:
 
 
 def mark_video_render_requested(order_id: str):
-    update_order(
-        order_id,
-        video_render_requested=1,
-        video_render_requested_at=now_iso(),
-    )
+    """
+    RC74 FULL: marca render en curso con estado visible.
+    No cambia el video engine. Solo hace trazable la cola.
+    """
+    now = now_iso()
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE orders
+        SET
+            video_render_requested = 1,
+            video_render_requested_at = ?,
+            render_status = 'RENDERING',
+            render_started_at = ?,
+            render_attempts = COALESCE(render_attempts, 0) + 1,
+            render_last_error = NULL,
+            order_state = 'RENDERING',
+            order_version = COALESCE(order_version, ?),
+            updated_at = ?
+        WHERE id = ?
+    """, (now, now, ETERNA_APP_VERSION, now, order_id))
+    conn.commit()
+    conn.close()
+    insert_order_event(order_id, "RENDER_STARTED", "ok", "Render marcado como iniciado", {"version": ETERNA_APP_VERSION})
 
 
-def clear_video_render_requested(order_id: str):
+def clear_video_render_requested(order_id: str, error: str = ""):
+    """
+    RC74 FULL: devuelve pedido a cola si el render no pudo arrancar.
+    Nunca borra pedido. Nunca pierde estado.
+    """
     update_order(
         order_id,
         video_render_requested=0,
         video_render_requested_at=None,
+        render_status="PENDING_RENDER",
+        render_started_at=None,
+        render_last_error=str(error or "")[:1000],
+        order_state="PENDING_RENDER",
+        recovery_notes=str(error or "")[:1000],
     )
+    insert_order_event(order_id, "RENDER_REQUEUED", "warning", "Render devuelto a cola", {"error": str(error or "")[:1000]})
 
 
 def recipient_cookie_name(recipient_token: str) -> str:
@@ -7832,14 +7577,343 @@ def process_all_due_payouts() -> list[dict]:
 
     return results
 
+
+# =========================================================
+# RC74 FULL — COLA, RECOVERY Y AUTOGESTIÓN
+# =========================================================
+
+def rc74_admin_guard(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+
+def rc74_parse_dt(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def rc74_minutes_since(value):
+    dt = rc74_parse_dt(value)
+    if not dt:
+        return None
+    try:
+        now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
+        return int((now - dt).total_seconds() // 60)
+    except Exception:
+        return None
+
+
+def rc74_computed_order_state(order: dict) -> str:
+    if not order:
+        return "UNKNOWN"
+    if not bool(order.get("paid")):
+        return "CREATED"
+    if bool(order.get("reaction_uploaded")) and bool(order.get("sender_notified")):
+        return "SENDER_PACK_SENT"
+    if bool(order.get("reaction_uploaded")):
+        return "REACTION_UPLOADED"
+    if bool(order.get("experience_completed")):
+        return "COMPLETED"
+    if bool(order.get("experience_started")):
+        return "STARTED"
+    if bool(order.get("delivered_to_recipient")) or bool(order.get("delivery_sent")):
+        return "DELIVERED"
+    if order.get("experience_video_url"):
+        return "RENDERED"
+    if bool(order.get("video_render_requested")):
+        return "RENDERING"
+    return "PENDING_RENDER"
+
+
+def rc74_count(where_sql: str, params=()):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(f"SELECT COUNT(*) AS c FROM orders WHERE {where_sql}", tuple(params))
+    row = cur.fetchone()
+    conn.close()
+    return int(row["c"] if row else 0)
+
+
+def rc74_list_orders(where_sql: str, params=(), limit: int = 50):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(f"""
+        SELECT
+            id, paid, order_state, order_version, render_status, render_attempts,
+            video_render_requested, video_render_requested_at, render_started_at, render_last_error,
+            experience_video_url, delivered_to_recipient, delivery_sent, delivery_sent_at,
+            experience_started, experience_completed, reaction_uploaded, sender_notified,
+            recipient_sms_attempts, sender_sms_attempts, recipient_sms_error, sender_sms_error,
+            created_at, updated_at
+        FROM orders
+        WHERE {where_sql}
+        ORDER BY created_at ASC
+        LIMIT ?
+    """, tuple(params) + (int(limit),))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    for r in rows:
+        r["computed_state"] = rc74_computed_order_state(r)
+        r["minutes_since_created"] = rc74_minutes_since(r.get("created_at"))
+        r["minutes_since_render_started"] = rc74_minutes_since(r.get("render_started_at") or r.get("video_render_requested_at"))
+    return rows
+
+
+def rc74_queue_snapshot():
+    return {
+        "pending_render": rc74_count(
+            "paid = 1 AND COALESCE(video_render_requested,0) = 0 AND (experience_video_url IS NULL OR experience_video_url = '') AND COALESCE(render_attempts,0) < ?",
+            (ETERNA_RENDER_MAX_ATTEMPTS,),
+        ),
+        "rendering_waiting_callback": rc74_count(
+            "paid = 1 AND COALESCE(video_render_requested,0) = 1 AND (experience_video_url IS NULL OR experience_video_url = '')"
+        ),
+        "failed_render": rc74_count(
+            "paid = 1 AND COALESCE(render_attempts,0) >= ? AND (experience_video_url IS NULL OR experience_video_url = '')",
+            (ETERNA_RENDER_MAX_ATTEMPTS,),
+        ),
+        "rendered_not_delivered": rc74_count(
+            "paid = 1 AND experience_video_url IS NOT NULL AND experience_video_url != '' AND COALESCE(delivered_to_recipient,0) = 0 AND COALESCE(delivery_sent,0) = 0"
+        ),
+        "completed_no_reaction": rc74_count(
+            "paid = 1 AND COALESCE(experience_completed,0) = 1 AND COALESCE(reaction_uploaded,0) = 0"
+        ),
+        "reaction_sender_pending": rc74_count(
+            "paid = 1 AND COALESCE(reaction_uploaded,0) = 1 AND COALESCE(sender_notified,0) = 0"
+        ),
+        "recipient_sms_errors": rc74_count("recipient_sms_error IS NOT NULL AND recipient_sms_error != ''"),
+        "sender_sms_errors": rc74_count("sender_sms_error IS NOT NULL AND sender_sms_error != ''"),
+    }
+
+
+def rc74_process_render_queue(max_jobs: int = 1):
+    """
+    Cola persistente: procesa pedidos pagados pendientes de render.
+    Batch bajo por seguridad.
+    """
+    if ETERNA_SAFE_MODE or not ETERNA_RENDER_QUEUE_ENABLED:
+        return {"ok": True, "skipped": True, "reason": "safe_mode_or_queue_disabled", "processed": []}
+
+    jobs = rc74_list_orders(
+        "paid = 1 AND COALESCE(video_render_requested,0) = 0 AND (experience_video_url IS NULL OR experience_video_url = '') AND COALESCE(render_attempts,0) < ?",
+        (ETERNA_RENDER_MAX_ATTEMPTS,),
+        limit=max(1, int(max_jobs or 1)),
+    )
+
+    processed = []
+    for job in jobs:
+        order_id = job["id"]
+        try:
+            order = get_order_by_id(order_id)
+            if original_video_ready(order):
+                update_order(order_id, render_status="RENDERED", order_state="RENDERED", recovery_last_checked_at=now_iso())
+                insert_order_event(order_id, "RENDER_ALREADY_READY", "ok", "La cola detectó que el vídeo ya estaba listo")
+                processed.append({"order_id": order_id, "ok": True, "reason": "already_rendered"})
+                continue
+
+            phrases = [
+                (order.get("phrase_1") or "").strip(),
+                (order.get("phrase_2") or "").strip(),
+                (order.get("phrase_3") or "").strip(),
+            ]
+
+            mark_video_render_requested(order_id)
+            data = trigger_video_engine(order_id, phrases)
+            insert_order_event(order_id, "RENDER_QUEUE_SENT", "ok", "Pedido enviado al motor desde cola", {"data": data})
+            processed.append({"order_id": order_id, "ok": True, "reason": "sent_to_video_engine"})
+        except Exception as e:
+            clear_video_render_requested(order_id, error=str(e))
+            insert_order_event(order_id, "RENDER_QUEUE_ERROR", "error", "La cola no pudo enviar el pedido al motor", {"error": str(e)[:1000]})
+            processed.append({"order_id": order_id, "ok": False, "reason": str(e)})
+    return {"ok": True, "processed": processed}
+
+
+def rc74_recover_stuck_renders():
+    """
+    Recupera renders marcados como RENDERING que llevan demasiado sin callback.
+    No pierde pedidos: los devuelve a cola hasta máximo de intentos.
+    """
+    if ETERNA_SAFE_MODE or not ETERNA_RECOVERY_WORKER_ENABLED:
+        return {"ok": True, "skipped": True, "reason": "safe_mode_or_recovery_disabled", "recovered": []}
+
+    stuck = rc74_list_orders(
+        "paid = 1 AND COALESCE(video_render_requested,0) = 1 AND (experience_video_url IS NULL OR experience_video_url = '')",
+        limit=50,
+    )
+    recovered = []
+    for order in stuck:
+        order_id = order["id"]
+        minutes = rc74_minutes_since(order.get("render_started_at") or order.get("video_render_requested_at"))
+        attempts = int(order.get("render_attempts") or 0)
+        if minutes is None or minutes < ETERNA_RENDER_STUCK_MINUTES:
+            continue
+        if attempts >= ETERNA_RENDER_MAX_ATTEMPTS:
+            update_order(
+                order_id,
+                render_status="FAILED_RENDER",
+                order_state="ERROR_NEEDS_REVIEW",
+                recovery_last_checked_at=now_iso(),
+                recovery_notes=f"Render atascado {minutes} min y máximo de intentos alcanzado",
+            )
+            insert_order_event(order_id, "RENDER_FAILED_MAX_ATTEMPTS", "error", "Render agotó intentos y requiere revisión", {"minutes": minutes, "attempts": attempts})
+            recovered.append({"order_id": order_id, "action": "failed_needs_review", "minutes": minutes, "attempts": attempts})
+            continue
+
+        clear_video_render_requested(order_id, error=f"Render atascado {minutes} min; devuelto a cola")
+        update_order(order_id, recovery_last_checked_at=now_iso())
+        recovered.append({"order_id": order_id, "action": "requeued", "minutes": minutes, "attempts": attempts})
+
+    return {"ok": True, "recovered": recovered}
+
+
+def rc74_recovery_cycle():
+    """
+    Ciclo de autocuidado: recupera atascados y procesa cola.
+    """
+    return {
+        "recover_stuck_renders": rc74_recover_stuck_renders(),
+        "process_render_queue": rc74_process_render_queue(max_jobs=ETERNA_RENDER_QUEUE_BATCH_SIZE),
+    }
+
+
+@app.get("/admin/health")
+def admin_health(token: str = ""):
+    rc74_admin_guard(token)
+    checks = {}
+    try:
+        conn = db_conn()
+        conn.execute("SELECT 1")
+        conn.close()
+        checks["db"] = "ok"
+    except Exception as e:
+        checks["db"] = f"error: {e}"
+
+    checks["stripe_secret"] = "ok" if STRIPE_SECRET_KEY else "missing"
+    checks["stripe_webhook"] = "ok" if STRIPE_WEBHOOK_SECRET else "missing"
+    checks["twilio_sms"] = "ok" if twilio_enabled() else "missing_or_disabled"
+    checks["sms_enabled"] = bool(SMS_ENABLED)
+    checks["whatsapp_enabled"] = bool(WHATSAPP_ENABLED)
+    checks["video_engine_url"] = VIDEO_ENGINE_URL or "missing"
+    checks["r2"] = "ok" if r2_enabled() else "local_fallback"
+    checks["delivery_worker_enabled"] = bool(DELIVERY_WORKER_ENABLED)
+    checks["recovery_worker_enabled"] = bool(ETERNA_RECOVERY_WORKER_ENABLED)
+    checks["safe_mode"] = bool(ETERNA_SAFE_MODE)
+    checks["app_version"] = ETERNA_APP_VERSION
+    checks["queue"] = rc74_queue_snapshot()
+    return {"ok": checks.get("db") == "ok", "checks": checks, "timestamp": now_iso()}
+
+
+@app.get("/admin/orphans")
+def admin_orphans(token: str = ""):
+    rc74_admin_guard(token)
+    groups = {
+        "paid_pending_render": rc74_list_orders("paid = 1 AND COALESCE(video_render_requested,0) = 0 AND (experience_video_url IS NULL OR experience_video_url = '')", limit=50),
+        "rendering_waiting_callback": rc74_list_orders("paid = 1 AND COALESCE(video_render_requested,0) = 1 AND (experience_video_url IS NULL OR experience_video_url = '')", limit=50),
+        "rendered_not_delivered": rc74_list_orders("paid = 1 AND experience_video_url IS NOT NULL AND experience_video_url != '' AND COALESCE(delivered_to_recipient,0) = 0 AND COALESCE(delivery_sent,0) = 0", limit=50),
+        "completed_without_reaction": rc74_list_orders("paid = 1 AND COALESCE(experience_completed,0) = 1 AND COALESCE(reaction_uploaded,0) = 0", limit=50),
+        "reaction_without_sender_pack": rc74_list_orders("paid = 1 AND COALESCE(reaction_uploaded,0) = 1 AND COALESCE(sender_notified,0) = 0", limit=50),
+    }
+    return {"version": ETERNA_APP_VERSION, "groups": groups, "timestamp": now_iso()}
+
+
+@app.get("/admin/confidence")
+def admin_confidence(token: str = ""):
+    rc74_admin_guard(token)
+    score = 100
+    reasons = []
+    health = admin_health(token=token)
+    checks = health.get("checks", {})
+    if checks.get("db") != "ok":
+        score -= 35
+        reasons.append("DB no está OK")
+    if checks.get("stripe_secret") != "ok":
+        score -= 15
+        reasons.append("Stripe secret ausente")
+    if checks.get("stripe_webhook") != "ok":
+        score -= 10
+        reasons.append("Stripe webhook ausente")
+    if not VIDEO_ENGINE_URL:
+        score -= 20
+        reasons.append("Video Engine URL ausente")
+    if checks.get("twilio_sms") != "ok":
+        score -= 10
+        reasons.append("Twilio/SMS no configurado completo")
+    if ETERNA_SAFE_MODE:
+        score -= 25
+        reasons.append("SAFE MODE activo")
+
+    q = rc74_queue_snapshot()
+    risk = (
+        q.get("failed_render", 0) * 10
+        + q.get("rendering_waiting_callback", 0) * 3
+        + q.get("completed_no_reaction", 0) * 5
+        + q.get("reaction_sender_pending", 0) * 4
+        + q.get("recipient_sms_errors", 0) * 2
+        + q.get("sender_sms_errors", 0) * 2
+    )
+    if risk:
+        score -= min(35, risk)
+        reasons.append("Hay señales de cola/pedidos/errores que revisar")
+
+    score = max(0, min(100, int(score)))
+    status = "LISTA_PARA_PRUEBA_CONTROLADA" if score >= 85 else "REVISAR_ANTES_DE_LANZAR" if score >= 65 else "NO_LANZAR"
+    return {"confidence": score, "status": status, "reasons": reasons, "queue": q, "timestamp": now_iso()}
+
+
+@app.get("/admin/go-live")
+def admin_go_live(token: str = ""):
+    rc74_admin_guard(token)
+    health = admin_health(token=token)
+    confidence = admin_confidence(token=token)
+    blocking = []
+    if health["checks"].get("db") != "ok":
+        blocking.append("DB no accesible")
+    if not STRIPE_SECRET_KEY:
+        blocking.append("Falta STRIPE_SECRET_KEY")
+    if not STRIPE_WEBHOOK_SECRET:
+        blocking.append("Falta STRIPE_WEBHOOK_SECRET")
+    if not VIDEO_ENGINE_URL:
+        blocking.append("Falta VIDEO_ENGINE_URL")
+    if confidence["confidence"] < 85:
+        blocking.append("Confianza menor de 85")
+    if ETERNA_SAFE_MODE:
+        blocking.append("SAFE MODE activo")
+
+    decision = "APTA_PARA_PRUEBA_CONTROLADA" if not blocking else "NO_LANZAR_AUN"
+    return {
+        "version": ETERNA_APP_VERSION,
+        "decision": decision,
+        "blocking": blocking,
+        "health": health,
+        "confidence": confidence,
+        "principle": "Todo puede fallar. Ningún pedido puede perderse jamás.",
+        "timestamp": now_iso(),
+    }
+
+
+@app.post("/admin/recovery-cycle")
+def admin_recovery_cycle(request: Request):
+    admin_token = (request.query_params.get("token") or request.headers.get("x-admin-token") or "").strip()
+    rc74_admin_guard(admin_token)
+    return rc74_recovery_cycle()
+
+
 def delivery_worker_loop():
     print("🚀 DELIVERY WORKER STARTED")
     while True:
         try:
-            process_all_due_scheduled_deliveries()
-            process_all_pending_reaction_recoveries()
-            process_all_due_sender_notifications()
-            process_all_due_payouts()
+            if ETERNA_SAFE_MODE:
+                print("🛟 ETERNA_SAFE_MODE activo: no se procesan entregas, SMS, sender packs ni payouts automáticos.")
+            else:
+                rc74_recovery_cycle()
+                process_all_due_scheduled_deliveries()
+                process_all_pending_reaction_recoveries()
+                process_all_due_sender_notifications()
+                process_all_due_payouts()
         except Exception as e:
             log_error("delivery_worker_loop", e)
 
@@ -8074,9 +8148,14 @@ async def stripe_webhook(request: Request):
             data = trigger_video_engine(order_id, phrases)
             print("✅ Video engine aceptó el trabajo:", data)
         except Exception as e:
-            clear_video_render_requested(order_id)
-            log_error("webhook_video_engine", e)
-            raise HTTPException(status_code=500, detail=f"video_engine_error: {e}")
+            clear_video_render_requested(order_id, error=str(e))
+            log_error("webhook_video_engine_queued_for_recovery", e)
+            return {
+                "status": "ok",
+                "reason": "video_engine_error_queued_for_recovery",
+                "order_id": order_id,
+                "error": str(e),
+            }
 
         return {"status": "ok", "reason": "render_requested"}
 
@@ -8147,7 +8226,17 @@ async def internal_video_ready(request: Request):
             order_id,
             experience_video_url=final_video_url,
             video_render_requested=0,
-            order_state="VIDEO_READY",
+            render_status="RENDERED",
+            order_state="RENDERED",
+            render_last_error=None,
+            recovery_last_checked_at=now_iso(),
+        )
+        insert_order_event(
+            order_id,
+            "RENDER_FINISHED",
+            "ok",
+            "Callback recibido y vídeo guardado como listo",
+            {"video_url": final_video_url, "version": ETERNA_APP_VERSION},
         )
 
         video_url = final_video_url
@@ -12544,6 +12633,360 @@ def admin_debug_photos(order_id: str, token: str = ""):
     </body>
     </html>
     """
+
+
+
+# =========================================================
+# RC74A — OBSERVABILITY PLUS SAFE
+# Solo lectura. No cambia estados. No reintenta. No envía mensajes.
+# =========================================================
+
+def rc74a_admin_guard(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+
+def rc74a_parse_dt(value):
+    if not value:
+        return None
+    try:
+        raw = str(value).replace("Z", "+00:00")
+        return datetime.fromisoformat(raw)
+    except Exception:
+        return None
+
+
+def rc74a_minutes_since(value):
+    dt = rc74a_parse_dt(value)
+    if not dt:
+        return None
+    try:
+        if dt.tzinfo is None:
+            now = datetime.now()
+        else:
+            now = datetime.now(dt.tzinfo)
+        return int((now - dt).total_seconds() // 60)
+    except Exception:
+        return None
+
+
+def rc74a_count_where(where_sql: str, params=()):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(f"SELECT COUNT(*) AS c FROM orders WHERE {where_sql}", params)
+    row = cur.fetchone()
+    conn.close()
+    return int(row["c"] if row else 0)
+
+
+def rc74a_list_orders(where_sql: str, params=(), limit: int = 30):
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute(f"""
+        SELECT
+            id,
+            paid,
+            delivered_to_recipient,
+            delivery_sent,
+            video_render_requested,
+            video_render_requested_at,
+            experience_video_url,
+            experience_started,
+            experience_completed,
+            reaction_uploaded,
+            sender_notified,
+            recipient_sms_attempts,
+            sender_sms_attempts,
+            recipient_sms_error,
+            sender_sms_error,
+            created_at,
+            updated_at
+        FROM orders
+        WHERE {where_sql}
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, tuple(params) + (int(limit),))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return rows
+
+
+def rc74a_order_public_state(order: dict) -> str:
+    if not order.get("paid"):
+        return "CREATED_NOT_PAID"
+    if not order.get("video_render_requested"):
+        return "PAID_PENDING_RENDER_REQUEST"
+    if order.get("video_render_requested") and not order.get("experience_video_url"):
+        return "RENDERING_OR_WAITING_CALLBACK"
+    if order.get("experience_video_url") and not (order.get("delivered_to_recipient") or order.get("delivery_sent")):
+        return "RENDERED_NOT_DELIVERED"
+    if (order.get("delivered_to_recipient") or order.get("delivery_sent")) and not order.get("experience_started"):
+        return "DELIVERED_NOT_STARTED"
+    if order.get("experience_started") and not order.get("experience_completed"):
+        return "STARTED_NOT_COMPLETED"
+    if order.get("experience_completed") and not order.get("reaction_uploaded"):
+        return "COMPLETED_NO_REACTION"
+    if order.get("reaction_uploaded") and not order.get("sender_notified"):
+        return "REACTION_UPLOADED_SENDER_PENDING"
+    if order.get("sender_notified"):
+        return "SENDER_PACK_SENT"
+    return "UNKNOWN"
+
+
+def rc74a_queue_snapshot():
+    paid_pending_render = rc74a_count_where("paid = 1 AND COALESCE(video_render_requested,0) = 0")
+    rendering_waiting_callback = rc74a_count_where(
+        "paid = 1 AND COALESCE(video_render_requested,0) = 1 AND (experience_video_url IS NULL OR experience_video_url = '')"
+    )
+    rendered_not_delivered = rc74a_count_where(
+        "paid = 1 AND experience_video_url IS NOT NULL AND experience_video_url != '' AND COALESCE(delivered_to_recipient,0) = 0 AND COALESCE(delivery_sent,0) = 0"
+    )
+    delivered_not_started = rc74a_count_where(
+        "paid = 1 AND (COALESCE(delivered_to_recipient,0) = 1 OR COALESCE(delivery_sent,0) = 1) AND COALESCE(experience_started,0) = 0"
+    )
+    completed_no_reaction = rc74a_count_where(
+        "paid = 1 AND COALESCE(experience_completed,0) = 1 AND COALESCE(reaction_uploaded,0) = 0"
+    )
+    reaction_sender_pending = rc74a_count_where(
+        "paid = 1 AND COALESCE(reaction_uploaded,0) = 1 AND COALESCE(sender_notified,0) = 0"
+    )
+    sms_errors = rc74a_count_where(
+        "(recipient_sms_error IS NOT NULL AND recipient_sms_error != '') OR (sender_sms_error IS NOT NULL AND sender_sms_error != '')"
+    )
+    return {
+        "paid_pending_render": paid_pending_render,
+        "rendering_waiting_callback": rendering_waiting_callback,
+        "rendered_not_delivered": rendered_not_delivered,
+        "delivered_not_started": delivered_not_started,
+        "completed_no_reaction": completed_no_reaction,
+        "reaction_uploaded_sender_pending": reaction_sender_pending,
+        "sms_errors": sms_errors,
+        "total_visible_risk": (
+            paid_pending_render
+            + rendering_waiting_callback
+            + rendered_not_delivered
+            + completed_no_reaction
+            + reaction_sender_pending
+            + sms_errors
+        ),
+    }
+
+
+@app.get("/admin/rc74a-queue-status")
+def admin_rc74a_queue_status(token: str = ""):
+    """
+    Cola de pedidos en modo lectura.
+    No reintenta, no envía, no cambia DB.
+    Sirve para ver si hay pedidos atascados antes de automatizar nada.
+    """
+    rc74a_admin_guard(token)
+    snapshot = rc74a_queue_snapshot()
+    sample_pending = rc74a_list_orders("paid = 1 AND COALESCE(video_render_requested,0) = 0", limit=15)
+    sample_rendering = rc74a_list_orders(
+        "paid = 1 AND COALESCE(video_render_requested,0) = 1 AND (experience_video_url IS NULL OR experience_video_url = '')",
+        limit=15,
+    )
+
+    for item in sample_pending + sample_rendering:
+        item["state"] = rc74a_order_public_state(item)
+        item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
+        item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
+
+    return {
+        "version": "RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3",
+        "mode": "read_only",
+        "auto_retry": False,
+        "sends_messages": False,
+        "queue": snapshot,
+        "pending_render_sample": sample_pending,
+        "rendering_waiting_callback_sample": sample_rendering,
+        "principle": "Todo puede fallar. Ningún pedido puede perderse jamás.",
+        "timestamp": now_iso(),
+    }
+
+
+@app.get("/admin/rc74a-orphans")
+def admin_rc74a_orphans(token: str = ""):
+    """
+    Detección de pedidos huérfanos en modo lectura.
+    No arregla todavía. Solo encuentra.
+    """
+    rc74a_admin_guard(token)
+
+    groups = {
+        "paid_without_render_request": rc74a_list_orders(
+            "paid = 1 AND COALESCE(video_render_requested,0) = 0",
+            limit=25,
+        ),
+        "render_requested_without_video": rc74a_list_orders(
+            "paid = 1 AND COALESCE(video_render_requested,0) = 1 AND (experience_video_url IS NULL OR experience_video_url = '')",
+            limit=25,
+        ),
+        "rendered_not_delivered": rc74a_list_orders(
+            "paid = 1 AND experience_video_url IS NOT NULL AND experience_video_url != '' AND COALESCE(delivered_to_recipient,0) = 0 AND COALESCE(delivery_sent,0) = 0",
+            limit=25,
+        ),
+        "completed_without_reaction": rc74a_list_orders(
+            "paid = 1 AND COALESCE(experience_completed,0) = 1 AND COALESCE(reaction_uploaded,0) = 0",
+            limit=25,
+        ),
+        "reaction_without_sender_notification": rc74a_list_orders(
+            "paid = 1 AND COALESCE(reaction_uploaded,0) = 1 AND COALESCE(sender_notified,0) = 0",
+            limit=25,
+        ),
+    }
+
+    total = 0
+    for rows in groups.values():
+        total += len(rows)
+        for item in rows:
+            item["state"] = rc74a_order_public_state(item)
+            item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
+            item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
+
+    return {
+        "version": "RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3",
+        "mode": "read_only",
+        "total_orphan_samples": total,
+        "groups": groups,
+        "timestamp": now_iso(),
+    }
+
+
+@app.get("/admin/rc74a-confidence")
+def admin_rc74a_confidence(token: str = ""):
+    """
+    Índice simple de confianza ETERNA.
+    No es perfecto: sirve para decidir si podemos lanzar o no con calma.
+    """
+    rc74a_admin_guard(token)
+
+    score = 100
+    reasons = []
+
+    try:
+        conn = db_conn()
+        conn.execute("SELECT 1")
+        conn.close()
+    except Exception as e:
+        score -= 30
+        reasons.append(f"DB no accesible: {e}")
+
+    if not STRIPE_SECRET_KEY:
+        score -= 15
+        reasons.append("Stripe secret no configurado")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        score -= 10
+        reasons.append("Stripe webhook secret no configurado")
+
+    if not VIDEO_ENGINE_URL:
+        score -= 20
+        reasons.append("Video engine URL no configurada")
+
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and (TWILIO_FROM_NUMBER or TWILIO_WHATSAPP_FROM)):
+        score -= 10
+        reasons.append("Twilio/SMS/WhatsApp incompleto")
+
+    snapshot = rc74a_queue_snapshot()
+    risk = int(snapshot.get("total_visible_risk", 0))
+    if risk > 0:
+        penalty = min(25, risk * 5)
+        score -= penalty
+        reasons.append(f"Hay {risk} señales de pedidos pendientes/huérfanos/errores SMS")
+
+    missing_assets = []
+    try:
+        for key, filename in ETERNA_SCREEN_ASSETS.items():
+            resolved = resolve_eterna_asset_filename(filename)
+            path = ETERNA_BG_FOLDER / resolved
+            if not path.exists():
+                missing_assets.append(key)
+    except Exception as e:
+        score -= 10
+        reasons.append(f"No se pudo auditar assets: {e}")
+
+    if missing_assets:
+        penalty = min(20, len(missing_assets) * 2)
+        score -= penalty
+        reasons.append(f"Assets faltantes: {', '.join(missing_assets[:8])}")
+
+    score = max(0, min(100, int(score)))
+
+    if score >= 90:
+        status = "LISTA_PARA_PROBAR_LANZAMIENTO"
+    elif score >= 75:
+        status = "CASI_LISTA_REVISAR_AVISOS"
+    elif score >= 50:
+        status = "NO_LANZAR_AUN"
+    else:
+        status = "RIESGO_ALTO"
+
+    return {
+        "version": "RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3",
+        "confidence_score": score,
+        "status": status,
+        "reasons": reasons,
+        "queue": snapshot,
+        "missing_assets": missing_assets,
+        "auto_actions_enabled": False,
+        "timestamp": now_iso(),
+    }
+
+
+@app.get("/admin/rc74a-production-validator")
+def admin_rc74a_production_validator(token: str = ""):
+    """
+    Página de decisión rápida: ¿está ETERNA lista hoy?
+    Modo lectura. No toca flujo.
+    """
+    rc74a_admin_guard(token)
+
+    confidence = admin_rc74a_confidence(token=token)
+    checks = {
+        "db": True,
+        "stripe_secret": bool(STRIPE_SECRET_KEY),
+        "stripe_webhook": bool(STRIPE_WEBHOOK_SECRET),
+        "video_engine_url": bool(VIDEO_ENGINE_URL),
+        "twilio_available": bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and (TWILIO_FROM_NUMBER or TWILIO_WHATSAPP_FROM)),
+        "sms_enabled": bool(SMS_ENABLED),
+        "whatsapp_enabled": bool(WHATSAPP_ENABLED),
+        "r2_configured": bool(r2_enabled()),
+        "worker_enabled": bool(DELIVERY_WORKER_ENABLED),
+        "public_base_url": bool(PUBLIC_BASE_URL),
+    }
+
+    try:
+        conn = db_conn()
+        conn.execute("SELECT 1")
+        conn.close()
+    except Exception:
+        checks["db"] = False
+
+    blocking = []
+    if not checks["db"]:
+        blocking.append("DB no accesible")
+    if not checks["stripe_secret"]:
+        blocking.append("Stripe secret ausente")
+    if not checks["stripe_webhook"]:
+        blocking.append("Stripe webhook secret ausente")
+    if not checks["video_engine_url"]:
+        blocking.append("Video engine URL ausente")
+    if confidence["confidence_score"] < 75:
+        blocking.append("Confianza ETERNA por debajo de 75")
+
+    decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
+
+    return {
+        "version": "RC74_FULL_AUTONOMOUS_DEPLOY_SAFE_V3",
+        "decision": decision,
+        "blocking": blocking,
+        "checks": checks,
+        "confidence": confidence,
+        "next_safe_step": "Si todo está verde, hacer prueba completa controlada antes de abrir público.",
+        "timestamp": now_iso(),
+    }
+
 
 
 # =========================================================
