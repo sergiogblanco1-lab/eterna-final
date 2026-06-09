@@ -1,12 +1,11 @@
 # =========================================================
-# RC75F_RUNTIME_RESCUE_SAFE
-# Base: RC75F_RUNTIME_RESCUE_SAFE que fallaba.
-# Objetivo:
-# - mantener RC75 largo + Yul + formulario emocional
-# - NO tocar Stripe, Twilio, SMS, WhatsApp, webhooks, video engine, reacción,
-#   sender pack, workers ni cobros
-# - blindar carpetas runtime (/data/reactions, /data/reaction_chunks) con fallback
-#   si Render no tiene disco montado/permisos.
+# RC75H_FIX_CREAR_FORM_FINAL_SAFE
+# Base: RC75F runtime rescue.
+# Corrige GET /crear 500:
+# - CSS Yul dentro de f-string necesitaba llaves dobles {{ }}
+# - error visto: NameError: name 'border' is not defined
+# NO toca Stripe, Twilio, SMS, WhatsApp, webhooks, video engine, reacción,
+# sender pack, workers ni cobros.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -23,10 +22,11 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC75F RUNTIME RESCUE SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC75H FIX CREAR FORM FINAL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC75F RUNTIME RESCUE SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC75F RUNTIME RESCUE SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC75H FIX CREAR FORM FINAL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC75H FIX CREAR FORM FINAL SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC75H FIX CREAR FORM FINAL SAFE — /CREAR OK 🛟")
 import html
 import json
 import mimetypes
@@ -183,7 +183,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC75F_RUNTIME_RESCUE_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC75H_FIX_CREAR_FORM_FINAL_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -5743,27 +5743,27 @@ def render_create_form() -> str:
         @keyframes cinematicIn {{ from {{ opacity:0; transform:scale(1.02); }} to {{ opacity:1; transform:scale(1); }} }}
         @keyframes cinematicBreath {{ 0%,100% {{ opacity:.42; transform:scale(1); }} 50% {{ opacity:.85; transform:scale(1.045); }} }}
 
-            .s-yul {
+            .s-yul {{
                 border: 1px solid rgba(112, 219, 255, 0.18);
                 background:
                     radial-gradient(circle at top left, rgba(69, 211, 255, 0.10), transparent 34%),
                     radial-gradient(circle at bottom right, rgba(255, 206, 116, 0.09), transparent 38%),
                     rgba(255,255,255,0.035);
                 box-shadow: 0 0 34px rgba(64, 202, 255, 0.08);
-            }
-            .yul-emotional-grid {
+            }}
+            .yul-emotional-grid {{
                 display: grid;
                 gap: 16px;
                 margin-top: 16px;
-            }
-            .field-label {
+            }}
+            .field-label {{
                 display: grid;
                 gap: 8px;
                 color: rgba(255,255,255,0.82);
                 font-size: 14px;
                 line-height: 1.45;
-            }
-            .text-input {
+            }}
+            .text-input {{
                 width: 100%;
                 border: 1px solid rgba(255,255,255,0.14);
                 border-radius: 18px;
@@ -5772,15 +5772,15 @@ def render_create_form() -> str:
                 color: white;
                 font: inherit;
                 outline: none;
-            }
-            .text-input:focus {
+            }}
+            .text-input:focus {{
                 border-color: rgba(108, 215, 255, 0.68);
                 box-shadow: 0 0 0 4px rgba(108, 215, 255, 0.10);
-            }
-            textarea.text-input {
+            }}
+            textarea.text-input {{
                 resize: vertical;
                 min-height: 92px;
-            }
+            }}
 </style>
     </head>
     <body>
@@ -8070,7 +8070,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC75F_RUNTIME_RESCUE_SAFE",
+        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8675,7 +8675,7 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 
 def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     """
-    RC75F_RUNTIME_RESCUE_SAFE.
+    RC75H_FIX_CREAR_FORM_FINAL_SAFE.
     Sustituye únicamente la pre-experiencia /guia por EL UMBRAL.
     No toca Stripe, Twilio, webhooks, DB crítica, video engine, reaction upload,
     sender pack, cola RC74 ni recovery worker.
@@ -12523,7 +12523,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC75F_RUNTIME_RESCUE_SAFE",
+        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -12575,7 +12575,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC75F_RUNTIME_RESCUE_SAFE",
+        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -12653,7 +12653,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC75F_RUNTIME_RESCUE_SAFE",
+        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -12708,7 +12708,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC75F_RUNTIME_RESCUE_SAFE",
+        "version": "RC75H_FIX_CREAR_FORM_FINAL_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
