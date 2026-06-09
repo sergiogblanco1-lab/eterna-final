@@ -1,24 +1,13 @@
 # =========================================================
-# RC76_ALL_IN_REVIEW_SAFE
-# GOLDEN MASTER CONSERVADO APARTE:
-# - ETERNA_MAIN_GOLDEN_MASTER_SALVAVIDAS_DO_NOT_TOUCH.py
-#
-# Base funcional de trabajo:
-# - RC75H corregido
-#
-# Contiene:
-# - MAIN largo
-# - RC74 core / recovery / render queue / health / confidence / orphans
-# - Yul / Umbral
-# - formulario emocional Yul
-# - runtime rescue para carpetas /data
-# - fix GET /crear por CSS dentro de f-string
-#
-# REGLA:
-# - Este archivo es candidato de revisión.
-# - No sustituye al golden master hasta probar circuito completo.
-# - No tocar Stripe, Twilio, SMS, WhatsApp, webhooks, video engine,
-#   reacción, sender pack, workers ni cobros salvo auditoría explícita.
+# RC78C_YUL_SOLO_LUGAR_FINAL_SAFE
+# Base: RC78B.
+# Objetivo:
+# - limpiar de verdad el formulario visible
+# - dejar solo un campo Yul: yul_memory_place
+# - conservar columnas/params antiguos solo como compatibilidad interna
+# - Yul usa el lugar real sin inventar nada
+# - NO toca Stripe, Twilio, SMS, WhatsApp, webhooks, video engine,
+#   reacción, sender pack, workers ni cobros.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -35,12 +24,16 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC76 ALL IN REVIEW SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC76 ALL IN REVIEW SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC76 ALL IN REVIEW SAFE — CARPETAS BLINDADAS 🛟")
-print("🛟 RC76 ALL IN REVIEW SAFE — /CREAR OK 🛟")
-print("🛟 RC76 ALL IN REVIEW SAFE — TODO METIDO PARA REVISAR 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — /CREAR OK 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — TODO METIDO PARA REVISAR 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — SOLO UN LUGAR 🛟")
+print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — FORMULARIO LIMPIO 🛟")
 import html
 import json
 import mimetypes
@@ -197,7 +190,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC76_ALL_IN_REVIEW_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -4593,9 +4586,9 @@ async def create_order_and_redirect(
             )
             insert_order_event(
                 order_id,
-                "rc75_yul_form_saved",
+                "rc78_yul_place_saved",
                 "ok",
-                "Formulario emocional Yul guardado",
+                "Lugar emocional Yul guardado",
                 {
                     "has_place": bool(rc75_clean_emotional_text(yul_memory_place, 140)),
                     "has_memory": bool(rc75_clean_emotional_text(yul_memory_detail, 220)),
@@ -5950,64 +5943,31 @@ def render_create_form() -> str:
                     </div>
 
                     
+                    
+                    
                     <div class="section s-yul">
                         <div class="section-title">El alma de Yul</div>
                         <div class="soft-copy">
-                            No es obligatorio. Pero si lo escribes, ETERNA tendrá una pista más para sentirse tuya.
+                            Una sola pista. Un lugar. Yul no necesita saber más para encontrar una puerta.
                         </div>
 
                         <div class="yul-emotional-grid">
                             <label class="field-label">
-                                Un lugar que le recuerde a algo bonito
+                                ¿Hay algún lugar que forme parte de vuestra historia?
                                 <input
                                     type="text"
                                     name="yul_memory_place"
                                     id="yul_memory_place"
                                     class="text-input"
                                     maxlength="140"
-                                    placeholder="Ej: la playa, una casa, una ciudad, un banco, un verano..."
+                                    placeholder="Ej: Cádiz, la montaña, la casa de la abuela, un banco, París..."
                                     autocomplete="off"
                                 >
                             </label>
 
-                            <label class="field-label">
-                                Un recuerdo pequeño que merezca quedarse
-                                <textarea
-                                    name="yul_memory_detail"
-                                    id="yul_memory_detail"
-                                    class="text-input"
-                                    maxlength="220"
-                                    rows="3"
-                                    placeholder="Ej: una tarde, una risa, una frase, una mirada..."
-                                ></textarea>
-                            </label>
-
-                            <label class="field-label">
-                                Qué emoción quieres que sienta
-                                <select name="yul_emotion_tone" id="yul_emotion_tone" class="text-input">
-                                    <option value="">Que Yul lo descubra</option>
-                                    <option value="ternura">Ternura</option>
-                                    <option value="amor">Amor</option>
-                                    <option value="gratitud">Gratitud</option>
-                                    <option value="nostalgia">Nostalgia bonita</option>
-                                    <option value="orgullo">Orgullo</option>
-                                    <option value="sorpresa">Sorpresa</option>
-                                    <option value="magia">Magia</option>
-                                </select>
-                            </label>
-
-                            <label class="field-label">
-                                Una pista secreta para Yul
-                                <input
-                                    type="text"
-                                    name="yul_magic_hint"
-                                    id="yul_magic_hint"
-                                    class="text-input"
-                                    maxlength="160"
-                                    placeholder="Ej: dile que mire despacio, que no tenga prisa, que se deje querer..."
-                                    autocomplete="off"
-                                >
-                            </label>
+                            <div class="soft-copy yul-one-place-note">
+                                No expliques el recuerdo. Solo escribe el lugar. Yul hará el resto.
+                            </div>
                         </div>
                     </div>
 
@@ -8084,7 +8044,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC76_ALL_IN_REVIEW_SAFE",
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8100,7 +8060,7 @@ def admin_rc76_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC76_ALL_IN_REVIEW_SAFE",
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
         "golden_master_preserved": True,
         "contains_rc74_core": True,
         "contains_yul_umbral": True,
@@ -8108,6 +8068,58 @@ def admin_rc76_version(token: str = ""):
         "contains_runtime_folder_rescue": True,
         "contains_crear_css_fix": True,
         "review_candidate": True,
+        "touches_critical_core": False,
+    }
+
+
+@app.get("/admin/rc77-version")
+def admin_rc77_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {"version":"RC78C_YUL_SOLO_LUGAR_FINAL_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
+
+
+
+@app.get("/admin/rc78-version")
+def admin_rc78_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "formulario_yul": "solo_lugar",
+        "uses_real_place": True,
+        "generic_romantic_responses": True,
+        "does_not_invent_memory": True,
+        "touches_critical_core": False,
+    }
+
+
+
+@app.get("/admin/rc78b-version")
+def admin_rc78b_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "formulario_yul": "solo_lugar",
+        "lugar_real_en_historia": True,
+        "no_inventa_recuerdos": True,
+        "compatible_db_columns": True,
+        "touches_critical_core": False,
+    }
+
+
+
+@app.get("/admin/rc78c-version")
+def admin_rc78c_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "formulario_yul": "solo_lugar_visible",
+        "lugar_real_en_historia": True,
+        "no_inventa_recuerdos": True,
+        "compatible_db_columns": True,
         "touches_critical_core": False,
     }
 
@@ -8705,9 +8717,29 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 # NO toca Stripe, Twilio, webhooks, DB, Video Engine, reacción, cobros ni sender pack.
 # =========================================================
 
+
+# =========================================================
+# RC78 — YUL LUGAR ÚNICO / FRASES GENÉRICAS ROMÁNTICAS
+# =========================================================
+
+def rc78_yul_place_lines(place: str) -> str:
+    clean_place = rc75_clean_emotional_text(place, 140) if "rc75_clean_emotional_text" in globals() else str(place or "").strip()[:140]
+    if not clean_place:
+        return ""
+
+    safe_place = safe_text(clean_place)
+    lines = [
+        f'<div class="line small l-place-found">Espera...<br><span class="gold">creo que he encontrado algo.</span></div>',
+        f'<div class="line big l-place-name"><span class="gold">{safe_place}</span></div>',
+        '<div class="line small l-place-meaning">No sé qué ocurrió allí.<br><span class="gold">Pero alguien decidió guardar este lugar.</span></div>',
+        '<div class="line small l-place-heart">Y eso suele significar algo.</div>',
+    ]
+    return "".join(lines)
+
+
 def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     """
-    RC76_ALL_IN_REVIEW_SAFE.
+    RC78C_YUL_SOLO_LUGAR_FINAL_SAFE.
     Sustituye únicamente la pre-experiencia /guia por EL UMBRAL.
     No toca Stripe, Twilio, webhooks, DB crítica, video engine, reaction upload,
     sender pack, cola RC74 ni recovery worker.
@@ -8718,19 +8750,41 @@ def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
         yul_context = rc75_yul_context_from_order(order)
+        yul_place_story_line = rc78_yul_place_lines(yul_context.get("memory_place", ""))
     except Exception:
         yul_context = {"memory_place": "", "memory_detail": "", "emotion_tone": "", "magic_hint": ""}
+        yul_place_story_line = ""
 
     yul_place_line = ""
-    if yul_context.get("memory_place"):
-        yul_place_line = '<div class="line small l-extra-place">Algunos lugares no se visitan.<br><span class="gold">Se vuelven a sentir.</span></div>'
-
+    yul_detail_line = ""
+    yul_emotion_line = ""
     yul_hint_line = ""
-    if yul_context.get("magic_hint"):
-        yul_hint_line = '<div class="line small l-extra-hint">Yul ha encontrado una pista para ti.<br><span class="gold">Mira despacio.</span></div>'
+    bridge_memory_line = ""
+    bridge_hint_line = ""
 
-    html_doc = '\n<!DOCTYPE html>\n<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA - El Umbral</title><meta name="theme-color" content="#02050a"><style>\n*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}body{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}.umbral{position:relative;width:100vw;height:100svh;height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}.stage{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:radial-gradient(circle at 50% 78%,rgba(5,56,92,.60),transparent 31%),radial-gradient(circle at 16% 16%,rgba(44,180,255,.10),transparent 24%),linear-gradient(180deg,#000 0%,#020713 46%,#030d18 100%)}.stage:before{content:"";position:absolute;inset:-18%;background:conic-gradient(from 220deg at 50% 50%,transparent,rgba(48,179,255,.16),transparent,rgba(255,197,96,.10),transparent);filter:blur(18px);opacity:.64;animation:breathWorld 16s ease-in-out infinite;pointer-events:none}.stage:after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.44) 0 1px,transparent 1.4px),radial-gradient(circle,rgba(66,213,255,.70) 0 1px,transparent 1.5px),radial-gradient(circle,rgba(255,211,123,.48) 0 1px,transparent 1.5px);background-size:97px 131px,137px 191px,191px 251px;opacity:.46;animation:starDrift 42s linear infinite;pointer-events:none}.brand{position:absolute;z-index:20;top:calc(env(safe-area-inset-top) + 22px);left:0;right:0;text-align:center;letter-spacing:.46em;font-family:Georgia,"Times New Roman",serif;font-size:clamp(17px,5.3vw,28px);color:#eec36a;text-shadow:0 0 22px rgba(255,200,93,.52);opacity:.80}.brand:after{content:"♡";display:block;letter-spacing:0;margin-top:7px;font-size:19px;color:#ffd477;text-shadow:0 0 22px rgba(255,204,90,.72)}.yul{position:absolute;z-index:18;left:50%;top:50%;width:18px;height:18px;border-radius:999px;background:radial-gradient(circle,#fff 0 16%,#9ee9ff 18% 32%,#265cff 36% 54%,rgba(76,0,255,.32) 65%,transparent 76%);box-shadow:0 0 18px rgba(255,255,255,.95),0 0 42px rgba(81,214,255,.86),0 0 82px rgba(40,86,255,.54),0 0 118px rgba(89,0,255,.32);filter:saturate(1.25);opacity:0;transform:translate(-50%,-50%);animation:yulLife 88s cubic-bezier(.18,.76,.15,1) forwards;pointer-events:none}.yul:before{content:"";position:absolute;left:-118px;top:7px;width:135px;height:4px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(76,0,255,.05),rgba(60,192,255,.60),rgba(255,255,255,.92));filter:blur(.4px);transform-origin:100% 50%;opacity:.74;animation:yulTail 88s cubic-bezier(.18,.76,.15,1) forwards}.yul:after{content:"";position:absolute;inset:-26px;border-radius:999px;background:radial-gradient(circle,rgba(87,214,255,.30),rgba(58,97,255,.14) 40%,transparent 68%);filter:blur(8px);animation:yulAura 2.1s ease-in-out infinite;opacity:.9}.spark{position:absolute;z-index:13;width:4px;height:4px;border-radius:999px;background:#69d9ff;box-shadow:0 0 14px #69d9ff,0 0 28px rgba(105,217,255,.42);opacity:0;animation:sparkRise 9s linear infinite;pointer-events:none}.spark.gold{background:#ffd782;box-shadow:0 0 14px #ffd782,0 0 28px rgba(255,215,130,.42)}.s1{left:14%;bottom:16%;animation-delay:2s}.s2{right:18%;bottom:21%;animation-delay:4s}.s3{left:26%;top:28%;animation-delay:7s}.s4{right:27%;top:35%;animation-delay:11s}.s5{left:48%;bottom:10%;animation-delay:15s}.s6{right:10%;top:16%;animation-delay:19s}.copy{position:absolute;z-index:22;left:7%;right:7%;top:49%;transform:translateY(-50%);text-align:center;pointer-events:none}.line{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);opacity:0;font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(27px,8.2vw,46px);line-height:1.12;letter-spacing:.005em;color:#fff6e8;text-shadow:0 0 20px rgba(255,255,255,.22),0 0 44px rgba(57,194,255,.22);animation:lineReveal 5.4s ease-in-out forwards}.line.small{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(17px,4.9vw,25px);line-height:1.42;color:#f8ebd8}.line.gold,.gold{color:#f4c46c;text-shadow:0 0 24px rgba(255,199,92,.56),0 0 54px rgba(255,166,41,.20)}.line.whisper{font-size:clamp(38px,14vw,76px);letter-spacing:.03em}.l1{animation-delay:3s}.l2{animation-delay:8.8s}.l3{animation-delay:14.5s}.l4{animation-delay:20.2s}.l5{animation-delay:26.2s}.l6{animation-delay:32.4s}.l7{animation-delay:38.5s}.l8{animation-delay:44.6s}.l9{animation-delay:50.5s}.l10{animation-delay:56.2s}.l11{animation-delay:62.2s}.l12{animation-delay:68.4s}.l13{animation-delay:74s}.l14{animation-delay:80s}.l15{animation-delay:86s}.consent-card,.camera-card{position:absolute;z-index:40;left:6.3%;right:6.3%;top:50%;transform:translateY(-50%) scale(.96);opacity:0;pointer-events:none;padding:25px 20px 22px;border:1px solid rgba(255,215,136,.44);border-radius:28px;background:linear-gradient(180deg,rgba(2,9,20,.88),rgba(1,4,11,.78));box-shadow:0 0 46px rgba(36,171,255,.20),0 0 78px rgba(255,191,83,.13),inset 0 0 28px rgba(255,255,255,.045);backdrop-filter:blur(12px);transition:opacity .9s ease,transform .9s ease}.umbral.consent-phase .consent-card{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}.umbral.camera-phase .camera-card{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}.consent-card h1,.camera-card h1{font-family:Georgia,"Times New Roman",serif;margin:0 0 14px;text-align:center;font-size:clamp(29px,8.2vw,44px);font-weight:400;color:#fff5e5;line-height:1.05}.consent-card h1 span,.camera-card h1 span{color:#f4c46c}.consent-card p,.camera-card p{margin:11px 0;font-size:clamp(15px,4.15vw,19px);line-height:1.42;text-align:center;color:#f6ead6;text-shadow:0 0 16px rgba(0,0,0,.8)}.legal-box{margin:15px 0;padding:14px 13px;border-radius:18px;border:1px solid rgba(255,215,136,.26);background:rgba(0,0,0,.24);font-weight:600}.check-row{margin-top:16px;display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;border:1px solid rgba(255,218,143,.36);background:rgba(0,0,0,.24);text-align:left;color:#fff7e9;font-size:clamp(14px,3.9vw,17px);line-height:1.25}.check-row input{appearance:none;width:33px;height:33px;min-width:33px;border-radius:9px;border:2px solid rgba(255,235,184,.88);background:rgba(0,0,0,.4);box-shadow:0 0 18px rgba(255,213,118,.20);position:relative}.check-row input:checked{background:linear-gradient(135deg,#fff1bb,#e6a43c 58%,#8e5307);box-shadow:0 0 26px rgba(255,196,79,.72)}.check-row input:checked:after{content:"";position:absolute;left:9px;top:3px;width:10px;height:19px;border:solid #120900;border-width:0 4px 4px 0;transform:rotate(45deg)}.consent-btn,.camera-btn,.final-btn{width:100%;border:0;border-radius:24px;margin-top:18px;min-height:66px;background:linear-gradient(135deg,#fff1bb,#e6a43c 54%,#9c5d08);color:#150b02;font-family:Georgia,"Times New Roman",serif;font-size:clamp(21px,6.2vw,31px);box-shadow:0 0 34px rgba(255,190,72,.43),inset 0 0 18px rgba(255,255,255,.22);cursor:pointer}.consent-btn:disabled,.camera-btn:disabled,.final-btn:disabled{filter:saturate(.45) brightness(.65);cursor:not-allowed}.preview-wrap{position:relative;width:100%;aspect-ratio:9/13;border-radius:24px;overflow:hidden;background:#03070e;border:1px solid rgba(255,215,136,.30);box-shadow:0 0 34px rgba(54,199,255,.18),inset 0 0 28px rgba(255,255,255,.04);margin:14px 0}.preview-wrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:saturate(1.04) contrast(1.03) brightness(1.03)}.face-guide{position:absolute;left:50%;top:42%;width:54%;height:37%;transform:translate(-50%,-50%);border-radius:45% 45% 42% 42%;border:1px solid rgba(255,220,143,.48);box-shadow:0 0 24px rgba(255,210,104,.22),inset 0 0 18px rgba(74,210,255,.10);opacity:.76;pointer-events:none}.horizon{position:absolute;left:16%;right:16%;top:42%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,230,171,.66),transparent);box-shadow:0 0 14px rgba(255,219,142,.45);pointer-events:none}.camera-hint{position:absolute;left:8%;right:8%;bottom:10px;text-align:center;padding:10px 12px;border-radius:16px;background:rgba(0,0,0,.46);font-size:13px;color:#fff0d1;line-height:1.25;backdrop-filter:blur(8px)}.final-gate{position:absolute;z-index:45;left:7%;right:7%;bottom:calc(env(safe-area-inset-bottom) + 7%);opacity:0;transform:translateY(24px);pointer-events:none;transition:opacity 1.1s ease,transform 1.1s ease}.umbral.ready-phase .final-gate{opacity:1;transform:translateY(0);pointer-events:auto}.final-btn{min-height:78px;text-transform:uppercase;letter-spacing:.055em;font-weight:900}.final-note{margin-top:13px;text-align:center;color:rgba(255,243,220,.72);font-size:13px;line-height:1.35}.safe-note{position:absolute;z-index:55;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 10px);text-align:center;color:rgba(255,255,255,.31);font-size:11px;pointer-events:none}.umbral.consent-phase .copy,.umbral.camera-phase .copy,.umbral.ready-phase .copy{opacity:0;transition:opacity .7s ease}.umbral.consent-phase .yul{animation:yulHoldConsent 2.8s ease-in-out infinite;opacity:1}.umbral.camera-phase .yul{animation:yulCamera 4.1s ease-in-out infinite;opacity:1}.umbral.ready-phase .yul{animation:yulFarewell 9s ease-in-out forwards;opacity:1}@keyframes breathWorld{0%,100%{transform:scale(.98) rotate(0deg);opacity:.42}50%{transform:scale(1.08) rotate(9deg);opacity:.86}}@keyframes starDrift{from{background-position:0 0,0 0,0 0}to{background-position:130px -310px,-190px -360px,240px -460px}}@keyframes sparkRise{0%{opacity:0;transform:translateY(0) scale(.55)}15%{opacity:.9}75%{opacity:.38}100%{opacity:0;transform:translateY(-160px) translateX(25px) scale(1.12)}}@keyframes lineReveal{0%{opacity:0;filter:blur(14px);transform:translateY(22px) scale(.97)}18%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}76%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}100%{opacity:0;filter:blur(14px);transform:translateY(-20px) scale(1.02)}}@keyframes yulAura{0%,100%{transform:scale(.82);opacity:.46}50%{transform:scale(1.28);opacity:.92}}@keyframes yulTail{0%,7%{opacity:0;transform:rotate(15deg) scaleX(.25)}9%,18%{opacity:.92;transform:rotate(15deg) scaleX(1.2)}19%,27%{opacity:.18;transform:rotate(-30deg) scaleX(.6)}28%,38%{opacity:.86;transform:rotate(8deg) scaleX(1)}39%,49%{opacity:.22;transform:rotate(-20deg) scaleX(.55)}50%,62%{opacity:.92;transform:rotate(22deg) scaleX(1.18)}63%,75%{opacity:.18;transform:rotate(-14deg) scaleX(.55)}76%,88%{opacity:.88;transform:rotate(4deg) scaleX(1.08)}100%{opacity:.14;transform:rotate(0) scaleX(.3)}}@keyframes yulLife{0%{left:-10%;top:76%;opacity:0;transform:translate(-50%,-50%) scale(.50)}3%{opacity:1}7%{left:112%;top:22%;transform:translate(-50%,-50%) scale(1.18)}8%{opacity:0}10%{left:85%;top:78%;opacity:0;transform:translate(-50%,-50%) scale(.58)}12%{opacity:1}17%{left:17%;top:30%;transform:translate(-50%,-50%) scale(1.02)}18%{opacity:0}21%{left:8%;top:55%;opacity:0;transform:translate(-50%,-50%) scale(.7)}23%{opacity:1}29%{left:82%;top:46%;transform:translate(-50%,-50%) scale(1.08)}31%{left:53%;top:40%;opacity:.82;transform:translate(-50%,-50%) scale(.92)}34%{opacity:0}38%{left:70%;top:18%;opacity:0;transform:translate(-50%,-50%) scale(.58)}40%{opacity:1}47%{left:22%;top:74%;transform:translate(-50%,-50%) scale(1.15)}48%{opacity:0}52%{left:104%;top:58%;opacity:0;transform:translate(-50%,-50%) scale(.7)}54%{opacity:1}61%{left:18%;top:42%;transform:translate(-50%,-50%) scale(1.04)}64%{left:50%;top:39%;opacity:.88;transform:translate(-50%,-50%) scale(.92)}67%{opacity:0}72%{left:12%;top:22%;opacity:0;transform:translate(-50%,-50%) scale(.62)}74%{opacity:1}83%{left:88%;top:62%;transform:translate(-50%,-50%) scale(1.22)}85%{opacity:0}89%{left:50%;top:38%;opacity:0;transform:translate(-50%,-50%) scale(.86)}91%{opacity:1}100%{left:50%;top:38%;opacity:.86;transform:translate(-50%,-50%) scale(.96)}}@keyframes yulHoldConsent{0%,100%{left:50%;top:22%;transform:translate(-50%,-50%) scale(.86);box-shadow:0 0 18px rgba(255,255,255,.95),0 0 42px rgba(81,214,255,.76),0 0 82px rgba(40,86,255,.44)}50%{left:50%;top:22%;transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 24px #fff,0 0 62px rgba(81,214,255,.98),0 0 118px rgba(89,0,255,.48)}}@keyframes yulCamera{0%,100%{left:18%;top:18%;transform:translate(-50%,-50%) scale(.78);opacity:.68}25%{left:82%;top:20%;transform:translate(-50%,-50%) scale(1.05);opacity:1}50%{left:80%;top:78%;transform:translate(-50%,-50%) scale(.82);opacity:.78}75%{left:20%;top:75%;transform:translate(-50%,-50%) scale(1.04);opacity:1}}@keyframes yulFarewell{0%{left:50%;top:42%;opacity:1;transform:translate(-50%,-50%) scale(1.18)}42%{left:50%;top:34%;opacity:.9;transform:translate(-50%,-50%) scale(.82)}78%{left:50%;top:21%;opacity:.55;transform:translate(-50%,-50%) scale(.42)}100%{left:50%;top:10%;opacity:0;transform:translate(-50%,-50%) scale(.16)}}@media(max-height:740px){.line{font-size:clamp(23px,7.4vw,39px)}.line.small{font-size:clamp(15px,4.2vw,21px)}.consent-card,.camera-card{padding:17px 16px 16px}.consent-card p,.camera-card p{margin:8px 0}.preview-wrap{aspect-ratio:9/11}.brand{top:calc(env(safe-area-inset-top) + 12px)}}@media(prefers-reduced-motion:reduce){.yul,.yul:before,.yul:after,.stage:before,.stage:after,.spark{animation:none!important}.yul{opacity:.72;left:50%;top:35%}.line{animation:none!important;opacity:1;position:relative;margin-top:18px}.copy{top:37%;transform:none}.line:not(.l1){display:none}}\n</style></head><body><main id="umbral" class="umbral" aria-label="El Umbral de ETERNA"><section class="stage"><div class="brand">ETERNA</div><div class="yul" aria-hidden="true"></div><i class="spark s1"></i><i class="spark gold s2"></i><i class="spark s3"></i><i class="spark gold s4"></i><i class="spark s5"></i><i class="spark gold s6"></i><div class="copy" aria-hidden="true"><div class="line whisper l1 gold">Shhh...</div><div class="line small l2">Escucha...</div><div class="line l3">No todas las historias<br>empiezan cuando creemos.</div><div class="line small l4">Algunas comenzaron<br>mucho antes de que llegaras aquí.</div><div class="line l5">Y sin embargo...</div><div class="line small l6">de alguna manera...<br>te estaban esperando.</div><div class="line small l7">Hay rincones donde los minutos<br>pasan sin hacer ruido.</div><div class="line small l8">Si conoces uno...<br><span class="gold">quédate allí un instante.</span></div>__RC75_YUL_EXTRA_LINES__<div class="line small l9">Los viejos contadores de historias<br>decían que los recuerdos no desaparecen.</div><div class="line small l10">Solo aprenden a esconderse.<br>Y esperan.</div><div class="line small l11">Algunas cosas necesitan reposar<br>para ser vistas.</div><div class="line gold l12">Déjalo descansar.</div><div class="line small l13">Hay quienes buscan la magia toda su vida.</div><div class="line small l14">Y hay quienes la encuentran<br>sin darse cuenta.</div><div class="line l15 gold">Déjame verte.</div></div><div class="consent-card" id="consentCard" role="dialog" aria-modal="true" aria-labelledby="consentTitle"><h1 id="consentTitle">Antes de seguir...<br><span>debo confiarte algo.</span></h1><p>Este momento será grabado.</p><p class="legal-box">Y cuando termine, viajará únicamente hacia la persona que hizo posible que existiera.</p><p>Si decides continuar, aceptas formar parte de esta historia.</p><label class="check-row"><input id="acceptRecording" type="checkbox"><span>He leído y acepto que mi reacción sea grabada y enviada únicamente a la persona que preparó esta ETERNA.</span></label><button id="acceptConsent" class="consent-btn" disabled>Acepto y continuar</button></div><div class="camera-card" id="cameraCard" role="dialog" aria-modal="true" aria-labelledby="cameraTitle"><h1 id="cameraTitle">Ahora sí.</h1><p>Así te verá este momento.</p><div class="preview-wrap"><video id="cameraPreview" autoplay muted playsinline></video><div class="face-guide"></div><div class="horizon"></div><div class="camera-hint" id="cameraHint">Déjalo descansar a la altura de tus ojos. Que la luz te encuentre de frente.</div></div><button id="cameraReady" class="camera-btn" disabled>Ahora sí</button></div><form id="startForm" class="final-gate" method="post" action="/start-experience"><input type="hidden" name="recipient_token" value="__RECIPIENT_TOKEN_SAFE__"><button id="startExperienceNow" class="final-btn" type="submit">Estoy listo</button><div class="final-note">Nos vemos al otro lado.</div></form><div class="safe-note">No cierres esta página. ETERNA está abriendo el camino.</div></section></main><script>\n(function(){const root=document.getElementById(\'umbral\');const check=document.getElementById(\'acceptRecording\');const accept=document.getElementById(\'acceptConsent\');const cameraReady=document.getElementById(\'cameraReady\');const preview=document.getElementById(\'cameraPreview\');const hint=document.getElementById(\'cameraHint\');const form=document.getElementById(\'startForm\');const btn=document.getElementById(\'startExperienceNow\');const token=__RECIPIENT_TOKEN_JSON__;let stream=null;function showConsent(){if(!root.classList.contains(\'consent-done\'))root.classList.add(\'consent-phase\')}setTimeout(showConsent,55000);check.addEventListener(\'change\',function(){accept.disabled=!check.checked});async function openCameraPreview(){try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:\'user\',width:{ideal:720},height:{ideal:1280}},audio:true});preview.srcObject=stream;cameraReady.disabled=false;hint.textContent=\'Déjalo descansar a la altura de tus ojos. Que la luz te encuentre de frente.\';setTimeout(function(){hint.textContent=\'Si puedes verte de frente, ETERNA también podrá verte.\'},5200);setTimeout(function(){hint.textContent=\'Ahora sí.\'},9400)}catch(err){cameraReady.disabled=false;hint.textContent=\'ETERNA necesita cámara y micrófono para continuar. Permítelo cuando el móvil te lo pida.\'}}accept.addEventListener(\'click\',async function(){if(!check.checked)return;root.classList.remove(\'consent-phase\');root.classList.add(\'consent-done\');setTimeout(async function(){root.classList.add(\'camera-phase\');await openCameraPreview()},900)});cameraReady.addEventListener(\'click\',function(){root.classList.remove(\'camera-phase\');root.classList.add(\'ready-phase\');try{if(stream)stream.getTracks().forEach(function(track){track.stop()})}catch(_){}});form.addEventListener(\'submit\',async function(e){e.preventDefault();btn.disabled=true;try{const fd=new FormData(form);const res=await fetch(\'/start-experience\',{method:\'POST\',body:fd,headers:{\'X-ETERNA-AJAX\':\'1\'}});if(!res.ok)throw new Error(\'start_experience_failed\');let data={};try{data=await res.json()}catch(_){}window.location.replace(data.redirect_url||(\'/experiencia/\'+encodeURIComponent(token)))}catch(err){btn.disabled=false;alert(\'No hemos podido abrir ETERNA todavía. Revisa la conexión y vuelve a intentarlo.\')}})})();\n</script></body></html>\n'
-    html_doc = html_doc.replace("__RC75_YUL_EXTRA_LINES__", yul_place_line + yul_hint_line)
+    if yul_context.get("memory_place"):
+        place = safe_text(yul_context.get("memory_place"))
+        yul_place_line = f'<div class="line small l-extra-place">Antes de llegar a ti, Yul encontró un lugar:<br><span class="gold">{place}</span></div>'
+        bridge_memory_line = f'<p>Yul no ha venido vacía. Trae una pista: <span>{place}</span>.</p>'
+
+    if yul_context.get("memory_detail"):
+        detail = safe_text(yul_context.get("memory_detail"))
+        yul_detail_line = f'<div class="line small l-extra-detail">Hay un recuerdo pequeño intentando volver:<br><span class="gold">{detail}</span></div>'
+
+    if yul_context.get("emotion_tone"):
+        tone = safe_text(yul_context.get("emotion_tone"))
+        yul_emotion_line = f'<div class="line small l-extra-emotion">Esta historia viene buscando una emoción:<br><span class="gold">{tone}</span></div>'
+
+    if yul_context.get("magic_hint"):
+        hint_txt = safe_text(yul_context.get("magic_hint"))
+        yul_hint_line = f'<div class="line small l-extra-hint">Yul encontró una pista secreta:<br><span class="gold">{hint_txt}</span></div>'
+        bridge_hint_line = f'<p class="bridge-secret">Y antes de cruzar, Yul susurra: <span>{hint_txt}</span></p>'
+
+    html_doc = '\n<!DOCTYPE html>\n<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA - El Umbral</title><meta name="theme-color" content="#02050a"><style>\n*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}body{min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}.umbral{position:relative;width:100vw;height:100svh;height:100dvh;overflow:hidden;background:#02050a;display:flex;align-items:center;justify-content:center}.stage{position:relative;width:100vw;height:100svh;height:100dvh;max-width:520px;overflow:hidden;background:radial-gradient(circle at 50% 78%,rgba(5,56,92,.60),transparent 31%),radial-gradient(circle at 16% 16%,rgba(44,180,255,.10),transparent 24%),linear-gradient(180deg,#000 0%,#020713 46%,#030d18 100%)}.stage:before{content:"";position:absolute;inset:-18%;background:conic-gradient(from 220deg at 50% 50%,transparent,rgba(48,179,255,.16),transparent,rgba(255,197,96,.10),transparent);filter:blur(18px);opacity:.64;animation:breathWorld 16s ease-in-out infinite;pointer-events:none}.stage:after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.44) 0 1px,transparent 1.4px),radial-gradient(circle,rgba(66,213,255,.70) 0 1px,transparent 1.5px),radial-gradient(circle,rgba(255,211,123,.48) 0 1px,transparent 1.5px);background-size:97px 131px,137px 191px,191px 251px;opacity:.46;animation:starDrift 42s linear infinite;pointer-events:none}.brand{position:absolute;z-index:20;top:calc(env(safe-area-inset-top) + 22px);left:0;right:0;text-align:center;letter-spacing:.46em;font-family:Georgia,"Times New Roman",serif;font-size:clamp(17px,5.3vw,28px);color:#eec36a;text-shadow:0 0 22px rgba(255,200,93,.52);opacity:.80}.brand:after{content:"♡";display:block;letter-spacing:0;margin-top:7px;font-size:19px;color:#ffd477;text-shadow:0 0 22px rgba(255,204,90,.72)}.yul{position:absolute;z-index:18;left:50%;top:50%;width:18px;height:18px;border-radius:999px;background:radial-gradient(circle,#fff 0 16%,#9ee9ff 18% 32%,#265cff 36% 54%,rgba(76,0,255,.32) 65%,transparent 76%);box-shadow:0 0 18px rgba(255,255,255,.95),0 0 42px rgba(81,214,255,.86),0 0 82px rgba(40,86,255,.54),0 0 118px rgba(89,0,255,.32);filter:saturate(1.25);opacity:0;transform:translate(-50%,-50%);animation:yulLife 88s cubic-bezier(.18,.76,.15,1) forwards;pointer-events:none}.yul:before{content:"";position:absolute;left:-118px;top:7px;width:135px;height:4px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(76,0,255,.05),rgba(60,192,255,.60),rgba(255,255,255,.92));filter:blur(.4px);transform-origin:100% 50%;opacity:.74;animation:yulTail 88s cubic-bezier(.18,.76,.15,1) forwards}.yul:after{content:"";position:absolute;inset:-26px;border-radius:999px;background:radial-gradient(circle,rgba(87,214,255,.30),rgba(58,97,255,.14) 40%,transparent 68%);filter:blur(8px);animation:yulAura 2.1s ease-in-out infinite;opacity:.9}.spark{position:absolute;z-index:13;width:4px;height:4px;border-radius:999px;background:#69d9ff;box-shadow:0 0 14px #69d9ff,0 0 28px rgba(105,217,255,.42);opacity:0;animation:sparkRise 9s linear infinite;pointer-events:none}.spark.gold{background:#ffd782;box-shadow:0 0 14px #ffd782,0 0 28px rgba(255,215,130,.42)}.s1{left:14%;bottom:16%;animation-delay:2s}.s2{right:18%;bottom:21%;animation-delay:4s}.s3{left:26%;top:28%;animation-delay:7s}.s4{right:27%;top:35%;animation-delay:11s}.s5{left:48%;bottom:10%;animation-delay:15s}.s6{right:10%;top:16%;animation-delay:19s}.copy{position:absolute;z-index:22;left:7%;right:7%;top:49%;transform:translateY(-50%);text-align:center;pointer-events:none}.line{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);opacity:0;font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(27px,8.2vw,46px);line-height:1.12;letter-spacing:.005em;color:#fff6e8;text-shadow:0 0 20px rgba(255,255,255,.22),0 0 44px rgba(57,194,255,.22);animation:lineReveal 5.4s ease-in-out forwards}.line.small{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(17px,4.9vw,25px);line-height:1.42;color:#f8ebd8}.line.gold,.gold{color:#f4c46c;text-shadow:0 0 24px rgba(255,199,92,.56),0 0 54px rgba(255,166,41,.20)}.line.whisper{font-size:clamp(38px,14vw,76px);letter-spacing:.03em}.l1{animation-delay:3s}.l2{animation-delay:8.8s}.l3{animation-delay:14.5s}.l4{animation-delay:20.2s}.l5{animation-delay:26.2s}.l6{animation-delay:32.4s}.l7{animation-delay:38.5s}.l8{animation-delay:44.6s}.l9{animation-delay:50.5s}.l10{animation-delay:56.2s}.l11{animation-delay:62.2s}.l12{animation-delay:68.4s}.l13{animation-delay:74s}.l14{animation-delay:80s}.l15{animation-delay:86s}.consent-card,.camera-card,.bridge-card{position:absolute;z-index:40;left:6.3%;right:6.3%;top:50%;transform:translateY(-50%) scale(.96);opacity:0;pointer-events:none;padding:25px 20px 22px;border:1px solid rgba(255,215,136,.44);border-radius:28px;background:linear-gradient(180deg,rgba(2,9,20,.88),rgba(1,4,11,.78));box-shadow:0 0 46px rgba(36,171,255,.20),0 0 78px rgba(255,191,83,.13),inset 0 0 28px rgba(255,255,255,.045);backdrop-filter:blur(12px);transition:opacity .9s ease,transform .9s ease}.umbral.consent-phase .consent-card{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}.umbral.camera-phase .camera-card{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}.umbral.bridge-phase .bridge-card{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}.consent-card h1,.camera-card h1,.bridge-card h1{font-family:Georgia,"Times New Roman",serif;margin:0 0 14px;text-align:center;font-size:clamp(29px,8.2vw,44px);font-weight:400;color:#fff5e5;line-height:1.05}.consent-card h1 span,.camera-card h1 span,.bridge-card h1 span{color:#f4c46c}.consent-card p,.camera-card p,.bridge-card p{margin:11px 0;font-size:clamp(15px,4.15vw,19px);line-height:1.42;text-align:center;color:#f6ead6;text-shadow:0 0 16px rgba(0,0,0,.8)}.bridge-card span{color:#f4c46c;text-shadow:0 0 22px rgba(255,199,92,.42)}.bridge-secret{margin-top:16px;padding:13px;border-radius:18px;border:1px solid rgba(255,215,136,.22);background:rgba(0,0,0,.24)}.legal-box{margin:15px 0;padding:14px 13px;border-radius:18px;border:1px solid rgba(255,215,136,.26);background:rgba(0,0,0,.24);font-weight:600}.check-row{margin-top:16px;display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;border:1px solid rgba(255,218,143,.36);background:rgba(0,0,0,.24);text-align:left;color:#fff7e9;font-size:clamp(14px,3.9vw,17px);line-height:1.25}.check-row input{appearance:none;width:33px;height:33px;min-width:33px;border-radius:9px;border:2px solid rgba(255,235,184,.88);background:rgba(0,0,0,.4);box-shadow:0 0 18px rgba(255,213,118,.20);position:relative}.check-row input:checked{background:linear-gradient(135deg,#fff1bb,#e6a43c 58%,#8e5307);box-shadow:0 0 26px rgba(255,196,79,.72)}.check-row input:checked:after{content:"";position:absolute;left:9px;top:3px;width:10px;height:19px;border:solid #120900;border-width:0 4px 4px 0;transform:rotate(45deg)}.consent-btn,.camera-btn,.final-btn{width:100%;border:0;border-radius:24px;margin-top:18px;min-height:66px;background:linear-gradient(135deg,#fff1bb,#e6a43c 54%,#9c5d08);color:#150b02;font-family:Georgia,"Times New Roman",serif;font-size:clamp(21px,6.2vw,31px);box-shadow:0 0 34px rgba(255,190,72,.43),inset 0 0 18px rgba(255,255,255,.22);cursor:pointer}.consent-btn:disabled,.camera-btn:disabled,.final-btn:disabled{filter:saturate(.45) brightness(.65);cursor:not-allowed}.preview-wrap{position:relative;width:100%;aspect-ratio:9/13;border-radius:24px;overflow:hidden;background:#03070e;border:1px solid rgba(255,215,136,.30);box-shadow:0 0 34px rgba(54,199,255,.18),inset 0 0 28px rgba(255,255,255,.04);margin:14px 0}.preview-wrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:saturate(1.04) contrast(1.03) brightness(1.03)}.face-guide{position:absolute;left:50%;top:42%;width:54%;height:37%;transform:translate(-50%,-50%);border-radius:45% 45% 42% 42%;border:1px solid rgba(255,220,143,.48);box-shadow:0 0 24px rgba(255,210,104,.22),inset 0 0 18px rgba(74,210,255,.10);opacity:.76;pointer-events:none}.horizon{position:absolute;left:16%;right:16%;top:42%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,230,171,.66),transparent);box-shadow:0 0 14px rgba(255,219,142,.45);pointer-events:none}.camera-hint{position:absolute;left:8%;right:8%;bottom:10px;text-align:center;padding:10px 12px;border-radius:16px;background:rgba(0,0,0,.46);font-size:13px;color:#fff0d1;line-height:1.25;backdrop-filter:blur(8px)}.final-gate{position:absolute;z-index:45;left:7%;right:7%;bottom:calc(env(safe-area-inset-bottom) + 7%);opacity:0;transform:translateY(24px);pointer-events:none;transition:opacity 1.1s ease,transform 1.1s ease}.umbral.ready-phase .final-gate{opacity:1;transform:translateY(0);pointer-events:auto}.final-btn{min-height:78px;text-transform:uppercase;letter-spacing:.055em;font-weight:900}.final-note{margin-top:13px;text-align:center;color:rgba(255,243,220,.72);font-size:13px;line-height:1.35}.safe-note{position:absolute;z-index:55;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 10px);text-align:center;color:rgba(255,255,255,.31);font-size:11px;pointer-events:none}.umbral.consent-phase .copy,.umbral.bridge-phase .copy,.umbral.camera-phase .copy,.umbral.ready-phase .copy{opacity:0;transition:opacity .7s ease}.umbral.consent-phase .yul{animation:yulHoldConsent 2.8s ease-in-out infinite;opacity:1}.umbral.bridge-phase .yul{animation:yulHoldConsent 2.8s ease-in-out infinite;opacity:1}.umbral.camera-phase .yul{animation:yulCamera 4.1s ease-in-out infinite;opacity:1}.umbral.ready-phase .yul{animation:yulFarewell 9s ease-in-out forwards;opacity:1}@keyframes breathWorld{0%,100%{transform:scale(.98) rotate(0deg);opacity:.42}50%{transform:scale(1.08) rotate(9deg);opacity:.86}}@keyframes starDrift{from{background-position:0 0,0 0,0 0}to{background-position:130px -310px,-190px -360px,240px -460px}}@keyframes sparkRise{0%{opacity:0;transform:translateY(0) scale(.55)}15%{opacity:.9}75%{opacity:.38}100%{opacity:0;transform:translateY(-160px) translateX(25px) scale(1.12)}}@keyframes lineReveal{0%{opacity:0;filter:blur(14px);transform:translateY(22px) scale(.97)}18%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}76%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}100%{opacity:0;filter:blur(14px);transform:translateY(-20px) scale(1.02)}}@keyframes yulAura{0%,100%{transform:scale(.82);opacity:.46}50%{transform:scale(1.28);opacity:.92}}@keyframes yulTail{0%,7%{opacity:0;transform:rotate(15deg) scaleX(.25)}9%,18%{opacity:.92;transform:rotate(15deg) scaleX(1.2)}19%,27%{opacity:.18;transform:rotate(-30deg) scaleX(.6)}28%,38%{opacity:.86;transform:rotate(8deg) scaleX(1)}39%,49%{opacity:.22;transform:rotate(-20deg) scaleX(.55)}50%,62%{opacity:.92;transform:rotate(22deg) scaleX(1.18)}63%,75%{opacity:.18;transform:rotate(-14deg) scaleX(.55)}76%,88%{opacity:.88;transform:rotate(4deg) scaleX(1.08)}100%{opacity:.14;transform:rotate(0) scaleX(.3)}}@keyframes yulLife{0%{left:-10%;top:76%;opacity:0;transform:translate(-50%,-50%) scale(.50)}3%{opacity:1}7%{left:112%;top:22%;transform:translate(-50%,-50%) scale(1.18)}8%{opacity:0}10%{left:85%;top:78%;opacity:0;transform:translate(-50%,-50%) scale(.58)}12%{opacity:1}17%{left:17%;top:30%;transform:translate(-50%,-50%) scale(1.02)}18%{opacity:0}21%{left:8%;top:55%;opacity:0;transform:translate(-50%,-50%) scale(.7)}23%{opacity:1}29%{left:82%;top:46%;transform:translate(-50%,-50%) scale(1.08)}31%{left:53%;top:40%;opacity:.82;transform:translate(-50%,-50%) scale(.92)}34%{opacity:0}38%{left:70%;top:18%;opacity:0;transform:translate(-50%,-50%) scale(.58)}40%{opacity:1}47%{left:22%;top:74%;transform:translate(-50%,-50%) scale(1.15)}48%{opacity:0}52%{left:104%;top:58%;opacity:0;transform:translate(-50%,-50%) scale(.7)}54%{opacity:1}61%{left:18%;top:42%;transform:translate(-50%,-50%) scale(1.04)}64%{left:50%;top:39%;opacity:.88;transform:translate(-50%,-50%) scale(.92)}67%{opacity:0}72%{left:12%;top:22%;opacity:0;transform:translate(-50%,-50%) scale(.62)}74%{opacity:1}83%{left:88%;top:62%;transform:translate(-50%,-50%) scale(1.22)}85%{opacity:0}89%{left:50%;top:38%;opacity:0;transform:translate(-50%,-50%) scale(.86)}91%{opacity:1}100%{left:50%;top:38%;opacity:.86;transform:translate(-50%,-50%) scale(.96)}}@keyframes yulHoldConsent{0%,100%{left:50%;top:22%;transform:translate(-50%,-50%) scale(.86);box-shadow:0 0 18px rgba(255,255,255,.95),0 0 42px rgba(81,214,255,.76),0 0 82px rgba(40,86,255,.44)}50%{left:50%;top:22%;transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 24px #fff,0 0 62px rgba(81,214,255,.98),0 0 118px rgba(89,0,255,.48)}}@keyframes yulCamera{0%,100%{left:18%;top:18%;transform:translate(-50%,-50%) scale(.78);opacity:.68}25%{left:82%;top:20%;transform:translate(-50%,-50%) scale(1.05);opacity:1}50%{left:80%;top:78%;transform:translate(-50%,-50%) scale(.82);opacity:.78}75%{left:20%;top:75%;transform:translate(-50%,-50%) scale(1.04);opacity:1}}@keyframes yulFarewell{0%{left:50%;top:42%;opacity:1;transform:translate(-50%,-50%) scale(1.18)}42%{left:50%;top:34%;opacity:.9;transform:translate(-50%,-50%) scale(.82)}78%{left:50%;top:21%;opacity:.55;transform:translate(-50%,-50%) scale(.42)}100%{left:50%;top:10%;opacity:0;transform:translate(-50%,-50%) scale(.16)}}@media(max-height:740px){.line{font-size:clamp(23px,7.4vw,39px)}.line.small{font-size:clamp(15px,4.2vw,21px)}.consent-card,.camera-card{padding:17px 16px 16px}.consent-card p,.camera-card p{margin:8px 0}.preview-wrap{aspect-ratio:9/11}.brand{top:calc(env(safe-area-inset-top) + 12px)}}@media(prefers-reduced-motion:reduce){.yul,.yul:before,.yul:after,.stage:before,.stage:after,.spark{animation:none!important}.yul{opacity:.72;left:50%;top:35%}.line{animation:none!important;opacity:1;position:relative;margin-top:18px}.copy{top:37%;transform:none}.line:not(.l1){display:none}}\n</style></head><body><main id="umbral" class="umbral" aria-label="El Umbral de ETERNA"><section class="stage"><div class="brand">ETERNA</div><div class="yul" aria-hidden="true"></div><i class="spark s1"></i><i class="spark gold s2"></i><i class="spark s3"></i><i class="spark gold s4"></i><i class="spark s5"></i><i class="spark gold s6"></i><div class="copy" aria-hidden="true"><div class="line whisper l1 gold">Shhh...</div><div class="line small l2">Escucha...</div><div class="line l3">No todas las historias<br>empiezan cuando creemos.</div><div class="line small l4">Algunas comenzaron<br>mucho antes de que llegaras aquí.</div><div class="line l5">Y sin embargo...</div><div class="line small l6">de alguna manera...<br>te estaban esperando.</div><div class="line small l7">Hay rincones donde los minutos<br>pasan sin hacer ruido.</div><div class="line small l8">Si conoces uno...<br><span class="gold">quédate allí un instante.</span></div>__RC78_YUL_PLACE_STORY____RC75_YUL_EXTRA_LINES__<div class="line small l9">Los viejos contadores de historias<br>decían que los recuerdos no desaparecen.</div><div class="line small l10">Solo aprenden a esconderse.<br>Y esperan.</div><div class="line small l11">Algunas cosas necesitan reposar<br>para ser vistas.</div><div class="line gold l12">Déjalo descansar.</div><div class="line small l13">Hay quienes buscan la magia toda su vida.</div><div class="line small l14">Y hay quienes la encuentran<br>sin darse cuenta.</div><div class="line l15 gold">Déjame verte.</div></div><div class="consent-card" id="consentCard" role="dialog" aria-modal="true" aria-labelledby="consentTitle"><h1 id="consentTitle">Antes de seguir...<br><span>debo confiarte algo.</span></h1><p>Este momento será grabado.</p><p class="legal-box">Y cuando termine, viajará únicamente hacia la persona que hizo posible que existiera.</p><p>Si decides continuar, aceptas formar parte de esta historia.</p><label class="check-row"><input id="acceptRecording" type="checkbox"><span>He leído y acepto que mi reacción sea grabada y enviada únicamente a la persona que preparó esta ETERNA.</span></label><button id="acceptConsent" class="consent-btn" disabled>Acepto y continuar</button></div><div class="bridge-card" id="bridgeCard" role="dialog" aria-modal="true" aria-labelledby="bridgeTitle"><h1 id="bridgeTitle">Bien.<br><span>Ahora Yul puede seguir.</span></h1><p>No todos llegan hasta aquí.</p><p>Algunos regalos solo se abren con los ojos. Este no.</p>__RC77_BRIDGE_MEMORY____RC77_BRIDGE_HINT__<p>Respira. Lo que viene no es una pantalla más. Es una puerta.</p></div><div class="camera-card" id="cameraCard" role="dialog" aria-modal="true" aria-labelledby="cameraTitle"><h1 id="cameraTitle">Déjame verte.</h1><p>Algunas historias merecen encontrar un rostro.</p><div class="preview-wrap"><video id="cameraPreview" autoplay muted playsinline></video><div class="face-guide"></div><div class="horizon"></div><div class="camera-hint" id="cameraHint">Déjalo descansar a la altura de tus ojos. Que la luz te encuentre de frente.</div></div><button id="cameraReady" class="camera-btn" disabled>Abrir mi ETERNA</button></div><form id="startForm" class="final-gate" method="post" action="/start-experience"><input type="hidden" name="recipient_token" value="__RECIPIENT_TOKEN_SAFE__"><button id="startExperienceNow" class="final-btn" type="submit">Abriendo...</button><div class="final-note">Yul abre la puerta. Nos vemos al otro lado.</div></form><div class="safe-note">No cierres esta página. Yul está abriendo el camino.</div></section></main><script>\n(function(){const root=document.getElementById(\'umbral\');const check=document.getElementById(\'acceptRecording\');const accept=document.getElementById(\'acceptConsent\');const cameraReady=document.getElementById(\'cameraReady\');const preview=document.getElementById(\'cameraPreview\');const hint=document.getElementById(\'cameraHint\');const form=document.getElementById(\'startForm\');const btn=document.getElementById(\'startExperienceNow\');const token=__RECIPIENT_TOKEN_JSON__;let stream=null;function showConsent(){if(!root.classList.contains(\'consent-done\'))root.classList.add(\'consent-phase\')}setTimeout(showConsent,55000);check.addEventListener(\'change\',function(){accept.disabled=!check.checked});async function openCameraPreview(){try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:\'user\',width:{ideal:720},height:{ideal:1280}},audio:true});preview.srcObject=stream;cameraReady.disabled=false;hint.textContent=\'Sube un poco el móvil. Que tus ojos encuentren la luz.\';setTimeout(function(){hint.textContent=\'Así. Sin mirar hacia abajo. Yul ya puede verte.\'},5200);setTimeout(function(){hint.textContent=\'Perfecto. Quédate ahí.\'},9400)}catch(err){cameraReady.disabled=false;hint.textContent=\'ETERNA necesita cámara y micrófono para continuar. Permítelo cuando el móvil te lo pida.\'}}accept.addEventListener(\'click\',async function(){if(!check.checked)return;root.classList.remove(\'consent-phase\');root.classList.add(\'consent-done\');root.classList.add(\'bridge-phase\');setTimeout(async function(){root.classList.remove(\'bridge-phase\');root.classList.add(\'camera-phase\');await openCameraPreview()},6200)});cameraReady.addEventListener(\'click\',function(){cameraReady.disabled=true;root.classList.remove(\'camera-phase\');root.classList.add(\'ready-phase\');try{if(stream)stream.getTracks().forEach(function(track){track.stop()})}catch(_){}setTimeout(function(){try{if(form.requestSubmit){form.requestSubmit()}else{form.dispatchEvent(new Event(\'submit\',{cancelable:true}))}}catch(e){form.dispatchEvent(new Event(\'submit\',{cancelable:true}))}},2100)});form.addEventListener(\'submit\',async function(e){e.preventDefault();btn.disabled=true;try{const fd=new FormData(form);const res=await fetch(\'/start-experience\',{method:\'POST\',body:fd,headers:{\'X-ETERNA-AJAX\':\'1\'}});if(!res.ok)throw new Error(\'start_experience_failed\');let data={};try{data=await res.json()}catch(_){}window.location.replace(data.redirect_url||(\'/experiencia/\'+encodeURIComponent(token)))}catch(err){btn.disabled=false;alert(\'No hemos podido abrir ETERNA todavía. Revisa la conexión y vuelve a intentarlo.\')}})})();\n</script></body></html>\n'
+    html_doc = html_doc.replace("__RC75_YUL_EXTRA_LINES__", yul_place_line + yul_detail_line + yul_emotion_line + yul_hint_line)
+    html_doc = html_doc.replace("__RC77_BRIDGE_MEMORY__", bridge_memory_line)
+    html_doc = html_doc.replace("__RC77_BRIDGE_HINT__", bridge_hint_line)
+    html_doc = html_doc.replace("__RC78_YUL_PLACE_STORY__", yul_place_story_line)
     html_doc = html_doc.replace("__RECIPIENT_TOKEN_SAFE__", recipient_token_safe)
     html_doc = html_doc.replace("__RECIPIENT_TOKEN_JSON__", recipient_token_json)
     return HTMLResponse(html_doc)
@@ -12555,7 +12609,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC76_ALL_IN_REVIEW_SAFE",
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -12607,7 +12661,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC76_ALL_IN_REVIEW_SAFE",
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -12685,7 +12739,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC76_ALL_IN_REVIEW_SAFE",
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -12740,7 +12794,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC76_ALL_IN_REVIEW_SAFE",
+        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
