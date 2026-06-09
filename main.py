@@ -1,13 +1,15 @@
 # =========================================================
-# RC78C_YUL_SOLO_LUGAR_FINAL_SAFE
-# Base: RC78B.
+# RC79_YUL_ANTI_FREEZE_FULL_SAFE
+# Base: RC78C Yul solo lugar.
 # Objetivo:
-# - limpiar de verdad el formulario visible
-# - dejar solo un campo Yul: yul_memory_place
-# - conservar columnas/params antiguos solo como compatibilidad interna
-# - Yul usa el lugar real sin inventar nada
-# - NO toca Stripe, Twilio, SMS, WhatsApp, webhooks, video engine,
+# - blindar preexperiencia/Yul contra congelaciones
+# - watchdog, tap recovery, localStorage, visibility/focus recovery
+# - botón de rescate, fallback directo y modo low power
+# - NO tocar Stripe, Twilio, SMS, WhatsApp, webhooks, video engine,
 #   reacción, sender pack, workers ni cobros.
+#
+# REGLA:
+# Yul es opcional. La ETERNA no.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -24,16 +26,17 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — CARPETAS BLINDADAS 🛟")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — /CREAR OK 🛟")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — TODO METIDO PARA REVISAR 🛟")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — SOLO UN LUGAR 🛟")
-print("🛟 RC78C YUL SOLO LUGAR FINAL SAFE — FORMULARIO LIMPIO 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — /CREAR OK 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — TODO METIDO PARA REVISAR 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — SOLO UN LUGAR 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — FORMULARIO LIMPIO 🛟")
+print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — YUL NO BLOQUEA ETERNA 🛟")
 import html
 import json
 import mimetypes
@@ -190,7 +193,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC79_YUL_ANTI_FREEZE_FULL_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -8044,7 +8047,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8060,7 +8063,7 @@ def admin_rc76_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "golden_master_preserved": True,
         "contains_rc74_core": True,
         "contains_yul_umbral": True,
@@ -8076,7 +8079,7 @@ def admin_rc76_version(token: str = ""):
 def admin_rc77_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
-    return {"version":"RC78C_YUL_SOLO_LUGAR_FINAL_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
+    return {"version":"RC79_YUL_ANTI_FREEZE_FULL_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
 
 
 
@@ -8085,7 +8088,7 @@ def admin_rc78_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "formulario_yul": "solo_lugar",
         "uses_real_place": True,
         "generic_romantic_responses": True,
@@ -8100,7 +8103,7 @@ def admin_rc78b_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "formulario_yul": "solo_lugar",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8115,11 +8118,59 @@ def admin_rc78c_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "formulario_yul": "solo_lugar_visible",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
         "compatible_db_columns": True,
+        "touches_critical_core": False,
+    }
+
+
+
+@app.post("/internal/yul-event/{recipient_token}")
+async def internal_yul_event(recipient_token: str, request: Request):
+    """
+    RC79: log ligero de recuperación Yul. Nunca bloquea experiencia.
+    """
+    try:
+        order = get_order_by_recipient_token_or_404(recipient_token)
+        payload = await request.json()
+        event_name = str(payload.get("event") or "yul_event")[:80]
+        meta = payload.get("meta") or {}
+        insert_order_event(
+            order["id"],
+            event_name,
+            "ok",
+            "Evento de preexperiencia Yul",
+            {
+                "scene": payload.get("scene"),
+                "meta": meta,
+                "at": payload.get("at"),
+            },
+        )
+    except Exception as e:
+        print("[WARN] yul event ignored:", e)
+    return {"ok": True}
+
+
+
+@app.get("/admin/rc79-version")
+def admin_rc79_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "watchdog_global": True,
+        "watchdog_scene": True,
+        "tap_recovery": True,
+        "multi_tap_rescue": True,
+        "local_storage_resume": True,
+        "visibility_focus_recovery": True,
+        "direct_experience_fallback": True,
+        "low_power_mode": True,
+        "rescue_button": "Abrir mi ETERNA",
+        "rule": "Yul es opcional. La ETERNA no.",
         "touches_critical_core": False,
     }
 
@@ -8739,7 +8790,7 @@ def rc78_yul_place_lines(place: str) -> str:
 
 def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     """
-    RC78C_YUL_SOLO_LUGAR_FINAL_SAFE.
+    RC79_YUL_ANTI_FREEZE_FULL_SAFE.
     Sustituye únicamente la pre-experiencia /guia por EL UMBRAL.
     No toca Stripe, Twilio, webhooks, DB crítica, video engine, reaction upload,
     sender pack, cola RC74 ni recovery worker.
@@ -8784,6 +8835,19 @@ def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     html_doc = html_doc.replace("__RC75_YUL_EXTRA_LINES__", yul_place_line + yul_detail_line + yul_emotion_line + yul_hint_line)
     html_doc = html_doc.replace("__RC77_BRIDGE_MEMORY__", bridge_memory_line)
     html_doc = html_doc.replace("__RC77_BRIDGE_HINT__", bridge_hint_line)
+
+    # RC79 — inyección segura anti-freeze sobre HTML ya construido.
+    try:
+        rc79_css = "\n/* RC79 YUL ANTI-FREEZE FULL */\n.yul-rescue-panel{position:fixed;left:18px;right:18px;bottom:calc(env(safe-area-inset-bottom) + 22px);z-index:99999;display:none;align-items:center;justify-content:center;gap:10px;pointer-events:auto}\n.yul-rescue-panel.is-visible{display:flex}\n.yul-rescue-button{border:1px solid rgba(255,220,145,.38);border-radius:999px;padding:15px 22px;min-height:52px;background:radial-gradient(circle at top left,rgba(112,220,255,.16),transparent 34%),linear-gradient(135deg,rgba(255,213,122,.18),rgba(255,255,255,.06));color:rgba(255,248,224,.96);font-size:13px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;text-align:center;box-shadow:0 0 26px rgba(82,207,255,.18),0 0 34px rgba(255,205,110,.10);backdrop-filter:blur(10px)}\n.yul-progress{position:fixed;left:20px;right:20px;bottom:calc(env(safe-area-inset-bottom) + 8px);height:2px;border-radius:999px;z-index:99998;overflow:hidden;background:rgba(255,255,255,.08);pointer-events:none}\n.yul-progress span{display:block;width:0%;height:100%;border-radius:inherit;background:linear-gradient(90deg,rgba(85,218,255,.95),rgba(255,218,132,.95));box-shadow:0 0 18px rgba(95,220,255,.65);transition:width .35s ease}\n.yul-safe-note{position:fixed;left:18px;right:18px;bottom:calc(env(safe-area-inset-bottom) + 86px);z-index:99999;display:none;color:rgba(255,255,255,.62);font-size:12px;line-height:1.35;text-align:center;text-shadow:0 0 18px rgba(0,0,0,.85);pointer-events:none}\n.yul-safe-note.is-visible{display:block}\n.yul-low-power *{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}\n.yul-low-power .spark,.yul-low-power .trail,.yul-low-power .particle,.yul-low-power .yul-particle,.yul-low-power .floating-particle{display:none!important}\n"
+        rc79_html = "\n<div id=\"yulRescuePanel\" class=\"yul-rescue-panel\" aria-live=\"polite\">\n    <button id=\"yulRescueButton\" class=\"yul-rescue-button\" type=\"button\">\u2728 Abrir mi ETERNA \u2728</button>\n</div>\n<div id=\"yulSafeNote\" class=\"yul-safe-note\">Si la magia se queda quieta, puedes cruzar igualmente.</div>\n<div id=\"yulProgress\" class=\"yul-progress\" aria-hidden=\"true\"><span></span></div>\n"
+        rc79_js = "\n/* RC79 YUL ANTI-FREEZE FULL */\n(function(){\n    const token = (window.__RECIPIENT_TOKEN__ || \"\").toString();\n    const storageKey = \"eterna_yul_scene_\" + token;\n    const maxSceneMs = 8500;\n    const rescueMs = 6500;\n    const globalFallbackMs = 22000;\n    const tapThreshold = 5;\n    const lowFpsLimit = 18;\n    const rescuePanel = document.getElementById(\"yulRescuePanel\");\n    const rescueButton = document.getElementById(\"yulRescueButton\");\n    const safeNote = document.getElementById(\"yulSafeNote\");\n    const progressBar = document.querySelector(\"#yulProgress span\");\n    let currentScene = 0;\n    let lastProgressAt = Date.now();\n    let sceneStartedAt = Date.now();\n    let taps = 0;\n    let fallbackUsed = false;\n    let lastFrame = performance.now();\n    let lowFpsHits = 0;\n\n    function logYul(eventName, meta){\n        try{\n            const payload = {event:eventName, meta:meta||{}, at:new Date().toISOString(), scene:currentScene};\n            if(navigator.sendBeacon){\n                navigator.sendBeacon(\"/internal/yul-event/\" + encodeURIComponent(token), new Blob([JSON.stringify(payload)], {type:\"application/json\"}));\n            }\n        }catch(e){}\n        try{ console.log(\"[YUL]\", eventName, meta||{}); }catch(e){}\n    }\n    function saveScene(){\n        try{ localStorage.setItem(storageKey, JSON.stringify({scene:currentScene, at:Date.now(), path:location.pathname})); }catch(e){}\n    }\n    function restoreScene(){\n        try{\n            const raw = localStorage.getItem(storageKey);\n            if(!raw) return;\n            const data = JSON.parse(raw);\n            if(!data || typeof data.scene !== \"number\") return;\n            if(Date.now() - (data.at || 0) > 1000*60*60*6) return;\n            currentScene = Math.max(0, data.scene);\n            logYul(\"yul_scene_restored\", {scene:currentScene});\n        }catch(e){}\n    }\n    function updateProgress(){\n        try{\n            const total = Math.max(1, (window.__YUL_TOTAL_SCENES__ || 9));\n            const pct = Math.min(100, Math.max(4, Math.round((currentScene / total) * 100)));\n            if(progressBar) progressBar.style.width = pct + \"%\";\n        }catch(e){}\n    }\n    function showRescue(label){\n        if(rescueButton && label) rescueButton.textContent = label;\n        if(rescuePanel) rescuePanel.classList.add(\"is-visible\");\n        if(safeNote) safeNote.classList.add(\"is-visible\");\n    }\n    function openExperience(reason){\n        if(fallbackUsed) return;\n        fallbackUsed = true;\n        saveScene();\n        logYul(\"yul_fallback_open_experience\", {reason:reason});\n        try{\n            if(typeof window.startExperience === \"function\"){ window.startExperience(); return; }\n        }catch(e){}\n        try{\n            fetch(\"/start-experience/\" + encodeURIComponent(token), {method:\"POST\", credentials:\"same-origin\"})\n            .then(r => r.json())\n            .then(data => {\n                const url = (data && data.redirect_url) ? data.redirect_url : (\"/experiencia/\" + encodeURIComponent(token));\n                window.location.href = url;\n            })\n            .catch(() => { window.location.href = \"/experiencia/\" + encodeURIComponent(token); });\n        }catch(e){\n            window.location.href = \"/experiencia/\" + encodeURIComponent(token);\n        }\n    }\n    function markProgress(){\n        lastProgressAt = Date.now();\n        sceneStartedAt = Date.now();\n        saveScene();\n        updateProgress();\n    }\n    function softAdvance(reason){\n        markProgress();\n        currentScene += 1;\n        saveScene();\n        updateProgress();\n        logYul(\"yul_scene_advanced\", {reason:reason, scene:currentScene});\n        try{\n            if(typeof window.nextYulScene === \"function\"){ window.nextYulScene(reason || \"rc79\"); return; }\n            if(typeof window.advanceScene === \"function\"){ window.advanceScene(reason || \"rc79\"); return; }\n            if(typeof window.nextScene === \"function\"){ window.nextScene(reason || \"rc79\"); return; }\n        }catch(e){}\n        showRescue(\"\u2728 Abrir mi ETERNA \u2728\");\n    }\n    function watchdog(){\n        const now = Date.now();\n        if(now - sceneStartedAt > rescueMs) showRescue(\"\u2728 Abrir mi ETERNA \u2728\");\n        if(now - sceneStartedAt > maxSceneMs){\n            logYul(\"yul_watchdog_scene_recovered\", {elapsed:now - sceneStartedAt});\n            softAdvance(\"scene_watchdog\");\n        }\n        if(now - lastProgressAt > globalFallbackMs){\n            logYul(\"yul_watchdog_global_fallback\", {elapsed:now - lastProgressAt});\n            showRescue(\"\u2728 Abrir mi ETERNA \u2728\");\n        }\n    }\n    function detectLowFps(now){\n        const delta = now - lastFrame;\n        lastFrame = now;\n        if(delta > (1000 / lowFpsLimit)) lowFpsHits += 1;\n        else lowFpsHits = Math.max(0, lowFpsHits - 1);\n        if(lowFpsHits > 24){\n            document.documentElement.classList.add(\"yul-low-power\");\n            logYul(\"yul_low_power_mode_enabled\", {delta:delta});\n            return;\n        }\n        try{ requestAnimationFrame(detectLowFps); }catch(e){}\n    }\n    function bind(){\n        restoreScene();\n        updateProgress();\n        logYul(\"yul_started\", {ua:navigator.userAgent || \"\"});\n        if(rescueButton) rescueButton.addEventListener(\"click\", function(ev){ ev.preventDefault(); openExperience(\"rescue_button\"); });\n        [\"click\",\"touchstart\",\"pointerdown\"].forEach(evt => {\n            document.addEventListener(evt, function(){\n                taps += 1;\n                markProgress();\n                if(taps >= tapThreshold){\n                    showRescue(\"\u2728 Abrir mi ETERNA \u2728\");\n                    logYul(\"yul_multi_tap_rescue_visible\", {taps:taps});\n                }else if(Date.now() - sceneStartedAt > 3500){\n                    softAdvance(\"tap_recovery\");\n                }\n            }, {passive:true});\n        });\n        document.addEventListener(\"visibilitychange\", function(){\n            if(document.hidden){ saveScene(); logYul(\"yul_visibility_hidden\", {}); }\n            else{ markProgress(); showRescue(\"\u2728 Abrir mi ETERNA \u2728\"); logYul(\"yul_visibility_returned\", {}); }\n        });\n        window.addEventListener(\"focus\", function(){ markProgress(); logYul(\"yul_window_focus\", {}); });\n        window.addEventListener(\"pageshow\", function(){ markProgress(); logYul(\"yul_pageshow\", {}); });\n        window.addEventListener(\"pagehide\", function(){ saveScene(); logYul(\"yul_pagehide\", {}); });\n        window.__YUL_MARK_PROGRESS__ = markProgress;\n        window.__YUL_OPEN_EXPERIENCE__ = openExperience;\n        window.__YUL_SHOW_RESCUE__ = showRescue;\n        window.__YUL_SOFT_ADVANCE__ = softAdvance;\n        setInterval(watchdog, 1000);\n        setTimeout(() => showRescue(\"\u2728 Abrir mi ETERNA \u2728\"), globalFallbackMs);\n        try{ requestAnimationFrame(detectLowFps); }catch(e){}\n    }\n    if(document.readyState === \"loading\") document.addEventListener(\"DOMContentLoaded\", bind);\n    else bind();\n})();\n"
+        html_doc = html_doc.replace("</style>", rc79_css + "</style>", 1)
+        html_doc = html_doc.replace("<body>", "<body>" + rc79_html, 1)
+        html_doc = html_doc.replace("<script>", "<script>\nwindow.__RECIPIENT_TOKEN__ = " + json.dumps(str(recipient_token)) + ";\nwindow.__YUL_TOTAL_SCENES__ = 9;\n", 1)
+        html_doc = html_doc.replace("</script>", rc79_js + "</script>", 1)
+    except Exception as e:
+        print("[WARN] RC79 yul antifreeze injection skipped:", e)
+
     html_doc = html_doc.replace("__RC78_YUL_PLACE_STORY__", yul_place_story_line)
     html_doc = html_doc.replace("__RECIPIENT_TOKEN_SAFE__", recipient_token_safe)
     html_doc = html_doc.replace("__RECIPIENT_TOKEN_JSON__", recipient_token_json)
@@ -12609,7 +12673,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -12661,7 +12725,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -12739,7 +12803,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -12794,7 +12858,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC78C_YUL_SOLO_LUGAR_FINAL_SAFE",
+        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
