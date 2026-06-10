@@ -1,15 +1,19 @@
 # =========================================================
-# RC79_YUL_ANTI_FREEZE_FULL_SAFE
-# Base: RC78C Yul solo lugar.
-# Objetivo:
-# - blindar preexperiencia/Yul contra congelaciones
-# - watchdog, tap recovery, localStorage, visibility/focus recovery
-# - botón de rescate, fallback directo y modo low power
-# - NO tocar Stripe, Twilio, SMS, WhatsApp, webhooks, video engine,
-#   reacción, sender pack, workers ni cobros.
+# RC81_SMS_SENDERPACK_MASTER_SAFE
+# Base: RC79 último deploy.
+# Referencia salvavidas: solo SMS/entrega.
 #
-# REGLA:
-# Yul es opcional. La ETERNA no.
+# Auditoría:
+# - twilio_enabled / send_sms / send_whatsapp / send_message_best_effort
+#   coinciden con salvavidas.
+# - RC79 conserva además locks, recovery, RC74 y sender retry más avanzado.
+#
+# Objetivo:
+# - NO tocar flujo visual bueno del último deploy.
+# - NO tocar Stripe, Video Engine, reacción, cobros ni workers salvo diagnóstico SMS.
+# - reforzar diagnóstico/reintento SMS desde admin.
+# - usar sender_pack_master_v1.png como asset oficial.
+# - pulir botones reales del Sender Pack.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -26,17 +30,18 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — CARPETAS BLINDADAS 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — /CREAR OK 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — TODO METIDO PARA REVISAR 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — SOLO UN LUGAR 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — FORMULARIO LIMPIO 🛟")
-print("🛟 RC79 YUL ANTI FREEZE FULL SAFE — YUL NO BLOQUEA ETERNA 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — /CREAR OK 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — TODO METIDO PARA REVISAR 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — SOLO UN LUGAR 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — FORMULARIO LIMPIO 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — YUL NO BLOQUEA ETERNA 🛟")
+print("🛟 RC81 SMS SENDERPACK MASTER SAFE — SMS + MASTER V1 🛟")
 import html
 import json
 import mimetypes
@@ -193,7 +198,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC79_YUL_ANTI_FREEZE_FULL_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC81_SMS_SENDERPACK_MASTER_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -249,7 +254,7 @@ ETERNA_SCREEN_ASSETS = {
     "gift_ready": "uploading-reaction-v1.png",
     "sender_pack_entry": "sender-pack-entry-v1.png",
     "recipient_gift": "recipient-gift-screen-v3.png",
-    "sender_pack": "sender-pack-v2.png",
+    "sender_pack": "sender_pack_master_v1.png",
     "viral_cta": "viral-cta-v1.png",
     "error": "error-v1.png",
     "guide_butterfly": "ETERNA_GUIDE_BUTTERFLY_V1.png",
@@ -396,7 +401,7 @@ def render_eterna_image_screen(
     is_uploading_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("uploading-reaction-v1.png")
     is_complete_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("experience-complete-v1.png")
     is_sender_entry_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("sender-pack-entry-v1.png")
-    is_sender_pack_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("sender-pack-v1.png"), _eterna_asset_key("sender-pack-v2.png")}
+    is_sender_pack_screen = _eterna_asset_key(clean_image) in {_eterna_asset_key("sender-pack-v1.png"), _eterna_asset_key("sender-pack-v2.png"), _eterna_asset_key("sender_pack_master_v1.png")}
     is_viral_screen = _eterna_asset_key(clean_image) == _eterna_asset_key("viral-cta-v1.png")
 
     note_html = ""
@@ -8047,7 +8052,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8063,7 +8068,7 @@ def admin_rc76_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "golden_master_preserved": True,
         "contains_rc74_core": True,
         "contains_yul_umbral": True,
@@ -8079,7 +8084,7 @@ def admin_rc76_version(token: str = ""):
 def admin_rc77_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
-    return {"version":"RC79_YUL_ANTI_FREEZE_FULL_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
+    return {"version":"RC81_SMS_SENDERPACK_MASTER_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
 
 
 
@@ -8088,7 +8093,7 @@ def admin_rc78_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "formulario_yul": "solo_lugar",
         "uses_real_place": True,
         "generic_romantic_responses": True,
@@ -8103,7 +8108,7 @@ def admin_rc78b_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "formulario_yul": "solo_lugar",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8118,7 +8123,7 @@ def admin_rc78c_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "formulario_yul": "solo_lugar_visible",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8160,7 +8165,7 @@ def admin_rc79_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "watchdog_global": True,
         "watchdog_scene": True,
         "tap_recovery": True,
@@ -8171,6 +8176,123 @@ def admin_rc79_version(token: str = ""):
         "low_power_mode": True,
         "rescue_button": "Abrir mi ETERNA",
         "rule": "Yul es opcional. La ETERNA no.",
+        "touches_critical_core": False,
+    }
+
+
+
+# =========================================================
+# RC81 — ADMIN SMS DELIVERY RESCUE
+# Solo diagnóstico y reintento controlado. No cambia lógica base de Twilio.
+# =========================================================
+
+@app.get("/admin/sms-delivery-check/{order_id}")
+def admin_sms_delivery_check(order_id: str, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    order = get_order_by_id(order_id)
+    return {
+        "ok": True,
+        "order_id": order_id,
+        "app_version": ETERNA_APP_VERSION,
+        "sms_enabled": SMS_ENABLED,
+        "whatsapp_enabled": WHATSAPP_ENABLED,
+        "twilio_enabled": twilio_enabled(),
+        "twilio_from_number_present": bool(TWILIO_FROM_NUMBER),
+        "twilio_whatsapp_from_present": bool(TWILIO_WHATSAPP_FROM),
+        "recipient_phone_present": bool(order.get("recipient_phone")),
+        "sender_phone_present": bool(order.get("sender_phone")),
+        "delivery_mode": order.get("delivery_mode"),
+        "scheduled_delivery_at": order.get("scheduled_delivery_at"),
+        "delivery_locked": bool(order.get("delivery_locked")),
+        "delivery_sent": bool(order.get("delivery_sent")),
+        "delivery_sent_at": order.get("delivery_sent_at"),
+        "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+        "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
+        "recipient_sms_error": order.get("recipient_sms_error"),
+        "sender_sms_sent_at": order.get("sender_sms_sent_at"),
+        "sender_sms_attempts": int(order.get("sender_sms_attempts") or 0),
+        "sender_sms_error": order.get("sender_sms_error"),
+        "experience_video_url": bool(order.get("experience_video_url")),
+        "reaction_uploaded": bool(order.get("reaction_uploaded")),
+        "sender_notified": bool(order.get("sender_notified")),
+    }
+
+
+@app.get("/admin/force-recipient-sms/{order_id}")
+def admin_force_recipient_sms(order_id: str, token: str = "", reset: int = 0):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if int(reset or 0) == 1:
+        update_order(
+            order_id,
+            recipient_sms_attempts=0,
+            recipient_sms_error=None,
+            recipient_sms_sent_at=None,
+            recipient_sms_sid=None,
+            delivery_sent=0,
+            delivery_sent_at=None,
+        )
+        insert_order_event(order_id, "admin_recipient_sms_reset", "warning", "Intentos SMS destinatario reseteados por admin")
+    order = get_order_by_id(order_id)
+    result = process_scheduled_recipient_delivery(order_id)
+    updated = get_order_by_id(order_id)
+    return {
+        "ok": bool(result.get("ok")),
+        "result": result,
+        "recipient_sms_attempts": updated.get("recipient_sms_attempts"),
+        "recipient_sms_error": updated.get("recipient_sms_error"),
+        "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
+        "delivery_sent": bool(updated.get("delivery_sent")),
+        "delivery_sent_at": updated.get("delivery_sent_at"),
+    }
+
+
+@app.get("/admin/force-sender-sms/{order_id}")
+def admin_force_sender_sms(order_id: str, token: str = "", reset: int = 0):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if int(reset or 0) == 1:
+        update_order(
+            order_id,
+            sender_sms_attempts=0,
+            sender_sms_error=None,
+            sender_sms_sent_at=None,
+            sender_sms_sid=None,
+            sender_notified=0,
+        )
+        insert_order_event(order_id, "admin_sender_sms_reset", "warning", "Intentos SMS regalante reseteados por admin")
+    try:
+        recover_reaction_from_chunks_if_possible(order_id, min_idle_seconds=0, source="admin_force_sender_sms")
+    except Exception as e:
+        print("[WARN] RC81 sender recovery before SMS skipped:", e)
+    order = maybe_mark_eterna_completed(order_id)
+    result = try_send_sender_sms(order)
+    updated = get_order_by_id(order_id)
+    return {
+        "ok": bool(result.get("ok")),
+        "result": result,
+        "sender_sms_attempts": updated.get("sender_sms_attempts"),
+        "sender_sms_error": updated.get("sender_sms_error"),
+        "sender_sms_sent_at": updated.get("sender_sms_sent_at"),
+        "sender_notified": bool(updated.get("sender_notified")),
+    }
+
+
+
+@app.get("/admin/rc81-version")
+def admin_rc81_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
+        "sms_base_checked_against_salvavidas": True,
+        "sms_core_changed": False,
+        "admin_sms_delivery_check": True,
+        "force_recipient_sms": True,
+        "force_sender_sms": True,
+        "sender_pack_asset": "sender_pack_master_v1.png",
+        "sender_buttons": ["CREAR OTRA ETERNA", "COMPARTIR", "DESCARGAR"],
         "touches_critical_core": False,
     }
 
@@ -8790,7 +8912,7 @@ def rc78_yul_place_lines(place: str) -> str:
 
 def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     """
-    RC79_YUL_ANTI_FREEZE_FULL_SAFE.
+    RC81_SMS_SENDERPACK_MASTER_SAFE.
     Sustituye únicamente la pre-experiencia /guia por EL UMBRAL.
     No toca Stripe, Twilio, webhooks, DB crítica, video engine, reaction upload,
     sender pack, cola RC74 ni recovery worker.
@@ -11110,6 +11232,81 @@ def connect_payout(request: Request, recipient_token: str):
 
 
 
+
+# =========================================================
+# RC81 — SENDER PACK MASTER V1 BUTTONS / LAYOUT HELPER
+# =========================================================
+
+def rc81_polish_sender_pack_html(html_doc: str) -> str:
+    try:
+        rc81_css = """
+<style id="rc81-sender-pack-master">
+.rc81-sender-actions{display:flex;flex-direction:column;gap:12px;width:min(92%,430px);margin:18px auto 24px;position:relative;z-index:60}
+.rc81-sender-btn{min-height:58px;border-radius:18px;border:1px solid rgba(255,215,136,.42);background:rgba(0,0,0,.34);color:#fff4dc;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;box-shadow:0 0 18px rgba(255,205,92,.12),inset 0 0 18px rgba(255,255,255,.035);backdrop-filter:blur(10px)}
+.rc81-sender-btn.primary{background:linear-gradient(135deg,#fff1bb,#e6a43c 56%,#9c5d08);color:#170b02;box-shadow:0 0 30px rgba(255,190,72,.38),inset 0 0 18px rgba(255,255,255,.22)}
+.rc81-sender-btn.secondary{background:rgba(0,0,0,.40)}
+.rc81-sender-btn.download{background:rgba(0,0,0,.28)}
+.sender-actions,.sender-buttons,.actions,.pack-actions,.cta-stack{display:flex!important;flex-direction:column!important;gap:12px!important;width:min(92%,430px)!important;margin:18px auto 22px!important;position:relative!important;z-index:30!important}
+.sender-actions a,.sender-actions button,.sender-buttons a,.sender-buttons button,.actions a,.actions button,.pack-actions a,.pack-actions button,.cta-stack a,.cta-stack button{width:100%!important;min-height:56px!important;border-radius:18px!important;text-align:center!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-decoration:none!important;box-sizing:border-box!important}
+.reaction-video,.reaction-box,.reaction-window,.reaction-preview,.sender-reaction{right:10px!important;bottom:10px!important;left:auto!important;top:auto!important;transform:none!important;width:clamp(74px,23%,112px)!important;aspect-ratio:9/16!important;border-radius:16px!important;overflow:hidden!important;z-index:20!important}
+.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:cover!important}
+.rc81-hidden-old{display:none!important}
+@media(max-width:420px){.rc81-sender-actions{width:min(92%,360px);gap:10px;margin-top:14px}.rc81-sender-btn{min-height:54px;border-radius:16px;font-size:13px}}
+</style>
+"""
+        if "rc81-sender-pack-master" not in html_doc:
+            if "</head>" in html_doc:
+                html_doc = html_doc.replace("</head>", rc81_css + "</head>", 1)
+            elif "</style>" in html_doc:
+                html_doc = html_doc.replace("</style>", rc81_css + "</style>", 1)
+            else:
+                html_doc = rc81_css + html_doc
+
+        rc81_js = """
+<script id="rc81-sender-buttons-js">
+(function(){
+  function byText(txt){
+    txt=(txt||"").toLowerCase();
+    return Array.from(document.querySelectorAll("a,button")).find(function(el){return (el.textContent||"").toLowerCase().includes(txt);});
+  }
+  function hrefOf(el,fallback){return el&&el.tagName==="A"?el.getAttribute("href"):fallback;}
+  var createOld=byText("crear")||document.querySelector('a[href*="/crear"]');
+  var shareOld=byText("compartir");
+  var downloadOld=byText("descargar");
+  var createHref=hrefOf(createOld,"/crear");
+  var shareHref=hrefOf(shareOld,"#");
+  var downloadHref=hrefOf(downloadOld,"#");
+  var host=document.querySelector(".rc81-sender-actions");
+  if(!host){
+    host=document.createElement("div");
+    host.className="rc81-sender-actions";
+    host.innerHTML='<a class="rc81-sender-btn primary" href="'+createHref+'">♡ Crear otra ETERNA</a><a class="rc81-sender-btn secondary" href="'+shareHref+'" id="rc81ShareBtn">↗ Compartir</a><a class="rc81-sender-btn download" href="'+downloadHref+'" id="rc81DownloadBtn">↓ Descargar</a>';
+    var video=document.querySelector("video");
+    var insertAfter=video?(video.closest("section,div,main")||video.parentElement):null;
+    if(insertAfter&&insertAfter.parentNode){insertAfter.parentNode.insertBefore(host,insertAfter.nextSibling);}
+    else{document.body.appendChild(host);}
+  }
+  Array.from(document.querySelectorAll("a,button")).forEach(function(el){
+    if(host.contains(el))return;
+    var t=(el.textContent||"").toLowerCase();
+    if(t.includes("descargar reacción")||t.includes("compartir experiencia"))el.classList.add("rc81-hidden-old");
+  });
+  var shareBtn=document.getElementById("rc81ShareBtn");
+  if(shareBtn){
+    shareBtn.addEventListener("click",function(e){
+      if(shareHref==="#"&&navigator.share){e.preventDefault();navigator.share({title:"Aquí vuelve lo que provocaste",url:location.href}).catch(function(){});}
+    });
+  }
+})();
+</script>
+"""
+        if "rc81-sender-buttons-js" not in html_doc:
+            html_doc = html_doc.replace("</body>", rc81_js + "</body>", 1) if "</body>" in html_doc else html_doc + rc81_js
+    except Exception as e:
+        print("[WARN] RC81 sender polish skipped:", e)
+    return html_doc
+
+
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str, view: str = ""):
     """
@@ -12673,7 +12870,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -12725,7 +12922,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -12803,7 +13000,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -12858,7 +13055,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC79_YUL_ANTI_FREEZE_FULL_SAFE",
+        "version": "RC81_SMS_SENDERPACK_MASTER_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
