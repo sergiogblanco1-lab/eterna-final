@@ -1,13 +1,17 @@
 # =========================================================
-# RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE
-# Base: RC86 bueno subido por Sergio.
-# SOLO TOCA:
-# - tiempos de frases de preexperiencia
-# - asegura una sola frase visible cada vez
+# RC90_SENDER_PACK_CLEAN_FINAL_SAFE
+# Base: RC89 definitivo subido por Sergio.
+# SOLO TOCA SENDER PACK VISUAL:
+# - quita ""
+# - quita iconos decorativos ✦ ♡ ↻
+# - vídeo principal un poco más grande
+# - reacción un poco más grande
+# - botones más juntos y más arriba
+# - desenfoque fuerte visual del texto integrado en fondo
 #
 # NO toca:
 # Stripe, webhook, SMS, WhatsApp, video engine, grabación,
-# upload reacción, sender pack, cámara, workers, DB, cobros.
+# upload reacción, preexperiencia, cámara, workers, DB, cobros.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -24,18 +28,18 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — CARPETAS BLINDADAS 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — /CREAR OK 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — TODO METIDO PARA REVISAR 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — SOLO UN LUGAR 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — FORMULARIO LIMPIO 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛟 RC89 RC86 SOLO FRASES SIN SOLAPE SAFE — SMS + MASTER V1 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — /CREAR OK 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — TODO METIDO PARA REVISAR 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — SOLO UN LUGAR 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — FORMULARIO LIMPIO 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — YUL NO BLOQUEA ETERNA 🛟")
+print("🛟 RC90 SENDER PACK CLEAN FINAL SAFE — SMS + MASTER V1 🛟")
 import html
 import json
 import mimetypes
@@ -192,7 +196,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC90_SENDER_PACK_CLEAN_FINAL_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -8046,7 +8050,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8062,7 +8066,7 @@ def admin_rc76_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "golden_master_preserved": True,
         "contains_rc74_core": True,
         "contains_yul_umbral": True,
@@ -8078,7 +8082,7 @@ def admin_rc76_version(token: str = ""):
 def admin_rc77_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
-    return {"version":"RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
+    return {"version":"RC90_SENDER_PACK_CLEAN_FINAL_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
 
 
 
@@ -8087,7 +8091,7 @@ def admin_rc78_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "formulario_yul": "solo_lugar",
         "uses_real_place": True,
         "generic_romantic_responses": True,
@@ -8102,7 +8106,7 @@ def admin_rc78b_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "formulario_yul": "solo_lugar",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8117,7 +8121,7 @@ def admin_rc78c_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "formulario_yul": "solo_lugar_visible",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8159,7 +8163,7 @@ def admin_rc79_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "watchdog_global": True,
         "watchdog_scene": True,
         "tap_recovery": True,
@@ -8279,7 +8283,7 @@ def admin_rc81_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "sms_base_checked_against_salvavidas": True,
         "sms_core_changed": False,
         "admin_sms_delivery_check": True,
@@ -8297,7 +8301,7 @@ def admin_rc82_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "rescue_hidden_normal_flow": True,
         "rescue_emergency_after_ms": 60000,
         "camera_guide_auto_continue_ms": 4000,
@@ -8313,7 +8317,7 @@ def admin_rc84_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "guia_replaced_from_root": True,
         "one_text_at_a_time": True,
         "skip_button_removed": True,
@@ -8331,7 +8335,7 @@ def admin_rc85_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "fix": "guia_start_button_route",
         "canonical_js_route": "/start-experience",
         "compat_route": "/start-experience/{recipient_token}",
@@ -8348,7 +8352,7 @@ def admin_rc86_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "only_sender_pack_changed": True,
         "vertical_call_layout": True,
         "main_video_format": "9:16",
@@ -8365,7 +8369,7 @@ def admin_rc89_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "base": "RC86_good_uploaded",
         "only_phrase_timing_changed": True,
         "anti_overlap": True,
@@ -8373,6 +8377,25 @@ def admin_rc89_version(token: str = ""):
         "button_logic_touched": False,
         "camera_4s_touched": False,
         "sender_pack_touched": False,
+        "critical_core_touched": False,
+    }
+
+
+
+@app.get("/admin/rc90-version")
+def admin_rc90_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
+        "base": "RC89_final_candidate",
+        "only_sender_pack_visual_changed": True,
+        "removed_lo_que_sintio": True,
+        "removed_decorative_icons": True,
+        "main_video_bigger": True,
+        "reaction_bigger": True,
+        "buttons_higher_and_tighter": True,
+        "background_title_heavy_blur_overlay": True,
         "critical_core_touched": False,
     }
 
@@ -11655,11 +11678,14 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
 
 
 
+
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str, view: str = ""):
     """
-    RC86 — Sender Pack vertical tipo videollamada móvil.
-    SOLO layout visual. No toca circuito, reacción, SMS ni vídeo engine.
+    RC90 — Sender Pack limpio final.
+    Fondo sender_pack_master_v1.png + vídeo 9:16 + reacción más visible + botones.
+    Sin "", sin iconos decorativos, sin ruido.
+    SOLO layout visual. No toca circuito.
     """
     order = get_order_by_sender_token_or_404(sender_token)
     log_human("REGALANTE HA ABIERTO EL PACK", "🎁 El creador ha abierto el recuerdo", f"🆔 Pedido: {order.get('id')}")
@@ -11704,46 +11730,56 @@ def sender_pack(sender_token: str, view: str = ""):
 <style>
 *{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
 html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
-body{{min-height:100svh;min-height:100dvh;background:#02050a;overflow:hidden;display:flex;justify-content:center}}
+body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:flex;justify-content:center}}
 .shell{{position:relative;width:100vw;max-width:520px;height:100svh;height:100dvh;overflow:hidden;background:#02050a}}
-.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;opacity:.78;z-index:0;pointer-events:none}}
-.veil{{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.10) 0%,rgba(0,0,0,.20) 27%,rgba(0,0,0,.50) 100%);z-index:1;pointer-events:none}}
-.header{{position:relative;z-index:3;text-align:center;padding-top:calc(env(safe-area-inset-top) + 14px)}}
-.logo{{font-family:Georgia,"Times New Roman",serif;letter-spacing:.42em;color:#eec36a;font-size:clamp(16px,4.6vw,24px);text-shadow:0 0 22px rgba(255,200,93,.54)}}
-.logo:after{{content:"♡";display:block;letter-spacing:0;margin-top:5px;font-size:16px;color:#ffd477}}
-.title{{margin:10px auto 8px;width:90%;font-family:Georgia,"Times New Roman",serif;font-size:clamp(25px,7.3vw,39px);line-height:1.04;color:#fff5e8;text-shadow:0 0 22px rgba(255,255,255,.16)}}
-.title span{{color:#f4c46c;text-shadow:0 0 30px rgba(255,199,92,.52)}}
+.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;opacity:.84;z-index:0;pointer-events:none}}
+.veil{{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.10) 0%,rgba(0,0,0,.16) 28%,rgba(0,0,0,.50) 100%);z-index:1;pointer-events:none}}
 
-/* RC86: pantalla tipo videollamada vertical. El vídeo 9:16 manda. */
-.call-frame{{position:relative;z-index:4;width:min(76vw,382px);height:min(66.5svh,650px);margin:4px auto 12px;border-radius:34px;overflow:hidden;background:#000;border:1px solid rgba(255,215,136,.48);box-shadow:0 0 42px rgba(36,171,255,.30),0 0 58px rgba(255,191,83,.18),inset 0 0 26px rgba(255,255,255,.055)}}
-.call-frame:before{{content:"";position:absolute;left:50%;top:9px;transform:translateX(-50%);width:72px;height:5px;border-radius:999px;background:rgba(255,236,190,.25);z-index:8;box-shadow:0 0 14px rgba(255,222,150,.25)}}
+/* RC90: desenfoque fuerte del texto integrado en el fondo, sin tocar PNG */
+.bg-blur-title{{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 38px);height:176px;z-index:2;overflow:hidden;pointer-events:none;opacity:.92}}
+.bg-blur-title:before{{content:"";position:absolute;left:-18px;right:-18px;top:calc(-1 * (env(safe-area-inset-top) + 38px));height:100svh;background-image:url("{safe_attr(sender_bg)}");background-size:cover;background-position:center top;filter:blur(30px) brightness(.72) saturate(.78);transform:scale(1.08);opacity:.72}}
+.bg-blur-title:after{{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,5,10,.30),rgba(2,5,10,.16),rgba(2,5,10,0));backdrop-filter:blur(7px)}}
+
+.header{{position:relative;z-index:4;text-align:center;padding-top:calc(env(safe-area-inset-top) + 10px)}}
+.logo{{font-family:Georgia,"Times New Roman",serif;letter-spacing:.42em;color:#eec36a;font-size:clamp(16px,4.5vw,23px);text-shadow:0 0 24px rgba(255,200,93,.66)}}
+.logo:after{{content:"♡";display:block;letter-spacing:0;margin-top:4px;font-size:15px;color:#ffd477}}
+.title{{margin:8px auto 7px;width:90%;font-family:Georgia,"Times New Roman",serif;font-size:clamp(24px,7vw,38px);line-height:1.04;color:#fff5e8;text-shadow:0 0 24px rgba(0,0,0,.50),0 0 22px rgba(255,255,255,.16)}}
+.title span{{color:#f4c46c;text-shadow:0 0 30px rgba(255,199,92,.52),0 0 22px rgba(0,0,0,.50)}}
+
+/* RC90: vídeo un poco más grande y más alto */
+.call-frame{{position:relative;z-index:4;width:min(81vw,404px);height:min(68.5svh,682px);margin:4px auto 8px;border-radius:34px;overflow:hidden;background:#000;border:1px solid rgba(255,215,136,.50);box-shadow:0 0 42px rgba(36,171,255,.30),0 0 58px rgba(255,191,83,.18),inset 0 0 26px rgba(255,255,255,.055)}}
+.call-frame:before{{content:"";position:absolute;left:50%;top:9px;transform:translateX(-50%);width:72px;height:5px;border-radius:999px;background:rgba(255,236,190,.22);z-index:8;box-shadow:0 0 14px rgba(255,222,150,.18)}}
 .main-video{{position:absolute;inset:0;background:#000}}
 .main-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000}}
-.reaction-video{{position:absolute;right:10px;top:54px;width:18%;min-width:58px;max-width:82px;aspect-ratio:9/16;border-radius:15px;overflow:hidden;background:#000;border:1.7px solid rgba(255,205,104,.96);box-shadow:0 0 0 1px rgba(255,245,207,.20),0 0 25px rgba(255,183,70,.62),inset 0 0 13px rgba(255,218,137,.20);z-index:9}}
-.reaction-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
-.call-label{{position:absolute;right:10px;top:calc(54px + min(82px, max(58px, 18% * 1.77)) + 8px);z-index:10;padding:4px 8px;border-radius:999px;background:rgba(0,0,0,.44);color:#fff4dc;font-size:10px;border:1px solid rgba(255,215,136,.30);backdrop-filter:blur(8px)}}
-.call-controls{{position:absolute;left:0;right:0;bottom:11px;z-index:9;display:flex;justify-content:center;gap:11px;pointer-events:none}}
-.call-dot{{width:34px;height:34px;border-radius:999px;background:rgba(0,0,0,.42);border:1px solid rgba(255,230,168,.23);display:flex;align-items:center;justify-content:center;color:rgba(255,240,210,.86);font-size:13px;backdrop-filter:blur(7px)}}
-.call-dot.heart{{background:rgba(255,191,77,.18);box-shadow:0 0 18px rgba(255,191,77,.22)}}
 
-.actions{{position:relative;z-index:5;width:min(86vw,420px);margin:0 auto calc(env(safe-area-inset-bottom) + 14px);display:flex;flex-direction:column;gap:9px}}
-.btn{{min-height:51px;border-radius:17px;border:1px solid rgba(255,215,136,.42);display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;text-transform:uppercase;letter-spacing:.07em;font-weight:900;color:#fff4dc;background:rgba(0,0,0,.40);box-shadow:0 0 18px rgba(255,205,92,.12),inset 0 0 18px rgba(255,255,255,.035);backdrop-filter:blur(10px);font-size:clamp(12px,3.6vw,15px)}}
+/* RC90: reacción más grande, sin etiqueta */
+.reaction-video{{position:absolute;right:10px;top:52px;width:23%;min-width:72px;max-width:104px;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#000;border:1.8px solid rgba(255,205,104,.97);box-shadow:0 0 0 1px rgba(255,245,207,.20),0 0 26px rgba(255,183,70,.62),inset 0 0 14px rgba(255,218,137,.20);z-index:9}}
+.reaction-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
+
+/* RC90: botones juntos y más arriba */
+.actions{{position:relative;z-index:5;width:min(86vw,420px);margin:-2px auto calc(env(safe-area-inset-bottom) + 12px);display:flex;flex-direction:column;gap:6px}}
+.btn{{min-height:47px;border-radius:16px;border:1px solid rgba(255,215,136,.42);display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;text-transform:uppercase;letter-spacing:.07em;font-weight:900;color:#fff4dc;background:rgba(0,0,0,.42);box-shadow:0 0 18px rgba(255,205,92,.12),inset 0 0 18px rgba(255,255,255,.035);backdrop-filter:blur(10px);font-size:clamp(12px,3.45vw,15px)}}
 .btn.primary{{background:linear-gradient(135deg,#fff1bb,#e6a43c 56%,#9c5d08);color:#170b02;box-shadow:0 0 30px rgba(255,190,72,.38),inset 0 0 18px rgba(255,255,255,.22)}}
 .toast{{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);padding:10px 14px;border-radius:999px;background:rgba(0,0,0,.72);color:#fff4dc;font-size:13px;opacity:0;transition:all .25s ease;z-index:20}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
 
 @media(max-height:760px){{
-  .header{{padding-top:calc(env(safe-area-inset-top) + 10px)}}
-  .title{{font-size:clamp(22px,6.4vw,34px);margin:8px auto 6px}}
-  .call-frame{{height:60.5svh;width:min(72vw,356px);border-radius:30px}}
-  .btn{{min-height:47px}}
-  .actions{{gap:8px;margin-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
+  .header{{padding-top:calc(env(safe-area-inset-top) + 8px)}}
+  .title{{font-size:clamp(21px,6.2vw,33px);margin:7px auto 5px}}
+  .bg-blur-title{{height:148px}}
+  .call-frame{{height:62.5svh;width:min(78vw,382px);border-radius:30px;margin-bottom:6px}}
+  .reaction-video{{width:22%;min-width:66px;top:48px}}
+  .btn{{min-height:44px}}
+  .actions{{gap:5px;margin-bottom:calc(env(safe-area-inset-bottom) + 9px)}}
 }}
 @media(max-height:680px){{
   .logo:after{{display:none}}
-  .title{{font-size:clamp(20px,5.8vw,31px);margin:5px auto}}
-  .call-frame{{height:58svh;width:min(68vw,330px)}}
-  .btn{{min-height:43px;font-size:12px}}
+  .title{{font-size:clamp(19px,5.6vw,30px);margin:4px auto}}
+  .bg-blur-title{{height:126px}}
+  .call-frame{{height:59svh;width:min(74vw,356px)}}
+  .reaction-video{{width:21%;min-width:60px;top:44px}}
+  .btn{{min-height:40px;font-size:12px}}
+  .actions{{gap:5px}}
 }}
 </style>
 </head>
@@ -11751,6 +11787,7 @@ body{{min-height:100svh;min-height:100dvh;background:#02050a;overflow:hidden;dis
 <div class="shell">
   <img class="bg" src="{safe_attr(sender_bg)}" alt="">
   <div class="veil"></div>
+  <div class="bg-blur-title" aria-hidden="true"></div>
 
   <div class="header">
     <div class="logo">ETERNA</div>
@@ -11768,13 +11805,6 @@ body{{min-height:100svh;min-height:100dvh;background:#02050a;overflow:hidden;dis
       <video id="reactionVideo" muted playsinline preload="metadata">
         {reaction_source_html}
       </video>
-    </div>
-    <div class="call-label">♡ Lo que sintió</div>
-
-    <div class="call-controls" aria-hidden="true">
-      <div class="call-dot">✦</div>
-      <div class="call-dot heart">♡</div>
-      <div class="call-dot">↻</div>
     </div>
   </section>
 
@@ -13011,7 +13041,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -13063,7 +13093,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -13141,7 +13171,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -13196,7 +13226,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC89_RC86_SOLO_FRASES_SIN_SOLAPE_SAFE",
+        "version": "RC90_SENDER_PACK_CLEAN_FINAL_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
