@@ -1,12 +1,15 @@
 # =========================================================
-# RC84_GUIA_SENDER_REAL_FIX_SAFE
-# Base: RC82 enviado por el usuario.
-# Fix real, no parche:
-# - reemplaza /guia por secuencia única sin frases pisadas
-# - elimina botón "ABRIR MI ETERNA" del flujo
-# - cámara dura 4 segundos exactos tras consentimiento
-# - reemplaza /sender por layout real vertical, sin botones duplicados
-# NO toca Stripe, Twilio core, webhook, video engine, cobros, DB ni workers.
+# RC86_SENDER_VERTICAL_CALL_SAFE
+# Base: RC85.
+# SOLO TOCA SENDER PACK VISUAL.
+# Objetivo:
+# - mantener sender_pack_master_v1.png como fondo
+# - layout tipo videollamada vertical móvil
+# - vídeo engine 9:16 protagonista hacia arriba
+# - reacción más pequeña en esquina superior derecha interior
+# - botones debajo
+# NO toca Stripe, Twilio/SMS, webhook, video engine, guía, grabación,
+# DB, workers, cobros ni start-experience.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -23,18 +26,18 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — CARPETAS BLINDADAS 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — /CREAR OK 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — TODO METIDO PARA REVISAR 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — SOLO UN LUGAR 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — FORMULARIO LIMPIO 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛟 RC84 GUIA SENDER REAL FIX SAFE — SMS + MASTER V1 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — /CREAR OK 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — TODO METIDO PARA REVISAR 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — SOLO UN LUGAR 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — FORMULARIO LIMPIO 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — YUL NO BLOQUEA ETERNA 🛟")
+print("🛟 RC86 SENDER VERTICAL CALL SAFE — SMS + MASTER V1 🛟")
 import html
 import json
 import mimetypes
@@ -191,7 +194,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC84_GUIA_SENDER_REAL_FIX_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC86_SENDER_VERTICAL_CALL_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -8045,7 +8048,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8061,7 +8064,7 @@ def admin_rc76_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "golden_master_preserved": True,
         "contains_rc74_core": True,
         "contains_yul_umbral": True,
@@ -8077,7 +8080,7 @@ def admin_rc76_version(token: str = ""):
 def admin_rc77_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
-    return {"version":"RC84_GUIA_SENDER_REAL_FIX_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
+    return {"version":"RC86_SENDER_VERTICAL_CALL_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
 
 
 
@@ -8086,7 +8089,7 @@ def admin_rc78_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "formulario_yul": "solo_lugar",
         "uses_real_place": True,
         "generic_romantic_responses": True,
@@ -8101,7 +8104,7 @@ def admin_rc78b_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "formulario_yul": "solo_lugar",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8116,7 +8119,7 @@ def admin_rc78c_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "formulario_yul": "solo_lugar_visible",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8158,7 +8161,7 @@ def admin_rc79_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "watchdog_global": True,
         "watchdog_scene": True,
         "tap_recovery": True,
@@ -8278,7 +8281,7 @@ def admin_rc81_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "sms_base_checked_against_salvavidas": True,
         "sms_core_changed": False,
         "admin_sms_delivery_check": True,
@@ -8296,7 +8299,7 @@ def admin_rc82_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "rescue_hidden_normal_flow": True,
         "rescue_emergency_after_ms": 60000,
         "camera_guide_auto_continue_ms": 4000,
@@ -8312,7 +8315,7 @@ def admin_rc84_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "guia_replaced_from_root": True,
         "one_text_at_a_time": True,
         "skip_button_removed": True,
@@ -8320,6 +8323,40 @@ def admin_rc84_version(token: str = ""):
         "sender_pack_replaced_from_root": True,
         "sender_buttons": ["CREAR OTRA ETERNA", "COMPARTIR", "DESCARGAR"],
         "sms_core_kept": True,
+        "touches_critical_core": False,
+    }
+
+
+
+@app.get("/admin/rc85-version")
+def admin_rc85_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
+        "fix": "guia_start_button_route",
+        "canonical_js_route": "/start-experience",
+        "compat_route": "/start-experience/{recipient_token}",
+        "guia_replaced_from_root": True,
+        "sender_pack_replaced_from_root": True,
+        "sms_core_kept": True,
+        "touches_critical_core": False,
+    }
+
+
+
+@app.get("/admin/rc86-version")
+def admin_rc86_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
+        "only_sender_pack_changed": True,
+        "vertical_call_layout": True,
+        "main_video_format": "9:16",
+        "reaction_smaller": True,
+        "reaction_position": "top-right-inside",
+        "sender_pack_master_v1": "sender_pack_master_v1.png",
         "touches_critical_core": False,
     }
 
@@ -8609,6 +8646,55 @@ def resumen(order_id: str):
 # =========================================================
 # START EXPERIENCE (FIX CRÍTICO)
 # =========================================================
+
+
+@app.post("/start-experience/{recipient_token}")
+async def start_experience_direct_compat(recipient_token: str, request: Request):
+    """
+    RC85: compatibilidad con guías que llaman /start-experience/{token}.
+    Misma lógica de start_experience, sin tocar SMS/Stripe/video engine.
+    """
+    try:
+        order = get_order_by_recipient_token_or_404(recipient_token)
+        insert_order_event(order["id"], "experience_started", "ok", "El destinatario ha pulsado empezar y se inicia cámara/vídeo")
+
+        log_human("EXPERIENCIA INICIADA", f"🎭 {order.get('recipient_name')} ha pulsado Empezar", f"🆔 Pedido: {order.get('id')}")
+        print("🎬 START EXPERIENCE DIRECT COMPAT:", order["id"])
+        log_info("▶️ HA PULSADO EMPEZAR")
+        log_info("🆔 Order ID", order["id"])
+        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+
+        if not bool(order.get("paid")):
+            raise HTTPException(status_code=403, detail="not_paid")
+
+        if not original_video_ready(order):
+            raise HTTPException(status_code=403, detail="video_not_ready")
+
+        if not delivery_is_unlocked(order):
+            raise HTTPException(status_code=403, detail="delivery_locked")
+
+        update_order(
+            order["id"],
+            experience_started=1,
+            order_state="EXPERIENCE_STARTED",
+        )
+
+        redirect_url = f"/experiencia/{recipient_token}"
+        ajax_header = (request.headers.get("x-eterna-ajax") or "").strip()
+        if ajax_header != "1":
+            return RedirectResponse(url=redirect_url, status_code=303)
+
+        return JSONResponse({
+            "ok": True,
+            "redirect_url": redirect_url
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("START EXPERIENCE DIRECT COMPAT ERROR", e)
+        raise HTTPException(status_code=500, detail="start_experience_direct_failed")
+
 
 @app.post("/start-experience")
 async def start_experience(request: Request, recipient_token: str = Form(...)):
@@ -9155,7 +9241,14 @@ function stopCamera(){
 async function openExperience(){
   logYul("guide_start_experience", {});
   try{
-    const r = await fetch("/start-experience/" + encodeURIComponent(token), {method:"POST", credentials:"same-origin"});
+    const fd = new FormData();
+    fd.append("recipient_token", token);
+    const r = await fetch("/start-experience", {
+      method:"POST",
+      credentials:"same-origin",
+      headers: {"x-eterna-ajax":"1"},
+      body: fd
+    });
     const data = await r.json().catch(()=>({}));
     window.location.href = (data && data.redirect_url) ? data.redirect_url : ("/experiencia/" + encodeURIComponent(token));
   }catch(e){
@@ -11538,13 +11631,12 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
 
 
 
+
 @app.get("/sender/{sender_token}", response_class=HTMLResponse)
 def sender_pack(sender_token: str, view: str = ""):
     """
-    RC84 — Sender Pack real.
-    Layout construido con HTML/CSS real, no dependiente de botones dibujados en PNG.
-    Vídeo regalo vertical protagonista + reacción vertical dentro, pegada a derecha.
-    Botones reales: Crear otra ETERNA / Compartir / Descargar.
+    RC86 — Sender Pack vertical tipo videollamada móvil.
+    SOLO layout visual. No toca circuito, reacción, SMS ni vídeo engine.
     """
     order = get_order_by_sender_token_or_404(sender_token)
     log_human("REGALANTE HA ABIERTO EL PACK", "🎁 El creador ha abierto el recuerdo", f"🆔 Pedido: {order.get('id')}")
@@ -11589,49 +11681,77 @@ def sender_pack(sender_token: str, view: str = ""):
 <style>
 *{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
 html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}}
-body{{min-height:100svh;min-height:100dvh;background:#02050a;overflow-x:hidden;display:flex;justify-content:center}}
-.shell{{position:relative;width:100vw;max-width:520px;min-height:100svh;min-height:100dvh;overflow:hidden;background:#02050a}}
-.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;opacity:.62;z-index:0;pointer-events:none}}
-.veil{{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.58));z-index:1;pointer-events:none}}
-.header{{position:relative;z-index:3;text-align:center;padding-top:calc(env(safe-area-inset-top) + 18px)}}
-.logo{{font-family:Georgia,"Times New Roman",serif;letter-spacing:.44em;color:#eec36a;font-size:clamp(18px,5.2vw,27px);text-shadow:0 0 22px rgba(255,200,93,.54)}}
-.logo:after{{content:"♡";display:block;letter-spacing:0;margin-top:7px;font-size:18px;color:#ffd477}}
-.title{{margin:18px auto 12px;width:88%;font-family:Georgia,"Times New Roman",serif;font-size:clamp(32px,9.4vw,48px);line-height:1.04;color:#fff5e8;text-shadow:0 0 22px rgba(255,255,255,.16)}}
+body{{min-height:100svh;min-height:100dvh;background:#02050a;overflow:hidden;display:flex;justify-content:center}}
+.shell{{position:relative;width:100vw;max-width:520px;height:100svh;height:100dvh;overflow:hidden;background:#02050a}}
+.bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;opacity:.78;z-index:0;pointer-events:none}}
+.veil{{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.10) 0%,rgba(0,0,0,.20) 27%,rgba(0,0,0,.50) 100%);z-index:1;pointer-events:none}}
+.header{{position:relative;z-index:3;text-align:center;padding-top:calc(env(safe-area-inset-top) + 14px)}}
+.logo{{font-family:Georgia,"Times New Roman",serif;letter-spacing:.42em;color:#eec36a;font-size:clamp(16px,4.6vw,24px);text-shadow:0 0 22px rgba(255,200,93,.54)}}
+.logo:after{{content:"♡";display:block;letter-spacing:0;margin-top:5px;font-size:16px;color:#ffd477}}
+.title{{margin:10px auto 8px;width:90%;font-family:Georgia,"Times New Roman",serif;font-size:clamp(25px,7.3vw,39px);line-height:1.04;color:#fff5e8;text-shadow:0 0 22px rgba(255,255,255,.16)}}
 .title span{{color:#f4c46c;text-shadow:0 0 30px rgba(255,199,92,.52)}}
-.video-wrap{{position:relative;z-index:4;width:82%;height:58svh;max-height:610px;min-height:430px;margin:4px auto 14px;border-radius:28px;overflow:hidden;background:#000;border:1px solid rgba(255,215,136,.42);box-shadow:0 0 40px rgba(36,171,255,.28),0 0 54px rgba(255,191,83,.16),inset 0 0 20px rgba(255,255,255,.05)}}
+
+/* RC86: pantalla tipo videollamada vertical. El vídeo 9:16 manda. */
+.call-frame{{position:relative;z-index:4;width:min(76vw,382px);height:min(66.5svh,650px);margin:4px auto 12px;border-radius:34px;overflow:hidden;background:#000;border:1px solid rgba(255,215,136,.48);box-shadow:0 0 42px rgba(36,171,255,.30),0 0 58px rgba(255,191,83,.18),inset 0 0 26px rgba(255,255,255,.055)}}
+.call-frame:before{{content:"";position:absolute;left:50%;top:9px;transform:translateX(-50%);width:72px;height:5px;border-radius:999px;background:rgba(255,236,190,.25);z-index:8;box-shadow:0 0 14px rgba(255,222,150,.25)}}
 .main-video{{position:absolute;inset:0;background:#000}}
 .main-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000}}
-.reaction-video{{position:absolute;right:10px;bottom:54px;width:28%;aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#000;border:2px solid rgba(255,204,104,.98);box-shadow:0 0 0 1px rgba(255,245,207,.22),0 0 30px rgba(255,183,70,.72),inset 0 0 16px rgba(255,218,137,.22)}}
+.reaction-video{{position:absolute;right:10px;top:54px;width:18%;min-width:58px;max-width:82px;aspect-ratio:9/16;border-radius:15px;overflow:hidden;background:#000;border:1.7px solid rgba(255,205,104,.96);box-shadow:0 0 0 1px rgba(255,245,207,.20),0 0 25px rgba(255,183,70,.62),inset 0 0 13px rgba(255,218,137,.20);z-index:9}}
 .reaction-video video{{width:100%;height:100%;object-fit:cover;display:block;background:#000}}
-.badge{{position:absolute;right:12px;bottom:calc(54px + 28% * 1.78 + 8px);z-index:6;padding:5px 9px;border-radius:999px;background:rgba(0,0,0,.48);color:#fff4dc;font-size:11px;border:1px solid rgba(255,215,136,.32);backdrop-filter:blur(8px)}}
-.actions{{position:relative;z-index:5;width:86%;margin:0 auto calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;gap:10px}}
-.btn{{min-height:56px;border-radius:18px;border:1px solid rgba(255,215,136,.42);display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;text-transform:uppercase;letter-spacing:.07em;font-weight:900;color:#fff4dc;background:rgba(0,0,0,.40);box-shadow:0 0 18px rgba(255,205,92,.12),inset 0 0 18px rgba(255,255,255,.035);backdrop-filter:blur(10px)}}
+.call-label{{position:absolute;right:10px;top:calc(54px + min(82px, max(58px, 18% * 1.77)) + 8px);z-index:10;padding:4px 8px;border-radius:999px;background:rgba(0,0,0,.44);color:#fff4dc;font-size:10px;border:1px solid rgba(255,215,136,.30);backdrop-filter:blur(8px)}}
+.call-controls{{position:absolute;left:0;right:0;bottom:11px;z-index:9;display:flex;justify-content:center;gap:11px;pointer-events:none}}
+.call-dot{{width:34px;height:34px;border-radius:999px;background:rgba(0,0,0,.42);border:1px solid rgba(255,230,168,.23);display:flex;align-items:center;justify-content:center;color:rgba(255,240,210,.86);font-size:13px;backdrop-filter:blur(7px)}}
+.call-dot.heart{{background:rgba(255,191,77,.18);box-shadow:0 0 18px rgba(255,191,77,.22)}}
+
+.actions{{position:relative;z-index:5;width:min(86vw,420px);margin:0 auto calc(env(safe-area-inset-bottom) + 14px);display:flex;flex-direction:column;gap:9px}}
+.btn{{min-height:51px;border-radius:17px;border:1px solid rgba(255,215,136,.42);display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;text-transform:uppercase;letter-spacing:.07em;font-weight:900;color:#fff4dc;background:rgba(0,0,0,.40);box-shadow:0 0 18px rgba(255,205,92,.12),inset 0 0 18px rgba(255,255,255,.035);backdrop-filter:blur(10px);font-size:clamp(12px,3.6vw,15px)}}
 .btn.primary{{background:linear-gradient(135deg,#fff1bb,#e6a43c 56%,#9c5d08);color:#170b02;box-shadow:0 0 30px rgba(255,190,72,.38),inset 0 0 18px rgba(255,255,255,.22)}}
 .toast{{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%) translateY(16px);padding:10px 14px;border-radius:999px;background:rgba(0,0,0,.72);color:#fff4dc;font-size:13px;opacity:0;transition:all .25s ease;z-index:20}}
 .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
-@media(max-height:740px){{.video-wrap{{height:53svh;min-height:360px}}.title{{font-size:clamp(28px,8vw,42px);margin-top:12px}}.btn{{min-height:50px}}}}
+
+@media(max-height:760px){{
+  .header{{padding-top:calc(env(safe-area-inset-top) + 10px)}}
+  .title{{font-size:clamp(22px,6.4vw,34px);margin:8px auto 6px}}
+  .call-frame{{height:60.5svh;width:min(72vw,356px);border-radius:30px}}
+  .btn{{min-height:47px}}
+  .actions{{gap:8px;margin-bottom:calc(env(safe-area-inset-bottom) + 10px)}}
+}}
+@media(max-height:680px){{
+  .logo:after{{display:none}}
+  .title{{font-size:clamp(20px,5.8vw,31px);margin:5px auto}}
+  .call-frame{{height:58svh;width:min(68vw,330px)}}
+  .btn{{min-height:43px;font-size:12px}}
+}}
 </style>
 </head>
 <body>
 <div class="shell">
   <img class="bg" src="{safe_attr(sender_bg)}" alt="">
   <div class="veil"></div>
+
   <div class="header">
     <div class="logo">ETERNA</div>
     <div class="title">Aquí vuelve<br><span>lo que provocaste.</span></div>
   </div>
 
-  <section class="video-wrap">
+  <section class="call-frame" aria-label="Sender Pack ETERNA">
     <div class="main-video">
       <video id="originalVideo" controls playsinline preload="metadata" poster="{safe_attr(sender_bg)}">
         {original_source_html}
       </video>
     </div>
-    <div class="badge">♡ Su reacción</div>
-    <div class="reaction-video">
+
+    <div class="reaction-video" aria-label="Reacción">
       <video id="reactionVideo" muted playsinline preload="metadata">
         {reaction_source_html}
       </video>
+    </div>
+    <div class="call-label">♡ Lo que sintió</div>
+
+    <div class="call-controls" aria-hidden="true">
+      <div class="call-dot">✦</div>
+      <div class="call-dot heart">♡</div>
+      <div class="call-dot">↻</div>
     </div>
   </section>
 
@@ -11640,6 +11760,7 @@ body{{min-height:100svh;min-height:100dvh;background:#02050a;overflow-x:hidden;d
     <a class="btn" href="#" id="shareBtn">↗ Compartir</a>
     <a class="btn" href="{safe_attr(reaction_url)}" download>↓ Descargar</a>
   </nav>
+
   <div class="toast" id="toast">Enlace copiado</div>
 </div>
 
@@ -11649,13 +11770,23 @@ body{{min-height:100svh;min-height:100dvh;background:#02050a;overflow-x:hidden;d
   const reaction = document.getElementById("reactionVideo");
   const share = document.getElementById("shareBtn");
   const toast = document.getElementById("toast");
-  function showToast(msg){{ if(!toast) return; toast.textContent=msg; toast.classList.add("show"); setTimeout(()=>toast.classList.remove("show"),1800); }}
-  if(original && reaction){{
-    original.addEventListener("play", ()=>{{ try{{reaction.currentTime=original.currentTime; reaction.play().catch(()=>{{}});}}catch(e){{}} }});
-    original.addEventListener("pause", ()=>{{ try{{reaction.pause();}}catch(e){{}} }});
-    original.addEventListener("seeking", ()=>{{ try{{reaction.currentTime=original.currentTime;}}catch(e){{}} }});
-    original.addEventListener("ended", ()=>{{ try{{reaction.pause();}}catch(e){{}} }});
+
+  function showToast(msg){{ 
+    if(!toast) return; 
+    toast.textContent=msg; 
+    toast.classList.add("show"); 
+    setTimeout(()=>toast.classList.remove("show"),1800); 
   }}
+
+  if(original && reaction){{
+    original.addEventListener("play", ()=>{{ 
+      try{{ reaction.currentTime = original.currentTime || 0; reaction.play().catch(()=>{{}}); }}catch(e){{}} 
+    }});
+    original.addEventListener("pause", ()=>{{ try{{ reaction.pause(); }}catch(e){{}} }});
+    original.addEventListener("seeking", ()=>{{ try{{ reaction.currentTime = original.currentTime || 0; }}catch(e){{}} }});
+    original.addEventListener("ended", ()=>{{ try{{ reaction.pause(); }}catch(e){{}} }});
+  }}
+
   if(share){{
     share.addEventListener("click", async function(e){{
       e.preventDefault();
@@ -12857,7 +12988,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -12909,7 +13040,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -12987,7 +13118,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -13042,7 +13173,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC84_GUIA_SENDER_REAL_FIX_SAFE",
+        "version": "RC86_SENDER_VERTICAL_CALL_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
