@@ -1,11 +1,11 @@
 # =========================================================
-# RC91_PHOTO_OPTIMIZE_ONLY_SAFE
-# Base: RC90 perfecto subido por Sergio.
-# SOLO TOCA /crear:
-# - optimiza fotos en navegador antes de subir
-# - reduce peso para iPhone/Safari/Instagram browser
-# - guarda borrador temporal de fotos optimizadas en IndexedDB
-# - restaura fotos si Safari refresca o vuelve atrás
+# RC92_PHOTO_PICKER_ONLY_SAFE
+# Base: RC91 perfecto.
+# SOLO TOCA selección múltiple de fotos en /crear:
+# - si elige más de 6, usa las 6 primeras
+# - si elige menos de 6, coloca las que haya en huecos libres
+# - no borra fotos ya seleccionadas
+# - mantiene optimización RC91
 #
 # NO toca:
 # Stripe, webhook, SMS, WhatsApp, video engine, grabación,
@@ -27,18 +27,18 @@ print("✨ VISUAL ETERNA UNIFIED SCREENS VERSION ✨")
 print("🛡️ WORKER SENDER SMS EXHAUSTED FILTER VERSION 🛡️")
 print("🏛️ HOME PREMIUM + PAGO CONFIRMADO ÚNICO VERSION 🏛️")
 print("🎬 ETERNA CINEMATIC FILM UI + STABLE BASE + SENDER AUDIO ENGINE ONLY 🎬")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — MAIN COMPLETO + EL UMBRAL 🛟")
 
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — MAIN COMPLETO + ALMA YUL 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — CARPETAS BLINDADAS 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — /CREAR OK 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — TODO METIDO PARA REVISAR 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — SOLO UN LUGAR 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — FORMULARIO LIMPIO 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛟 RC91 PHOTO OPTIMIZE ONLY SAFE — SMS + MASTER V1 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — MAIN COMPLETO + ALMA YUL 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — CARPETAS BLINDADAS 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — /CREAR OK 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — TODO METIDO PARA REVISAR 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — YUL CUENTA LO QUE ESCRIBES 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — FORMULARIO SIMPLE + MAGIA 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — SOLO UN LUGAR 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — FORMULARIO LIMPIO 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — YUL NO BLOQUEA ETERNA 🛟")
+print("🛟 RC92 PHOTO PICKER ONLY SAFE — SMS + MASTER V1 🛟")
 import html
 import json
 import mimetypes
@@ -195,7 +195,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC91_PHOTO_OPTIMIZE_ONLY_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC92_PHOTO_PICKER_ONLY_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -6943,51 +6943,96 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
     }}
 
+    function findNextEmptyPhotoSlot(startIndex) {{
+        for (let i = startIndex || 0; i < ETERNA_PHOTO_IDS.length; i++) {{
+            const input = document.getElementById(ETERNA_PHOTO_IDS[i]);
+            if (!input || !input.files || input.files.length === 0) {{
+                return i;
+            }}
+        }}
+        return -1;
+    }}
+
+    function currentPhotoCount() {{
+        let count = 0;
+        for (const id of ETERNA_PHOTO_IDS) {{
+            const input = document.getElementById(id);
+            if (input && input.files && input.files.length > 0) count += 1;
+        }}
+        return count;
+    }}
+
+    function updateGlobalPhotoHint(message) {{
+        const helper = document.querySelector(".multi-photo-helper");
+        if (helper && message) {{
+            helper.innerText = message;
+        }}
+    }}
+
     const multiPhotoPicker = document.getElementById("multi_photo_picker");
     if (multiPhotoPicker) {{
         multiPhotoPicker.addEventListener("change", async function () {{
             clearError();
+
             const rawFiles = Array.from(multiPhotoPicker.files || []);
-            const files = rawFiles.filter((file) => {{
+            if (!rawFiles.length) return;
+
+            const validFiles = rawFiles.filter((file) => {{
                 const type = String(file.type || "").toLowerCase();
                 const name = String(file.name || "").toLowerCase();
                 return type.startsWith("image/") || /\\.(jpg|jpeg|png|webp|heic|heif)$/i.test(name);
             }});
 
-            if (!rawFiles.length) return;
-
-            if (rawFiles.length > 6 || files.length > 6) {{
+            if (!validFiles.length) {{
                 multiPhotoPicker.value = "";
-                showError("Has elegido más de 6 fotos. Para crear tu ETERNA selecciona exactamente 6 recuerdos.");
+                showError("No hemos encontrado imágenes válidas. Elige fotos desde tu galería.");
                 return;
             }}
 
-            if (files.length < 6) {{
-                showError("Elige exactamente 6 fotos para crear ETERNA.");
+            const availableSlots = ETERNA_PHOTO_IDS.length - currentPhotoCount();
+
+            if (availableSlots <= 0) {{
+                multiPhotoPicker.value = "";
+                showError("Ya tienes 6 fotos. Si quieres cambiar una, toca directamente la foto que quieras sustituir.");
                 return;
             }}
 
-            for (const file of files) {{
-                const type = String(file.type || "").toLowerCase();
-                const name = String(file.name || "").toLowerCase();
-                if (!(type.startsWith("image/") || /\\.(jpg|jpeg|png|webp|heic|heif)$/i.test(name))) {{
-                    multiPhotoPicker.value = "";
-                    showError("Una de las fotos no parece una imagen válida.");
-                    return;
-                }}
-            }}
+            const filesToUse = validFiles.slice(0, availableSlots);
+            const ignored = validFiles.length - filesToUse.length;
 
-            for (let index = 0; index < files.length; index++) {{
-                const inputId = "photo" + (index + 1);
-                const ok = await preparePhotoForSlot(inputId, files[index], index);
+            let slotSearchStart = 0;
+            let loaded = 0;
+
+            for (const file of filesToUse) {{
+                const slotIndex = findNextEmptyPhotoSlot(slotSearchStart);
+                if (slotIndex < 0) break;
+
+                const inputId = ETERNA_PHOTO_IDS[slotIndex];
+                const ok = await preparePhotoForSlot(inputId, file, slotIndex);
                 if (!ok) {{
                     multiPhotoPicker.value = "";
                     return;
                 }}
+
+                loaded += 1;
+                slotSearchStart = slotIndex + 1;
             }}
 
             multiPhotoPicker.value = "";
             saveFormState();
+
+            const total = currentPhotoCount();
+            const missing = Math.max(0, 6 - total);
+
+            if (ignored > 0) {{
+                updateGlobalPhotoHint("Hemos colocado las fotos posibles. Para cambiar una, toca su casilla.");
+            }} else if (missing > 0) {{
+                updateGlobalPhotoHint("Fotos cargadas. Te faltan " + missing + " para completar tu ETERNA.");
+            }} else {{
+                updateGlobalPhotoHint("6 fotos listas. Puedes cambiar cualquiera tocando su casilla.");
+            }}
+
+            clearError();
         }});
     }}
 
@@ -8356,7 +8401,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8372,7 +8417,7 @@ def admin_rc76_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "golden_master_preserved": True,
         "contains_rc74_core": True,
         "contains_yul_umbral": True,
@@ -8388,7 +8433,7 @@ def admin_rc76_version(token: str = ""):
 def admin_rc77_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
-    return {"version":"RC91_PHOTO_OPTIMIZE_ONLY_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
+    return {"version":"RC92_PHOTO_PICKER_ONLY_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
 
 
 
@@ -8397,7 +8442,7 @@ def admin_rc78_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "formulario_yul": "solo_lugar",
         "uses_real_place": True,
         "generic_romantic_responses": True,
@@ -8412,7 +8457,7 @@ def admin_rc78b_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "formulario_yul": "solo_lugar",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8427,7 +8472,7 @@ def admin_rc78c_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "formulario_yul": "solo_lugar_visible",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8469,7 +8514,7 @@ def admin_rc79_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "watchdog_global": True,
         "watchdog_scene": True,
         "tap_recovery": True,
@@ -8589,7 +8634,7 @@ def admin_rc81_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "sms_base_checked_against_salvavidas": True,
         "sms_core_changed": False,
         "admin_sms_delivery_check": True,
@@ -8607,7 +8652,7 @@ def admin_rc82_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "rescue_hidden_normal_flow": True,
         "rescue_emergency_after_ms": 60000,
         "camera_guide_auto_continue_ms": 4000,
@@ -8623,7 +8668,7 @@ def admin_rc84_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "guia_replaced_from_root": True,
         "one_text_at_a_time": True,
         "skip_button_removed": True,
@@ -8641,7 +8686,7 @@ def admin_rc85_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "fix": "guia_start_button_route",
         "canonical_js_route": "/start-experience",
         "compat_route": "/start-experience/{recipient_token}",
@@ -8658,7 +8703,7 @@ def admin_rc86_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "only_sender_pack_changed": True,
         "vertical_call_layout": True,
         "main_video_format": "9:16",
@@ -8675,7 +8720,7 @@ def admin_rc89_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "base": "RC86_good_uploaded",
         "only_phrase_timing_changed": True,
         "anti_overlap": True,
@@ -8689,12 +8734,33 @@ def admin_rc89_version(token: str = ""):
 
 
 
+
+@app.get("/admin/rc92-version")
+def admin_rc92_version(token: str = ""):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
+        "base": "RC91_photo_optimize_only",
+        "only_gallery_picker_changed": True,
+        "photo_optimization_kept": True,
+        "more_than_six_uses_available_slots": True,
+        "less_than_six_keeps_loaded_photos": True,
+        "individual_photo_change_kept": True,
+        "critical_core_touched": False,
+        "stripe_touched": False,
+        "sms_touched": False,
+        "sender_pack_touched": False,
+        "experience_touched": False,
+    }
+
+
 @app.get("/admin/rc91-version")
 def admin_rc91_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "base": "RC90_final_perfect",
         "only_create_photos_changed": True,
         "client_photo_optimization": True,
@@ -8714,7 +8780,7 @@ def admin_rc90_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "base": "RC89_final_candidate",
         "only_sender_pack_visual_changed": True,
         "removed_lo_que_sintio": True,
@@ -13368,7 +13434,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -13420,7 +13486,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -13498,7 +13564,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -13553,7 +13619,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC91_PHOTO_OPTIMIZE_ONLY_SAFE",
+        "version": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
