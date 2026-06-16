@@ -1,5 +1,5 @@
 # =========================================================
-# RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE
+# RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE
 # Base: RC92 funcionando completo.
 # SOLO TOCA PRESENTACIÓN VISUAL DE LA REACCIÓN EN SENDER PACK:
 # - evita zoom/recorte de la reacción
@@ -195,7 +195,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -1284,7 +1284,7 @@ def render_eterna_image_screen(
     filter:contrast(1.08) saturate(1.10) brightness(1.04);
 }}
 .sender-reaction, video.sender-reaction, .reaction-video {{
-    object-fit:contain !important;
+    object-fit:cover !important;
     object-position:center center !important;
     transform:none !important;
     filter:contrast(1.12) saturate(1.08) brightness(1.08);
@@ -8403,7 +8403,7 @@ def admin_yul_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "base": "RC75_MAGIA_YUL_FORMULARIO_DEPLOY_SAFE",
         "yul": "particula_estela_indigo",
         "umbral": "trovador_cinematografico",
@@ -8419,7 +8419,7 @@ def admin_rc76_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "golden_master_preserved": True,
         "contains_rc74_core": True,
         "contains_yul_umbral": True,
@@ -8435,7 +8435,7 @@ def admin_rc76_version(token: str = ""):
 def admin_rc77_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
-    return {"version":"RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
+    return {"version":"RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
 
 
 
@@ -8444,7 +8444,7 @@ def admin_rc78_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "formulario_yul": "solo_lugar",
         "uses_real_place": True,
         "generic_romantic_responses": True,
@@ -8459,7 +8459,7 @@ def admin_rc78b_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "formulario_yul": "solo_lugar",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8474,7 +8474,7 @@ def admin_rc78c_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "formulario_yul": "solo_lugar_visible",
         "lugar_real_en_historia": True,
         "no_inventa_recuerdos": True,
@@ -8516,7 +8516,7 @@ def admin_rc79_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "watchdog_global": True,
         "watchdog_scene": True,
         "tap_recovery": True,
@@ -8636,7 +8636,7 @@ def admin_rc81_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "sms_base_checked_against_salvavidas": True,
         "sms_core_changed": False,
         "admin_sms_delivery_check": True,
@@ -8654,7 +8654,7 @@ def admin_rc82_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "rescue_hidden_normal_flow": True,
         "rescue_emergency_after_ms": 60000,
         "camera_guide_auto_continue_ms": 4000,
@@ -8670,7 +8670,7 @@ def admin_rc84_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "guia_replaced_from_root": True,
         "one_text_at_a_time": True,
         "skip_button_removed": True,
@@ -8688,7 +8688,7 @@ def admin_rc85_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "fix": "guia_start_button_route",
         "canonical_js_route": "/start-experience",
         "compat_route": "/start-experience/{recipient_token}",
@@ -8705,7 +8705,7 @@ def admin_rc86_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "only_sender_pack_changed": True,
         "vertical_call_layout": True,
         "main_video_format": "9:16",
@@ -8722,7 +8722,7 @@ def admin_rc89_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "base": "RC86_good_uploaded",
         "only_phrase_timing_changed": True,
         "anti_overlap": True,
@@ -8743,7 +8743,7 @@ def admin_rc93_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "base": "RC92_PHOTO_PICKER_ONLY_SAFE",
         "only_sender_pack_reaction_visual_changed": True,
         "reaction_object_fit": "contain",
@@ -8763,7 +8763,7 @@ def admin_rc92_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "base": "RC91_photo_optimize_only",
         "only_gallery_picker_changed": True,
         "photo_optimization_kept": True,
@@ -8783,7 +8783,7 @@ def admin_rc91_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "base": "RC90_final_perfect",
         "only_create_photos_changed": True,
         "client_photo_optimization": True,
@@ -8803,7 +8803,7 @@ def admin_rc90_version(token: str = ""):
     if ADMIN_TOKEN and token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "base": "RC89_final_candidate",
         "only_sender_pack_visual_changed": True,
         "removed_lo_que_sintio": True,
@@ -12033,8 +12033,8 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
 .rc81-sender-btn.download{background:rgba(0,0,0,.28)}
 .sender-actions,.sender-buttons,.actions,.pack-actions,.cta-stack{display:flex!important;flex-direction:column!important;gap:12px!important;width:min(92%,430px)!important;margin:18px auto 22px!important;position:relative!important;z-index:30!important}
 .sender-actions a,.sender-actions button,.sender-buttons a,.sender-buttons button,.actions a,.actions button,.pack-actions a,.pack-actions button,.cta-stack a,.cta-stack button{width:100%!important;min-height:56px!important;border-radius:18px!important;text-align:center!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-decoration:none!important;box-sizing:border-box!important}
-.reaction-video,.reaction-box,.reaction-window,.reaction-preview,.sender-reaction{right:10px!important;bottom:10px!important;left:auto!important;top:auto!important;transform:none!important;width:clamp(112px,32%,180px)!important;aspect-ratio:16/9!important;border-radius:16px!important;overflow:hidden!important;z-index:20!important;background:#000!important}
-.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center center!important;transform:none!important;background:#000!important}
+.reaction-video,.reaction-box,.reaction-window,.reaction-preview,.sender-reaction{right:10px!important;bottom:10px!important;left:auto!important;top:auto!important;transform:none!important;width:clamp(86px,24%,126px)!important;aspect-ratio:9/16!important;border-radius:16px!important;overflow:hidden!important;z-index:20!important;background:#000!important}
+.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important;transform:none!important;background:#000!important}
 .rc81-hidden-old{display:none!important}
 @media(max-width:420px){.rc81-sender-actions{width:min(92%,360px);gap:10px;margin-top:14px}.rc81-sender-btn{min-height:54px;border-radius:16px;font-size:13px}}
 </style>
@@ -12169,24 +12169,25 @@ body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:fle
 .main-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000}}
 
 /* RC90: reacción más grande, sin etiqueta */
-.reaction-video{{position:absolute;right:10px;top:52px;width:32%;min-width:112px;max-width:180px;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#000;border:1.8px solid rgba(255,205,104,.97);box-shadow:0 0 0 1px rgba(255,245,207,.20),0 0 26px rgba(255,183,70,.62),inset 0 0 14px rgba(255,218,137,.20);z-index:9}}
-.reaction-video video{{width:100%;height:100%;object-fit:contain;object-position:center center;transform:none;display:block;background:#000}}
+.reaction-video{{position:absolute;right:10px;top:52px;width:24%;min-width:86px;max-width:126px;aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#000;border:1.8px solid rgba(255,205,104,.97);box-shadow:0 0 0 1px rgba(255,245,207,.20),0 0 26px rgba(255,183,70,.62),inset 0 0 14px rgba(255,218,137,.20);z-index:9}}
+.reaction-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;transform:none;display:block;background:#000}}
 
 
 
-/* RC93: reacción del Sender Pack SIN ZOOM.
-   El archivo original se veía bien; el recorte venía del PIP.
-   Por eso preservamos todo el encuadre con contain y sin scale. */
+/* RC94: SOLO formato del marco PiP de la reacción.
+   Objetivo: quitar bandas negras sin tocar cámara, upload, vídeo original ni circuito.
+   La clave es que el marco vuelva a ser 9:16 real y el vídeo cubra ese marco. */
 .reaction-video,
 .reaction-box,
 .reaction-window,
 .reaction-preview,
 .sender-reaction{{
-  width:clamp(112px,32%,180px)!important;
-  aspect-ratio:16/9!important;
+  width:clamp(86px,24%,126px)!important;
+  aspect-ratio:9/16!important;
   background:#000!important;
   overflow:hidden!important;
   transform:none!important;
+  border-radius:18px!important;
 }}
 .reaction-video video,
 .reaction-box video,
@@ -12196,15 +12197,15 @@ body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:fle
 video.sender-reaction{{
   width:100%!important;
   height:100%!important;
-  object-fit:contain!important;
+  object-fit:cover!important;
   object-position:center center!important;
   transform:none!important;
   background:#000!important;
 }}
 @media(max-width:480px){{
   .reaction-video,.reaction-box,.reaction-window,.reaction-preview,.sender-reaction{{
-    width:clamp(106px,34%,170px)!important;
-    aspect-ratio:16/9!important;
+    width:clamp(82px,24%,118px)!important;
+    aspect-ratio:9/16!important;
   }}
 }}
 
@@ -12220,7 +12221,7 @@ video.sender-reaction{{
   .title{{font-size:clamp(21px,6.2vw,33px);margin:7px auto 5px}}
   .bg-blur-title{{height:148px}}
   .call-frame{{height:62.5svh;width:min(78vw,382px);border-radius:30px;margin-bottom:6px}}
-  .reaction-video{{width:30%;min-width:104px;max-width:168px;top:48px;aspect-ratio:16/9}}
+  .reaction-video{{width:23%;min-width:82px;max-width:118px;top:48px;aspect-ratio:9/16}}
   .btn{{min-height:44px}}
   .actions{{gap:5px;margin-bottom:calc(env(safe-area-inset-bottom) + 9px)}}
 }}
@@ -12229,7 +12230,7 @@ video.sender-reaction{{
   .title{{font-size:clamp(19px,5.6vw,30px);margin:4px auto}}
   .bg-blur-title{{height:126px}}
   .call-frame{{height:59svh;width:min(74vw,356px)}}
-  .reaction-video{{width:21%;min-width:60px;top:44px}}
+  .reaction-video{{width:22%;min-width:76px;max-width:108px;top:44px;aspect-ratio:9/16}}
   .btn{{min-height:40px;font-size:12px}}
   .actions{{gap:5px}}
 }}
@@ -13493,7 +13494,7 @@ def admin_rc74a_queue_status(token: str = ""):
         item["minutes_since_created"] = rc74a_minutes_since(item.get("created_at"))
 
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "mode": "read_only",
         "auto_retry": False,
         "sends_messages": False,
@@ -13545,7 +13546,7 @@ def admin_rc74a_orphans(token: str = ""):
             item["minutes_since_render_requested"] = rc74a_minutes_since(item.get("video_render_requested_at"))
 
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "mode": "read_only",
         "total_orphan_samples": total,
         "groups": groups,
@@ -13623,7 +13624,7 @@ def admin_rc74a_confidence(token: str = ""):
         status = "RIESGO_ALTO"
 
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "confidence_score": score,
         "status": status,
         "reasons": reasons,
@@ -13678,7 +13679,7 @@ def admin_rc74a_production_validator(token: str = ""):
     decision = "NO_LANZAR_AUN" if blocking else "APTA_PARA_PRUEBA_CONTROLADA"
 
     return {
-        "version": "RC93_SENDER_PACK_REACTION_NO_ZOOM_SAFE",
+        "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
         "decision": decision,
         "blocking": blocking,
         "checks": checks,
