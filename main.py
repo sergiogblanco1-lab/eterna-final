@@ -1,7 +1,18 @@
 # =========================================================
-# RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE
-# Base: RC92 funcionando completo.
-# SOLO TOCA PRESENTACIÓN VISUAL DE LA REACCIÓN EN SENDER PACK:
+# RC95_EMAIL_PEDIDOS_ALERTAS_SAFE
+# Base: RC94 funcionando completo.
+# SOLO AÑADE EMAIL OPERATIVO DE PEDIDOS Y ALERTAS CRÍTICAS:
+# - email simple al comprador cuando Stripe confirma pago
+# - email interno completo a ETERNA/Sergio
+# - alertas por email para fallos críticos
+# - columnas idempotentes para no duplicar correos
+#
+# Mantiene intacto el ajuste RC94 del Sender Pack.
+# NO toca Stripe Checkout, webhook de pago salvo enganchar email después de paid,
+# SMS, WhatsApp, video engine, grabación, upload reacción, cámara,
+# workers, cobros, formulario ni selección de fotos.
+#
+# ANTES ERA:
 # - evita zoom/recorte de la reacción
 # - fuerza object-fit: contain en la reacción
 # - elimina transform/scale en el vídeo de reacción
@@ -38,7 +49,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO SIMPLE + MAGIA
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SMS + MASTER V1 🛟")
+print("🛟 RC95 EMAIL PEDIDOS + ALERTAS SAFE — SMS + MASTER V1 🛟")
 import html
 import json
 import mimetypes
@@ -48,6 +59,8 @@ import sqlite3
 import traceback
 import uuid
 import hashlib
+import smtplib
+from email.message import EmailMessage
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -88,6 +101,28 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
 ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "").strip()
+
+# =========================================================
+# RC95 — EMAIL CORPORATIVO / PEDIDOS / ALERTAS
+# Config recomendado Namecheap Private Email:
+# SMTP_HOST=mail.privateemail.com
+# SMTP_PORT=587
+# SMTP_USER=hola@tueterna.com
+# SMTP_PASSWORD=<contraseña del buzón>
+# SMTP_FROM=hola@tueterna.com
+# EMAIL_ENABLED=1
+# ADMIN_ALERT_EMAIL=sergiog.blanco1@gmail.com
+# ETERNA_OPERATIONS_EMAIL=hola@tueterna.com
+# =========================================================
+EMAIL_ENABLED = os.getenv("EMAIL_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+SMTP_HOST = os.getenv("SMTP_HOST", "mail.privateemail.com").strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
+SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER or "hola@tueterna.com").strip()
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "ETERNA").strip()
+ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "sergiog.blanco1@gmail.com").strip()
+ETERNA_OPERATIONS_EMAIL = os.getenv("ETERNA_OPERATIONS_EMAIL", SMTP_FROM or "hola@tueterna.com").strip()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
@@ -195,7 +230,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC95_EMAIL_PEDIDOS_ALERTAS_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2036,6 +2071,13 @@ def init_db():
     add_column_if_missing("orders", "render_last_error", "ALTER TABLE orders ADD COLUMN render_last_error TEXT")
     add_column_if_missing("orders", "recovery_last_checked_at", "ALTER TABLE orders ADD COLUMN recovery_last_checked_at TEXT")
     add_column_if_missing("orders", "recovery_notes", "ALTER TABLE orders ADD COLUMN recovery_notes TEXT")
+
+    # RC95 — email pedidos + alertas. Idempotente para no duplicar correos en reintentos de Stripe/Render.
+    add_column_if_missing("orders", "order_email_customer_sent_at", "ALTER TABLE orders ADD COLUMN order_email_customer_sent_at TEXT")
+    add_column_if_missing("orders", "order_email_admin_sent_at", "ALTER TABLE orders ADD COLUMN order_email_admin_sent_at TEXT")
+    add_column_if_missing("orders", "order_email_last_error", "ALTER TABLE orders ADD COLUMN order_email_last_error TEXT")
+    add_column_if_missing("orders", "admin_alert_last_sent_at", "ALTER TABLE orders ADD COLUMN admin_alert_last_sent_at TEXT")
+    add_column_if_missing("orders", "admin_alert_last_reason", "ALTER TABLE orders ADD COLUMN admin_alert_last_reason TEXT")
 init_db()
 
 
@@ -3227,6 +3269,15 @@ def try_send_sender_sms(order: dict) -> dict:
 
     if attempts >= 3:
         insert_order_event(order["id"], "sender_sms_error", "warning", "Máximo de intentos de SMS al regalante alcanzado", {"attempts": attempts})
+        try:
+            send_admin_error_email(
+                f"🚨 ETERNA ERROR sender pack {order_public_code(order)}",
+                build_critical_alert_body(order, "Reacción subida pero Sender Pack no enviado al regalante", order.get("sender_sms_error") or "Máximo de intentos alcanzado"),
+                order_id=order["id"],
+                reason="sender_sms_max_attempts",
+            )
+        except Exception as email_error:
+            log_error("email_alert_sender_sms_max_attempts", email_error)
         return {
             "ok": False,
             "reason": "max_attempts_reached",
@@ -3301,6 +3352,17 @@ def try_send_sender_sms(order: dict) -> dict:
             sender_sms_attempts=attempts,
             sender_sms_error=result.get("error") or "sms_error",
         )
+
+        if attempts >= 3:
+            try:
+                send_admin_error_email(
+                    f"🚨 ETERNA ERROR sender pack {order_public_code(order)}",
+                    build_critical_alert_body(order, "No se ha podido enviar el Sender Pack tras varios intentos", result.get("error") or "sms_error"),
+                    order_id=order["id"],
+                    reason="sender_sms_failed_after_retries",
+                )
+            except Exception as email_error:
+                log_error("email_alert_sender_sms_failed", email_error)
 
         refreshed = get_order_by_id(order["id"])
         return {
@@ -3491,6 +3553,213 @@ def send_message_best_effort(phone: str, message: str) -> dict:
         "whatsapp_error": whatsapp_result.get("error"),
         "sms_error": sms_result.get("error"),
     }
+
+
+# =========================================================
+# RC95 — EMAIL CORPORATIVO / PEDIDOS / ALERTAS
+# No bloquea el flujo: si el email falla, ETERNA sigue y deja evento/log.
+# =========================================================
+
+def email_enabled_and_configured() -> bool:
+    return bool(EMAIL_ENABLED and SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD and SMTP_FROM)
+
+
+def _email_recipients(value: str) -> list[str]:
+    recipients = []
+    for part in str(value or "").replace(";", ",").split(","):
+        item = part.strip()
+        if item and "@" in item:
+            recipients.append(item)
+    return recipients
+
+
+def send_eterna_email(to_email: str, subject: str, body: str, reply_to: str = "") -> dict:
+    """Envía email de texto simple desde el buzón corporativo. Nunca lanza excepción al flujo principal."""
+    recipients = _email_recipients(to_email)
+    if not recipients:
+        return {"ok": False, "error": "missing_recipient"}
+    if not email_enabled_and_configured():
+        return {"ok": False, "error": "email_not_configured"}
+
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = str(subject or "ETERNA").strip()[:180]
+        msg["From"] = f"{SMTP_FROM_NAME} <{SMTP_FROM}>" if SMTP_FROM_NAME else SMTP_FROM
+        msg["To"] = ", ".join(recipients)
+        if reply_to and "@" in reply_to:
+            msg["Reply-To"] = reply_to.strip()
+        msg.set_content(str(body or "").strip() or "ETERNA")
+
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+                smtp.login(SMTP_USER, SMTP_PASSWORD)
+                smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+                smtp.ehlo()
+                smtp.starttls()
+                smtp.ehlo()
+                smtp.login(SMTP_USER, SMTP_PASSWORD)
+                smtp.send_message(msg)
+        return {"ok": True, "error": None}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def order_public_code(order: dict) -> str:
+    raw = str((order or {}).get("id") or "").strip()
+    if not raw:
+        return "ET-SIN-ID"
+    if raw.upper().startswith("ET-"):
+        return raw
+    return f"ET-{raw}"
+
+
+def build_customer_order_email_body(order: dict) -> str:
+    sender_name = (order.get("sender_name") or "").strip()
+    greeting = f"Hola {sender_name}," if sender_name else "Hola,"
+    return f"""{greeting}
+
+Hemos recibido tu ETERNA correctamente.
+
+Número de pedido: {order_public_code(order)}
+
+Pago recibido.
+Tu ETERNA se está creando.
+
+Pronto tendrás noticias.
+
+Gracias por formar parte de ETERNA.
+""".strip()
+
+
+def build_admin_order_email_body(order: dict) -> str:
+    recipient_url = recipient_experience_url_from_order(order) if order else ""
+    sender_url = sender_pack_url_from_order(order) if order else ""
+    return f"""🦋 NUEVO PEDIDO ETERNA
+
+Pedido: {order_public_code(order)}
+Order ID interno: {order.get('id')}
+Fecha: {order.get('created_at')}
+Estado: {order.get('order_state') or 'PAID'}
+
+REGALANTE
+Nombre: {order.get('sender_name') or 'sin nombre'}
+Email: {order.get('sender_email') or 'sin email'}
+Teléfono: {order.get('sender_phone') or 'sin teléfono'}
+
+REGALADO
+Nombre: {order.get('recipient_name') or 'sin nombre'}
+Teléfono: {order.get('recipient_phone') or 'sin teléfono'}
+
+PEDIDO
+Tipo emoción: {order.get('message_type') or 'sin tipo'}
+Entrega: {order.get('delivery_mode') or 'instant'}
+Entrega programada: {order.get('scheduled_delivery_at') or 'no'}
+Dinero regalo: {money(order.get('gift_amount') or 0)} €
+Total pagado: {money(order.get('total_amount') or 0)} €
+Stripe session: {order.get('stripe_session_id') or 'pendiente/no disponible'}
+Stripe payment intent: {order.get('stripe_payment_intent_id') or 'pendiente/no disponible'}
+
+FRASES
+1. {order.get('phrase_1') or ''}
+2. {order.get('phrase_2') or ''}
+3. {order.get('phrase_3') or ''}
+
+ENLACES INTERNOS DE RESCATE
+Link regalado: {recipient_url}
+Link regalante: {sender_url}
+
+CHECK ACTUAL
+✅ Pago recibido
+⏳ Tu ETERNA se está creando / esperando render
+""".strip()
+
+
+def send_order_received_emails(order_id: str) -> dict:
+    """Envía confirmación simple al comprador y correo operativo a ETERNA. Idempotente."""
+    result = {"customer": "skipped", "admin": "skipped"}
+    try:
+        order = get_order_by_id(order_id)
+    except Exception as e:
+        return {"customer": "error", "admin": "error", "error": str(e)}
+
+    errors = []
+    sender_email = (order.get("sender_email") or "").strip()
+
+    if sender_email and not order.get("order_email_customer_sent_at"):
+        customer_res = send_eterna_email(
+            sender_email,
+            "Hemos recibido tu ETERNA",
+            build_customer_order_email_body(order),
+        )
+        if customer_res.get("ok"):
+            update_order(order_id, order_email_customer_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "customer_order_email", "ok", "Email simple de pedido enviado al comprador")
+            result["customer"] = "sent"
+        else:
+            err = customer_res.get("error") or "customer_email_error"
+            errors.append(f"customer: {err}")
+            update_order(order_id, order_email_last_error=err)
+            insert_order_event(order_id, "customer_order_email", "error", err)
+            result["customer"] = "error"
+
+    admin_targets = ",".join([x for x in [ETERNA_OPERATIONS_EMAIL, ADMIN_ALERT_EMAIL] if x])
+    if admin_targets and not order.get("order_email_admin_sent_at"):
+        admin_res = send_eterna_email(
+            admin_targets,
+            f"🦋 Nuevo pedido ETERNA {order_public_code(order)}",
+            build_admin_order_email_body(order),
+            reply_to=sender_email,
+        )
+        if admin_res.get("ok"):
+            update_order(order_id, order_email_admin_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_order_email", "ok", "Email operativo de pedido enviado a ETERNA/Sergio")
+            result["admin"] = "sent"
+        else:
+            err = admin_res.get("error") or "admin_email_error"
+            errors.append(f"admin: {err}")
+            update_order(order_id, order_email_last_error=err)
+            insert_order_event(order_id, "admin_order_email", "error", err)
+            result["admin"] = "error"
+
+    if errors:
+        result["error"] = " | ".join(errors)
+    return result
+
+
+def send_admin_error_email(subject: str, body: str, order_id: str = "", reason: str = "") -> dict:
+    targets = ",".join([x for x in [ADMIN_ALERT_EMAIL, ETERNA_OPERATIONS_EMAIL] if x])
+    if not targets:
+        return {"ok": False, "error": "missing_admin_email"}
+    res = send_eterna_email(targets, subject, body)
+    if order_id:
+        try:
+            update_order(order_id, admin_alert_last_sent_at=now_iso(), admin_alert_last_reason=reason or subject)
+            insert_order_event(order_id, "admin_error_email", "ok" if res.get("ok") else "error", reason or subject, {"email_result": res})
+        except Exception:
+            pass
+    return res
+
+
+def build_critical_alert_body(order: dict, title: str, detail: str) -> str:
+    return f"""🚨 ALERTA ETERNA
+
+{title}
+
+Pedido: {order_public_code(order)}
+Order ID: {order.get('id') if order else 'sin pedido'}
+Hora: {now_iso()}
+
+Detalle:
+{detail}
+
+Regalante: {(order or {}).get('sender_name') or 'sin nombre'} | {(order or {}).get('sender_email') or 'sin email'} | {(order or {}).get('sender_phone') or 'sin teléfono'}
+Regalado: {(order or {}).get('recipient_name') or 'sin nombre'} | {(order or {}).get('recipient_phone') or 'sin teléfono'}
+
+Link regalado: {recipient_experience_url_from_order(order) if order else ''}
+Link regalante: {sender_pack_url_from_order(order) if order else ''}
+""".strip()
 
 def send_admin_alert(message: str):
     try:
@@ -4420,6 +4689,9 @@ async def create_order_and_redirect(
     if not customer_name:
         raise HTTPException(status_code=400, detail="Tu nombre es obligatorio")
 
+    if not customer_email or "@" not in customer_email:
+        raise HTTPException(status_code=400, detail="Tu email es obligatorio para enviarte el número de pedido")
+
     if not recipient_name:
         raise HTTPException(status_code=400, detail="El nombre del destinatario es obligatorio")
 
@@ -4684,6 +4956,12 @@ async def create_order_and_redirect(
             gift_refund_deadline_at=gift_refund_deadline_iso(),
             delivery_locked=1 if delivery_mode == "scheduled" else 0,
         )
+
+        try:
+            email_result = send_order_received_emails(order_id)
+            print("📧 RC95 emails pedido test_no_stripe:", email_result)
+        except Exception as e:
+            log_error("order_emails_test_no_stripe", e)
 
         try:
             order = get_order_by_id(order_id)
@@ -5877,7 +6155,7 @@ def render_create_form() -> str:
                     <div class="section s1">
                         <div class="section-title">Quién lo crea</div>
                         <input name="customer_name" id="customer_name" placeholder="Tu nombre" required>
-                        <input name="customer_email" id="customer_email" type="email" placeholder="Tu email">
+                        <input name="customer_email" id="customer_email" type="email" placeholder="Tu email" required>
 
                         <div class="phone-row">
                             <select name="customer_country_code" id="customer_country_code" class="phone-code">
@@ -8877,6 +9155,12 @@ async def stripe_webhook(request: Request):
 
         # RC53 — idempotencia webhook Stripe: si Stripe reenvía el mismo evento, no relanzamos motor ni SMS.
         if stripe_event_id and (order.get("stripe_event_id") or "") == stripe_event_id and order.get("stripe_event_processed_at"):
+            # RC95: si el webhook se repite pero los emails no salieron, intentamos rescatar sin tocar render/SMS.
+            try:
+                email_result = send_order_received_emails(order_id)
+                print("📧 RC95 emails pedido webhook duplicado:", email_result)
+            except Exception as e:
+                log_error("order_emails_duplicate_webhook", e)
             return {"status": "ok", "reason": "stripe_event_already_processed", "order_id": order_id}
 
         log_info("💳 PAGO RECIBIDO EN STRIPE")
@@ -8907,6 +9191,14 @@ async def stripe_webhook(request: Request):
 
         order = get_order_by_id(order_id)
 
+        # RC95 — correo simple al comprador + copia operativa a ETERNA/Sergio.
+        # No bloquea render ni SMS; si falla queda registrado en order_events.
+        try:
+            email_result = send_order_received_emails(order_id)
+            print("📧 RC95 emails pedido:", email_result)
+        except Exception as e:
+            log_error("order_emails_after_payment", e)
+
         if original_video_ready(order):
             set_order_state(order_id, "VIDEO_READY", "stripe_webhook_video_already_ready")
             return {
@@ -8936,6 +9228,16 @@ async def stripe_webhook(request: Request):
         except Exception as e:
             clear_video_render_requested(order_id, error=str(e))
             log_error("webhook_video_engine_queued_for_recovery", e)
+            try:
+                alert_order = get_order_by_id(order_id)
+                send_admin_error_email(
+                    f"🚨 ETERNA ERROR render {order_public_code(alert_order)}",
+                    build_critical_alert_body(alert_order, "Pago recibido pero el motor de vídeo no ha arrancado correctamente", str(e)),
+                    order_id=order_id,
+                    reason="video_engine_error_after_payment",
+                )
+            except Exception as email_error:
+                log_error("email_alert_video_engine_error", email_error)
             return {
                 "status": "ok",
                 "reason": "video_engine_error_queued_for_recovery",
