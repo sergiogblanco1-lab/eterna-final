@@ -1,5 +1,5 @@
 # =========================================================
-# RC95_EMAIL_PEDIDOS_ALERTAS_SAFE
+# RC96_SECURITY_HEADERS_SAFE
 # Base: RC94 funcionando completo.
 # SOLO AÑADE EMAIL OPERATIVO DE PEDIDOS Y ALERTAS CRÍTICAS:
 # - email simple al comprador cuando Stripe confirma pago
@@ -49,7 +49,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO SIMPLE + MAGIA
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛟 RC95 EMAIL PEDIDOS + ALERTAS SAFE — SMS + MASTER V1 🛟")
+print("🛟 RC96 SECURITY HEADERS SAFE + EMAIL PEDIDOS — SMS + MASTER V1 🛟")
 import html
 import json
 import mimetypes
@@ -91,6 +91,29 @@ except ImportError:
 
 app = FastAPI(title="ETERNA FINAL PRODUCTO DEFINITIVO")
 templates = Jinja2Templates(directory="templates")
+
+
+# =========================================================
+# RC96 — CIBERSEGURIDAD LIGERA SIN TOCAR FLUJO
+# Solo añade cabeceras defensivas HTTP.
+# NO toca Stripe, Twilio, WhatsApp, video engine, cámara,
+# upload, DB, workers, sender pack, pagos ni formularios.
+# =========================================================
+SECURITY_HEADERS_ENABLED = os.getenv("SECURITY_HEADERS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+@app.middleware("http")
+async def eterna_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    if SECURITY_HEADERS_ENABLED:
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "geolocation=(), camera=(self), microphone=(self)")
+        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        if str(request.url).startswith("https://"):
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 # =========================================================
@@ -230,7 +253,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC95_EMAIL_PEDIDOS_ALERTAS_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC96_SECURITY_HEADERS_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -13995,6 +14018,35 @@ def admin_rc74a_production_validator(token: str = ""):
 # =========================================================
 # MAIN
 # =========================================================
+
+
+
+# =========================================================
+# RC96 — CHECK PRIVADO DE SEGURIDAD OPERATIVA
+# No muestra secretos. Solo indica si las piezas críticas están configuradas.
+# =========================================================
+@app.get("/admin/security-check")
+def admin_security_check(token: str = ""):
+    rc74_admin_guard(token)
+    return {
+        "ok": True,
+        "version": ETERNA_APP_VERSION,
+        "security_headers_enabled": SECURITY_HEADERS_ENABLED,
+        "public_base_https": PUBLIC_BASE_URL.startswith("https://"),
+        "admin_token_configured": bool(ADMIN_TOKEN),
+        "stripe_secret_configured": bool(STRIPE_SECRET_KEY),
+        "stripe_webhook_secret_configured": bool(STRIPE_WEBHOOK_SECRET),
+        "video_engine_configured": bool(VIDEO_ENGINE_URL),
+        "video_callback_secret_configured": bool(VIDEO_READY_CALLBACK_SECRET),
+        "twilio_sms_configured": bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER),
+        "whatsapp_configured": bool(TWILIO_WHATSAPP_FROM),
+        "r2_configured": bool(R2_ACCESS_KEY and R2_SECRET_KEY and R2_BUCKET and R2_ENDPOINT),
+        "email_enabled": EMAIL_ENABLED,
+        "smtp_configured": bool(SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD and SMTP_FROM),
+        "admin_alert_email_configured": bool(ADMIN_ALERT_EMAIL),
+        "link_expiry_enforced": ETERNA_ENFORCE_LINK_EXPIRY,
+        "safe_mode": ETERNA_SAFE_MODE,
+    }
 
 @app.get("/health")
 def health():
