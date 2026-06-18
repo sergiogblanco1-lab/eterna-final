@@ -59,6 +59,8 @@ import traceback
 import uuid
 import hashlib
 import smtplib
+import subprocess
+import shutil
 from email.message import EmailMessage
 import threading
 import time
@@ -287,6 +289,20 @@ ALLOWED_VIDEO_TYPES = {
     "video/mp4",
     "application/octet-stream",
 }
+
+# =========================================================
+# RC100 — BLINDAJE REACCIÓN CONGELADA
+# Diagnóstico + validación + normalización segura antes del Sender Pack.
+# No toca Stripe, webhook, Twilio/SMS, WhatsApp ni video engine principal.
+# =========================================================
+REACTION_NORMALIZE_ENABLED = os.getenv("REACTION_NORMALIZE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+REACTION_FFPROBE_ENABLED = os.getenv("REACTION_FFPROBE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+REACTION_MAX_DURATION_SECONDS = int(os.getenv("REACTION_MAX_DURATION_SECONDS", "180"))
+REACTION_NORMALIZED_MAX_WIDTH = int(os.getenv("REACTION_NORMALIZED_MAX_WIDTH", "720"))
+REACTION_NORMALIZED_MAX_HEIGHT = int(os.getenv("REACTION_NORMALIZED_MAX_HEIGHT", "1280"))
+REACTION_NORMALIZED_FPS = int(os.getenv("REACTION_NORMALIZED_FPS", "25"))
+REACTION_MIN_VALID_SECONDS = float(os.getenv("REACTION_MIN_VALID_SECONDS", "1"))
+REACTION_MIN_VALID_BYTES = int(os.getenv("REACTION_MIN_VALID_BYTES", "4096"))
 
 
 # =========================================================
@@ -2122,6 +2138,16 @@ def init_db():
     add_column_if_missing("orders", "experience_video_url", "ALTER TABLE orders ADD COLUMN experience_video_url TEXT")
     add_column_if_missing("orders", "reaction_video_public_url", "ALTER TABLE orders ADD COLUMN reaction_video_public_url TEXT")
     add_column_if_missing("orders", "reaction_video_local", "ALTER TABLE orders ADD COLUMN reaction_video_local TEXT")
+
+    # RC100 — diagnóstico y normalización segura de reacciones.
+    # Campos añadidos de forma compatible: si ya existen, no hace nada.
+    add_column_if_missing("orders", "reaction_video_original_local", "ALTER TABLE orders ADD COLUMN reaction_video_original_local TEXT")
+    add_column_if_missing("orders", "reaction_video_normalized_local", "ALTER TABLE orders ADD COLUMN reaction_video_normalized_local TEXT")
+    add_column_if_missing("orders", "reaction_validation_status", "ALTER TABLE orders ADD COLUMN reaction_validation_status TEXT")
+    add_column_if_missing("orders", "reaction_validation_error", "ALTER TABLE orders ADD COLUMN reaction_validation_error TEXT")
+    add_column_if_missing("orders", "reaction_normalized_at", "ALTER TABLE orders ADD COLUMN reaction_normalized_at TEXT")
+    add_column_if_missing("orders", "reaction_probe_json", "ALTER TABLE orders ADD COLUMN reaction_probe_json TEXT")
+
     add_column_if_missing("orders", "share_video_url", "ALTER TABLE orders ADD COLUMN share_video_url TEXT")
     add_column_if_missing("orders", "stripe_session_id", "ALTER TABLE orders ADD COLUMN stripe_session_id TEXT")
     add_column_if_missing("orders", "stripe_payment_status", "ALTER TABLE orders ADD COLUMN stripe_payment_status TEXT")
@@ -2630,6 +2656,367 @@ def reaction_video_path(order_id: str, extension: str = "webm") -> str:
     return str(REACTIONS_FOLDER / f"reaction_{order_id}.{extension}")
 
 
+def reaction_normalized_video_path(order_id: str) -> str:
+    REACTIONS_FOLDER.mkdir(parents=True, exist_ok=True)
+    return str(REACTIONS_FOLDER / f"reaction_{order_id}_normalized.mp4")
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _fps_from_ffprobe_rate(value: str) -> float:
+    raw = str(value or "").strip()
+    if not raw or raw == "0/0":
+        return 0.0
+    if "/" in raw:
+        try:
+            a, b = raw.split("/", 1)
+            b_float = float(b)
+            return float(a) / b_float if b_float else 0.0
+        except Exception:
+            return 0.0
+    return _safe_float(raw, 0.0)
+
+
+def reaction_ffprobe_available() -> bool:
+    return bool(REACTION_FFPROBE_ENABLED and shutil.which("ffprobe"))
+
+
+def reaction_ffmpeg_available() -> bool:
+    return bool(shutil.which("ffmpeg"))
+
+
+def probe_reaction_video(local_path: str, order_id: str = "") -> dict:
+    """
+    RC100 — lee metadatos reales con ffprobe si está disponible.
+    Nunca rompe ETERNA por sí solo: devuelve dict con ok/error.
+    """
+    info = {
+        "ok": False,
+        "ffprobe_available": reaction_ffprobe_available(),
+        "path": local_path,
+        "exists": bool(local_path and os.path.exists(local_path)),
+        "bytes": 0,
+        "duration": 0.0,
+        "width": None,
+        "height": None,
+        "fps": 0.0,
+        "video_codec": None,
+        "audio_codec": None,
+        "has_video": False,
+        "has_audio": False,
+        "format_name": None,
+        "error": None,
+    }
+
+    try:
+        if not local_path or not os.path.exists(local_path):
+            info["error"] = "reaction_file_missing"
+            return info
+
+        info["bytes"] = os.path.getsize(local_path)
+        if info["bytes"] <= 0:
+            info["error"] = "reaction_file_empty"
+            return info
+
+        if not reaction_ffprobe_available():
+            info["ok"] = True
+            info["error"] = "ffprobe_not_available_basic_size_only"
+            return info
+
+        cmd = [
+            "ffprobe",
+            "-v", "error",
+            "-print_format", "json",
+            "-show_format",
+            "-show_streams",
+            local_path,
+        ]
+        completed = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
+        if completed.returncode != 0:
+            info["error"] = (completed.stderr or completed.stdout or "ffprobe_failed").strip()[:2000]
+            return info
+
+        raw = json.loads(completed.stdout or "{}")
+        fmt = raw.get("format") or {}
+        streams = raw.get("streams") or []
+        info["format_name"] = fmt.get("format_name")
+        info["duration"] = _safe_float(fmt.get("duration"), 0.0)
+
+        for stream in streams:
+            codec_type = (stream.get("codec_type") or "").lower()
+            if codec_type == "video" and not info["has_video"]:
+                info["has_video"] = True
+                info["video_codec"] = stream.get("codec_name")
+                info["width"] = stream.get("width")
+                info["height"] = stream.get("height")
+                info["fps"] = _fps_from_ffprobe_rate(stream.get("avg_frame_rate") or stream.get("r_frame_rate"))
+                if not info["duration"]:
+                    info["duration"] = _safe_float(stream.get("duration"), 0.0)
+            elif codec_type == "audio" and not info["has_audio"]:
+                info["has_audio"] = True
+                info["audio_codec"] = stream.get("codec_name")
+
+        info["raw_stream_count"] = len(streams)
+        info["ok"] = True
+        return info
+
+    except Exception as e:
+        info["error"] = str(e)
+        return info
+
+
+def validate_reaction_video_file(local_path: str, order: dict, mime_type: str = "", source: str = "") -> tuple[bool, dict]:
+    """
+    RC100 — validación básica real de la reacción antes de marcarla como subida.
+    Si ffprobe está disponible exige stream de vídeo y duración válida.
+    """
+    order_id = (order or {}).get("id") or ""
+    probe = probe_reaction_video(local_path, order_id=order_id)
+    probe["mime_type"] = mime_type or ""
+    probe["source"] = source or ""
+
+    if not probe.get("exists"):
+        probe["validation_error"] = "reaction_file_missing"
+        return False, probe
+
+    if int(probe.get("bytes") or 0) <= 0:
+        probe["validation_error"] = "reaction_file_empty"
+        return False, probe
+
+    if int(probe.get("bytes") or 0) < int(REACTION_MIN_VALID_BYTES or 0):
+        probe["validation_error"] = "reaction_file_too_small"
+        return False, probe
+
+    if int(probe.get("bytes") or 0) > int(MAX_VIDEO_SIZE or 0):
+        probe["validation_error"] = "reaction_file_too_large"
+        return False, probe
+
+    # Sin ffprobe no inventamos: permitimos pasar con tamaño/firma, pero dejamos log claro.
+    if not probe.get("ffprobe_available"):
+        probe["validation_warning"] = "ffprobe_not_available"
+        return True, probe
+
+    if not probe.get("ok"):
+        probe["validation_error"] = probe.get("error") or "ffprobe_failed"
+        return False, probe
+
+    if not probe.get("has_video"):
+        probe["validation_error"] = "reaction_has_no_video_stream"
+        return False, probe
+
+    duration = float(probe.get("duration") or 0.0)
+    if duration < float(REACTION_MIN_VALID_SECONDS or 1):
+        probe["validation_error"] = "reaction_duration_too_short"
+        return False, probe
+
+    if int(REACTION_MAX_DURATION_SECONDS or 0) > 0 and duration > int(REACTION_MAX_DURATION_SECONDS):
+        probe["validation_error"] = "reaction_duration_too_long"
+        return False, probe
+
+    return True, probe
+
+
+def build_reaction_invalid_alert_body(order: dict, probe: dict, original_path: str = "", normalized_path: str = "") -> str:
+    sender_url = sender_pack_url_from_order(order) if order else ""
+    recipient_url = recipient_experience_url_from_order(order) if order else ""
+    return f"""🚨 ETERNA — Reacción inválida o no normalizable
+
+Pedido: {order_public_code(order)}
+Order ID: {order.get('id') if order else 'sin order_id'}
+Hora: {now_iso()}
+
+ARCHIVO
+Ruta original: {original_path or probe.get('path') or 'sin ruta'}
+Ruta normalizada: {normalized_path or 'no generada'}
+URL pública actual: {order.get('reaction_video_public_url') if order else ''}
+
+DIAGNÓSTICO
+Estado: {probe.get('validation_error') or probe.get('normalization_error') or probe.get('error') or 'sin detalle'}
+Bytes: {probe.get('bytes')}
+MIME recibido: {probe.get('mime_type') or 'desconocido'}
+Duración: {probe.get('duration')}
+Resolución: {probe.get('width')}x{probe.get('height')}
+FPS: {probe.get('fps')}
+Codec vídeo: {probe.get('video_codec')}
+Codec audio: {probe.get('audio_codec')}
+Tiene vídeo: {probe.get('has_video')}
+Tiene audio: {probe.get('has_audio')}
+ffprobe disponible: {probe.get('ffprobe_available')}
+
+ENLACES DE RESCATE
+Link regalado: {recipient_url}
+Link regalante: {sender_url}
+
+ACCIÓN RECOMENDADA
+No se debe enviar un Sender Pack roto.
+Permitir repetir reacción o rescatar manualmente con un vídeo alternativo.
+""".strip()
+
+
+def mark_reaction_invalid(order: dict, probe: dict, reason: str, original_path: str = "", normalized_path: str = "") -> None:
+    """RC100 — deja el pedido sin Sender Pack roto y avisa a Sergio/operaciones."""
+    order_id = order.get("id")
+    error_text = str(reason or probe.get("validation_error") or probe.get("error") or "reaction_invalid")[:1000]
+    try:
+        update_order(
+            order_id,
+            reaction_uploaded=0,
+            experience_completed=0,
+            eterna_completed=0,
+            reaction_upload_pending=0,
+            reaction_upload_error=error_text,
+            reaction_video_original_local=original_path or probe.get("path"),
+            reaction_video_normalized_local=normalized_path or None,
+            reaction_validation_status="invalid",
+            reaction_validation_error=error_text,
+            reaction_probe_json=json.dumps(probe or {}, ensure_ascii=False)[:12000],
+        )
+    except Exception as e:
+        print("[WARN] RC100 no pudo marcar reaction_invalid:", e)
+
+    try:
+        insert_order_event(
+            order_id,
+            "❌ rc100_reaction_invalid",
+            "error",
+            error_text,
+            {
+                "path": original_path or probe.get("path"),
+                "normalized_path": normalized_path,
+                "probe": probe,
+            },
+        )
+    except Exception as e:
+        print("[WARN] RC100 no pudo insertar evento invalid:", e)
+
+    try:
+        send_admin_error_email(
+            "⚠️ ETERNA — Reacción inválida o no normalizable",
+            build_reaction_invalid_alert_body(order, probe, original_path=original_path, normalized_path=normalized_path),
+            order_id=order_id,
+            reason=error_text,
+        )
+    except Exception as e:
+        print("[WARN] RC100 email alerta reacción falló:", e)
+
+
+def normalize_reaction_video(input_path: str, order_id: str, probe: Optional[dict] = None) -> tuple[Optional[str], dict]:
+    """
+    RC100 — normaliza reacción a MP4 H.264/AAC CFR para evitar vídeo congelado por HEVC/H265/VFR/WEBM raro.
+    Mantiene proporción. Contain + padding. Nunca crop. Nunca zoom agresivo.
+    """
+    meta = dict(probe or {})
+    meta["normalization_enabled"] = bool(REACTION_NORMALIZE_ENABLED)
+    meta["ffmpeg_available"] = reaction_ffmpeg_available()
+
+    if not REACTION_NORMALIZE_ENABLED:
+        meta["normalized"] = False
+        meta["normalization_error"] = "normalization_disabled"
+        return None, meta
+
+    if not input_path or not os.path.exists(input_path):
+        meta["normalized"] = False
+        meta["normalization_error"] = "input_missing"
+        return None, meta
+
+    if not reaction_ffmpeg_available():
+        meta["normalized"] = False
+        meta["normalization_error"] = "ffmpeg_not_available"
+        return None, meta
+
+    width = int(meta.get("width") or 0)
+    height = int(meta.get("height") or 0)
+
+    # Si sabemos que es horizontal, canvas horizontal. Si no, vertical por defecto ETERNA.
+    if width > height and width > 0 and height > 0:
+        canvas_w = max(int(REACTION_NORMALIZED_MAX_HEIGHT or 1280), int(REACTION_NORMALIZED_MAX_WIDTH or 720))
+        canvas_h = min(int(REACTION_NORMALIZED_MAX_HEIGHT or 1280), int(REACTION_NORMALIZED_MAX_WIDTH or 720))
+    else:
+        canvas_w = min(int(REACTION_NORMALIZED_MAX_WIDTH or 720), int(REACTION_NORMALIZED_MAX_HEIGHT or 1280))
+        canvas_h = max(int(REACTION_NORMALIZED_MAX_WIDTH or 720), int(REACTION_NORMALIZED_MAX_HEIGHT or 1280))
+
+    fps = max(1, int(REACTION_NORMALIZED_FPS or 25))
+    output_path = reaction_normalized_video_path(order_id)
+
+    # contain + padding, sin deformar ni cortar caras.
+    vf = (
+        f"scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=decrease,"
+        f"pad={canvas_w}:{canvas_h}:(ow-iw)/2:(oh-ih)/2,"
+        f"setsar=1,fps={fps}"
+    )
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", input_path,
+        "-map", "0:v:0",
+        "-map", "0:a?",
+        "-vf", vf,
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-movflags", "+faststart",
+        output_path,
+    ]
+
+    try:
+        completed = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        meta["ffmpeg_cmd"] = " ".join(cmd)
+        if completed.returncode != 0:
+            meta["normalized"] = False
+            meta["normalization_error"] = (completed.stderr or completed.stdout or "ffmpeg_failed").strip()[-2000:]
+            return None, meta
+
+        if not os.path.exists(output_path) or os.path.getsize(output_path) <= 0:
+            meta["normalized"] = False
+            meta["normalization_error"] = "normalized_output_missing_or_empty"
+            return None, meta
+
+        normalized_probe = probe_reaction_video(output_path, order_id=order_id)
+        meta["normalized"] = True
+        meta["normalized_path"] = output_path
+        meta["normalized_bytes"] = os.path.getsize(output_path)
+        meta["normalized_probe"] = normalized_probe
+        return output_path, meta
+
+    except Exception as e:
+        meta["normalized"] = False
+        meta["normalization_error"] = str(e)
+        return None, meta
+
+
+def best_reaction_local_path(order: dict) -> str:
+    """
+    RC100 — ruta preferida para reproducir/servir reacción.
+    1) normalizada si existe
+    2) original/local clásica si existe
+    """
+    normalized = (order.get("reaction_video_normalized_local") or "").strip()
+    if normalized and os.path.exists(normalized):
+        return normalized
+
+    local_path = (order.get("reaction_video_local") or "").strip()
+    if local_path and os.path.exists(local_path):
+        return local_path
+
+    return ""
+
+
+def guess_reaction_media_type(order: dict, path: str = "") -> str:
+    normalized = (order.get("reaction_video_normalized_local") or "").strip()
+    if path and normalized and os.path.abspath(path) == os.path.abspath(normalized):
+        return "video/mp4"
+    return guess_media_type_from_path(path) if path else "video/mp4"
+
+
 def guess_media_type_from_path(path: str) -> str:
     media_type, _ = mimetypes.guess_type(path)
     return media_type or "application/octet-stream"
@@ -2804,7 +3191,16 @@ def list_order_events(order_id: str, limit: int = 80):
 
 
 def complete_reaction_from_local_file(order: dict, local_path: str, extension: str = "webm", source: str = "single_upload") -> dict:
-    """Regla de oro: local primero, R2 después. Si local existe, ETERNA no se pierde."""
+    """
+    RC100 — Regla de oro:
+    1) local primero
+    2) validar/probar reacción
+    3) normalizar si se puede
+    4) R2 después con archivo estable
+    5) solo entonces marcar reaction_uploaded y abrir Sender Pack
+
+    No toca Stripe, webhook, Twilio/SMS, WhatsApp ni video engine principal.
+    """
     if not local_path or not os.path.exists(local_path):
         raise Exception("reaction_local_file_missing")
 
@@ -2820,22 +3216,76 @@ def complete_reaction_from_local_file(order: dict, local_path: str, extension: s
         order["id"],
         "reaction_saved_local",
         "ok",
-        "Reacción guardada localmente en el servidor",
+        "Reacción original guardada localmente en el servidor",
         {"bytes": saved_size, "source": source, "path": local_path},
     )
+
+    validation_ok, probe = validate_reaction_video_file(
+        local_path,
+        order,
+        mime_type=guess_media_type_from_path(local_path),
+        source=source,
+    )
+
+    insert_order_event(
+        order["id"],
+        "🔎 rc100_reaction_probe",
+        "ok" if validation_ok else "error",
+        "Diagnóstico de reacción antes del Sender Pack",
+        probe,
+    )
+
+    if not validation_ok:
+        mark_reaction_invalid(order, probe, probe.get("validation_error") or "reaction_invalid", original_path=local_path)
+        raise HTTPException(status_code=400, detail="reaction_invalid_try_again")
+
+    normalized_path, normalization_meta = normalize_reaction_video(local_path, order["id"], probe=probe)
+
+    if normalized_path and os.path.exists(normalized_path):
+        sender_safe_path = normalized_path
+        sender_safe_extension = "mp4"
+        validation_status = "valid_normalized"
+        validation_error = None
+        insert_order_event(
+            order["id"],
+            "✅ rc100_reaction_normalized",
+            "ok",
+            "Reacción normalizada a MP4 H.264/AAC estable para Sender Pack",
+            normalization_meta,
+        )
+    else:
+        # Si el original pasó validación pero no se pudo normalizar, no rompemos ETERNA.
+        # Se usa original validado y se deja incidencia visible para revisar ffmpeg/config.
+        sender_safe_path = local_path
+        sender_safe_extension = extension
+        validation_status = "valid_original_not_normalized"
+        validation_error = normalization_meta.get("normalization_error") or "normalization_skipped"
+        insert_order_event(
+            order["id"],
+            "⚠️ rc100_reaction_not_normalized",
+            "warning",
+            "La reacción pasó validación, pero no se pudo normalizar; se conserva original validado",
+            normalization_meta,
+        )
 
     public_url = None
     r2_error = None
     try:
-        content_type = guess_media_type_from_path(local_path)
-        remote_name = r2_order_key(order, "reaction", f"reaction.{extension}")
-        public_url = upload_video_to_r2(local_path, remote_name, content_type=content_type)
+        content_type = "video/mp4" if sender_safe_extension == "mp4" else guess_media_type_from_path(sender_safe_path)
+        remote_name = r2_order_key(order, "reaction", f"reaction.{sender_safe_extension}")
+        public_url = upload_video_to_r2(sender_safe_path, remote_name, content_type=content_type)
         insert_order_event(
             order["id"],
             "reaction_r2_uploaded" if public_url else "reaction_r2_skipped",
             "ok" if public_url else "pending",
-            "Reacción subida a R2" if public_url else "R2 no configurado; se conserva local",
-            {"public_url": public_url, "content_type": content_type},
+            "Reacción segura subida a R2" if public_url else "R2 no configurado; se conserva local",
+            {
+                "public_url": public_url,
+                "content_type": content_type,
+                "safe_path": sender_safe_path,
+                "original_path": local_path,
+                "normalized_path": normalized_path,
+            },
         )
     except Exception as e:
         r2_error = str(e)
@@ -2844,8 +3294,14 @@ def complete_reaction_from_local_file(order: dict, local_path: str, extension: s
 
     update_order(
         order["id"],
-        reaction_video_local=local_path,
+        reaction_video_original_local=local_path,
+        reaction_video_local=sender_safe_path,
+        reaction_video_normalized_local=normalized_path,
         reaction_video_public_url=public_url,
+        reaction_validation_status=validation_status,
+        reaction_validation_error=validation_error or r2_error,
+        reaction_normalized_at=now_iso() if normalized_path else None,
+        reaction_probe_json=json.dumps({**probe, "normalization": normalization_meta}, ensure_ascii=False)[:12000],
         reaction_uploaded=1,
         experience_started=1,
         experience_completed=1,
@@ -2856,10 +3312,10 @@ def complete_reaction_from_local_file(order: dict, local_path: str, extension: s
     )
 
     updated_order = maybe_mark_eterna_completed(order["id"])
-    insert_order_event(updated_order["id"], "eterna_completed", "ok", "ETERNA completada: reacción segura y pack desbloqueado")
+    insert_order_event(updated_order["id"], "eterna_completed", "ok", "ETERNA completada: reacción validada/segura y pack desbloqueado")
 
     try:
-        print("📩 RC46: control SMS regalante; si la reacción aún no está estable, queda para worker")
+        print("📩 RC100: control SMS regalante; solo sale tras validación de reacción")
         result = try_send_sender_sms(updated_order)
         print("📩 RESULTADO CONTROLADO REGALANTE:", result)
         insert_order_event(updated_order["id"], "sender_sms_attempt", "ok" if result.get("ok") else "pending", str(result), result)
@@ -2876,7 +3332,6 @@ def complete_reaction_from_local_file(order: dict, local_path: str, extension: s
         log_error("complete_reaction_payout", e)
 
     return updated_order
-
 
 def list_assets(order_id: str):
     conn = db_conn()
@@ -12720,13 +13175,14 @@ def sender_pack(sender_token: str, view: str = ""):
 
     original_video_url = (order.get("experience_video_url") or "").strip()
     reaction_url = (order.get("reaction_video_public_url") or "").strip()
+    local_reaction_path = best_reaction_local_path(order)
     reaction_video_type = guess_media_type_from_url(reaction_url) if reaction_url else "video/mp4"
 
-    if not reaction_url:
-        local_path = (order.get("reaction_video_local") or "").strip()
-        if local_path and os.path.exists(local_path):
-            reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
-            reaction_video_type = guess_media_type_from_path(local_path)
+    # RC100: si existe reacción normalizada/local estable, el Sender Pack la sirve desde backend.
+    # Así evitamos que una URL antigua de R2 apunte a un WEBM/codec problemático.
+    if local_reaction_path:
+        reaction_url = f"{PUBLIC_BASE_URL}/video/sender-reaction/{sender_token}"
+        reaction_video_type = guess_reaction_media_type(order, local_reaction_path)
 
     if not reaction_url:
         return render_eterna_image_screen(
@@ -13055,14 +13511,14 @@ def get_video_input(order_id: str, slot_name: str):
 @app.get("/video/sender-reaction/{sender_token}")
 def get_sender_reaction_video(sender_token: str):
     order = get_order_by_sender_token_or_404(sender_token)
-    local_path = (order.get("reaction_video_local") or "").strip()
+    local_path = best_reaction_local_path(order)
 
     if not local_path or not os.path.exists(local_path):
         raise HTTPException(status_code=404, detail="Vídeo no encontrado")
 
     return FileResponse(
         local_path,
-        media_type=guess_media_type_from_path(local_path),
+        media_type=guess_reaction_media_type(order, local_path),
         filename=os.path.basename(local_path),
     )
 
