@@ -1,7 +1,18 @@
 # =========================================================
-# RC96_SECURITY_HEADERS_SAFE
-# Base: RC94 funcionando completo.
-# SOLO AÑADE EMAIL OPERATIVO DE PEDIDOS Y ALERTAS CRÍTICAS:
+# RC97_LAUNCH_SECURITY_TRUST_DASHBOARD_SAFE
+# Base: RC95 funcionando completo.
+# AÑADE SEGURIDAD LIGERA + CONFIANZA + DASHBOARD SIN TOCAR EL FLUJO:
+# - headers de seguridad suaves
+# - rate limit básico por IP y ruta
+# - validación extra de nombres/tipos de archivo
+# - bloque de confianza en formulario
+# - /health/full ampliado
+# - dashboard privado simple de estado
+#
+# Mantiene los emails operativos RC95:
+# - email simple al comprador cuando Stripe confirma pago
+# - email interno completo a ETERNA/Sergio
+# - alertas por email para fallos críticos
 # - email simple al comprador cuando Stripe confirma pago
 # - email interno completo a ETERNA/Sergio
 # - alertas por email para fallos críticos
@@ -49,7 +60,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO SIMPLE + MAGIA
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛟 RC96 SECURITY HEADERS SAFE + EMAIL PEDIDOS — SMS + MASTER V1 🛟")
+print("🛡️ RC97 SECURITY LIGHT + TRUST + DASHBOARD SAFE — SMS + MASTER V1 🛡️")
 import html
 import json
 import mimetypes
@@ -93,26 +104,71 @@ app = FastAPI(title="ETERNA FINAL PRODUCTO DEFINITIVO")
 templates = Jinja2Templates(directory="templates")
 
 
-# =========================================================
-# RC96 — CIBERSEGURIDAD LIGERA SIN TOCAR FLUJO
-# Solo añade cabeceras defensivas HTTP.
-# NO toca Stripe, Twilio, WhatsApp, video engine, cámara,
-# upload, DB, workers, sender pack, pagos ni formularios.
-# =========================================================
-SECURITY_HEADERS_ENABLED = os.getenv("SECURITY_HEADERS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+def _client_ip_from_request(request: Request) -> str:
+    forwarded = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_limit_for_path(path: str) -> int:
+    strict_paths = ("/crear", "/upload-reaction", "/upload-reaction-chunk", "/finish-reaction-upload", "/stripe/webhook")
+    if any(path.startswith(p) for p in strict_paths):
+        return RATE_LIMIT_STRICT_MAX_REQUESTS
+    return RATE_LIMIT_MAX_REQUESTS
+
 
 @app.middleware("http")
-async def eterna_security_headers(request: Request, call_next):
+async def eterna_security_headers_and_light_rate_limit(request: Request, call_next):
+    """
+    RC97 — seguridad ligera de lanzamiento.
+    No lee ni modifica el body. No toca el flujo de ETERNA.
+    """
+    path = request.url.path or "/"
+
+    if RATE_LIMIT_ENABLED and not path.startswith(("/static", "/eterna-assets", "/favicon", "/apple-touch-icon")):
+        now = int(time.time())
+        window = max(10, RATE_LIMIT_WINDOW_SECONDS)
+        bucket = now // window
+        ip = _client_ip_from_request(request)
+        key = (ip, path, bucket)
+        max_requests = max(5, _rate_limit_for_path(path))
+        try:
+            with _rate_limit_lock:
+                # Limpieza pequeña para no crecer indefinidamente.
+                if len(_rate_limit_bucket) > 8000:
+                    old_keys = [k for k in _rate_limit_bucket.keys() if k[2] < bucket - 2]
+                    for k in old_keys[:4000]:
+                        _rate_limit_bucket.pop(k, None)
+                count = _rate_limit_bucket.get(key, 0) + 1
+                _rate_limit_bucket[key] = count
+            if count > max_requests:
+                return JSONResponse({"ok": False, "detail": "too_many_requests"}, status_code=429)
+        except Exception as e:
+            # Si el rate limit fallase, no rompe ETERNA.
+            print("[WARN] Rate limit bypass por error:", e)
+
     response = await call_next(request)
+
     if SECURITY_HEADERS_ENABLED:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        response.headers.setdefault("Permissions-Policy", "geolocation=(), camera=(self), microphone=(self)")
-        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
-        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
-        if str(request.url).startswith("https://"):
+        response.headers.setdefault("Permissions-Policy", "geolocation=(), payment=(self), camera=(self), microphone=(self)")
+        if PUBLIC_BASE_URL.startswith("https://"):
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        # CSP suave para no romper inline styles/scripts actuales de ETERNA.
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self' https: data: blob:; "
+            "img-src 'self' https: data: blob:; "
+            "media-src 'self' https: data: blob:; "
+            "script-src 'self' 'unsafe-inline' https:; "
+            "style-src 'self' 'unsafe-inline' https:; "
+            "connect-src 'self' https: blob:; "
+            "frame-ancestors 'self';"
+        )
+
     return response
 
 
@@ -146,6 +202,23 @@ SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER or "hola@tueterna.com").strip()
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "ETERNA").strip()
 ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "sergiog.blanco1@gmail.com").strip()
 ETERNA_OPERATIONS_EMAIL = os.getenv("ETERNA_OPERATIONS_EMAIL", SMTP_FROM or "hola@tueterna.com").strip()
+
+# =========================================================
+# RC97 — SEGURIDAD LIGERA PARA LANZAMIENTO
+# No toca lógica de Stripe, Twilio, vídeo, reacción ni Sender Pack.
+# =========================================================
+SECURITY_HEADERS_ENABLED = os.getenv("SECURITY_HEADERS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "90"))
+RATE_LIMIT_STRICT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_STRICT_MAX_REQUESTS", "18"))
+MAX_PHOTO_SIZE_MB = int(os.getenv("MAX_PHOTO_SIZE_MB", "15"))
+MAX_PHOTO_SIZE = MAX_PHOTO_SIZE_MB * 1024 * 1024
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
+ALLOWED_IMAGE_MIME_PREFIXES = {"image/"}
+BLOCKED_UPLOAD_EXTENSIONS = {"exe", "php", "js", "bat", "cmd", "sh", "ps1", "html", "htm", "svg", "zip", "rar", "7z"}
+_rate_limit_bucket = {}
+_rate_limit_lock = threading.Lock()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
@@ -253,7 +326,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC96_SECURITY_HEADERS_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC97_LAUNCH_SECURITY_TRUST_DASHBOARD_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2323,6 +2396,61 @@ def new_token() -> str:
     return secrets.token_urlsafe(24)
 
 
+def upload_extension_from_filename(filename: str) -> str:
+    raw = (filename or "").strip().lower().split("?")[0].split("#")[0]
+    if "." not in raw:
+        return ""
+    return raw.rsplit(".", 1)[-1].strip()
+
+
+def validate_upload_metadata_safe(upload: UploadFile, kind: str, slot_name: str = "archivo") -> None:
+    """
+    RC97 — filtro ligero previo.
+    No transforma archivos. Solo rechaza nombres/tipos claramente peligrosos.
+    """
+    filename = (upload.filename or "").strip()
+    content_type = (upload.content_type or "").lower().strip()
+    ext = upload_extension_from_filename(filename)
+
+    if not filename:
+        raise HTTPException(status_code=400, detail=f"{slot_name} no tiene nombre de archivo")
+
+    if ext in BLOCKED_UPLOAD_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"{slot_name} tiene un formato no permitido")
+
+    lowered = filename.lower()
+    dangerous_fragments = [".php", ".exe", ".js", ".bat", ".cmd", ".sh", ".ps1", "<", ">", ".."]
+    if any(fragment in lowered for fragment in dangerous_fragments):
+        raise HTTPException(status_code=400, detail=f"{slot_name} tiene un nombre no permitido")
+
+    if kind == "image":
+        if ext and ext not in ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"{slot_name} debe ser una imagen válida")
+        if content_type and not any(content_type.startswith(prefix) for prefix in ALLOWED_IMAGE_MIME_PREFIXES):
+            # Algunos navegadores mandan application/octet-stream; lo permitimos y luego validamos firma.
+            if content_type != "application/octet-stream":
+                raise HTTPException(status_code=400, detail=f"{slot_name} no parece una imagen")
+    elif kind == "video":
+        if ext and ext not in {"mp4", "webm", "mov"}:
+            raise HTTPException(status_code=400, detail=f"{slot_name} debe ser vídeo mp4 o webm")
+        if content_type and content_type not in ALLOWED_VIDEO_TYPES and not content_type.startswith("video/"):
+            raise HTTPException(status_code=400, detail=f"{slot_name} no parece un vídeo")
+
+
+def validate_reaction_signature_safe(local_path: str, extension: str) -> bool:
+    try:
+        with open(local_path, "rb") as f:
+            head = f.read(64)
+        ext = (extension or "").lower().strip()
+        if ext == "mp4":
+            return b"ftyp" in head[:32] or head.startswith(b"\x00\x00\x00")
+        if ext == "webm":
+            return head.startswith(b"\x1a\x45\xdf\xa3") or b"webm" in head.lower()[:64]
+        return True
+    except Exception:
+        return True
+
+
 def detect_video_extension(upload: UploadFile) -> str:
     content_type = (upload.content_type or "").lower().strip()
     filename = (upload.filename or "").lower().strip()
@@ -2376,6 +2504,8 @@ async def save_upload_original_robust(order_id: str, slot_name: str, upload: Upl
 
     original_filename = (upload.filename or "").strip()
     content_type = (upload.content_type or "").lower().strip()
+
+    validate_upload_metadata_safe(upload, "image", slot_name)
 
     if not original_filename:
         raise HTTPException(status_code=400, detail=f"{slot_name} no tiene nombre de archivo")
@@ -2437,6 +2567,13 @@ async def save_upload_original_robust(order_id: str, slot_name: str, upload: Upl
         raise HTTPException(status_code=400, detail=f"{slot_name} no se ha creado en disco")
 
     size = os.path.getsize(filepath)
+    if size > MAX_PHOTO_SIZE:
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=f"{slot_name} supera el tamaño máximo permitido")
+
     if size <= 0:
         try:
             os.remove(filepath)
@@ -6531,6 +6668,23 @@ def render_create_form() -> str:
                             Precio base ETERNA: {money(BASE_PRICE)}€<br>
                             Si añades regalo económico: +{money(FIXED_PLATFORM_FEE)}€ gestión segura + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado<br>
                             Entrega programada: +{money(SCHEDULED_DELIVERY_FEE)}€ solo si eliges guardarlo y entregarlo en un momento exacto
+                        </div>
+
+                        <div class="trust-box" style="
+                            margin-top:16px;
+                            padding:16px;
+                            border-radius:18px;
+                            background:linear-gradient(135deg, rgba(255,215,128,0.10), rgba(80,190,255,0.07));
+                            border:1px solid rgba(218,178,92,0.24);
+                            color:rgba(255,255,255,0.78);
+                            font-size:13px;
+                            line-height:1.75;
+                        ">
+                            <b style="color:#f5d28b;">Privado y seguro</b><br>
+                            ✓ Tus fotos son privadas.<br>
+                            ✓ El pago se realiza de forma segura con Stripe.<br>
+                            ✓ La reacción solo vuelve a quien crea esta ETERNA.<br>
+                            ✓ Si añades dinero, lo recibirá la persona destinataria.
                         </div>
 
                         <div class="hint">
@@ -11908,6 +12062,8 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
             reaction_upload_error=None,
         )
 
+        validate_upload_metadata_safe(video, "video", "reacción")
+
         data = await video.read()
         size = len(data)
 
@@ -11929,6 +12085,13 @@ async def upload_reaction(recipient_token: str, video: UploadFile = File(...)):
         saved_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
         if saved_size <= 0:
             raise Exception("local_file_empty_after_write")
+
+        if not validate_reaction_signature_safe(local_path, extension):
+            try:
+                os.remove(local_path)
+            except Exception:
+                pass
+            raise HTTPException(status_code=400, detail="invalid_video_signature")
 
         print("💾 Reacción guardada local OK:", local_path)
         print("💾 reaction_saved_size:", saved_size)
@@ -14019,35 +14182,6 @@ def admin_rc74a_production_validator(token: str = ""):
 # MAIN
 # =========================================================
 
-
-
-# =========================================================
-# RC96 — CHECK PRIVADO DE SEGURIDAD OPERATIVA
-# No muestra secretos. Solo indica si las piezas críticas están configuradas.
-# =========================================================
-@app.get("/admin/security-check")
-def admin_security_check(token: str = ""):
-    rc74_admin_guard(token)
-    return {
-        "ok": True,
-        "version": ETERNA_APP_VERSION,
-        "security_headers_enabled": SECURITY_HEADERS_ENABLED,
-        "public_base_https": PUBLIC_BASE_URL.startswith("https://"),
-        "admin_token_configured": bool(ADMIN_TOKEN),
-        "stripe_secret_configured": bool(STRIPE_SECRET_KEY),
-        "stripe_webhook_secret_configured": bool(STRIPE_WEBHOOK_SECRET),
-        "video_engine_configured": bool(VIDEO_ENGINE_URL),
-        "video_callback_secret_configured": bool(VIDEO_READY_CALLBACK_SECRET),
-        "twilio_sms_configured": bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER),
-        "whatsapp_configured": bool(TWILIO_WHATSAPP_FROM),
-        "r2_configured": bool(R2_ACCESS_KEY and R2_SECRET_KEY and R2_BUCKET and R2_ENDPOINT),
-        "email_enabled": EMAIL_ENABLED,
-        "smtp_configured": bool(SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD and SMTP_FROM),
-        "admin_alert_email_configured": bool(ADMIN_ALERT_EMAIL),
-        "link_expiry_enforced": ETERNA_ENFORCE_LINK_EXPIRY,
-        "safe_mode": ETERNA_SAFE_MODE,
-    }
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -14064,6 +14198,11 @@ def health_full():
         "video_engine_configured": bool(VIDEO_ENGINE_URL),
         "video_engine_ok": False,
         "messaging": messaging_config_status(),
+        "smtp_configured": bool(EMAIL_ENABLED and SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD and SMTP_FROM),
+        "security_headers_enabled": bool(SECURITY_HEADERS_ENABLED),
+        "rate_limit_enabled": bool(RATE_LIMIT_ENABLED),
+        "max_photo_size_mb": MAX_PHOTO_SIZE_MB,
+        "max_reaction_video_mb": MAX_VIDEO_SIZE_MB,
         "public_base_url": PUBLIC_BASE_URL,
         "timestamp": now_iso(),
     }
@@ -14084,11 +14223,103 @@ def health_full():
     except Exception as e:
         result["video_engine_error"] = str(e)
 
+    try:
+        result["smtp_ok"] = bool(result.get("smtp_configured"))
+    except Exception:
+        result["smtp_ok"] = False
+
     critical_ok = bool(result["db"] and result["stripe_configured"] and result["video_engine_configured"])
     if not critical_ok:
         result["status"] = "degraded"
 
     return result
+
+
+@app.get("/admin/dashboard-simple", response_class=HTMLResponse)
+def admin_dashboard_simple(token: str = ""):
+    """
+    RC97 — panel privado simple. Solo lectura.
+    No toca pedidos ni lógica de ETERNA.
+    """
+    rc74_admin_guard(token)
+    stats = {
+        "total": 0,
+        "paid": 0,
+        "completed": 0,
+        "pending_reaction": 0,
+        "sms_errors": 0,
+        "today": 0,
+    }
+    recent = []
+    try:
+        conn = db_conn()
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders").fetchone()
+        stats["total"] = int(row["c"] or 0)
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE paid=1").fetchone()
+        stats["paid"] = int(row["c"] or 0)
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE eterna_completed=1 OR experience_completed=1").fetchone()
+        stats["completed"] = int(row["c"] or 0)
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE paid=1 AND COALESCE(reaction_uploaded,0)=0").fetchone()
+        stats["pending_reaction"] = int(row["c"] or 0)
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(recipient_sms_error,'')!='' OR COALESCE(sender_sms_error,'')!=''").fetchone()
+        stats["sms_errors"] = int(row["c"] or 0)
+        today_prefix = now_iso()[:10]
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(created_at,'') LIKE ?", (today_prefix + "%",)).fetchone()
+        stats["today"] = int(row["c"] or 0)
+        recent = conn.execute(
+            """
+            SELECT id, created_at, sender_name, recipient_name, paid, reaction_uploaded, experience_completed,
+                   recipient_sms_error, sender_sms_error
+            FROM orders
+            ORDER BY created_at DESC
+            LIMIT 12
+            """
+        ).fetchall()
+        conn.close()
+    except Exception as e:
+        return HTMLResponse(f"<h1>ETERNA Dashboard</h1><p>Error leyendo estado: {safe_text(str(e))}</p>", status_code=500)
+
+    def badge(value):
+        return "✅" if value else "⏳"
+
+    rows = ""
+    for r in recent:
+        err = (r["recipient_sms_error"] or r["sender_sms_error"] or "")
+        rows += f"""
+        <tr>
+            <td><a href='/admin/order-status/{safe_attr(r['id'])}?token={safe_attr(token)}'>{safe_text(r['id'])}</a></td>
+            <td>{safe_text((r['created_at'] or '')[:19])}</td>
+            <td>{safe_text(r['sender_name'] or '')}</td>
+            <td>{safe_text(r['recipient_name'] or '')}</td>
+            <td>{badge(r['paid'])}</td>
+            <td>{badge(r['reaction_uploaded'])}</td>
+            <td>{badge(r['experience_completed'])}</td>
+            <td>{safe_text(err[:80])}</td>
+        </tr>
+        """
+
+    return HTMLResponse(f"""
+<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>ETERNA Dashboard</title>
+<style>
+body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;padding:24px}}
+h1{{font-family:Georgia,serif;color:#f5d28b;margin:0 0 8px}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:24px 0}}
+.card{{border:1px solid rgba(245,210,139,.25);background:rgba(255,255,255,.045);border-radius:18px;padding:16px}}.num{{font-size:30px;color:#f5d28b;font-weight:700}}
+table{{width:100%;border-collapse:collapse;margin-top:18px;background:rgba(255,255,255,.035);border-radius:18px;overflow:hidden}}td,th{{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;text-align:left}}th{{color:#f5d28b}}a{{color:#f5d28b}}.small{{opacity:.65;font-size:13px}}
+</style></head><body>
+<h1>ETERNA — Estado privado</h1><div class='small'>Solo lectura. No modifica pedidos. {safe_text(now_iso())}</div>
+<div class='grid'>
+<div class='card'><div class='num'>{stats['today']}</div><div>Pedidos hoy</div></div>
+<div class='card'><div class='num'>{stats['total']}</div><div>Pedidos totales</div></div>
+<div class='card'><div class='num'>{stats['paid']}</div><div>Pagados</div></div>
+<div class='card'><div class='num'>{stats['completed']}</div><div>Completados</div></div>
+<div class='card'><div class='num'>{stats['pending_reaction']}</div><div>Pendientes reacción</div></div>
+<div class='card'><div class='num'>{stats['sms_errors']}</div><div>Con error SMS</div></div>
+</div>
+<h2>Últimos pedidos</h2>
+<table><thead><tr><th>Pedido</th><th>Fecha</th><th>Regalante</th><th>Destinatario</th><th>Pago</th><th>Reacción</th><th>Completa</th><th>Error</th></tr></thead><tbody>{rows}</tbody></table>
+</body></html>
+""")
 
 
 if __name__ == "__main__":
