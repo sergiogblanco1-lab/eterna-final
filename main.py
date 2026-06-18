@@ -1,38 +1,21 @@
 # =========================================================
-# RC97_LAUNCH_SECURITY_TRUST_DASHBOARD_SAFE
-# Base: RC95 funcionando completo.
-# AÑADE SEGURIDAD LIGERA + CONFIANZA + DASHBOARD SIN TOCAR EL FLUJO:
-# - headers de seguridad suaves
-# - rate limit básico por IP y ruta
-# - validación extra de nombres/tipos de archivo
+# RC98_COMBINED_SECURITY_TRUST_SAFE
+# Base: RC96 conservador + RC97 mejoras de lanzamiento.
+# COMBINA LO MEJOR DE LOS DOS SIN TOCAR EL CORAZÓN DE ETERNA:
+# - emails operativos RC95/RC96
+# - security headers suaves RC96
+# - rate limit ligero RC97, pero más seguro para producción
+# - NO limita Stripe webhook para evitar bloquear pagos
+# - NO limita chunks de reacción para evitar cortar subidas móviles
+# - validación extra de archivos claramente peligrosos
 # - bloque de confianza en formulario
 # - /health/full ampliado
-# - dashboard privado simple de estado
+# - dashboard privado simple
 #
-# Mantiene los emails operativos RC95:
-# - email simple al comprador cuando Stripe confirma pago
-# - email interno completo a ETERNA/Sergio
-# - alertas por email para fallos críticos
-# - email simple al comprador cuando Stripe confirma pago
-# - email interno completo a ETERNA/Sergio
-# - alertas por email para fallos críticos
-# - columnas idempotentes para no duplicar correos
-#
-# Mantiene intacto el ajuste RC94 del Sender Pack.
-# NO toca Stripe Checkout, webhook de pago salvo enganchar email después de paid,
-# SMS, WhatsApp, video engine, grabación, upload reacción, cámara,
-# workers, cobros, formulario ni selección de fotos.
-#
-# ANTES ERA:
-# - evita zoom/recorte de la reacción
-# - fuerza object-fit: contain en la reacción
-# - elimina transform/scale en el vídeo de reacción
-# - adapta la ventana de reacción a formato horizontal 16:9 para no cortar caras
-#
-# NO toca:
-# Stripe, webhook, SMS, WhatsApp, video engine, grabación,
-# upload reacción, preexperiencia, cámara, workers, DB, cobros,
-# formulario ni selección de fotos.
+# Mantiene intacto:
+# Stripe Checkout, webhook de pago, SMS, WhatsApp, video engine,
+# grabación, upload reacción, cámara, workers, cobros,
+# Sender Pack y arquitectura separada.
 # =========================================================
 
 print("🔥 ETERNA MAIN DEFINITIVO BLINDADO 🔥")
@@ -60,7 +43,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO SIMPLE + MAGIA
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛡️ RC97 SECURITY LIGHT + TRUST + DASHBOARD SAFE — SMS + MASTER V1 🛡️")
+print("🛡️ RC98 COMBINED SECURITY + TRUST SAFE — SMS + MASTER V1 🛡️")
 import html
 import json
 import mimetypes
@@ -112,7 +95,10 @@ def _client_ip_from_request(request: Request) -> str:
 
 
 def _rate_limit_for_path(path: str) -> int:
-    strict_paths = ("/crear", "/upload-reaction", "/upload-reaction-chunk", "/finish-reaction-upload", "/stripe/webhook")
+    # RC98: conservador para no romper producción.
+    # NO aplicamos límite estricto a Stripe webhook ni a chunks de reacción.
+    # Stripe debe poder repetir eventos; los chunks móviles pueden venir muy seguidos.
+    strict_paths = ("/crear", "/upload-reaction/", "/finish-reaction-upload/")
     if any(path.startswith(p) for p in strict_paths):
         return RATE_LIMIT_STRICT_MAX_REQUESTS
     return RATE_LIMIT_MAX_REQUESTS
@@ -121,12 +107,20 @@ def _rate_limit_for_path(path: str) -> int:
 @app.middleware("http")
 async def eterna_security_headers_and_light_rate_limit(request: Request, call_next):
     """
-    RC97 — seguridad ligera de lanzamiento.
+    RC98 — seguridad ligera combinada de lanzamiento.
     No lee ni modifica el body. No toca el flujo de ETERNA.
     """
     path = request.url.path or "/"
 
-    if RATE_LIMIT_ENABLED and not path.startswith(("/static", "/eterna-assets", "/favicon", "/apple-touch-icon")):
+    if RATE_LIMIT_ENABLED and not path.startswith((
+        "/static",
+        "/eterna-assets",
+        "/favicon",
+        "/apple-touch-icon",
+        "/stripe/webhook",              # no bloquear reintentos reales de Stripe
+        "/upload-reaction-chunk",       # no cortar subidas por chunks
+        "/upload-reaction-live-chunk",  # no cortar subidas móviles en vivo
+    )):
         now = int(time.time())
         window = max(10, RATE_LIMIT_WINDOW_SECONDS)
         bucket = now // window
@@ -204,14 +198,14 @@ ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "sergiog.blanco1@gmail.com").
 ETERNA_OPERATIONS_EMAIL = os.getenv("ETERNA_OPERATIONS_EMAIL", SMTP_FROM or "hola@tueterna.com").strip()
 
 # =========================================================
-# RC97 — SEGURIDAD LIGERA PARA LANZAMIENTO
+# RC98 — SEGURIDAD LIGERA COMBINADA PARA LANZAMIENTO
 # No toca lógica de Stripe, Twilio, vídeo, reacción ni Sender Pack.
 # =========================================================
 SECURITY_HEADERS_ENABLED = os.getenv("SECURITY_HEADERS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
-RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "90"))
-RATE_LIMIT_STRICT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_STRICT_MAX_REQUESTS", "18"))
+RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "120"))
+RATE_LIMIT_STRICT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_STRICT_MAX_REQUESTS", "30"))
 MAX_PHOTO_SIZE_MB = int(os.getenv("MAX_PHOTO_SIZE_MB", "15"))
 MAX_PHOTO_SIZE = MAX_PHOTO_SIZE_MB * 1024 * 1024
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
@@ -326,7 +320,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC97_LAUNCH_SECURITY_TRUST_DASHBOARD_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC98_COMBINED_SECURITY_TRUST_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2405,7 +2399,7 @@ def upload_extension_from_filename(filename: str) -> str:
 
 def validate_upload_metadata_safe(upload: UploadFile, kind: str, slot_name: str = "archivo") -> None:
     """
-    RC97 — filtro ligero previo.
+    RC98 — filtro ligero previo.
     No transforma archivos. Solo rechaza nombres/tipos claramente peligrosos.
     """
     filename = (upload.filename or "").strip()
