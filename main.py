@@ -1,7 +1,7 @@
 # =========================================================
-# RC98_COMBINED_SECURITY_TRUST_SAFE
-# Base: RC96 conservador + RC97 mejoras de lanzamiento.
-# COMBINA LO MEJOR DE LOS DOS SIN TOCAR EL CORAZÓN DE ETERNA:
+# RC99_EXPERIENCE_SEO_SUPPORT_SAFE
+# Base: RC98 combinado seguridad + confianza.
+# AÑADE MEJORAS DE CONVERSIÓN/SOPORTE SIN TOCAR EL CORAZÓN DE ETERNA:
 # - emails operativos RC95/RC96
 # - security headers suaves RC96
 # - rate limit ligero RC97, pero más seguro para producción
@@ -11,6 +11,11 @@
 # - bloque de confianza en formulario
 # - /health/full ampliado
 # - dashboard privado simple
+# - teléfono de soporte ETERNA +34 641 63 53 14
+# - email opcional del destinatario como plan B de rescate
+# - selector de ocasión no invasivo
+# - frases sugeridas en el formulario
+# - páginas simples /como-funciona, /faq y /soporte
 #
 # Mantiene intacto:
 # Stripe Checkout, webhook de pago, SMS, WhatsApp, video engine,
@@ -43,7 +48,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO SIMPLE + MAGIA
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🛡️ RC98 COMBINED SECURITY + TRUST SAFE — SMS + MASTER V1 🛡️")
+print("🦋 RC99 EXPERIENCE + SEO + SUPPORT SAFE — SMS + MASTER V1 🦋")
 import html
 import json
 import mimetypes
@@ -107,7 +112,7 @@ def _rate_limit_for_path(path: str) -> int:
 @app.middleware("http")
 async def eterna_security_headers_and_light_rate_limit(request: Request, call_next):
     """
-    RC98 — seguridad ligera combinada de lanzamiento.
+    RC99 — seguridad ligera combinada + soporte de lanzamiento.
     No lee ni modifica el body. No toca el flujo de ETERNA.
     """
     path = request.url.path or "/"
@@ -196,6 +201,12 @@ SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER or "hola@tueterna.com").strip()
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "ETERNA").strip()
 ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "sergiog.blanco1@gmail.com").strip()
 ETERNA_OPERATIONS_EMAIL = os.getenv("ETERNA_OPERATIONS_EMAIL", SMTP_FROM or "hola@tueterna.com").strip()
+
+# =========================================================
+# RC99 — SOPORTE / CONFIANZA / CONVERSIÓN
+# =========================================================
+ETERNA_SUPPORT_EMAIL = os.getenv("ETERNA_SUPPORT_EMAIL", "hola@tueterna.com").strip()
+ETERNA_SUPPORT_PHONE = os.getenv("ETERNA_SUPPORT_PHONE", "+34 641 63 53 14").strip()
 
 # =========================================================
 # RC98 — SEGURIDAD LIGERA COMBINADA PARA LANZAMIENTO
@@ -320,7 +331,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC98_COMBINED_SECURITY_TRUST_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC99_EXPERIENCE_SEO_SUPPORT_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2168,6 +2179,10 @@ def init_db():
     add_column_if_missing("orders", "order_email_last_error", "ALTER TABLE orders ADD COLUMN order_email_last_error TEXT")
     add_column_if_missing("orders", "admin_alert_last_sent_at", "ALTER TABLE orders ADD COLUMN admin_alert_last_sent_at TEXT")
     add_column_if_missing("orders", "admin_alert_last_reason", "ALTER TABLE orders ADD COLUMN admin_alert_last_reason TEXT")
+
+    # RC99 — conversión/soporte. Campos opcionales; no rompen pedidos antiguos.
+    add_column_if_missing("recipients", "email", "ALTER TABLE recipients ADD COLUMN email TEXT")
+    add_column_if_missing("orders", "occasion_type", "ALTER TABLE orders ADD COLUMN occasion_type TEXT")
 init_db()
 
 
@@ -3115,7 +3130,8 @@ def get_order_by_id(order_id: str):
             s.email AS sender_email,
             s.phone AS sender_phone,
             r.name AS recipient_name,
-            r.phone AS recipient_phone
+            r.phone AS recipient_phone,
+            r.email AS recipient_email
         FROM orders o
         JOIN senders s ON s.id = o.sender_id
         JOIN recipients r ON r.id = o.recipient_id
@@ -3138,7 +3154,8 @@ def get_order_by_stripe_session_id(session_id: str):
             s.email AS sender_email,
             s.phone AS sender_phone,
             r.name AS recipient_name,
-            r.phone AS recipient_phone
+            r.phone AS recipient_phone,
+            r.email AS recipient_email
         FROM orders o
         JOIN senders s ON s.id = o.sender_id
         JOIN recipients r ON r.id = o.recipient_id
@@ -3162,7 +3179,8 @@ def get_order_by_recipient_token_or_404(token: str):
             s.email AS sender_email,
             s.phone AS sender_phone,
             r.name AS recipient_name,
-            r.phone AS recipient_phone
+            r.phone AS recipient_phone,
+            r.email AS recipient_email
         FROM orders o
         JOIN senders s ON s.id = o.sender_id
         JOIN recipients r ON r.id = o.recipient_id
@@ -3185,7 +3203,8 @@ def get_order_by_sender_token_or_404(token: str):
             s.email AS sender_email,
             s.phone AS sender_phone,
             r.name AS recipient_name,
-            r.phone AS recipient_phone
+            r.phone AS recipient_phone,
+            r.email AS recipient_email
         FROM orders o
         JOIN senders s ON s.id = o.sender_id
         JOIN recipients r ON r.id = o.recipient_id
@@ -3783,6 +3802,10 @@ Tu ETERNA se está creando.
 
 Pronto tendrás noticias.
 
+Si necesitas ayuda con tu pedido, puedes contactar con ETERNA:
+{ETERNA_SUPPORT_EMAIL}
+{ETERNA_SUPPORT_PHONE}
+
 Gracias por formar parte de ETERNA.
 """.strip()
 
@@ -3805,8 +3828,10 @@ Teléfono: {order.get('sender_phone') or 'sin teléfono'}
 REGALADO
 Nombre: {order.get('recipient_name') or 'sin nombre'}
 Teléfono: {order.get('recipient_phone') or 'sin teléfono'}
+Email rescate: {order.get('recipient_email') or 'no indicado'}
 
 PEDIDO
+Ocasión: {order.get('occasion_type') or 'no indicada'}
 Tipo emoción: {order.get('message_type') or 'sin tipo'}
 Entrega: {order.get('delivery_mode') or 'instant'}
 Entrega programada: {order.get('scheduled_delivery_at') or 'no'}
@@ -3827,6 +3852,10 @@ Link regalante: {sender_url}
 CHECK ACTUAL
 ✅ Pago recibido
 ⏳ Tu ETERNA se está creando / esperando render
+
+SOPORTE ETERNA
+Email: {ETERNA_SUPPORT_EMAIL}
+Teléfono/WhatsApp: {ETERNA_SUPPORT_PHONE}
 """.strip()
 
 
@@ -4786,7 +4815,22 @@ def condiciones():
 
 @app.get("/privacidad", response_class=HTMLResponse)
 def privacidad(request: Request):
-    return HTMLResponse("""<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Privacidad - Tu ETERNA</title><style>body{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.72;padding:26px;max-width:860px;margin:auto;background-image:radial-gradient(circle at 80% 10%,rgba(32,164,255,.16),transparent 28%),radial-gradient(circle at 10% 90%,rgba(255,194,74,.10),transparent 30%)}h1{font-family:Georgia,'Times New Roman',serif;font-size:34px;margin:0 0 8px;color:#f5d28b}h2{font-size:19px;margin-top:28px;color:#f5d28b}p,li{opacity:.88}.box{border:1px solid rgba(255,207,112,.22);border-radius:18px;padding:18px;background:rgba(255,255,255,.045);margin:20px 0}.small{opacity:.62;font-size:13px}</style></head><body><h1>Politica de privacidad - Tu ETERNA</h1><p class='small'>Version inicial para fase de lanzamiento. Recomendable revision legal antes de abrir a gran escala.</p><div class='box'><p><b>Resumen:</b> usamos los datos minimos necesarios para crear, entregar y conservar temporalmente la experiencia ETERNA.</p></div><h2>1. Datos tratados</h2><ul><li>Nombre, telefono y correo si se facilita.</li><li>Fotografias, frases y datos introducidos.</li><li>Video generado y reaccion grabada si se aceptan permisos.</li><li>Datos tecnicos minimos: fecha, navegador, estado de entrega, logs de errores y eventos necesarios para seguridad y soporte.</li></ul><h2>2. Finalidad</h2><p>Crear la experiencia, procesar el pago, entregar el enlace, permitir la visualizacion, guardar la reaccion, enviar el sender pack, resolver incidencias y mejorar la seguridad del sistema.</p><h2>3. Legitimacion</h2><p>Ejecucion del servicio solicitado, consentimiento cuando se aceptan permisos de camara y microfono, e interes legitimo para seguridad y soporte.</p><h2>4. Proveedores</h2><p>Podemos utilizar proveedores de alojamiento, almacenamiento, pagos, SMS/WhatsApp, correo y analitica tecnica minima. No vendemos datos personales.</p><h2>5. Conservacion</h2><p>Los datos se conservaran el tiempo necesario para prestar el servicio, permitir acceso al recuerdo y atender incidencias. Puede solicitarse eliminacion.</p><h2>6. Grabacion de reaccion</h2><p>La reaccion solo se graba si el destinatario concede permisos. Puede enviarse de forma privada a la persona que creo la ETERNA.</p><h2>7. Derechos</h2><p>Puedes solicitar acceso, rectificacion, eliminacion, oposicion o limitacion escribiendo al correo de contacto.</p><h2>8. Seguridad</h2><p>Aplicamos medidas razonables, pero ningun sistema conectado a internet garantiza riesgo cero.</p><h2>9. Contacto</h2><p>Para privacidad o eliminacion: <b>contacto@tueterna.com</b>. Sustituir por el correo definitivo antes del lanzamiento publico.</p></body></html>""")
+    return HTMLResponse("""<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Privacidad - Tu ETERNA</title><style>body{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.72;padding:26px;max-width:860px;margin:auto;background-image:radial-gradient(circle at 80% 10%,rgba(32,164,255,.16),transparent 28%),radial-gradient(circle at 10% 90%,rgba(255,194,74,.10),transparent 30%)}h1{font-family:Georgia,'Times New Roman',serif;font-size:34px;margin:0 0 8px;color:#f5d28b}h2{font-size:19px;margin-top:28px;color:#f5d28b}p,li{opacity:.88}.box{border:1px solid rgba(255,207,112,.22);border-radius:18px;padding:18px;background:rgba(255,255,255,.045);margin:20px 0}.small{opacity:.62;font-size:13px}</style></head><body><h1>Politica de privacidad - Tu ETERNA</h1><p class='small'>Version inicial para fase de lanzamiento. Recomendable revision legal antes de abrir a gran escala.</p><div class='box'><p><b>Resumen:</b> usamos los datos minimos necesarios para crear, entregar y conservar temporalmente la experiencia ETERNA.</p></div><h2>1. Datos tratados</h2><ul><li>Nombre, telefono y correo si se facilita.</li><li>Fotografias, frases y datos introducidos.</li><li>Video generado y reaccion grabada si se aceptan permisos.</li><li>Datos tecnicos minimos: fecha, navegador, estado de entrega, logs de errores y eventos necesarios para seguridad y soporte.</li></ul><h2>2. Finalidad</h2><p>Crear la experiencia, procesar el pago, entregar el enlace, permitir la visualizacion, guardar la reaccion, enviar el sender pack, resolver incidencias y mejorar la seguridad del sistema.</p><h2>3. Legitimacion</h2><p>Ejecucion del servicio solicitado, consentimiento cuando se aceptan permisos de camara y microfono, e interes legitimo para seguridad y soporte.</p><h2>4. Proveedores</h2><p>Podemos utilizar proveedores de alojamiento, almacenamiento, pagos, SMS/WhatsApp, correo y analitica tecnica minima. No vendemos datos personales.</p><h2>5. Conservacion</h2><p>Los datos se conservaran el tiempo necesario para prestar el servicio, permitir acceso al recuerdo y atender incidencias. Puede solicitarse eliminacion.</p><h2>6. Grabacion de reaccion</h2><p>La reaccion solo se graba si el destinatario concede permisos. Puede enviarse de forma privada a la persona que creo la ETERNA.</p><h2>7. Derechos</h2><p>Puedes solicitar acceso, rectificacion, eliminacion, oposicion o limitacion escribiendo al correo de contacto.</p><h2>8. Seguridad</h2><p>Aplicamos medidas razonables, pero ningun sistema conectado a internet garantiza riesgo cero.</p><h2>9. Contacto</h2><p>Para privacidad o eliminacion: <b>hola@tueterna.com</b> o WhatsApp +34 641 63 53 14.</p></body></html>""")
+
+@app.get("/soporte", response_class=HTMLResponse)
+def soporte_eterna():
+    return HTMLResponse(f"""<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Soporte ETERNA</title><style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.7;padding:28px;max-width:760px;margin:auto}}h1{{font-family:Georgia,serif;color:#f5d28b}}.box{{border:1px solid rgba(245,210,139,.25);border-radius:22px;padding:22px;background:rgba(255,255,255,.045)}}a{{color:#f5d28b}}</style></head><body><h1>Soporte ETERNA</h1><div class='box'><p>Si tienes cualquier incidencia con tu ETERNA, escríbenos indicando tu número de pedido.</p><p><b>Email:</b> <a href='mailto:{ETERNA_SUPPORT_EMAIL}'>{ETERNA_SUPPORT_EMAIL}</a></p><p><b>Teléfono / WhatsApp:</b> {ETERNA_SUPPORT_PHONE}</p><p>Tu ETERNA no se pierde. Si algo falla, podremos revisar el pedido y ayudarte.</p></div></body></html>""")
+
+
+@app.get("/como-funciona", response_class=HTMLResponse)
+def como_funciona_eterna():
+    return HTMLResponse("""<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Cómo funciona ETERNA</title><style>body{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.7;padding:28px;max-width:860px;margin:auto}h1{font-family:Georgia,serif;color:#f5d28b}.step{border:1px solid rgba(245,210,139,.22);border-radius:22px;padding:18px;margin:14px 0;background:rgba(255,255,255,.045)}b{color:#f5d28b}</style></head><body><h1>Cómo funciona ETERNA</h1><div class='step'><b>1. Eliges 6 fotos</b><br>Seleccionas los recuerdos que quieres convertir en una experiencia emocional.</div><div class='step'><b>2. Escribes o eliges frases</b><br>Puedes escribir lo que sientes o dejar que ETERNA encuentre las palabras.</div><div class='step'><b>3. La persona recibe la experiencia</b><br>Le llega un enlace para vivirla con calma, en su móvil.</div><div class='step'><b>4. La emoción vuelve a ti</b><br>Recibes la reacción real de la persona al vivir la experiencia.</div></body></html>""")
+
+
+@app.get("/faq", response_class=HTMLResponse)
+def faq_eterna():
+    return HTMLResponse(f"""<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Preguntas frecuentes ETERNA</title><style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.7;padding:28px;max-width:860px;margin:auto}}h1{{font-family:Georgia,serif;color:#f5d28b}}h2{{color:#f5d28b;font-size:18px;margin-top:24px}}.box{{border:1px solid rgba(245,210,139,.22);border-radius:22px;padding:20px;background:rgba(255,255,255,.045)}}a{{color:#f5d28b}}</style></head><body><h1>Preguntas frecuentes</h1><div class='box'><h2>¿Qué es ETERNA?</h2><p>Una experiencia emocional creada con fotos, frases y una reacción real que vuelve a quien la crea.</p><h2>¿Es privado?</h2><p>Sí. Las fotos, el vídeo y la reacción se tratan como contenido privado de la experiencia.</p><h2>¿Se puede enviar dinero?</h2><p>Sí. Puedes añadir un regalo económico que recibirá la persona destinataria.</p><h2>¿Qué recibe la otra persona?</h2><p>Un enlace para vivir la experiencia en su móvil.</p><h2>¿Qué recibo yo?</h2><p>El sender pack con la emoción de vuelta.</p><h2>¿Y si hay una incidencia?</h2><p>Contacta con ETERNA: <a href='mailto:{ETERNA_SUPPORT_EMAIL}'>{ETERNA_SUPPORT_EMAIL}</a> · {ETERNA_SUPPORT_PHONE}</p><h2>¿Dónde está disponible?</h2><p>Disponible en toda España: Madrid, Barcelona, Valencia, Sevilla, Málaga, Bilbao, Zaragoza y el resto del país.</p></div></body></html>""")
+
 
 async def create_order_and_redirect(
     customer_name: str,
@@ -4796,6 +4840,8 @@ async def create_order_and_redirect(
     recipient_name: str,
     recipient_country_code: str,
     recipient_phone: str,
+    recipient_email: str,
+    occasion_type: str,
     message_type: str,
     phrase_mode: str,
     phrase_1: str,
@@ -4825,7 +4871,9 @@ async def create_order_and_redirect(
     recipient_name = (recipient_name or "").strip()
     recipient_country_code = (recipient_country_code or "").strip()
     recipient_phone = (recipient_phone or "").strip()
+    recipient_email = (recipient_email or "").strip()
 
+    occasion_type = (occasion_type or "").strip().lower()[:40]
     message_type = (message_type or "").strip()
     phrase_mode = (phrase_mode or "auto").strip().lower()
 
@@ -4949,10 +4997,10 @@ async def create_order_and_redirect(
 
         cur.execute(
             """
-            INSERT INTO recipients (name, phone, created_at)
-            VALUES (?, ?, ?)
+            INSERT INTO recipients (name, phone, email, created_at)
+            VALUES (?, ?, ?, ?)
             """,
-            (recipient_name, recipient_phone_e164, created_at),
+            (recipient_name, recipient_phone_e164, recipient_email, created_at),
         )
         recipient_id = cur.lastrowid
 
@@ -5008,6 +5056,11 @@ async def create_order_and_redirect(
 
         conn.commit()
         insert_order_event(order_id, "order_created", "ok", "Pedido creado y pendiente de pago")
+        if occasion_type:
+            try:
+                update_order(order_id, occasion_type=occasion_type)
+            except Exception as e:
+                print("[WARN] RC99 occasion_type no guardado:", e)
 
         try:
             update_order(
@@ -6365,6 +6418,15 @@ def render_create_form() -> str:
                                     required
                                 >
 
+                                <input
+                                    type="email"
+                                    name="recipient_email"
+                                    id="recipient_email"
+                                    class="phone-input"
+                                    placeholder="Su email (opcional, por si el SMS falla)"
+                                    autocomplete="email"
+                                >
+
                                 <div
                                     id="phone-help"
                                     style="
@@ -6384,6 +6446,21 @@ def render_create_form() -> str:
                     
                     
                     
+                    <div class="section s-occasion">
+                        <div class="section-title">¿Para quién es esta ETERNA?</div>
+                        <div class="soft-copy">Elige una ocasión. Solo nos ayuda a entender el tono. No complica el proceso.</div>
+                        <div class="emotion-grid occasion-grid" id="occasionGrid" style="margin-top:14px;">
+                            <div class="emotion-card selected" data-occasion="pareja"><div class="emotion-title">❤️ Pareja</div><div class="emotion-sub">Amor, aniversario o algo que no sabes decir.</div></div>
+                            <div class="emotion-card" data-occasion="madre"><div class="emotion-title">👩 Madre</div><div class="emotion-sub">Para agradecer todo lo que siempre estuvo.</div></div>
+                            <div class="emotion-card" data-occasion="padre"><div class="emotion-title">👨 Padre</div><div class="emotion-sub">Para reconocer lo que a veces no se dice.</div></div>
+                            <div class="emotion-card" data-occasion="cumpleanos"><div class="emotion-title">🎂 Cumpleaños</div><div class="emotion-sub">Una sorpresa que se vive de verdad.</div></div>
+                            <div class="emotion-card" data-occasion="amistad"><div class="emotion-title">🤝 Amistad</div><div class="emotion-sub">Para alguien que siempre estuvo cerca.</div></div>
+                            <div class="emotion-card" data-occasion="distancia"><div class="emotion-title">🌍 A distancia</div><div class="emotion-sub">Cuando está lejos, pero sigue aquí.</div></div>
+                            <div class="emotion-card" data-occasion="otro"><div class="emotion-title">✨ Otro momento</div><div class="emotion-sub">Cuando simplemente quieres emocionar.</div></div>
+                        </div>
+                        <input type="hidden" name="occasion_type" id="occasionType" value="pareja">
+                    </div>
+
                     <div class="section s-yul">
                         <div class="section-title">El alma de Yul</div>
                         <div class="soft-copy">
@@ -6588,6 +6665,18 @@ def render_create_form() -> str:
                             <textarea name="phrase_2" id="phrase_2" placeholder="Eso que sientes y a veces no dices" maxlength="220"></textarea>
                             <textarea name="phrase_3" id="phrase_3" placeholder="La frase que quieres dejarle para siempre" maxlength="220"></textarea>
                         </div>
+
+                        <div class="trust-box" style="margin-top:14px;padding:14px;border-radius:18px;background:rgba(255,255,255,0.045);border:1px solid rgba(218,178,92,0.20);color:rgba(255,255,255,0.76);font-size:13px;line-height:1.65;">
+                            <b style="color:#f5d28b;">¿Necesitas inspiración?</b><br>
+                            <button type="button" id="inspirationBtn" style="margin:10px 0 8px;padding:10px 14px;border-radius:999px;border:1px solid rgba(245,210,139,.32);background:rgba(245,210,139,.08);color:#f5d28b;font-weight:800;">Ver frases sugeridas</button>
+                            <div id="inspirationBox" class="hidden" style="margin-top:8px;">
+                                <div class="suggested-phrase">Gracias por estar siempre.</div>
+                                <div class="suggested-phrase">Hay personas que se quedan para siempre.</div>
+                                <div class="suggested-phrase">Hoy quería recordarte algo bonito.</div>
+                                <div class="suggested-phrase">Aunque estemos lejos, sigues aquí.</div>
+                                <div class="suggested-phrase">Nunca olvides lo importante que eres para mí.</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="section s6">
@@ -6678,7 +6767,8 @@ def render_create_form() -> str:
                             ✓ Tus fotos son privadas.<br>
                             ✓ El pago se realiza de forma segura con Stripe.<br>
                             ✓ La reacción solo vuelve a quien crea esta ETERNA.<br>
-                            ✓ Si añades dinero, lo recibirá la persona destinataria.
+                            ✓ Si añades dinero, lo recibirá la persona destinataria.<br>
+                            ✓ Soporte: hola@tueterna.com · +34 641 63 53 14
                         </div>
 
                         <div class="hint">
@@ -6833,6 +6923,36 @@ document.addEventListener("DOMContentLoaded", function () {{
         }} catch (e) {{}}
     }}
 
+    const occasionCards = document.querySelectorAll("#occasionGrid .emotion-card");
+    const occasionInput = document.getElementById("occasionType");
+    occasionCards.forEach((card) => {{
+        card.addEventListener("click", () => {{
+            occasionCards.forEach((c) => c.classList.remove("selected"));
+            card.classList.add("selected");
+            if (occasionInput) occasionInput.value = card.dataset.occasion || "otro";
+            saveFormState();
+        }});
+    }});
+
+    const inspirationBtn = document.getElementById("inspirationBtn");
+    const inspirationBox = document.getElementById("inspirationBox");
+    if (inspirationBtn && inspirationBox) {{
+        inspirationBtn.addEventListener("click", () => {{
+            inspirationBox.classList.toggle("hidden");
+        }});
+        inspirationBox.querySelectorAll(".suggested-phrase").forEach((el) => {{
+            el.style.cursor = "pointer";
+            el.style.padding = "8px 0";
+            el.addEventListener("click", () => {{
+                const manual = document.getElementById("mode_manual");
+                if (manual) {{ manual.checked = true; manual.dispatchEvent(new Event("change")); }}
+                const targets = ["phrase_1", "phrase_2", "phrase_3"].map(id => document.getElementById(id));
+                const empty = targets.find(t => t && !String(t.value || "").trim());
+                if (empty) {{ empty.value = el.textContent.trim(); empty.focus(); saveFormState(); }}
+            }});
+        }});
+    }}
+
     function getPersistableData() {{
         return {{
             customer_name: document.getElementById("customer_name")?.value || "",
@@ -6842,6 +6962,8 @@ document.addEventListener("DOMContentLoaded", function () {{
             recipient_name: document.getElementById("recipient_name")?.value || "",
             recipient_country_code: document.getElementById("recipient_country_code")?.value || "+34",
             recipient_phone: document.getElementById("recipient_phone")?.value || "",
+            recipient_email: document.getElementById("recipient_email")?.value || "",
+            occasion_type: document.getElementById("occasionType")?.value || "",
             message_type: document.getElementById("messageType")?.value || "",
             phrase_mode: manualRadio && manualRadio.checked ? "manual" : "auto",
             phrase_1: document.getElementById("phrase_1")?.value || "",
@@ -6877,6 +6999,7 @@ document.addEventListener("DOMContentLoaded", function () {{
                 "recipient_name",
                 "recipient_country_code",
                 "recipient_phone",
+                "recipient_email",
                 "phrase_1",
                 "phrase_2",
                 "phrase_3",
@@ -6935,6 +7058,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             "#recipient_name",
             "#recipient_country_code",
             "#recipient_phone",
+            "#recipient_email",
             "#phrase_1",
             "#phrase_2",
             "#phrase_3",
@@ -8170,6 +8294,8 @@ async def crear_post(
     recipient_name: str = Form(...),
     recipient_country_code: str = Form(...),
     recipient_phone: str = Form(...),
+    recipient_email: str = Form(""),
+    occasion_type: str = Form(""),
     message_type: str = Form(...),
     phrase_mode: str = Form(...),
     phrase_1: str = Form(""),
@@ -8201,6 +8327,8 @@ async def crear_post(
             recipient_name,
             recipient_country_code,
             recipient_phone,
+            recipient_email,
+            occasion_type,
             message_type,
             phrase_mode,
             phrase_1,
