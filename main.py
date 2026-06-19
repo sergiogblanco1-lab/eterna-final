@@ -1,6 +1,6 @@
 # =========================================================
-# RC99_EXPERIENCE_SEO_SUPPORT_SAFE
-# Base: RC98 combinado seguridad + confianza.
+# RC101_SENDER_IDENTITY_TRUST_SAFE
+# Base: RC100 reacción congelada + soporte.
 # AÑADE MEJORAS DE CONVERSIÓN/SOPORTE SIN TOCAR EL CORAZÓN DE ETERNA:
 # - emails operativos RC95/RC96
 # - security headers suaves RC96
@@ -16,6 +16,9 @@
 # - selector de ocasión no invasivo
 # - frases sugeridas en el formulario
 # - páginas simples /como-funciona, /faq y /soporte
+# - identidad opcional del remitente en llegada
+# - foto de llegada opcional reutilizando una de las 6 fotos
+# - bloque de confianza reforzado con soporte
 #
 # Mantiene intacto:
 # Stripe Checkout, webhook de pago, SMS, WhatsApp, video engine,
@@ -48,7 +51,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO SIMPLE + MAGIA
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🦋 RC99 EXPERIENCE + SEO + SUPPORT SAFE — SMS + MASTER V1 🦋")
+print("🦋 RC101 SENDER IDENTITY + TRUST SAFE — SMS + MASTER V1 🦋")
 import html
 import json
 import mimetypes
@@ -211,6 +214,14 @@ ETERNA_SUPPORT_EMAIL = os.getenv("ETERNA_SUPPORT_EMAIL", "hola@tueterna.com").st
 ETERNA_SUPPORT_PHONE = os.getenv("ETERNA_SUPPORT_PHONE", "+34 641 63 53 14").strip()
 
 # =========================================================
+# RC101 — IDENTIDAD OPCIONAL DEL REMITENTE
+# Mejora de confianza: permite mostrar quién envía la ETERNA
+# usando una de las 6 fotos ya subidas. No añade nuevas subidas.
+# =========================================================
+SENDER_IDENTITY_ENABLED = os.getenv("SENDER_IDENTITY_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ARRIVAL_PHOTO_DEFAULT_SLOT = os.getenv("ARRIVAL_PHOTO_DEFAULT_SLOT", "photo1").strip() or "photo1"
+
+# =========================================================
 # RC98 — SEGURIDAD LIGERA COMBINADA PARA LANZAMIENTO
 # No toca lógica de Stripe, Twilio, vídeo, reacción ni Sender Pack.
 # =========================================================
@@ -347,7 +358,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC99_EXPERIENCE_SEO_SUPPORT_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC101_SENDER_IDENTITY_TRUST_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2139,6 +2150,11 @@ def init_db():
     add_column_if_missing("orders", "reaction_video_public_url", "ALTER TABLE orders ADD COLUMN reaction_video_public_url TEXT")
     add_column_if_missing("orders", "reaction_video_local", "ALTER TABLE orders ADD COLUMN reaction_video_local TEXT")
 
+    # RC101 — identidad opcional del remitente para aumentar confianza de apertura.
+    add_column_if_missing("orders", "show_sender_identity", "ALTER TABLE orders ADD COLUMN show_sender_identity INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "arrival_photo_slot", "ALTER TABLE orders ADD COLUMN arrival_photo_slot TEXT")
+    add_column_if_missing("orders", "arrival_photo_url", "ALTER TABLE orders ADD COLUMN arrival_photo_url TEXT")
+
     # RC100 — diagnóstico y normalización segura de reacciones.
     # Campos añadidos de forma compatible: si ya existen, no hace nada.
     add_column_if_missing("orders", "reaction_video_original_local", "ALTER TABLE orders ADD COLUMN reaction_video_original_local TEXT")
@@ -3826,19 +3842,64 @@ def recipient_experience_url_from_order(order: dict) -> str:
     return f"{PUBLIC_BASE_URL}/pedido/{order['recipient_token']}"
 
 
+
+def rc101_truthy(value) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on", "si", "sí", "mostrar", "show"}
+
+
+def rc101_clean_photo_slot(slot: str) -> str:
+    slot = (slot or ARRIVAL_PHOTO_DEFAULT_SLOT or "photo1").strip().lower()
+    slot = slot.replace("_", "").replace("-", "")
+    if slot in {"1", "foto1"}:
+        return "photo1"
+    if slot in {"2", "foto2"}:
+        return "photo2"
+    if slot in {"3", "foto3"}:
+        return "photo3"
+    if slot in {"4", "foto4"}:
+        return "photo4"
+    if slot in {"5", "foto5"}:
+        return "photo5"
+    if slot in {"6", "foto6"}:
+        return "photo6"
+    if slot in {"photo1", "photo2", "photo3", "photo4", "photo5", "photo6"}:
+        return slot
+    return "photo1"
+
+
+def arrival_photo_url_from_order(order: dict) -> str:
+    if not SENDER_IDENTITY_ENABLED:
+        return ""
+    if not rc101_truthy(order.get("show_sender_identity")):
+        return ""
+    slot = rc101_clean_photo_slot(order.get("arrival_photo_slot") or ARRIVAL_PHOTO_DEFAULT_SLOT)
+    token = (order.get("recipient_token") or "").strip()
+    if not token:
+        return ""
+    return f"{PUBLIC_BASE_URL}/arrival-photo/{token}?slot={quote(slot)}"
+
+
+def build_recipient_arrival_intro(order: dict) -> str:
+    sender_name = (order.get("sender_name") or "").strip()
+    if SENDER_IDENTITY_ENABLED and rc101_truthy(order.get("show_sender_identity")) and sender_name:
+        return f"{sender_name} ha preparado algo para ti."
+    return "Alguien ha preparado algo para ti."
+
 def build_recipient_message(order: dict) -> str:
     recipient_name = (order.get("recipient_name") or "").strip()
     url = (recipient_experience_url_from_order(order) or "").strip()
     greeting = f"{recipient_name}," if recipient_name else ""
+    arrival_intro = build_recipient_arrival_intro(order)
     message = ""
     if greeting:
         message += f"Shhh…\n\n{greeting}\n\n"
     else:
         message += "Shhh…\n\n"
     message += (
+        f"{arrival_intro}\n\n"
         "Esto no es un vídeo.\n\n"
         "No es solo un momento.\n\n"
-        "Es algo que alguien ha creado para ti.\n\n"
+        "Es una ETERNA creada para ti.\n\n"
         "Pero hay algo más…\n\n"
         "Dentro hay algo que también es tuyo.\n\n"
         "Ábrelo cuando estés tranquilo:\n\n"
@@ -4145,7 +4206,7 @@ def whatsapp_from_number() -> str:
     return f"whatsapp:{raw}"
 
 
-def send_whatsapp(phone: str, message: str) -> dict:
+def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
     if not to_phone:
@@ -4158,14 +4219,17 @@ def send_whatsapp(phone: str, message: str) -> dict:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        msg = client.messages.create(body=message, from_=wa_from, to=f"whatsapp:{to_phone}")
-        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None}
+        kwargs = {"body": message, "from_": wa_from, "to": f"whatsapp:{to_phone}"}
+        if media_url:
+            kwargs["media_url"] = [media_url]
+        msg = client.messages.create(**kwargs)
+        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None, "media_url": media_url or None}
     except Exception as e:
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e)}
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e), "media_url": media_url or None}
 
 
-def send_message_best_effort(phone: str, message: str) -> dict:
-    whatsapp_result = send_whatsapp(phone, message)
+def send_message_best_effort(phone: str, message: str, media_url: str = "") -> dict:
+    whatsapp_result = send_whatsapp(phone, message, media_url=media_url)
     if whatsapp_result.get("ok"):
         return whatsapp_result
     sms_result = send_sms(phone, message)
@@ -4512,8 +4576,9 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             }
 
         message = build_recipient_message(order)
+        arrival_media_url = arrival_photo_url_from_order(order)
         print("📩 RC53 ENVIANDO MENSAJE DESTINATARIO A:", order.get("recipient_phone", ""))
-        result = send_message_best_effort(order.get("recipient_phone", ""), message)
+        result = send_message_best_effort(order.get("recipient_phone", ""), message, media_url=arrival_media_url)
 
         print("📩 RECIPIENT SMS RESULT:", result)
 
@@ -5312,6 +5377,8 @@ async def create_order_and_redirect(
     photo4: UploadFile,
     photo5: UploadFile,
     photo6: UploadFile,
+    show_sender_identity: str = "",
+    arrival_photo_slot: str = "photo1",
     responsible_use_accepted: str = "",
     yul_memory_place: str = "",
     yul_memory_detail: str = "",
@@ -5327,6 +5394,9 @@ async def create_order_and_redirect(
     recipient_country_code = (recipient_country_code or "").strip()
     recipient_phone = (recipient_phone or "").strip()
     recipient_email = (recipient_email or "").strip()
+
+    show_sender_identity_bool = rc101_truthy(show_sender_identity)
+    arrival_photo_slot = rc101_clean_photo_slot(arrival_photo_slot)
 
     occasion_type = (occasion_type or "").strip().lower()[:40]
     message_type = (message_type or "").strip()
@@ -5516,6 +5586,23 @@ async def create_order_and_redirect(
                 update_order(order_id, occasion_type=occasion_type)
             except Exception as e:
                 print("[WARN] RC99 occasion_type no guardado:", e)
+
+        try:
+            update_order(
+                order_id,
+                show_sender_identity=1 if show_sender_identity_bool else 0,
+                arrival_photo_slot=arrival_photo_slot if show_sender_identity_bool else None,
+                arrival_photo_url=f"{PUBLIC_BASE_URL}/arrival-photo/{recipient_token}?slot={quote(arrival_photo_slot)}" if show_sender_identity_bool else None,
+            )
+            insert_order_event(
+                order_id,
+                "rc101_sender_identity_saved",
+                "ok",
+                "Identidad opcional del remitente guardada",
+                {"show_sender_identity": bool(show_sender_identity_bool), "arrival_photo_slot": arrival_photo_slot if show_sender_identity_bool else None},
+            )
+        except Exception as e:
+            print("[WARN] RC101 sender identity no guardada:", e)
 
         try:
             update_order(
@@ -7025,6 +7112,34 @@ def render_create_form() -> str:
                         <div class="mini-note">
                             Recomendación: formato vertical. Lo importante es que sean recuerdos que de verdad tengan sentido.
                         </div>
+
+                        <div class="trust-box" style="margin-top:14px;padding:14px;border-radius:18px;background:rgba(255,255,255,0.045);border:1px solid rgba(218,178,92,0.20);color:rgba(255,255,255,0.76);font-size:13px;line-height:1.65;">
+                            <b style="color:#f5d28b;">¿Quieres que la persona sepa quién le envía esta ETERNA?</b><br>
+                            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+                                <label style="display:flex;align-items:center;gap:7px;">
+                                    <input type="radio" name="show_sender_identity" value="1" id="show_sender_identity_yes">
+                                    Sí, mostrar una foto
+                                </label>
+                                <label style="display:flex;align-items:center;gap:7px;">
+                                    <input type="radio" name="show_sender_identity" value="0" id="show_sender_identity_no" checked>
+                                    No, mantener la sorpresa
+                                </label>
+                            </div>
+                            <div id="arrivalPhotoSelector" class="hidden" style="margin-top:12px;">
+                                <div style="margin-bottom:8px;color:rgba(255,255,255,.72);">Foto de llegada:</div>
+                                <select name="arrival_photo_slot" id="arrival_photo_slot" style="width:100%;padding:12px;border-radius:14px;border:1px solid rgba(245,210,139,.24);background:#07111c;color:#fff;">
+                                    <option value="photo1" selected>Foto 1</option>
+                                    <option value="photo2">Foto 2</option>
+                                    <option value="photo3">Foto 3</option>
+                                    <option value="photo4">Foto 4</option>
+                                    <option value="photo5">Foto 5</option>
+                                    <option value="photo6">Foto 6</option>
+                                </select>
+                                <div style="margin-top:8px;color:rgba(255,255,255,.58);font-size:12px;">
+                                    Esta mini foto puede aparecer como imagen de llegada para dar confianza. No cambia el vídeo.
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="section s4">
@@ -7418,6 +7533,8 @@ document.addEventListener("DOMContentLoaded", function () {{
             recipient_country_code: document.getElementById("recipient_country_code")?.value || "+34",
             recipient_phone: document.getElementById("recipient_phone")?.value || "",
             recipient_email: document.getElementById("recipient_email")?.value || "",
+            show_sender_identity: document.querySelector('input[name="show_sender_identity"]:checked')?.value || "0",
+            arrival_photo_slot: document.getElementById("arrival_photo_slot")?.value || "photo1",
             occasion_type: document.getElementById("occasionType")?.value || "",
             message_type: document.getElementById("messageType")?.value || "",
             phrase_mode: manualRadio && manualRadio.checked ? "manual" : "auto",
@@ -7455,6 +7572,7 @@ document.addEventListener("DOMContentLoaded", function () {{
                 "recipient_country_code",
                 "recipient_phone",
                 "recipient_email",
+                "arrival_photo_slot",
                 "phrase_1",
                 "phrase_2",
                 "phrase_3",
@@ -7514,6 +7632,9 @@ document.addEventListener("DOMContentLoaded", function () {{
             "#recipient_country_code",
             "#recipient_phone",
             "#recipient_email",
+            "#show_sender_identity_yes",
+            "#show_sender_identity_no",
+            "#arrival_photo_slot",
             "#phrase_1",
             "#phrase_2",
             "#phrase_3",
@@ -8766,6 +8887,8 @@ async def crear_post(
     photo4: UploadFile = File(...),
     photo5: UploadFile = File(...),
     photo6: UploadFile = File(...),
+    show_sender_identity: str = Form(""),
+    arrival_photo_slot: str = Form("photo1"),
     responsible_use_accepted: str = Form(""),
     responsible_use: str = Form(""),
     yul_memory_place: str = Form(""),
@@ -8799,6 +8922,8 @@ async def crear_post(
             photo4,
             photo5,
             photo6,
+            show_sender_identity,
+            arrival_photo_slot,
             responsible_use_accepted or responsible_use,
             yul_memory_place,
             yul_memory_detail,
@@ -13506,6 +13631,33 @@ def get_video_input(order_id: str, slot_name: str):
             media_type=guess_media_type_from_path(path),
             filename=os.path.basename(path),
         )
+
+
+@app.get("/arrival-photo/{recipient_token}")
+def get_arrival_photo(recipient_token: str, slot: str = "photo1"):
+    """
+    RC101 — mini foto opcional de llegada.
+    Solo se sirve si el regalante eligió mostrar identidad.
+    Reutiliza una de las 6 fotos; no añade nuevas subidas ni toca el motor.
+    """
+    order = get_order_by_recipient_token_or_404(recipient_token)
+    if not SENDER_IDENTITY_ENABLED or not rc101_truthy(order.get("show_sender_identity")):
+        raise HTTPException(status_code=404, detail="Foto de llegada no disponible")
+
+    clean_slot = rc101_clean_photo_slot(slot or order.get("arrival_photo_slot") or ARRIVAL_PHOTO_DEFAULT_SLOT)
+    selected_slot = rc101_clean_photo_slot(order.get("arrival_photo_slot") or ARRIVAL_PHOTO_DEFAULT_SLOT)
+    if clean_slot != selected_slot:
+        clean_slot = selected_slot
+
+    path = get_photo_asset_path(order["id"], clean_slot)
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Foto de llegada no encontrada")
+
+    return FileResponse(
+        path,
+        media_type=guess_media_type_from_path(path),
+        filename=f"eterna-llegada-{order['id']}-{clean_slot}{Path(path).suffix or '.jpg'}",
+    )
 
 
 @app.get("/video/sender-reaction/{sender_token}")
