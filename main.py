@@ -1,5 +1,5 @@
 # =========================================================
-# RC101_SENDER_IDENTITY_TRUST_SAFE
+# RC101B_FORM_POST_NATIVE_SAFE
 # Base: RC100 reacción congelada + soporte.
 # AÑADE MEJORAS DE CONVERSIÓN/SOPORTE SIN TOCAR EL CORAZÓN DE ETERNA:
 # - emails operativos RC95/RC96
@@ -19,6 +19,7 @@
 # - identidad opcional del remitente en llegada
 # - foto de llegada opcional reutilizando una de las 6 fotos
 # - bloque de confianza reforzado con soporte
+# - RC101B: submit nativo multipart para evitar POST vacío en móvil/Instagram
 #
 # Mantiene intacto:
 # Stripe Checkout, webhook de pago, SMS, WhatsApp, video engine,
@@ -51,7 +52,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO SIMPLE + MAGIA
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
-print("🦋 RC101 SENDER IDENTITY + TRUST SAFE — SMS + MASTER V1 🦋")
+print("🦋 RC101B FORM POST NATIVE SAFE — SENDER IDENTITY + TRUST 🦋")
 import html
 import json
 import mimetypes
@@ -78,6 +79,7 @@ import requests
 import stripe
 from botocore.client import Config
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -95,6 +97,48 @@ except ImportError:
 
 app = FastAPI(title="ETERNA FINAL PRODUCTO DEFINITIVO")
 templates = Jinja2Templates(directory="templates")
+
+
+
+@app.exception_handler(RequestValidationError)
+async def eterna_validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    RC101B — evita JSON técnico si /crear recibe un POST vacío o incompleto.
+    No arregla datos por arte de magia: protege la experiencia y devuelve al formulario.
+    """
+    try:
+        if request.url.path == "/crear":
+            print("⚠️ RC101B /crear recibió formulario incompleto o vacío:", exc.errors())
+            return HTMLResponse(
+                """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETERNA</title>
+<style>
+body{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.card{max-width:420px;border:1px solid rgba(245,210,139,.24);border-radius:24px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));box-shadow:0 20px 80px rgba(0,0,0,.45);}
+h1{font-size:22px;margin:0 0 12px;color:#f5d28b;}
+p{line-height:1.55;color:rgba(255,255,255,.78);}
+a{display:block;margin-top:18px;text-align:center;text-decoration:none;color:#06111d;background:#f5d28b;border-radius:999px;padding:14px 18px;font-weight:800;}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>No se ha enviado el formulario</h1>
+<p>Vuelve a intentarlo desde el formulario. Tus fotos deben terminar de cargarse antes de continuar.</p>
+<a href="/crear">Volver a crear mi ETERNA</a>
+</div>
+</body>
+</html>
+                """,
+                status_code=422,
+            )
+    except Exception as e:
+        print("⚠️ RC101B validation handler fallback:", e)
+    return JSONResponse({"detail": exc.errors()}, status_code=422)
 
 
 def _client_ip_from_request(request: Request) -> str:
@@ -358,7 +402,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC101_SENDER_IDENTITY_TRUST_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC101B_FORM_POST_NATIVE_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -8390,6 +8434,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     form.addEventListener("submit", function (e) {{
         if (eternaSubmitting) {{
+            e.preventDefault();
             return;
         }}
 
@@ -8402,7 +8447,10 @@ document.addEventListener("DOMContentLoaded", function () {{
             return;
         }}
 
-        e.preventDefault();
+        // RC101B:
+        // En móvil/Instagram WebView NO forzamos form.submit() programático.
+        // Dejamos que el navegador haga el submit nativo multipart/form-data,
+        // porque es la forma más segura de enviar textos + 6 fotos.
         eternaSubmitting = true;
         clearError();
         showPaymentLoadingNow();
@@ -8412,15 +8460,9 @@ document.addEventListener("DOMContentLoaded", function () {{
         }} catch (err) {{
             console.error("localStorage remove error", err);
         }}
-        clearPhotoDrafts();
 
-        // Importante en móvil: dejamos que el navegador pinte la pantalla
-        // Pantalla cinematográfica antes de empezar la subida pesada de las 6 fotos.
-        window.requestAnimationFrame(function () {{
-            window.setTimeout(function () {{
-                form.submit();
-            }}, 140);
-        }});
+        // No limpiar inputs/fotos antes del submit nativo.
+        return true;
     }});
 
 }});
