@@ -55,6 +55,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
 print("🦋 RC101B FORM POST NATIVE SAFE — SENDER IDENTITY + TRUST 🦋")
 print("🧠 MEMORY ENGINE V1 SILENT SAFE — GUARDA MOMENTOS SIN ENVIAR NADA 🧠")
+print("👁️ VISITOR INTELLIGENCE V1 SAFE — LOGS HUMANOS DE VISITAS 👁️")
 import html
 import json
 import mimetypes
@@ -160,6 +161,236 @@ def _rate_limit_for_path(path: str) -> int:
     return RATE_LIMIT_MAX_REQUESTS
 
 
+# =========================================================
+# VISITOR INTELLIGENCE V1 SAFE
+# Logs humanos de visitas.
+# No identifica personas reales ni números de teléfono.
+# Usa IP pública aproximada + navegador + ruta + referrer.
+# La geolocalización por IP es aproximada y puede fallar.
+# =========================================================
+VISITOR_LOG_ENABLED = os.getenv("VISITOR_LOG_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+VISITOR_GEO_ENABLED = os.getenv("VISITOR_GEO_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+VISITOR_GEO_TIMEOUT_SECONDS = float(os.getenv("VISITOR_GEO_TIMEOUT_SECONDS", "0.8"))
+VISITOR_GEO_URL_TEMPLATE = os.getenv(
+    "VISITOR_GEO_URL_TEMPLATE",
+    "https://ipapi.co/{ip}/json/",
+).strip()
+VISITOR_LOG_FULL_IP = os.getenv("VISITOR_LOG_FULL_IP", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+_visitor_geo_cache = {}
+_visitor_geo_cache_lock = threading.Lock()
+
+
+def _is_private_or_internal_ip(ip: str) -> bool:
+    clean = (ip or "").strip().lower()
+    if not clean:
+        return True
+    if clean in {"unknown", "localhost", "::1", "127.0.0.1"}:
+        return True
+    if clean.startswith("10."):
+        return True
+    if clean.startswith("192.168."):
+        return True
+    if clean.startswith("172."):
+        try:
+            second = int(clean.split(".")[1])
+            if 16 <= second <= 31:
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def _visitor_public_ip(request: Request) -> str:
+    # Render suele mostrar IP interna 10.x en logs.
+    # La IP pública real, cuando existe, viene en X-Forwarded-For.
+    forwarded = request.headers.get("x-forwarded-for") or ""
+    for item in forwarded.split(","):
+        candidate = item.strip()
+        if candidate and not _is_private_or_internal_ip(candidate):
+            return candidate
+
+    cf_ip = (request.headers.get("cf-connecting-ip") or "").strip()
+    if cf_ip and not _is_private_or_internal_ip(cf_ip):
+        return cf_ip
+
+    real_ip = (request.headers.get("x-real-ip") or "").strip()
+    if real_ip and not _is_private_or_internal_ip(real_ip):
+        return real_ip
+
+    return _client_ip_from_request(request)
+
+
+def _mask_ip_for_log(ip: str) -> str:
+    clean = (ip or "").strip()
+    if VISITOR_LOG_FULL_IP:
+        return clean or "unknown"
+    parts = clean.split(".")
+    if len(parts) == 4:
+        return f"{parts[0]}.{parts[1]}.{parts[2]}.xxx"
+    return clean[:10] + "…" if clean else "unknown"
+
+
+def _safe_visitor_path(path: str) -> str:
+    """
+    Evita imprimir tokens completos en Render.
+    Mantiene la ruta útil pero enmascara segmentos largos.
+    """
+    raw = str(path or "/").split("?")[0]
+    parts = raw.split("/")
+    safe_parts = []
+    for part in parts:
+        if len(part) >= 18:
+            safe_parts.append(part[:6] + "…" + part[-4:])
+        else:
+            safe_parts.append(part)
+    return "/".join(safe_parts) or "/"
+
+
+def _visitor_device_from_user_agent(user_agent: str) -> dict:
+    ua = (user_agent or "").lower()
+
+    if "iphone" in ua:
+        device = "iPhone"
+    elif "ipad" in ua:
+        device = "iPad"
+    elif "android" in ua:
+        device = "Android"
+    elif "windows" in ua:
+        device = "Windows"
+    elif "macintosh" in ua or "mac os" in ua:
+        device = "Mac"
+    elif "linux" in ua:
+        device = "Linux"
+    else:
+        device = "desconocido"
+
+    if "edg/" in ua:
+        browser = "Edge"
+    elif "chrome/" in ua and "safari/" in ua:
+        browser = "Chrome"
+    elif "safari/" in ua and "chrome/" not in ua:
+        browser = "Safari"
+    elif "firefox/" in ua:
+        browser = "Firefox"
+    elif "instagram" in ua:
+        browser = "Instagram WebView"
+    elif "whatsapp" in ua:
+        browser = "WhatsApp WebView"
+    else:
+        browser = "desconocido"
+
+    bot_signals = ["bot", "crawler", "spider", "preview", "facebookexternalhit", "whatsapp", "telegrambot", "slurp"]
+    is_bot = any(signal in ua for signal in bot_signals)
+
+    return {
+        "device": device,
+        "browser": browser,
+        "is_bot": is_bot,
+    }
+
+
+def _visitor_geo_lookup(ip: str) -> dict:
+    if not VISITOR_GEO_ENABLED:
+        return {}
+    if not ip or _is_private_or_internal_ip(ip):
+        return {"geo_note": "ip_interna_o_privada"}
+
+    with _visitor_geo_cache_lock:
+        cached = _visitor_geo_cache.get(ip)
+    if cached:
+        return cached
+
+    result = {}
+    try:
+        url = VISITOR_GEO_URL_TEMPLATE.replace("{ip}", ip)
+        response = requests.get(url, timeout=VISITOR_GEO_TIMEOUT_SECONDS)
+        if response.ok:
+            data = response.json()
+            result = {
+                "country": data.get("country_name") or data.get("country") or "",
+                "region": data.get("region") or data.get("region_name") or "",
+                "city": data.get("city") or "",
+                "postal": data.get("postal") or data.get("zip") or "",
+                "org": data.get("org") or data.get("isp") or data.get("as") or "",
+                "latitude": data.get("latitude") or data.get("lat") or "",
+                "longitude": data.get("longitude") or data.get("lon") or "",
+            }
+        else:
+            result = {"geo_note": f"geo_http_{response.status_code}"}
+    except Exception as e:
+        result = {"geo_note": f"geo_error: {str(e)[:80]}"}
+
+    with _visitor_geo_cache_lock:
+        if len(_visitor_geo_cache) > 1000:
+            _visitor_geo_cache.clear()
+        _visitor_geo_cache[ip] = result
+
+    return result
+
+
+def _should_log_visitor_path(path: str) -> bool:
+    clean = str(path or "/")
+    skip_prefixes = (
+        "/static",
+        "/eterna-assets",
+        "/favicon",
+        "/apple-touch-icon",
+        "/video/",
+        "/upload-reaction-chunk",
+        "/upload-reaction-live-chunk",
+        "/health",
+    )
+    return not clean.startswith(skip_prefixes)
+
+
+def log_visitor_request(request: Request, response_status_code: int = 0):
+    """
+    Log humano para Render.
+    No bloquea ETERNA: si falla, no rompe la petición.
+    """
+    if not VISITOR_LOG_ENABLED:
+        return
+
+    path = request.url.path or "/"
+    if not _should_log_visitor_path(path):
+        return
+
+    try:
+        ip = _visitor_public_ip(request)
+        ua = request.headers.get("user-agent") or ""
+        referrer = request.headers.get("referer") or request.headers.get("referrer") or ""
+        accept_language = request.headers.get("accept-language") or ""
+        device = _visitor_device_from_user_agent(ua)
+        geo = _visitor_geo_lookup(ip)
+
+        visitor_id = hashlib.sha256(f"{ip}|{ua}".encode("utf-8", errors="ignore")).hexdigest()[:10]
+        safe_path = _safe_visitor_path(path)
+
+        country = geo.get("country") or "desconocido"
+        region = geo.get("region") or "desconocido"
+        city = geo.get("city") or "desconocido"
+        postal = geo.get("postal") or ""
+        org = geo.get("org") or "desconocido"
+        geo_note = geo.get("geo_note") or ""
+
+        print("👁️ VISITA ETERNA")
+        print(f"   🕒 Hora servidor: {datetime.now().isoformat(timespec='seconds')}")
+        print(f"   🆔 Visitante aprox: {visitor_id}")
+        print(f"   🌍 IP pública: {_mask_ip_for_log(ip)}")
+        print(f"   📍 Ubicación aprox: {city}, {region}, {country}" + (f" · CP {postal}" if postal else ""))
+        print(f"   🏢 Red/operador aprox: {org}")
+        print(f"   📱 Dispositivo: {device.get('device')} · Navegador: {device.get('browser')}" + (" · BOT/PREVIEW" if device.get("is_bot") else ""))
+        print(f"   🗣️ Idioma navegador: {accept_language[:120] or 'desconocido'}")
+        print(f"   ➡️ Ruta: {request.method} {safe_path} → {response_status_code}")
+        if referrer:
+            print(f"   🔗 Venía de: {referrer[:220]}")
+        if geo_note:
+            print(f"   📝 Geo nota: {geo_note}")
+    except Exception as e:
+        print("[WARN] Visitor log no pudo escribirse:", e)
+
+
 @app.middleware("http")
 async def eterna_security_headers_and_light_rate_limit(request: Request, call_next):
     """
@@ -199,6 +430,11 @@ async def eterna_security_headers_and_light_rate_limit(request: Request, call_ne
             print("[WARN] Rate limit bypass por error:", e)
 
     response = await call_next(request)
+
+    try:
+        log_visitor_request(request, getattr(response, "status_code", 0))
+    except Exception as e:
+        print("[WARN] Visitor Intelligence fallback:", e)
 
     if SECURITY_HEADERS_ENABLED:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -1501,7 +1737,7 @@ def render_eterna_image_screen(
     filter:contrast(1.08) saturate(1.10) brightness(1.04);
 }}
 .sender-reaction, video.sender-reaction, .reaction-video {{
-    object-fit:contain !important;
+    object-fit:cover !important;
     object-position:center center !important;
     transform:none !important;
     filter:contrast(1.12) saturate(1.08) brightness(1.08);
@@ -13575,7 +13811,7 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
 .sender-actions,.sender-buttons,.actions,.pack-actions,.cta-stack{display:flex!important;flex-direction:column!important;gap:12px!important;width:min(92%,430px)!important;margin:18px auto 22px!important;position:relative!important;z-index:30!important}
 .sender-actions a,.sender-actions button,.sender-buttons a,.sender-buttons button,.actions a,.actions button,.pack-actions a,.pack-actions button,.cta-stack a,.cta-stack button{width:100%!important;min-height:56px!important;border-radius:18px!important;text-align:center!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-decoration:none!important;box-sizing:border-box!important}
 .reaction-video,.reaction-box,.reaction-window,.reaction-preview,.sender-reaction{right:10px!important;bottom:10px!important;left:auto!important;top:auto!important;transform:none!important;width:clamp(86px,24%,126px)!important;aspect-ratio:9/16!important;border-radius:16px!important;overflow:hidden!important;z-index:20!important;background:#000!important}
-.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center center!important;transform:none!important;background:#000!important}
+.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important;transform:none!important;background:#000!important}
 .rc81-hidden-old{display:none!important}
 @media(max-width:420px){.rc81-sender-actions{width:min(92%,360px);gap:10px;margin-top:14px}.rc81-sender-btn{min-height:54px;border-radius:16px;font-size:13px}}
 </style>
@@ -13739,7 +13975,7 @@ body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:fle
 video.sender-reaction{{
   width:100%!important;
   height:100%!important;
-  object-fit:contain!important;
+  object-fit:cover!important;
   object-position:center center!important;
   transform:none!important;
   background:#000!important;
