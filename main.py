@@ -59,6 +59,7 @@ print("👁️ VISITOR INTELLIGENCE V1 SAFE — LOGS HUMANOS DE VISITAS 👁️"
 print("🧩 RC103 BLACKBOX + SENDER PACK NO ZOOM SAFE 🧩")
 print("🦋 RC104 FOUNDER EDITION SAFE — REPORT + HEALTH + BACKUP 🦋")
 print("📸 RC106 INSTAGRAM 4-6 PHOTOS SAFE — PAGO BLOQUEADO HASTA FOTOS LISTAS 📸")
+print("🛡️ RC107 INSTAGRAM PREFLIGHT UPLOAD SAFE — FOTOS SUBEN ANTES DEL PAGO 🛡️")
 import html
 import json
 import mimetypes
@@ -663,6 +664,7 @@ VIDEO_FOLDER.mkdir(parents=True, exist_ok=True)
 
 REACTIONS_FOLDER = ensure_runtime_folder(os.getenv("REACTIONS_FOLDER", "/data/reactions"), "reactions")
 REACTION_CHUNKS_FOLDER = ensure_runtime_folder(os.getenv("REACTION_CHUNKS_FOLDER", "/data/reaction_chunks"), "reaction_chunks")
+PREUPLOAD_FOLDER = ensure_runtime_folder(os.getenv("PREUPLOAD_FOLDER", "/data/preuploads"), "preuploads")
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -3038,6 +3040,147 @@ async def save_upload_original_robust(order_id: str, slot_name: str, upload: Upl
     )
 
     return filepath
+
+
+# =========================================================
+# RC107 — INSTAGRAM PREFLIGHT UPLOAD SAFE
+# Las fotos se suben antes de abrir Stripe.
+# El POST final /crear ya no depende de que Instagram WebView mande 4-6 archivos.
+# =========================================================
+ALLOWED_CREATE_PHOTO_SLOTS = {"photo1", "photo2", "photo3", "photo4", "photo5", "photo6"}
+
+
+def _safe_preupload_session(value: str) -> str:
+    raw = str(value or "").strip()
+    safe = "".join(ch for ch in raw if ch.isalnum() or ch in {"_", "-"})
+    return safe[:80] or secrets.token_urlsafe(18)
+
+
+def preupload_session_folder(session_id: str) -> Path:
+    clean = _safe_preupload_session(session_id)
+    folder = PREUPLOAD_FOLDER / clean
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def find_preuploaded_photo(session_id: str, slot_name: str) -> Optional[str]:
+    if not session_id or slot_name not in ALLOWED_CREATE_PHOTO_SLOTS:
+        return None
+    folder = preupload_session_folder(session_id)
+    for ext in ("jpg", "jpeg", "png", "webp", "heic", "heif"):
+        candidate = folder / f"{slot_name}.{ext}"
+        if candidate.exists() and candidate.is_file() and candidate.stat().st_size > 0:
+            return str(candidate)
+    return None
+
+
+def list_preuploaded_photos(session_id: str) -> dict:
+    result = {}
+    for slot in sorted(ALLOWED_CREATE_PHOTO_SLOTS):
+        found = find_preuploaded_photo(session_id, slot)
+        if found:
+            result[slot] = found
+    return result
+
+
+async def save_preupload_photo(session_id: str, slot_name: str, upload: UploadFile) -> str:
+    if slot_name not in ALLOWED_CREATE_PHOTO_SLOTS:
+        raise HTTPException(status_code=400, detail="Slot de foto no válido")
+    if not upload or not getattr(upload, "filename", ""):
+        raise HTTPException(status_code=400, detail="No ha llegado la foto")
+
+    validate_upload_metadata_safe(upload, "image", slot_name)
+
+    ext = detect_image_extension(upload)
+    folder = preupload_session_folder(session_id)
+    filepath = folder / f"{slot_name}.{ext}"
+
+    for old_ext in ("jpg", "jpeg", "png", "webp", "heic", "heif"):
+        old = folder / f"{slot_name}.{old_ext}"
+        if old.exists() and old != filepath:
+            try:
+                old.unlink()
+            except Exception:
+                pass
+
+    try:
+        await upload.seek(0)
+    except Exception:
+        try:
+            upload.file.seek(0)
+        except Exception:
+            pass
+
+    total = 0
+    with open(filepath, "wb") as f:
+        while True:
+            chunk = await upload.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+            total += len(chunk)
+        try:
+            f.flush()
+            os.fsync(f.fileno())
+        except Exception:
+            pass
+
+    if total <= 0 or not filepath.exists() or filepath.stat().st_size <= 0:
+        try:
+            filepath.unlink()
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=f"{slot_name} llegó vacía desde el navegador")
+
+    if filepath.stat().st_size > MAX_PHOTO_SIZE:
+        try:
+            filepath.unlink()
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=f"{slot_name} supera el tamaño máximo")
+
+    with open(filepath, "rb") as f:
+        head = f.read(32)
+
+    looks_like_image = (
+        head.startswith(b"\xff\xd8\xff") or
+        head.startswith(b"\x89PNG\r\n\x1a\n") or
+        head.startswith(b"RIFF") or
+        b"ftypheic" in head or b"ftypheif" in head or b"ftypmif1" in head
+    )
+    if not looks_like_image:
+        try:
+            filepath.unlink()
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=f"{slot_name} no parece una imagen válida")
+
+    return str(filepath)
+
+
+@app.post("/preupload-photo")
+async def preupload_photo(
+    photo_upload_session: str = Form(""),
+    slot: str = Form(...),
+    photo: UploadFile = File(...),
+):
+    session_id = _safe_preupload_session(photo_upload_session)
+    slot = (slot or "").strip()
+    try:
+        filepath = await save_preupload_photo(session_id, slot, photo)
+        size = os.path.getsize(filepath)
+        print("📸 RC107 preupload OK", {"session": session_id[:10], "slot": slot, "size": size})
+        return {"ok": True, "photo_upload_session": session_id, "slot": slot, "size": size}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("❌ RC107 preupload error", slot, e)
+        raise HTTPException(status_code=500, detail=f"No se pudo subir {slot}: {e}")
+    finally:
+        try:
+            await photo.close()
+        except Exception:
+            pass
 
 
 
@@ -5929,6 +6072,7 @@ async def create_order_and_redirect(
     photo4: Optional[UploadFile],
     photo5: Optional[UploadFile],
     photo6: Optional[UploadFile],
+    photo_upload_session: str = "",
     show_sender_identity: str = "",
     arrival_photo_slot: str = "photo1",
     responsible_use_accepted: str = "",
@@ -5948,6 +6092,7 @@ async def create_order_and_redirect(
     recipient_country_code = (recipient_country_code or "").strip()
     recipient_phone = (recipient_phone or "").strip()
     recipient_email = (recipient_email or "").strip()
+    photo_upload_session = _safe_preupload_session(photo_upload_session) if photo_upload_session else ""
 
     show_sender_identity_bool = rc101_truthy(show_sender_identity)
     arrival_photo_slot = rc101_clean_photo_slot(arrival_photo_slot)
@@ -6036,19 +6181,25 @@ async def create_order_and_redirect(
         "photo6": photo6,
     }
 
-    # RC106 — Instagram / conversión.
-    # ETERNA puede crearse con 4, 5 o 6 fotos.
-    # Si faltan photo5/photo6, se duplican de forma discreta después de guardar.
+    # RC107 — fuente de fotos:
+    # 1) Preferimos preuploads ya guardados por /preupload-photo.
+    # 2) Si no hay preupload, mantenemos compatibilidad con multipart normal.
+    preuploaded_photos = list_preuploaded_photos(photo_upload_session) if photo_upload_session else {}
+
     required_first_slots = ["photo1", "photo2", "photo3", "photo4"]
     for slot_name in required_first_slots:
         upload = photos.get(slot_name)
-        if not upload or not getattr(upload, "filename", ""):
+        has_upload = bool(upload and getattr(upload, "filename", ""))
+        has_preupload = bool(preuploaded_photos.get(slot_name))
+        if not has_upload and not has_preupload:
             raise HTTPException(status_code=400, detail=f"Falta {slot_name}. Sube al menos las primeras 4 fotos.")
 
-    provided_photo_count = sum(
-        1 for upload in photos.values()
-        if upload and getattr(upload, "filename", "")
-    )
+    provided_photo_count = 0
+    for slot_name in ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"]:
+        upload = photos.get(slot_name)
+        if (upload and getattr(upload, "filename", "")) or preuploaded_photos.get(slot_name):
+            provided_photo_count += 1
+
     if provided_photo_count < 4:
         raise HTTPException(status_code=400, detail="Sube al menos 4 fotos para crear tu ETERNA")
 
@@ -6253,7 +6404,25 @@ async def create_order_and_redirect(
     try:
         saved_photo_paths = {}
 
-        for slot_name, upload in photos.items():
+        for slot_name in ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"]:
+            pre_path = preuploaded_photos.get(slot_name)
+            if pre_path and os.path.exists(pre_path):
+                source = Path(pre_path)
+                folder = PHOTO_FOLDER / order_id
+                folder.mkdir(parents=True, exist_ok=True)
+                target = folder / f"{slot_name}{source.suffix or '.jpg'}"
+                shutil.copyfile(str(source), str(target))
+                saved_photo_paths[slot_name] = str(target)
+
+                insert_asset(
+                    order_id=order_id,
+                    asset_type=slot_name,
+                    file_url=str(target),
+                    storage_provider="local_preupload_rc107",
+                )
+                continue
+
+            upload = photos.get(slot_name)
             if not upload or not getattr(upload, "filename", ""):
                 continue
 
@@ -6267,7 +6436,7 @@ async def create_order_and_redirect(
                 storage_provider="local_original",
             )
 
-        # RC106: completar hasta 6 fotos si el usuario sube 4 o 5.
+        # RC106/RC107: completar hasta 6 fotos si el usuario sube 4 o 5.
         # 4 fotos -> photo5 = photo1, photo6 = photo2
         # 5 fotos -> photo6 = photo1
         duplicate_plan = {
@@ -6302,6 +6471,11 @@ async def create_order_and_redirect(
             "Fotos guardadas correctamente. Si faltaban foto5/foto6, ETERNA las completó repitiendo fotos.",
             {"provided_photo_count": provided_photo_count, "completed_to_six": True},
         )
+        try:
+            if photo_upload_session:
+                shutil.rmtree(str(preupload_session_folder(photo_upload_session)), ignore_errors=True)
+        except Exception as cleanup_error:
+            print("[WARN] RC107 preupload cleanup skipped:", cleanup_error)
 
     except HTTPException as e:
         insert_order_event(
@@ -7536,6 +7710,7 @@ def render_create_form() -> str:
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
+                    <input type="hidden" name="photo_upload_session" id="photo_upload_session" value="">
                     <div class="form-step active" id="formStep1">
                         <div class="atmosphere-title">Primero construimos el recuerdo. Luego decidimos cómo vuelve.</div>
 
@@ -8439,6 +8614,63 @@ document.addEventListener("DOMContentLoaded", function () {{
     const ETERNA_OPTIMIZED_PREFIX = "eterna_optimized_";
     const photoObjectUrls = {{}};
     const photoProcessing = {{}};
+    const photoUploaded = {{}};
+    const photoUploadErrors = {{}};
+    const photoUploadSessionInput = document.getElementById("photo_upload_session");
+
+    function getPhotoUploadSession() {{
+        let value = photoUploadSessionInput ? String(photoUploadSessionInput.value || "").trim() : "";
+        if (!value) {{
+            try {{
+                value = (window.crypto && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : ("sess_" + Date.now() + "_" + Math.random().toString(16).slice(2));
+            }} catch (e) {{
+                value = "sess_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+            }}
+            if (photoUploadSessionInput) photoUploadSessionInput.value = value;
+        }}
+        return value;
+    }}
+
+    function countPreuploadedPhotos() {{
+        let count = 0;
+        for (const id of ETERNA_PHOTO_IDS) {{
+            if (photoUploaded[id] && photoUploaded[id].ok) count += 1;
+        }}
+        return count;
+    }}
+
+    async function uploadPreparedPhotoToServer(inputId, file) {{
+        if (!file) throw new Error("Foto vacía");
+        const sessionId = getPhotoUploadSession();
+        const data = new FormData();
+        data.append("photo_upload_session", sessionId);
+        data.append("slot", inputId);
+        data.append("photo", file, file.name || (inputId + ".jpg"));
+
+        setPhotoStatus(inputId, "Subiendo foto...");
+        const response = await fetch("/preupload-photo", {{
+            method: "POST",
+            body: data,
+            credentials: "same-origin",
+        }});
+
+        let payload = {{}};
+        try {{ payload = await response.json(); }} catch (e) {{}}
+
+        if (!response.ok || !payload.ok) {{
+            throw new Error(payload.detail || "No se pudo subir la foto");
+        }}
+
+        photoUploaded[inputId] = payload;
+        delete photoUploadErrors[inputId];
+        return payload;
+    }}
+
+    function preuploadedMinimumReady() {{
+        return countPreuploadedPhotos() >= 4 && !photoProcessingActive();
+    }}
 
     function isOptimizedEternaPhoto(file) {{
         return !!(file && String(file.name || "").startsWith(ETERNA_OPTIMIZED_PREFIX));
@@ -8491,7 +8723,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
         if (status) {{
             const kb = Math.max(1, Math.round((file.size || 0) / 1024));
-            status.innerText = message || ("Foto lista ✓ · " + kb + " KB");
+            status.innerText = message || (photoUploaded[inputId] && photoUploaded[inputId].ok ? "Foto subida ✓" : ("Foto lista ✓ · " + kb + " KB"));
             status.classList.remove("loading", "optional");
             status.classList.add("ready");
         }}
@@ -8719,13 +8951,18 @@ document.addEventListener("DOMContentLoaded", function () {{
             const ok = setInputFile(input, optimized, false);
             if (!ok) throw new Error("No se pudo colocar la foto optimizada");
 
-            updatePhotoUI(inputId, optimized);
+            updatePhotoUI(inputId, optimized, "Foto preparada. Subiendo...");
+            await uploadPreparedPhotoToServer(inputId, optimized);
+            updatePhotoUI(inputId, optimized, "Foto subida ✓");
             await savePhotoDraft(inputId, optimized);
             saveFormState();
+            updatePhotoReadiness();
             clearError();
             return true;
         }} catch (e) {{
-            console.error("RC91 preparePhotoForSlot error", inputId, e);
+            console.error("RC107 prepare/preupload error", inputId, e);
+            delete photoUploaded[inputId];
+            photoUploadErrors[inputId] = String(e && e.message ? e.message : e);
             try {{ input.value = ""; }} catch (_) {{}}
             updatePhotoUI(inputId, null, "No se pudo preparar esta foto. Prueba con otra.");
             showError("Una foto no se pudo preparar. Prueba con otra imagen o captura de pantalla.");
@@ -8746,8 +8983,14 @@ document.addEventListener("DOMContentLoaded", function () {{
                 if (file) {{
                     const ok = setInputFile(input, file, false);
                     if (ok) {{
-                        updatePhotoUI(inputId, file, "Foto recuperada correctamente.");
-                        restored += 1;
+                        try {{
+                            await uploadPreparedPhotoToServer(inputId, file);
+                            updatePhotoUI(inputId, file, "Foto recuperada y subida ✓");
+                            restored += 1;
+                        }} catch (uploadErr) {{
+                            console.warn("RC107 no pudo subir foto recuperada", inputId, uploadErr);
+                            updatePhotoUI(inputId, null, "Toca de nuevo esta foto para subirla.");
+                        }}
                     }}
                 }}
             }}
@@ -8772,17 +9015,11 @@ document.addEventListener("DOMContentLoaded", function () {{
     }}
 
     function currentPhotoCount() {{
-        let count = 0;
-        for (const id of ETERNA_PHOTO_IDS) {{
-            const input = document.getElementById(id);
-            if (input && input.files && input.files.length > 0) count += 1;
-        }}
-        return count;
+        return countPreuploadedPhotos();
     }}
 
     function photoIsReady(id) {{
-        const input = document.getElementById(id);
-        return !!(input && input.files && input.files.length === 1 && input.files[0] && input.files[0].size > 0);
+        return !!(photoUploaded[id] && photoUploaded[id].ok);
     }}
 
     function photoProcessingActive() {{
@@ -9017,29 +9254,17 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
 
         if (!allPhotosPresent()) {{
-            showError("Sube al menos 4 fotos. Si no tienes 6, ETERNA completará la historia repitiendo alguna.");
+            showError("Sube al menos 4 fotos. El pago se desbloqueará cuando estén subidas.");
             updatePhotoReadiness();
             return false;
         }}
 
-        // RC106: defensa final antes de enviar.
-        // Permitimos 4, 5 o 6 fotos. Si faltan la 5 y/o la 6, el backend duplicará fotos.
-        for (const id of ["photo1", "photo2", "photo3", "photo4"]) {{
-            const input = document.getElementById(id);
-            if (!input || !input.files || input.files.length !== 1 || !input.files[0] || input.files[0].size <= 0) {{
-                showError("Las primeras 4 fotos deben estar listas antes de continuar.");
-                updatePhotoReadiness();
-                return false;
-            }}
-        }}
-
-        for (const id of ["photo5", "photo6"]) {{
-            const input = document.getElementById(id);
-            if (input && input.files && input.files.length > 1) {{
-                showError("Cada hueco de foto debe llevar como máximo una imagen.");
-                updatePhotoReadiness();
-                return false;
-            }}
+        // RC107: defensa final Instagram.
+        // El pago solo se abre si las fotos ya están subidas al servidor.
+        if (!preuploadedMinimumReady()) {{
+            showError("Estamos subiendo tus fotos. Espera unos segundos: el pago se iluminará automáticamente.");
+            updatePhotoReadiness();
+            return false;
         }}
 
         if (manualRadio && manualRadio.checked) {{
@@ -9178,7 +9403,17 @@ document.addEventListener("DOMContentLoaded", function () {{
             console.error("localStorage remove error", err);
         }}
 
-        // No limpiar inputs/fotos antes del submit nativo.
+        // RC107: las fotos ya están en servidor. No las reenviamos en el POST final.
+        // Así evitamos que Instagram/Safari rompan el multipart grande al abrir Stripe.
+        try {{
+            ETERNA_PHOTO_IDS.forEach(function(id) {{
+                const input = document.getElementById(id);
+                if (input) input.disabled = true;
+            }});
+        }} catch (disableErr) {{
+            console.error("RC107 disable file inputs error", disableErr);
+        }}
+
         return true;
     }});
 
@@ -9648,6 +9883,7 @@ async def crear_post(
     photo4: Optional[UploadFile] = File(None),
     photo5: Optional[UploadFile] = File(None),
     photo6: Optional[UploadFile] = File(None),
+    photo_upload_session: str = Form(""),
     show_sender_identity: str = Form(""),
     arrival_photo_slot: str = Form("photo1"),
     responsible_use_accepted: str = Form(""),
@@ -9683,6 +9919,7 @@ async def crear_post(
             photo4,
             photo5,
             photo6,
+            photo_upload_session,
             show_sender_identity,
             arrival_photo_slot,
             responsible_use_accepted or responsible_use,
