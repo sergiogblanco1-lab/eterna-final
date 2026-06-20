@@ -564,11 +564,40 @@ ETERNA_ENFORCE_LINK_EXPIRY = os.getenv("ETERNA_ENFORCE_LINK_EXPIRY", "0").strip(
 ETERNA_STARTUP_SWEEP_ENABLED = os.getenv("ETERNA_STARTUP_SWEEP_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 
-R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY", "").strip()
-R2_SECRET_KEY = os.getenv("R2_SECRET_KEY", "").strip()
-R2_BUCKET = os.getenv("R2_BUCKET", "").strip()
-R2_ENDPOINT = os.getenv("R2_ENDPOINT", "").strip().rstrip("/")
-R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").strip().rstrip("/")
+# =========================================================
+# R2 STORAGE — ALIASES SAFE
+# Acepta los nombres clásicos y los nombres habituales de Cloudflare/S3.
+# IMPORTANTE: R2_API_TOKEN NO sirve como S3 secret para boto3; se conserva
+# solo para diagnóstico. Para subir objetos hacen falta Access Key ID + Secret.
+# =========================================================
+def _env_first(*names: str) -> str:
+    for name in names:
+        value = os.getenv(name, "").strip()
+        if value:
+            return value
+    return ""
+
+R2_ACCESS_KEY = _env_first(
+    "R2_ACCESS_KEY",
+    "R2_ACCESS_KEY_ID",
+    "R2_ACCESS_KEYID",
+    "AWS_ACCESS_KEY_ID",
+)
+R2_SECRET_KEY = _env_first(
+    "R2_SECRET_KEY",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_SECRET_ACCESSKEY",
+    "AWS_SECRET_ACCESS_KEY",
+)
+R2_API_TOKEN = os.getenv("R2_API_TOKEN", "").strip()
+R2_BUCKET = _env_first("R2_BUCKET", "R2_BUCKET_NAME")
+R2_ENDPOINT = _env_first("R2_ENDPOINT", "R2_S3_ENDPOINT", "R2_ENDPOINT_URL").rstrip("/")
+R2_PUBLIC_URL = _env_first(
+    "R2_PUBLIC_URL",
+    "R2_PUBLIC_BASE_URL",
+    "R2_CUSTOM_DOMAIN",
+    "R2_DEV_URL",
+).rstrip("/")
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
@@ -3394,12 +3423,34 @@ def guess_media_type_from_url(url: str) -> str:
     return "video/mp4"
 
 
+def r2_missing_config() -> list:
+    missing = []
+    if not R2_ACCESS_KEY:
+        missing.append("R2_ACCESS_KEY o R2_ACCESS_KEY_ID")
+    if not R2_SECRET_KEY:
+        missing.append("R2_SECRET_KEY o R2_SECRET_ACCESS_KEY")
+    if not R2_BUCKET:
+        missing.append("R2_BUCKET")
+    if not R2_ENDPOINT:
+        missing.append("R2_ENDPOINT")
+    if not R2_PUBLIC_URL:
+        missing.append("R2_PUBLIC_URL")
+    return missing
+
+
 def r2_enabled() -> bool:
-    return all([R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET, R2_ENDPOINT, R2_PUBLIC_URL])
+    return len(r2_missing_config()) == 0
 
 
 def get_r2_client():
-    if not r2_enabled():
+    missing = r2_missing_config()
+    if missing:
+        try:
+            print("🟡 R2 no configurado completo. Falta:", ", ".join(missing))
+            if R2_API_TOKEN and (not R2_ACCESS_KEY or not R2_SECRET_KEY):
+                print("🟡 R2_API_TOKEN existe, pero boto3 necesita Access Key ID + Secret Access Key de R2, no solo API Token.")
+        except Exception:
+            pass
         return None
     return boto3.client(
         "s3",
@@ -3416,6 +3467,7 @@ def upload_video_to_r2(local_path: str, remote_name: str, content_type: str = "v
     if not client:
         return None
 
+    remote_name = str(remote_name or "").lstrip("/")
     client.upload_file(
         local_path,
         R2_BUCKET,
@@ -3429,6 +3481,7 @@ def upload_bytes_to_r2(data: bytes, remote_name: str, content_type: str = "appli
     client = get_r2_client()
     if not client:
         return None
+    remote_name = str(remote_name or "").lstrip("/")
     client.put_object(Bucket=R2_BUCKET, Key=remote_name, Body=data, ContentType=content_type)
     return f"{R2_PUBLIC_URL}/{remote_name}"
 
@@ -15749,7 +15802,7 @@ def rc104_system_health() -> dict:
         "twilio_sms": {"status": "configured" if bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER) else "missing_env", "enabled": SMS_ENABLED},
         "twilio_whatsapp": {"status": "configured" if bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM) else "missing_env", "enabled": WHATSAPP_ENABLED},
         "video_engine": {"status": "unknown", "url": VIDEO_ENGINE_URL},
-        "r2": {"status": "configured" if bool(R2_ACCESS_KEY and R2_SECRET_KEY and R2_BUCKET and R2_ENDPOINT and R2_PUBLIC_URL) else "missing_env_or_public_url", "bucket": R2_BUCKET or ""},
+        "r2": {"status": "configured" if r2_enabled() else "missing: " + ", ".join(r2_missing_config()), "bucket": R2_BUCKET or ""},
         "email": {"status": "configured" if email_enabled_and_configured() else "missing_env_or_disabled", "enabled": EMAIL_ENABLED},
         "safe_mode": ETERNA_SAFE_MODE,
     }
