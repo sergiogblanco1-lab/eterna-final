@@ -1,4 +1,3 @@
-
 # =========================================================
 # RC101B_FORM_POST_NATIVE_SAFE
 # Base: RC100 reacción congelada + soporte.
@@ -8766,43 +8765,9 @@ document.addEventListener("DOMContentLoaded", function () {{
         autoGrowTextarea(el);
     }});
 
-    function bindPreview(inputId) {{
-        const fileInput = document.getElementById(inputId);
-        if (!fileInput) return;
-
-        fileInput.addEventListener("change", function () {{
-            clearError();
-
-            const file = fileInput.files && fileInput.files[0];
-            if (!file) {{
-                updatePhotoUI(inputId, null);
-                return;
-            }}
-
-            if (!(file.type || "").startsWith("image/")) {{
-                fileInput.value = "";
-                updatePhotoUI(inputId, null);
-                showError("Una de las fotos no parece una imagen válida.");
-                return;
-            }}
-
-            updatePhotoUI(inputId, file);
-            saveFormState();
-        }});
-    }}
-
-    ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"].forEach(bindPreview);
-
-    function allPhotosPresent() {{
-        const ids = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
-        for (const id of ids) {{
-            const input = document.getElementById(id);
-            if (!input || !input.files || input.files.length === 0) {{
-                return false;
-            }}
-        }}
-        return true;
-    }}
+    // RC104 PHOTO FIX — se elimina el handler legacy duplicado.
+    // Motivo: el handler antiguo rechazaba algunas fotos móviles/HEIC y pisaba la lógica robusta.
+    // Se mantiene únicamente el preparador robusto ya definido arriba.
 
     function validateBeforeSubmit() {{
         if (!form) {{
