@@ -58,6 +58,7 @@ print("🧠 MEMORY ENGINE V1 SILENT SAFE — GUARDA MOMENTOS SIN ENVIAR NADA �
 print("👁️ VISITOR INTELLIGENCE V1 SAFE — LOGS HUMANOS DE VISITAS 👁️")
 print("🧩 RC103 BLACKBOX + SENDER PACK NO ZOOM SAFE 🧩")
 print("🦋 RC104 FOUNDER EDITION SAFE — REPORT + HEALTH + BACKUP 🦋")
+print("📸 RC106 INSTAGRAM 4-6 PHOTOS SAFE — PAGO BLOQUEADO HASTA FOTOS LISTAS 📸")
 import html
 import json
 import mimetypes
@@ -5922,12 +5923,12 @@ async def create_order_and_redirect(
     delivery_date: str,
     delivery_time: str,
     gift_amount: float,
-    photo1: UploadFile,
-    photo2: UploadFile,
-    photo3: UploadFile,
-    photo4: UploadFile,
-    photo5: UploadFile,
-    photo6: UploadFile,
+    photo1: Optional[UploadFile],
+    photo2: Optional[UploadFile],
+    photo3: Optional[UploadFile],
+    photo4: Optional[UploadFile],
+    photo5: Optional[UploadFile],
+    photo6: Optional[UploadFile],
     show_sender_identity: str = "",
     arrival_photo_slot: str = "photo1",
     responsible_use_accepted: str = "",
@@ -6035,9 +6036,25 @@ async def create_order_and_redirect(
         "photo6": photo6,
     }
 
+    # RC106 — Instagram / conversión.
+    # ETERNA puede crearse con 4, 5 o 6 fotos.
+    # Si faltan photo5/photo6, se duplican de forma discreta después de guardar.
+    required_first_slots = ["photo1", "photo2", "photo3", "photo4"]
+    for slot_name in required_first_slots:
+        upload = photos.get(slot_name)
+        if not upload or not getattr(upload, "filename", ""):
+            raise HTTPException(status_code=400, detail=f"Falta {slot_name}. Sube al menos las primeras 4 fotos.")
+
+    provided_photo_count = sum(
+        1 for upload in photos.values()
+        if upload and getattr(upload, "filename", "")
+    )
+    if provided_photo_count < 4:
+        raise HTTPException(status_code=400, detail="Sube al menos 4 fotos para crear tu ETERNA")
+
     for slot_name, upload in photos.items():
-        if not upload or not upload.filename:
-            raise HTTPException(status_code=400, detail=f"Falta {slot_name}")
+        if not upload or not getattr(upload, "filename", ""):
+            continue
 
         content_type = (upload.content_type or "").lower().strip()
         filename = (upload.filename or "").lower().strip()
@@ -6234,8 +6251,14 @@ async def create_order_and_redirect(
             pass
 
     try:
+        saved_photo_paths = {}
+
         for slot_name, upload in photos.items():
+            if not upload or not getattr(upload, "filename", ""):
+                continue
+
             filepath = await save_upload_original_robust(order_id, slot_name, upload)
+            saved_photo_paths[slot_name] = filepath
 
             insert_asset(
                 order_id=order_id,
@@ -6244,11 +6267,40 @@ async def create_order_and_redirect(
                 storage_provider="local_original",
             )
 
+        # RC106: completar hasta 6 fotos si el usuario sube 4 o 5.
+        # 4 fotos -> photo5 = photo1, photo6 = photo2
+        # 5 fotos -> photo6 = photo1
+        duplicate_plan = {
+            "photo5": "photo1",
+            "photo6": "photo2" if "photo5" not in saved_photo_paths else "photo1",
+        }
+
+        for missing_slot, source_slot in duplicate_plan.items():
+            if missing_slot in saved_photo_paths:
+                continue
+
+            source_path = saved_photo_paths.get(source_slot) or saved_photo_paths.get("photo1")
+            if not source_path or not os.path.exists(source_path):
+                raise HTTPException(status_code=400, detail=f"No se pudo completar {missing_slot}")
+
+            source = Path(source_path)
+            duplicate_path = source.with_name(f"{missing_slot}{source.suffix or '.jpg'}")
+            shutil.copyfile(str(source), str(duplicate_path))
+            saved_photo_paths[missing_slot] = str(duplicate_path)
+
+            insert_asset(
+                order_id=order_id,
+                asset_type=missing_slot,
+                file_url=str(duplicate_path),
+                storage_provider="local_original_duplicate",
+            )
+
         insert_order_event(
             order_id,
             "photos_saved",
             "ok",
-            "Las 6 fotos originales se han guardado correctamente para el video engine",
+            "Fotos guardadas correctamente. Si faltaban foto5/foto6, ETERNA las completó repitiendo fotos.",
+            {"provided_photo_count": provided_photo_count, "completed_to_six": True},
         )
 
     except HTTPException as e:
@@ -6271,6 +6323,8 @@ async def create_order_and_redirect(
 
     finally:
         for upload in photos.values():
+            if not upload:
+                continue
             try:
                 await upload.close()
             except Exception:
@@ -6764,6 +6818,11 @@ def render_create_form() -> str:
                 min-height: 16px;
                 text-align: center;
             }}
+            .photo-status.ready {{ color: rgba(245,210,139,0.95); text-shadow:0 0 14px rgba(245,210,139,.28); }}
+            .photo-status.loading {{ color: rgba(120,210,255,0.96); text-shadow:0 0 14px rgba(90,200,255,.25); }}
+            .photo-status.optional {{ color: rgba(255,255,255,0.38); }}
+            .photo-box.ready {{ border-color: rgba(245,210,139,.72); box-shadow:0 0 22px rgba(245,210,139,.16); }}
+            .photo-box.loading {{ border-color: rgba(90,200,255,.68); box-shadow:0 0 22px rgba(90,200,255,.16); }}
             .mini-note {{
                 margin-top: 12px;
                 color: rgba(255,255,255,0.42);
@@ -7671,7 +7730,7 @@ def render_create_form() -> str:
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo5">
                                     <div class="photo-placeholder" id="placeholder_photo5">Cambiar</div>
-                                    <input type="file" name="photo5" id="photo5" accept="image/*" required>
+                                    <input type="file" name="photo5" id="photo5" accept="image/*">
                                 </label>
                                 <div class="photo-status" id="status_photo5">Pendiente</div>
                             </div>
@@ -7681,7 +7740,7 @@ def render_create_form() -> str:
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo6">
                                     <div class="photo-placeholder" id="placeholder_photo6">Cambiar</div>
-                                    <input type="file" name="photo6" id="photo6" accept="image/*" required>
+                                    <input type="file" name="photo6" id="photo6" accept="image/*">
                                 </label>
                                 <div class="photo-status" id="status_photo6">Pendiente</div>
                             </div>
@@ -8403,8 +8462,14 @@ document.addEventListener("DOMContentLoaded", function () {{
                 placeholder.style.display = "block";
             }}
             if (status) {{
-                status.innerText = message || "Aún no has elegido esta foto.";
+                status.innerText = message || "Opcional si ya tienes 4 fotos.";
+                status.classList.remove("ready", "loading");
+                status.classList.add("optional");
             }}
+            const input = inputId ? document.getElementById(inputId) : null;
+            const box = input ? input.closest(".photo-box") : null;
+            if (box) box.classList.remove("ready", "loading");
+            try {{ updatePhotoReadiness(); }} catch (e) {{}}
             return;
         }}
 
@@ -8426,13 +8491,34 @@ document.addEventListener("DOMContentLoaded", function () {{
 
         if (status) {{
             const kb = Math.max(1, Math.round((file.size || 0) / 1024));
-            status.innerText = message || ("Foto optimizada correctamente · " + kb + " KB");
+            status.innerText = message || ("Foto lista ✓ · " + kb + " KB");
+            status.classList.remove("loading", "optional");
+            status.classList.add("ready");
         }}
+
+        const box = inputId ? document.getElementById(inputId)?.closest(".photo-box") : null;
+        if (box) {{
+            box.classList.remove("loading");
+            box.classList.add("ready");
+        }}
+
+        try {{ updatePhotoReadiness(); }} catch (e) {{}}
     }}
 
     function setPhotoStatus(inputId, message) {{
         const status = document.getElementById("status_" + inputId);
-        if (status) status.innerText = message;
+        const input = document.getElementById(inputId);
+        const box = input ? input.closest(".photo-box") : null;
+        if (status) {{
+            status.innerText = message;
+            status.classList.remove("ready", "optional");
+            status.classList.add("loading");
+        }}
+        if (box) {{
+            box.classList.remove("ready");
+            box.classList.add("loading");
+        }}
+        try {{ updatePhotoReadiness(); }} catch (e) {{}}
     }}
 
     function openPhotoDraftDB() {{
@@ -8694,6 +8780,84 @@ document.addEventListener("DOMContentLoaded", function () {{
         return count;
     }}
 
+    function photoIsReady(id) {{
+        const input = document.getElementById(id);
+        return !!(input && input.files && input.files.length === 1 && input.files[0] && input.files[0].size > 0);
+    }}
+
+    function photoProcessingActive() {{
+        return ETERNA_PHOTO_IDS.some((id) => !!photoProcessing[id]);
+    }}
+
+    function updatePhotoReadiness() {{
+        if (!button) return;
+
+        const count = currentPhotoCount();
+        const processing = photoProcessingActive();
+        const minimumReady = count >= 4;
+
+        for (const id of ETERNA_PHOTO_IDS) {{
+            const input = document.getElementById(id);
+            const status = document.getElementById("status_" + id);
+            const box = input ? input.closest(".photo-box") : null;
+            if (!status) continue;
+
+            if (photoProcessing[id]) {{
+                status.innerText = "Cargando foto...";
+                status.classList.remove("ready", "optional");
+                status.classList.add("loading");
+                if (box) {{
+                    box.classList.remove("ready");
+                    box.classList.add("loading");
+                }}
+            }} else if (photoIsReady(id)) {{
+                status.classList.remove("loading", "optional");
+                status.classList.add("ready");
+                if (box) {{
+                    box.classList.remove("loading");
+                    box.classList.add("ready");
+                }}
+                if (!status.innerText || status.innerText === "Pendiente" || status.innerText.includes("Aún no")) {{
+                    status.innerText = "Foto lista ✓";
+                }}
+            }} else {{
+                status.classList.remove("ready", "loading");
+                status.classList.add("optional");
+                if (box) box.classList.remove("ready", "loading");
+                if (id === "photo5" || id === "photo6") {{
+                    status.innerText = count >= 4 ? "Opcional: ETERNA puede repetir una foto." : "Opcional si ya tienes 4 fotos.";
+                }} else {{
+                    status.innerText = "Necesaria para crear tu ETERNA.";
+                }}
+            }}
+        }}
+
+        if (processing) {{
+            button.disabled = true;
+            button.classList.remove("ready");
+            button.innerText = "Cargando fotos...";
+            updateGlobalPhotoHint("Preparando tus fotos. El pago se desbloqueará automáticamente cuando estén listas.");
+            return;
+        }}
+
+        if (!minimumReady) {{
+            button.disabled = true;
+            button.classList.remove("ready");
+            button.innerText = "SUBE AL MENOS 4 FOTOS";
+            updateGlobalPhotoHint("Sube al menos 4 fotos. Si no tienes 6, ETERNA repetirá alguna de forma discreta.");
+            return;
+        }}
+
+        button.disabled = false;
+        button.classList.add("ready");
+        button.innerText = count >= 6 ? "CONTINUAR AL PAGO" : "CONTINUAR AL PAGO · ETERNA COMPLETARÁ LAS 6";
+        if (count >= 6) {{
+            updateGlobalPhotoHint("6 fotos listas. Puedes continuar al pago.");
+        }} else {{
+            updateGlobalPhotoHint(count + " fotos listas. ETERNA completará las 6 repitiendo alguna de forma discreta.");
+        }}
+    }}
+
     function updateGlobalPhotoHint(message) {{
         const helper = document.querySelector(".multi-photo-helper");
         if (helper && message) {{
@@ -8752,16 +8916,17 @@ document.addEventListener("DOMContentLoaded", function () {{
 
             multiPhotoPicker.value = "";
             saveFormState();
+            updatePhotoReadiness();
 
             const total = currentPhotoCount();
-            const missing = Math.max(0, 6 - total);
+            const missing = Math.max(0, 4 - total);
 
             if (ignored > 0) {{
                 updateGlobalPhotoHint("Hemos colocado las fotos posibles. Para cambiar una, toca su casilla.");
             }} else if (missing > 0) {{
-                updateGlobalPhotoHint("Fotos cargadas. Te faltan " + missing + " para completar tu ETERNA.");
+                updateGlobalPhotoHint("Fotos cargadas. Te faltan " + missing + " para poder continuar. Si tienes 4, ETERNA completará las 6.");
             }} else {{
-                updateGlobalPhotoHint("6 fotos listas. Puedes cambiar cualquiera tocando su casilla.");
+                updateGlobalPhotoHint(total >= 6 ? "6 fotos listas. Puedes cambiar cualquiera tocando su casilla." : total + " fotos listas. ETERNA completará las 6.");
             }}
 
             clearError();
@@ -8779,6 +8944,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             const file = fileInput.files && fileInput.files[0];
             if (!file) {{
                 updatePhotoUI(inputId, null);
+                updatePhotoReadiness();
                 return;
             }}
 
@@ -8792,19 +8958,14 @@ document.addEventListener("DOMContentLoaded", function () {{
             }}
 
             await preparePhotoForSlot(inputId, file, 0);
+            updatePhotoReadiness();
         }});
     }}
 
     ETERNA_PHOTO_IDS.forEach(bindPreview);
 
     function allPhotosPresent() {{
-        for (const id of ETERNA_PHOTO_IDS) {{
-            const input = document.getElementById(id);
-            if (!input || !input.files || input.files.length === 0) {{
-                return false;
-            }}
-        }}
-        return true;
+        return currentPhotoCount() >= 4;
     }}
 
     function autoGrowTextarea(el) {{
@@ -8849,16 +9010,34 @@ document.addEventListener("DOMContentLoaded", function () {{
             return false;
         }}
 
-        if (!allPhotosPresent()) {{
-            showError("Necesitas elegir exactamente 6 fotos.");
+        if (photoProcessingActive()) {{
+            showError("Estamos preparando tus fotos. El pago se desbloqueará automáticamente cuando estén listas.");
+            updatePhotoReadiness();
             return false;
         }}
 
-        // RC44: defensa final antes de enviar. Cada slot debe llevar solo una foto.
-        for (const id of ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"]) {{
+        if (!allPhotosPresent()) {{
+            showError("Sube al menos 4 fotos. Si no tienes 6, ETERNA completará la historia repitiendo alguna.");
+            updatePhotoReadiness();
+            return false;
+        }}
+
+        // RC106: defensa final antes de enviar.
+        // Permitimos 4, 5 o 6 fotos. Si faltan la 5 y/o la 6, el backend duplicará fotos.
+        for (const id of ["photo1", "photo2", "photo3", "photo4"]) {{
             const input = document.getElementById(id);
-            if (!input || !input.files || input.files.length !== 1) {{
-                showError("ETERNA necesita exactamente 6 fotos: una en cada hueco.");
+            if (!input || !input.files || input.files.length !== 1 || !input.files[0] || input.files[0].size <= 0) {{
+                showError("Las primeras 4 fotos deben estar listas antes de continuar.");
+                updatePhotoReadiness();
+                return false;
+            }}
+        }}
+
+        for (const id of ["photo5", "photo6"]) {{
+            const input = document.getElementById(id);
+            if (input && input.files && input.files.length > 1) {{
+                showError("Cada hueco de foto debe llevar como máximo una imagen.");
+                updatePhotoReadiness();
                 return false;
             }}
         }}
@@ -8949,6 +9128,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     bindAutosave();
     updatePhraseMode();
     updateDeliveryMode();
+    updatePhotoReadiness();
 
     let eternaSubmitting = false;
 
@@ -9462,12 +9642,12 @@ async def crear_post(
     delivery_date: str = Form(""),
     delivery_time: str = Form(""),
     gift_amount: float = Form(0),
-    photo1: UploadFile = File(...),
-    photo2: UploadFile = File(...),
-    photo3: UploadFile = File(...),
-    photo4: UploadFile = File(...),
-    photo5: UploadFile = File(...),
-    photo6: UploadFile = File(...),
+    photo1: Optional[UploadFile] = File(None),
+    photo2: Optional[UploadFile] = File(None),
+    photo3: Optional[UploadFile] = File(None),
+    photo4: Optional[UploadFile] = File(None),
+    photo5: Optional[UploadFile] = File(None),
+    photo6: Optional[UploadFile] = File(None),
     show_sender_identity: str = Form(""),
     arrival_photo_slot: str = Form("photo1"),
     responsible_use_accepted: str = Form(""),
