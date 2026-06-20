@@ -1,3 +1,4 @@
+
 # =========================================================
 # RC101B_FORM_POST_NATIVE_SAFE
 # Base: RC100 reacción congelada + soporte.
@@ -57,6 +58,7 @@ print("🦋 RC101B FORM POST NATIVE SAFE — SENDER IDENTITY + TRUST 🦋")
 print("🧠 MEMORY ENGINE V1 SILENT SAFE — GUARDA MOMENTOS SIN ENVIAR NADA 🧠")
 print("👁️ VISITOR INTELLIGENCE V1 SAFE — LOGS HUMANOS DE VISITAS 👁️")
 print("🧩 RC103 BLACKBOX + SENDER PACK NO ZOOM SAFE 🧩")
+print("🦋 RC104 FOUNDER EDITION SAFE — REPORT + HEALTH + BACKUP 🦋")
 import html
 import json
 import mimetypes
@@ -15638,6 +15640,448 @@ table{{width:100%;border-collapse:collapse;margin-top:18px;background:rgba(255,2
 <table><thead><tr><th>Pedido</th><th>Fecha</th><th>Regalante</th><th>Destinatario</th><th>Pago</th><th>Reacción</th><th>Completa</th><th>Error</th></tr></thead><tbody>{rows}</tbody></table>
 </body></html>
 """)
+
+
+
+# =========================================================
+# RC104 — FOUNDER EDITION SAFE
+# Observabilidad + mantenimiento sin tocar el corazón de ETERNA.
+# No toca Stripe Checkout, webhook, Twilio, WhatsApp, video engine,
+# cámara, grabación, subida de reacción, Sender Pack ni workers actuales.
+# =========================================================
+
+RC104_FOUNDER_VERSION = "RC104_FOUNDER_EDITION_SAFE"
+FOUNDER_REPORT_ENABLED = os.getenv("FOUNDER_REPORT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+FOUNDER_REPORT_HOUR = int(os.getenv("FOUNDER_REPORT_HOUR", "0"))
+FOUNDER_REPORT_TO = os.getenv("FOUNDER_REPORT_TO", ADMIN_ALERT_EMAIL or ETERNA_OPERATIONS_EMAIL).strip()
+FOUNDER_REPORT_WORKER_INTERVAL_SECONDS = int(os.getenv("FOUNDER_REPORT_WORKER_INTERVAL_SECONDS", "900"))
+
+AUTO_DB_BACKUP_ENABLED = os.getenv("AUTO_DB_BACKUP_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+AUTO_DB_BACKUP_HOUR = int(os.getenv("AUTO_DB_BACKUP_HOUR", "3"))
+AUTO_DB_BACKUP_FOLDER = Path(os.getenv("AUTO_DB_BACKUP_FOLDER", str(DATA_FOLDER / "backups")).strip() or str(DATA_FOLDER / "backups"))
+AUTO_DB_BACKUP_KEEP_DAYS = int(os.getenv("AUTO_DB_BACKUP_KEEP_DAYS", "30"))
+
+SAFE_CLEANUP_ENABLED = os.getenv("SAFE_CLEANUP_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+SAFE_CLEANUP_DAYS = int(os.getenv("SAFE_CLEANUP_DAYS", "14"))
+SAFE_CLEANUP_DRY_RUN = os.getenv("SAFE_CLEANUP_DRY_RUN", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+RC104_WORKER_STARTED = False
+RC104_WORKER_LOCK = threading.Lock()
+
+
+def rc104_safe_float(value, default=0.0) -> float:
+    try:
+        return float(value or default)
+    except Exception:
+        return float(default)
+
+
+def rc104_today_prefix() -> str:
+    return now_iso()[:10]
+
+
+def rc104_month_prefix() -> str:
+    return now_iso()[:7]
+
+
+def rc104_db_count(query: str, params: tuple = ()) -> int:
+    conn = db_conn()
+    try:
+        row = conn.execute(query, params).fetchone()
+        return int((row[0] if row else 0) or 0)
+    finally:
+        conn.close()
+
+
+def rc104_db_sum(query: str, params: tuple = ()) -> float:
+    conn = db_conn()
+    try:
+        row = conn.execute(query, params).fetchone()
+        return float((row[0] if row else 0) or 0)
+    finally:
+        conn.close()
+
+
+def rc104_founder_metrics() -> dict:
+    """Métricas de negocio usando solo lectura de la DB."""
+    today = rc104_today_prefix()
+    month = rc104_month_prefix()
+    metrics = {
+        "date": today,
+        "month": month,
+        "orders_today": 0,
+        "paid_today": 0,
+        "completed_today": 0,
+        "reactions_today": 0,
+        "revenue_today": 0.0,
+        "orders_month": 0,
+        "paid_month": 0,
+        "revenue_month": 0.0,
+        "orders_total": 0,
+        "paid_total": 0,
+        "revenue_total": 0.0,
+        "pending_render": 0,
+        "pending_reaction": 0,
+        "sms_errors": 0,
+        "recent_errors": [],
+        "top_occasions": [],
+    }
+    try:
+        metrics["orders_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(created_at,'') LIKE ?", (today + "%",))
+        metrics["paid_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE paid=1 AND COALESCE(updated_at, created_at, '') LIKE ?", (today + "%",))
+        metrics["completed_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(eterna_completed,0)=1 AND COALESCE(updated_at, created_at, '') LIKE ?", (today + "%",))
+        metrics["reactions_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(reaction_uploaded,0)=1 AND COALESCE(updated_at, created_at, '') LIKE ?", (today + "%",))
+        metrics["revenue_today"] = rc104_db_sum("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE paid=1 AND COALESCE(updated_at, created_at, '') LIKE ?", (today + "%",))
+        metrics["orders_month"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(created_at,'') LIKE ?", (month + "%",))
+        metrics["paid_month"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE paid=1 AND COALESCE(updated_at, created_at, '') LIKE ?", (month + "%",))
+        metrics["revenue_month"] = rc104_db_sum("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE paid=1 AND COALESCE(updated_at, created_at, '') LIKE ?", (month + "%",))
+        metrics["orders_total"] = rc104_db_count("SELECT COUNT(*) FROM orders")
+        metrics["paid_total"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE paid=1")
+        metrics["revenue_total"] = rc104_db_sum("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE paid=1")
+        metrics["pending_render"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE paid=1 AND COALESCE(video_render_requested,0)=1 AND COALESCE(experience_video_url,'')='' ")
+        metrics["pending_reaction"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE paid=1 AND COALESCE(reaction_uploaded,0)=0")
+        metrics["sms_errors"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(recipient_sms_error,'')!='' OR COALESCE(sender_sms_error,'')!=''")
+
+        conn = db_conn()
+        try:
+            try:
+                rows = conn.execute("""
+                    SELECT occasion_type, COUNT(*) AS c
+                    FROM memory_events
+                    WHERE COALESCE(occasion_type,'')!=''
+                    GROUP BY occasion_type
+                    ORDER BY c DESC
+                    LIMIT 5
+                """).fetchall()
+                metrics["top_occasions"] = [dict(r) for r in rows]
+            except Exception:
+                metrics["top_occasions"] = []
+            try:
+                rows = conn.execute("""
+                    SELECT order_id, step, status, message, created_at
+                    FROM order_events
+                    WHERE LOWER(COALESCE(status,'')) IN ('error','failed')
+                    ORDER BY id DESC
+                    LIMIT 10
+                """).fetchall()
+                metrics["recent_errors"] = [dict(r) for r in rows]
+            except Exception:
+                metrics["recent_errors"] = []
+        finally:
+            conn.close()
+    except Exception as e:
+        metrics["metrics_error"] = str(e)
+    return metrics
+
+
+def rc104_system_health() -> dict:
+    """Health monitor de solo lectura. No hace cargos ni envíos."""
+    health = {
+        "version": RC104_FOUNDER_VERSION,
+        "timestamp": now_iso(),
+        "db": {"status": "unknown"},
+        "stripe": {"status": "configured" if bool(STRIPE_SECRET_KEY) else "missing_env"},
+        "twilio_sms": {"status": "configured" if bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER) else "missing_env", "enabled": SMS_ENABLED},
+        "twilio_whatsapp": {"status": "configured" if bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM) else "missing_env", "enabled": WHATSAPP_ENABLED},
+        "video_engine": {"status": "unknown", "url": VIDEO_ENGINE_URL},
+        "r2": {"status": "configured" if bool(R2_ACCESS_KEY and R2_SECRET_KEY and R2_BUCKET and R2_ENDPOINT and R2_PUBLIC_URL) else "missing_env_or_public_url", "bucket": R2_BUCKET or ""},
+        "email": {"status": "configured" if email_enabled_and_configured() else "missing_env_or_disabled", "enabled": EMAIL_ENABLED},
+        "safe_mode": ETERNA_SAFE_MODE,
+    }
+    try:
+        conn = db_conn()
+        conn.execute("SELECT 1").fetchone()
+        order_count = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
+        conn.close()
+        health["db"] = {"status": "ok", "orders": int(order_count or 0)}
+    except Exception as e:
+        health["db"] = {"status": "error", "detail": str(e)[:180]}
+
+    try:
+        if VIDEO_ENGINE_URL:
+            response = requests.get(f"{VIDEO_ENGINE_URL}/health", timeout=4)
+            health["video_engine"] = {"status": "ok" if response.status_code < 500 else "degraded", "http_status": response.status_code, "url": VIDEO_ENGINE_URL}
+    except Exception as e:
+        health["video_engine"] = {"status": "error", "detail": str(e)[:180], "url": VIDEO_ENGINE_URL}
+
+    overall = "ok"
+    for key, value in health.items():
+        if isinstance(value, dict) and value.get("status") in {"error"}:
+            overall = "error"
+            break
+        if isinstance(value, dict) and value.get("status") in {"missing_env", "missing_env_or_public_url", "degraded"} and key in {"db", "video_engine"}:
+            overall = "degraded"
+    health["overall"] = overall
+    return health
+
+
+def rc104_build_founder_report_text(metrics: dict, health: dict) -> str:
+    def money(v):
+        return f"{rc104_safe_float(v):.2f} €"
+
+    lines = []
+    lines.append("🦋 ETERNA FOUNDER REPORT")
+    lines.append("")
+    lines.append(f"Fecha: {metrics.get('date')}")
+    lines.append(f"Estado sistema: {str(health.get('overall') or '').upper()}")
+    lines.append("")
+    lines.append("VENTAS")
+    lines.append(f"- Pedidos creados hoy: {metrics.get('orders_today', 0)}")
+    lines.append(f"- Pedidos pagados hoy: {metrics.get('paid_today', 0)}")
+    lines.append(f"- Facturación hoy: {money(metrics.get('revenue_today', 0))}")
+    lines.append(f"- Facturación mes: {money(metrics.get('revenue_month', 0))}")
+    lines.append(f"- Facturación total: {money(metrics.get('revenue_total', 0))}")
+    lines.append("")
+    lines.append("EXPERIENCIAS")
+    lines.append(f"- Completadas hoy: {metrics.get('completed_today', 0)}")
+    lines.append(f"- Reacciones recibidas hoy: {metrics.get('reactions_today', 0)}")
+    lines.append(f"- Pendientes de reacción: {metrics.get('pending_reaction', 0)}")
+    lines.append(f"- Pendientes de render: {metrics.get('pending_render', 0)}")
+    lines.append("")
+    lines.append("ERRORES")
+    lines.append(f"- Pedidos con errores SMS: {metrics.get('sms_errors', 0)}")
+    recent_errors = metrics.get("recent_errors") or []
+    if recent_errors:
+        lines.append("- Últimos errores:")
+        for err in recent_errors[:5]:
+            lines.append(f"  · {err.get('created_at','')[:19]} · {err.get('order_id','')} · {err.get('step','')} · {err.get('message','')[:90]}")
+    else:
+        lines.append("- Últimos errores: 0")
+    lines.append("")
+    lines.append("SISTEMA")
+    for key in ["db", "stripe", "twilio_sms", "twilio_whatsapp", "video_engine", "r2", "email"]:
+        item = health.get(key) or {}
+        lines.append(f"- {key}: {item.get('status', 'unknown')}")
+    lines.append("")
+    lines.append("Accesos rápidos:")
+    lines.append(f"- Dashboard: {PUBLIC_BASE_URL}/admin/dashboard-simple?token=TU_TOKEN")
+    lines.append(f"- Health: {PUBLIC_BASE_URL}/admin/system?token=TU_TOKEN")
+    lines.append(f"- Caja negra: {PUBLIC_BASE_URL}/admin/blackbox-latest?token=TU_TOKEN")
+    return "\n".join(lines)
+
+
+def rc104_send_founder_report(reason: str = "daily") -> dict:
+    metrics = rc104_founder_metrics()
+    health = rc104_system_health()
+    body = rc104_build_founder_report_text(metrics, health)
+    if not FOUNDER_REPORT_TO:
+        return {"ok": False, "detail": "FOUNDER_REPORT_TO vacío", "preview": body}
+    result = send_eterna_email(
+        FOUNDER_REPORT_TO,
+        f"🦋 ETERNA Founder Report — {metrics.get('date')} — {health.get('overall','unknown').upper()}",
+        body,
+    )
+    return {"ok": bool(result.get("ok")), "email_result": result, "reason": reason, "metrics": metrics, "health": health}
+
+
+def rc104_backup_db(reason: str = "manual") -> dict:
+    """Copia segura de eterna.db. No borra ni modifica la DB original."""
+    try:
+        if not DB_PATH.exists():
+            return {"ok": False, "detail": f"DB no existe: {DB_PATH}"}
+        AUTO_DB_BACKUP_FOLDER.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        target = AUTO_DB_BACKUP_FOLDER / f"eterna_backup_{stamp}.db"
+        shutil.copy2(DB_PATH, target)
+        insert_order_event("SYSTEM", "rc104_db_backup", "ok", f"Backup DB creado: {target.name}", {"reason": reason, "path": str(target)})
+        return {"ok": True, "backup_path": str(target), "backup_name": target.name, "bytes": target.stat().st_size}
+    except Exception as e:
+        print("[WARN] RC104 backup DB error:", e)
+        return {"ok": False, "detail": str(e)}
+
+
+def rc104_cleanup_old_backups() -> dict:
+    """Limpia solo backups antiguos generados por RC104. Nunca toca eterna.db original."""
+    deleted = []
+    try:
+        if not AUTO_DB_BACKUP_FOLDER.exists():
+            return {"ok": True, "deleted": deleted}
+        cutoff = time.time() - max(1, AUTO_DB_BACKUP_KEEP_DAYS) * 86400
+        for p in AUTO_DB_BACKUP_FOLDER.glob("eterna_backup_*.db"):
+            try:
+                if p.is_file() and p.stat().st_mtime < cutoff:
+                    p.unlink()
+                    deleted.append(p.name)
+            except Exception as e:
+                print("[WARN] No pude borrar backup antiguo:", p, e)
+        return {"ok": True, "deleted": deleted}
+    except Exception as e:
+        return {"ok": False, "detail": str(e), "deleted": deleted}
+
+
+def rc104_safe_cleanup(dry_run: Optional[bool] = None) -> dict:
+    """Limpieza segura: solo chunks temporales antiguos. Por defecto dry-run."""
+    effective_dry_run = SAFE_CLEANUP_DRY_RUN if dry_run is None else bool(dry_run)
+    cutoff = time.time() - max(1, SAFE_CLEANUP_DAYS) * 86400
+    targets = [REACTION_CHUNKS_FOLDER]
+    result = {"ok": True, "dry_run": effective_dry_run, "deleted_files": [], "candidate_files": [], "bytes_candidate": 0, "bytes_deleted": 0}
+    try:
+        for folder in targets:
+            if not folder.exists() or not folder.is_dir():
+                continue
+            for p in folder.rglob("*"):
+                try:
+                    if not p.is_file():
+                        continue
+                    if p.stat().st_mtime >= cutoff:
+                        continue
+                    size = p.stat().st_size
+                    result["candidate_files"].append(str(p))
+                    result["bytes_candidate"] += size
+                    if not effective_dry_run:
+                        p.unlink()
+                        result["deleted_files"].append(str(p))
+                        result["bytes_deleted"] += size
+                except Exception as e:
+                    print("[WARN] RC104 cleanup file skipped:", p, e)
+        return result
+    except Exception as e:
+        result["ok"] = False
+        result["detail"] = str(e)
+        return result
+
+
+def rc104_heartbeat_tick():
+    """Una vuelta de mantenimiento. No toca core de pedidos."""
+    try:
+        now = datetime.now(timezone.utc)
+        state_file = DATA_FOLDER / "rc104_founder_state.json"
+        state = {}
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text(encoding="utf-8") or "{}")
+            except Exception:
+                state = {}
+
+        today = now.date().isoformat()
+        changed = False
+
+        if AUTO_DB_BACKUP_ENABLED and now.hour == AUTO_DB_BACKUP_HOUR and state.get("last_backup_date") != today:
+            rc104_backup_db(reason="auto_daily")
+            rc104_cleanup_old_backups()
+            state["last_backup_date"] = today
+            changed = True
+
+        if FOUNDER_REPORT_ENABLED and now.hour == FOUNDER_REPORT_HOUR and state.get("last_founder_report_date") != today:
+            rc104_send_founder_report(reason="auto_daily")
+            state["last_founder_report_date"] = today
+            changed = True
+
+        if SAFE_CLEANUP_ENABLED and state.get("last_safe_cleanup_date") != today:
+            rc104_safe_cleanup(dry_run=SAFE_CLEANUP_DRY_RUN)
+            state["last_safe_cleanup_date"] = today
+            changed = True
+
+        if changed:
+            state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        print("[WARN] RC104 heartbeat error:", e)
+
+
+def rc104_worker_loop():
+    print("🦋 RC104 Founder Worker iniciado")
+    while True:
+        try:
+            rc104_heartbeat_tick()
+        except Exception as e:
+            print("[WARN] RC104 worker loop error:", e)
+        time.sleep(max(60, FOUNDER_REPORT_WORKER_INTERVAL_SECONDS))
+
+
+@app.on_event("startup")
+def rc104_startup_event():
+    global RC104_WORKER_STARTED
+    with RC104_WORKER_LOCK:
+        if RC104_WORKER_STARTED:
+            return
+        RC104_WORKER_STARTED = True
+    try:
+        threading.Thread(target=rc104_worker_loop, daemon=True, name="eterna-rc104-founder-worker").start()
+    except Exception as e:
+        print("[WARN] No pude iniciar RC104 Founder Worker:", e)
+
+
+@app.get("/admin/system")
+def admin_system_rc104(token: str = ""):
+    rc74a_admin_guard(token)
+    return rc104_system_health()
+
+
+@app.get("/admin/founder-report/preview")
+def admin_founder_report_preview(token: str = ""):
+    rc74a_admin_guard(token)
+    metrics = rc104_founder_metrics()
+    health = rc104_system_health()
+    return {
+        "version": RC104_FOUNDER_VERSION,
+        "preview_text": rc104_build_founder_report_text(metrics, health),
+        "metrics": metrics,
+        "health": health,
+        "timestamp": now_iso(),
+    }
+
+
+@app.post("/admin/founder-report/send")
+def admin_founder_report_send(token: str = ""):
+    rc74a_admin_guard(token)
+    return rc104_send_founder_report(reason="manual_admin")
+
+
+@app.post("/admin/backup-db")
+def admin_backup_db_rc104(token: str = ""):
+    rc74a_admin_guard(token)
+    return rc104_backup_db(reason="manual_admin")
+
+
+@app.get("/admin/cleanup/preview")
+def admin_cleanup_preview_rc104(token: str = ""):
+    rc74a_admin_guard(token)
+    return rc104_safe_cleanup(dry_run=True)
+
+
+@app.post("/admin/cleanup/run")
+def admin_cleanup_run_rc104(token: str = ""):
+    rc74a_admin_guard(token)
+    if not SAFE_CLEANUP_ENABLED:
+        return {"ok": False, "detail": "SAFE_CLEANUP_ENABLED=0. Limpieza real desactivada por seguridad.", "preview": rc104_safe_cleanup(dry_run=True)}
+    return rc104_safe_cleanup(dry_run=False)
+
+
+@app.get("/admin/founder", response_class=HTMLResponse)
+def admin_founder_panel_rc104(token: str = ""):
+    rc74a_admin_guard(token)
+    metrics = rc104_founder_metrics()
+    health = rc104_system_health()
+    report_text = rc104_build_founder_report_text(metrics, health)
+    overall = safe_text(str(health.get("overall") or "unknown").upper())
+    color = "#6ee7a8" if overall == "OK" else "#f5d28b"
+    return HTMLResponse(f"""
+<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>ETERNA Founder</title>
+<style>
+body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;padding:24px}}
+h1{{font-family:Georgia,serif;color:#f5d28b;margin:0 0 8px}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:22px 0}}
+.card{{border:1px solid rgba(245,210,139,.22);background:rgba(255,255,255,.045);border-radius:18px;padding:16px}}.num{{font-size:28px;color:#f5d28b;font-weight:800}}.ok{{color:{color};font-weight:900}}
+pre{{white-space:pre-wrap;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:18px;line-height:1.45}}a{{color:#f5d28b}}
+</style></head><body>
+<h1>🦋 ETERNA Founder</h1>
+<div>Estado sistema: <span class='ok'>{overall}</span> · {safe_text(now_iso())}</div>
+<div class='grid'>
+<div class='card'><div class='num'>{metrics.get('orders_today',0)}</div><div>Pedidos hoy</div></div>
+<div class='card'><div class='num'>{metrics.get('paid_today',0)}</div><div>Pagos hoy</div></div>
+<div class='card'><div class='num'>{rc104_safe_float(metrics.get('revenue_today',0)):.2f} €</div><div>Facturación hoy</div></div>
+<div class='card'><div class='num'>{rc104_safe_float(metrics.get('revenue_month',0)):.2f} €</div><div>Facturación mes</div></div>
+<div class='card'><div class='num'>{metrics.get('pending_render',0)}</div><div>Pendientes render</div></div>
+<div class='card'><div class='num'>{metrics.get('pending_reaction',0)}</div><div>Pendientes reacción</div></div>
+</div>
+<p><a href='/admin/system?token={safe_attr(token)}'>Health JSON</a> · <a href='/admin/blackbox-latest?token={safe_attr(token)}'>Caja negra</a> · <a href='/admin/cleanup/preview?token={safe_attr(token)}'>Preview limpieza</a></p>
+<pre>{safe_text(report_text)}</pre>
+</body></html>
+""")
+
+# =========================================================
+# FIN RC104 — FOUNDER EDITION SAFE
+# =========================================================
 
 
 if __name__ == "__main__":
