@@ -8129,7 +8129,9 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     function saveFormState() {{
         try {{
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(getPersistableData()));
+            const data = getPersistableData();
+            data.__saved_at = Date.now();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }} catch (e) {{
             console.error("saveFormState error", e);
         }}
@@ -8907,8 +8909,42 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     if (!form) return;
 
-    restoreFormState();
-    restorePhotoDrafts();
+    // RC105 FORM DRAFT TTL SAFE — lanzamiento Instagram
+    // Mantiene el borrador reciente, pero limpia datos antiguos.
+    // Si alguien sale y vuelve en pocos minutos, recupera.
+    // Si vuelve mucho después, entra limpio.
+    // No toca Stripe, SMS, WhatsApp, R2, reacción ni Sender Pack.
+    const FORM_DRAFT_TTL_MS = 10 * 60 * 1000;
+
+    try {{
+        const rawDraft = localStorage.getItem(STORAGE_KEY);
+        let draftIsFresh = false;
+
+        if (rawDraft) {{
+            try {{
+                const parsedDraft = JSON.parse(rawDraft);
+                const savedAt = Number(parsedDraft && parsedDraft.__saved_at ? parsedDraft.__saved_at : 0);
+                draftIsFresh = savedAt > 0 && (Date.now() - savedAt) <= FORM_DRAFT_TTL_MS;
+            }} catch (e) {{
+                draftIsFresh = false;
+            }}
+        }}
+
+        if (draftIsFresh) {{
+            restoreFormState();
+            restorePhotoDrafts();
+        }} else {{
+            localStorage.removeItem(STORAGE_KEY);
+            try {{
+                if (form) form.reset();
+            }} catch (e) {{
+                console.error("RC105 form reset error", e);
+            }}
+        }}
+    }} catch (e) {{
+        console.error("RC105 draft ttl check error", e);
+    }}
+
     applyDefaultEmotionIfNeeded();
     bindAutosave();
     updatePhraseMode();
