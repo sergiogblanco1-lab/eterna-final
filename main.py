@@ -56,6 +56,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA �
 print("🦋 RC101B FORM POST NATIVE SAFE — SENDER IDENTITY + TRUST 🦋")
 print("🧠 MEMORY ENGINE V1 SILENT SAFE — GUARDA MOMENTOS SIN ENVIAR NADA 🧠")
 print("👁️ VISITOR INTELLIGENCE V1 SAFE — LOGS HUMANOS DE VISITAS 👁️")
+print("🧩 RC103 BLACKBOX + SENDER PACK NO ZOOM SAFE 🧩")
 import html
 import json
 import mimetypes
@@ -1737,7 +1738,7 @@ def render_eterna_image_screen(
     filter:contrast(1.08) saturate(1.10) brightness(1.04);
 }}
 .sender-reaction, video.sender-reaction, .reaction-video {{
-    object-fit:cover !important;
+    object-fit:contain !important;
     object-position:center center !important;
     transform:none !important;
     filter:contrast(1.12) saturate(1.08) brightness(1.08);
@@ -13811,7 +13812,7 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
 .sender-actions,.sender-buttons,.actions,.pack-actions,.cta-stack{display:flex!important;flex-direction:column!important;gap:12px!important;width:min(92%,430px)!important;margin:18px auto 22px!important;position:relative!important;z-index:30!important}
 .sender-actions a,.sender-actions button,.sender-buttons a,.sender-buttons button,.actions a,.actions button,.pack-actions a,.pack-actions button,.cta-stack a,.cta-stack button{width:100%!important;min-height:56px!important;border-radius:18px!important;text-align:center!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-decoration:none!important;box-sizing:border-box!important}
 .reaction-video,.reaction-box,.reaction-window,.reaction-preview,.sender-reaction{right:10px!important;bottom:10px!important;left:auto!important;top:auto!important;transform:none!important;width:clamp(86px,24%,126px)!important;aspect-ratio:9/16!important;border-radius:16px!important;overflow:hidden!important;z-index:20!important;background:#000!important}
-.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important;transform:none!important;background:#000!important}
+.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center center!important;transform:none!important;background:#000!important}
 .rc81-hidden-old{display:none!important}
 @media(max-width:420px){.rc81-sender-actions{width:min(92%,360px);gap:10px;margin-top:14px}.rc81-sender-btn{min-height:54px;border-radius:16px;font-size:13px}}
 </style>
@@ -13948,7 +13949,7 @@ body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:fle
 
 /* RC90: reacción más grande, sin etiqueta */
 .reaction-video{{position:absolute;right:10px;top:52px;width:24%;min-width:86px;max-width:126px;aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#000;border:1.8px solid rgba(255,205,104,.97);box-shadow:0 0 0 1px rgba(255,245,207,.20),0 0 26px rgba(255,183,70,.62),inset 0 0 14px rgba(255,218,137,.20);z-index:9}}
-.reaction-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;transform:none;display:block;background:#000}}
+.reaction-video video{{width:100%;height:100%;object-fit:contain;object-position:center center;transform:none;display:block;background:#000}}
 
 
 
@@ -13975,7 +13976,7 @@ body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:fle
 video.sender-reaction{{
   width:100%!important;
   height:100%!important;
-  object-fit:cover!important;
+  object-fit:contain!important;
   object-position:center center!important;
   transform:none!important;
   background:#000!important;
@@ -15649,3 +15650,132 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port
     )
+
+# =========================================================
+# RC103 — CAJA NEGRA ETERNA READ ONLY
+# No toca Stripe, Twilio, WhatsApp, video engine, cámara, reacción ni workers.
+# Solo lee orders + order_events para saber dónde está cada pedido.
+# =========================================================
+
+def rc103_blackbox_public_order(order: dict) -> dict:
+    """Resumen seguro y legible del pedido para admin."""
+    if not order:
+        return {}
+    try:
+        state = rc74a_order_public_state(order)
+    except Exception:
+        state = "UNKNOWN"
+
+    fields = [
+        "id", "paid", "delivered_to_recipient", "delivery_sent", "delivery_sent_at",
+        "video_render_requested", "video_render_requested_at", "experience_video_url",
+        "experience_started", "experience_completed", "reaction_uploaded", "sender_notified",
+        "recipient_sms_attempts", "sender_sms_attempts", "recipient_sms_error", "sender_sms_error",
+        "recipient_sms_sent_at", "sender_sms_sent_at", "created_at", "updated_at",
+        "delivery_mode", "scheduled_delivery_at", "eterna_completed", "reaction_upload_error",
+    ]
+    data = {k: order.get(k) for k in fields if k in order.keys()}
+    data["state"] = state
+    data["minutes_since_created"] = rc74a_minutes_since(order.get("created_at"))
+    data["minutes_since_render_requested"] = rc74a_minutes_since(order.get("video_render_requested_at"))
+    data["has_experience_video"] = bool(order.get("experience_video_url"))
+    data["has_reaction_local"] = bool(order.get("reaction_video_local"))
+    data["has_reaction_public"] = bool(order.get("reaction_video_public_url"))
+    return data
+
+
+def rc103_blackbox_flags(order: dict, events: list) -> list:
+    """Señales rápidas de atención. No modifica nada."""
+    flags = []
+    if not order:
+        return ["pedido_no_encontrado"]
+
+    if order.get("paid") and not order.get("video_render_requested"):
+        flags.append("pagado_sin_render_solicitado")
+    if order.get("video_render_requested") and not order.get("experience_video_url"):
+        mins = rc74a_minutes_since(order.get("video_render_requested_at"))
+        if mins is not None and mins >= ETERNA_RENDER_STUCK_MINUTES:
+            flags.append("render_posiblemente_atascado")
+    if order.get("experience_video_url") and not (order.get("delivered_to_recipient") or order.get("delivery_sent")):
+        flags.append("video_listo_no_entregado")
+    if order.get("experience_completed") and not order.get("reaction_uploaded"):
+        flags.append("experiencia_completada_sin_reaccion")
+    if order.get("reaction_uploaded") and not order.get("sender_notified"):
+        flags.append("reaccion_lista_sender_pendiente")
+    if order.get("recipient_sms_error"):
+        flags.append("error_sms_destinatario")
+    if order.get("sender_sms_error"):
+        flags.append("error_sms_regalante")
+
+    for ev in events or []:
+        if str(ev.get("status") or "").lower() in {"error", "failed"}:
+            flags.append("evento_error_en_timeline")
+            break
+    return flags
+
+
+@app.get("/admin/blackbox/{order_id}")
+def admin_blackbox_order(order_id: str, token: str = ""):
+    """
+    Caja Negra por pedido.
+    Modo lectura: permite ver el viaje exacto del pedido sin tocar producción.
+    """
+    rc74a_admin_guard(token)
+    order = get_order_by_id(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="pedido_no_encontrado")
+
+    events = list_order_events(order_id, limit=240)
+    public_order = rc103_blackbox_public_order(order)
+    flags = rc103_blackbox_flags(order, events)
+
+    return {
+        "version": "RC103_BLACKBOX_NO_ZOOM_VISITOR_SAFE",
+        "mode": "read_only",
+        "order": public_order,
+        "flags": flags,
+        "timeline": events,
+        "quick_links": {
+            "html_status": f"/admin/order-status/{order_id}?token=TU_TOKEN",
+            "sender_pack": f"/sender/{order.get('sender_token')}" if order.get("sender_token") else None,
+            "recipient_experience": f"/pedido/{order.get('recipient_token')}" if order.get("recipient_token") else None,
+        },
+        "timestamp": now_iso(),
+    }
+
+
+@app.get("/admin/blackbox-latest")
+def admin_blackbox_latest(token: str = "", limit: int = 20):
+    """
+    Últimos pedidos en modo caja negra resumida.
+    No cambia DB, no reintenta, no envía mensajes.
+    """
+    rc74a_admin_guard(token)
+    clean_limit = max(1, min(int(limit or 20), 80))
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT *
+        FROM orders
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (clean_limit,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    items = []
+    for order in rows:
+        events = list_order_events(order.get("id"), limit=40)
+        item = rc103_blackbox_public_order(order)
+        item["flags"] = rc103_blackbox_flags(order, events)
+        item["last_event"] = events[-1] if events else None
+        items.append(item)
+
+    return {
+        "version": "RC103_BLACKBOX_NO_ZOOM_VISITOR_SAFE",
+        "mode": "read_only",
+        "count": len(items),
+        "orders": items,
+        "timestamp": now_iso(),
+    }
+
