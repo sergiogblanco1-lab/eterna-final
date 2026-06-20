@@ -60,6 +60,7 @@ print("🧩 RC103 BLACKBOX + SENDER PACK NO ZOOM SAFE 🧩")
 print("🦋 RC104 FOUNDER EDITION SAFE — REPORT + HEALTH + BACKUP 🦋")
 print("📸 RC106 INSTAGRAM 4-6 PHOTOS SAFE — PAGO BLOQUEADO HASTA FOTOS LISTAS 📸")
 print("🛡️ RC107 INSTAGRAM PREFLIGHT UPLOAD SAFE — FOTOS SUBEN ANTES DEL PAGO 🛡️")
+print("🌍 RC108 INTERNATIONAL FORM + SMS SAFE — ES/EN SIN TOCAR EL CORAZÓN 🌍")
 import html
 import json
 import mimetypes
@@ -2473,6 +2474,7 @@ def init_db():
     add_column_if_missing("orders", "experience_video_url", "ALTER TABLE orders ADD COLUMN experience_video_url TEXT")
     add_column_if_missing("orders", "reaction_video_public_url", "ALTER TABLE orders ADD COLUMN reaction_video_public_url TEXT")
     add_column_if_missing("orders", "reaction_video_local", "ALTER TABLE orders ADD COLUMN reaction_video_local TEXT")
+    add_column_if_missing("orders", "language", "ALTER TABLE orders ADD COLUMN language TEXT NOT NULL DEFAULT 'es'")
 
     # RC101 — identidad opcional del remitente para aumentar confianza de apertura.
     add_column_if_missing("orders", "show_sender_identity", "ALTER TABLE orders ADD COLUMN show_sender_identity INTEGER NOT NULL DEFAULT 0")
@@ -4574,18 +4576,50 @@ def arrival_photo_url_from_order(order: dict) -> str:
     return f"{PUBLIC_BASE_URL}/arrival-photo/{token}?slot={quote(slot)}"
 
 
-def build_recipient_arrival_intro(order: dict) -> str:
+def normalize_order_language(value: str) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"en", "english", "gb", "uk", "us"}:
+        return "en"
+    return "es"
+
+
+def build_recipient_arrival_intro(order: dict, language: str = "es") -> str:
     sender_name = (order.get("sender_name") or "").strip()
+    lang = normalize_order_language(language or order.get("language") or "es")
     if SENDER_IDENTITY_ENABLED and rc101_truthy(order.get("show_sender_identity")) and sender_name:
+        if lang == "en":
+            return f"{sender_name} has prepared something for you."
         return f"{sender_name} ha preparado algo para ti."
+    if lang == "en":
+        return "Someone has prepared something for you."
     return "Alguien ha preparado algo para ti."
+
 
 def build_recipient_message(order: dict) -> str:
     recipient_name = (order.get("recipient_name") or "").strip()
     url = (recipient_experience_url_from_order(order) or "").strip()
+    lang = normalize_order_language(order.get("language") or "es")
     greeting = f"{recipient_name}," if recipient_name else ""
-    arrival_intro = build_recipient_arrival_intro(order)
+    arrival_intro = build_recipient_arrival_intro(order, lang)
     message = ""
+
+    if lang == "en":
+        if greeting:
+            message += f"Shhh…\n\n{greeting}\n\n"
+        else:
+            message += "Shhh…\n\n"
+        message += (
+            f"{arrival_intro}\n\n"
+            "This is not just a video.\n\n"
+            "It is not just a moment.\n\n"
+            "It is an ETERNA created for you.\n\n"
+            "But there is something more…\n\n"
+            "Inside, there is something that is also yours.\n\n"
+            "Open it when you have a quiet moment:\n\n"
+            f"{url}"
+        )
+        return message.strip()
+
     if greeting:
         message += f"Shhh…\n\n{greeting}\n\n"
     else:
@@ -4606,10 +4640,23 @@ def build_recipient_message(order: dict) -> str:
 def build_sender_ready_message(order: dict) -> str:
     sender_name = (order.get("sender_name") or "").strip()
     url = (sender_pack_url_from_order(order) or "").strip()
+    lang = normalize_order_language(order.get("language") or "es")
     greeting = f"{sender_name}," if sender_name else ""
     message = ""
     if greeting:
         message += f"{greeting}\n\n"
+
+    if lang == "en":
+        message += (
+            "It has happened.\n\n"
+            "Your ETERNA has returned.\n\n"
+            "What you gave…\n"
+            "has found its way back.\n\n"
+            "You can see it here:\n\n"
+            f"{url}"
+        )
+        return message.strip()
+
     message += (
         "Ya ha pasado.\n\n"
         "Tu ETERNA ha vuelto.\n\n"
@@ -6082,6 +6129,7 @@ async def create_order_and_redirect(
     yul_magic_hint: str = "",
     occasion_date: str = "",
     marketing_opt_in: str = "",
+    language: str = "es",
 ):
     customer_name = (customer_name or "").strip()
     customer_email = (customer_email or "").strip()
@@ -6100,6 +6148,7 @@ async def create_order_and_redirect(
     occasion_type = (occasion_type or "").strip().lower()[:40]
     occasion_date = normalize_memory_date(occasion_date or delivery_date)
     marketing_opt_in = str(marketing_opt_in or "").strip()
+    language = normalize_order_language(language)
     message_type = (message_type or "").strip()
     phrase_mode = (phrase_mode or "auto").strip().lower()
 
@@ -6310,6 +6359,12 @@ async def create_order_and_redirect(
             except Exception as e:
                 print("[WARN] RC99 occasion_type no guardado:", e)
 
+        try:
+            update_order(order_id, language=language)
+            insert_order_event(order_id, "rc108_language_saved", "ok", "Idioma del pedido guardado", {"language": language})
+        except Exception as e:
+            print("[WARN] RC108 language no guardado:", e)
+
         # =========================================================
         # MEMORY ENGINE V1 — SILENT SAFE
         # Guarda el momento importante sin enviar nada.
@@ -6385,6 +6440,7 @@ async def create_order_and_redirect(
             f"💸 Total: {fees['total_amount']}€",
             f"🎁 Dinero regalo: {fees['gift_amount']}€",
             f"🕒 Entrega: {'programada' if delivery_mode == 'scheduled' else 'inmediata'}",
+            f"🌍 Idioma: {language}",
             f"🆔 Pedido: {order_id}",
             "✅ Uso responsable aceptado"
         )
@@ -6804,6 +6860,27 @@ def render_create_form() -> str:
                     opacity: 1;
                     transform: translateY(0);
                 }}
+            }}
+            .language-switch {{
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                margin: 8px auto 22px auto;
+                flex-wrap: wrap;
+            }}
+            .language-option {{
+                border: 1px solid rgba(245,210,139,.28);
+                background: rgba(255,255,255,.045);
+                color: rgba(255,247,230,.78);
+                padding: 10px 14px;
+                border-radius: 999px;
+                font-weight: 800;
+                cursor: pointer;
+            }}
+            .language-option.active {{
+                background: rgba(245,210,139,.16);
+                color: #f5d28b;
+                box-shadow: 0 0 22px rgba(245,210,139,.12);
             }}
             .section {{
                 opacity: 0;
@@ -7700,7 +7777,11 @@ def render_create_form() -> str:
         <div class="wrap">
             <div class="card" style="position:relative;z-index:2;">
                 <h1>ETERNA</h1>
-                <div class="subtitle">Crea algo que no se abra. Se viva.</div>
+                <div class="subtitle" data-i18n="subtitle">Crea algo que no se abra. Se viva.</div>
+                <div class="language-switch" aria-label="Idioma / Language">
+                    <button type="button" class="language-option active" data-lang="es">🇪🇸 Español</button>
+                    <button type="button" class="language-option" data-lang="en">🇬🇧 English</button>
+                </div>
 
                 <div class="intro">
                     <p class="intro-line l1">No todo lo importante</p>
@@ -7710,6 +7791,7 @@ def render_create_form() -> str:
                 </div>
 
                 <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
+                    <input type="hidden" name="language" id="language" value="es">
                     <input type="hidden" name="photo_upload_session" id="photo_upload_session" value="">
                     <div class="form-step active" id="formStep1">
                         <div class="atmosphere-title">Primero construimos el recuerdo. Luego decidimos cómo vuelve.</div>
@@ -8213,6 +8295,105 @@ def render_create_form() -> str:
 <script>
 document.addEventListener("DOMContentLoaded", function () {{
 
+    // RC108 INTERNATIONAL SAFE — solo formulario + mensajes de envío.
+    // No toca Stripe, Twilio, WhatsApp, Video Engine, Sender Pack ni reacciones.
+    const I18N = {{
+        es: {{
+            subtitle: "Crea algo que no se abra. Se viva.",
+            intro1: "No todo lo importante", intro2: "debería desaparecer.", intro3: "Haz que vuelva convertido", intro4: "en emoción real.",
+            atmosphere1: "Primero construimos el recuerdo. Luego decidimos cómo vuelve.",
+            atmosphere2: "Ahora dale intención: palabras, momento de entrega y pago seguro.",
+            creator: "Quién lo crea", recipient: "Quién lo va a vivir", occasionTitle: "¿Para quién es esta ETERNA?", emotionTitle: "Qué quieres provocar", wordsTitle: "Las palabras", exactMoment: "El momento exacto", giftTitle: "El regalo", photosTitle: "Las fotos",
+            customerName: "Tu nombre", customerEmail: "Tu email", customerPhone: "Tu teléfono", recipientName: "Su nombre", recipientPhone: "Su teléfono", recipientEmail: "Su email (opcional, por si el SMS falla)",
+            phrase1: "Lo que nunca quieres que olvide", phrase2: "Eso que sientes y a veces no dices", phrase3: "La frase que quieres dejarle para siempre",
+            autoWords: "Quiero que ETERNA encuentre las palabras", manualWords: "Quiero escribir lo que siento", recommended: "(recomendado)",
+            photosUploading: "Las fotos se están cargando. Espera unos segundos: el pago se desbloqueará automáticamente.",
+            photosPreparing: "Estamos preparando tus fotos. El pago se desbloqueará automáticamente cuando estén listas.",
+            need4Photos: "Sube al menos 4 fotos. El pago se desbloqueará cuando estén subidas.",
+            reviewFields: "Revisa los campos. Falta algún dato.", acceptResponsible: "Antes de continuar debes aceptar el uso responsable de ETERNA.", selectEmotion: "Elige una emoción para continuar.", write3: "Escribe tus 3 frases.", deliveryDate: "Elige la fecha y hora de entrega.", badDate: "La fecha de entrega no es válida.", futureDate: "La fecha de entrega debe ser futura.", badAmount: "El importe no es válido.", openingCheckout: "Abriendo pago seguro..."
+        }},
+        en: {{
+            subtitle: "Create something that is not opened. It is felt.",
+            intro1: "Not everything important", intro2: "should disappear.", intro3: "Make it come back", intro4: "as real emotion.",
+            atmosphere1: "First we build the memory. Then we decide how it returns.",
+            atmosphere2: "Now give it intention: words, delivery moment and secure payment.",
+            creator: "Who creates it", recipient: "Who will experience it", occasionTitle: "Who is this ETERNA for?", emotionTitle: "What do you want to awaken?", wordsTitle: "The words", exactMoment: "The exact moment", giftTitle: "The gift", photosTitle: "The photos",
+            customerName: "Your name", customerEmail: "Your email", customerPhone: "Your phone", recipientName: "Their name", recipientPhone: "Their phone", recipientEmail: "Their email (optional, in case SMS fails)",
+            phrase1: "What you never want them to forget", phrase2: "What you feel but do not always say", phrase3: "The sentence you want to leave forever",
+            autoWords: "I want ETERNA to find the words", manualWords: "I want to write what I feel", recommended: "(recommended)",
+            photosUploading: "Photos are uploading. Please wait a few seconds: payment will unlock automatically.",
+            photosPreparing: "We are preparing your photos. Payment will unlock automatically when they are ready.",
+            need4Photos: "Upload at least 4 photos. Payment will unlock when they are uploaded.",
+            reviewFields: "Please review the fields. Some information is missing.", acceptResponsible: "Before continuing, you must accept ETERNA's responsible use.", selectEmotion: "Select an emotion to continue.", write3: "Write your 3 messages.", deliveryDate: "Choose the delivery date and time.", badDate: "The delivery date is not valid.", futureDate: "The delivery date must be in the future.", badAmount: "The amount is not valid.", openingCheckout: "Opening secure checkout..."
+        }}
+    }};
+
+    function currentLang() {{
+        const input = document.getElementById("language");
+        const raw = (input && input.value ? input.value : localStorage.getItem("eterna_language") || "es").toLowerCase();
+        return raw === "en" ? "en" : "es";
+    }}
+
+    function tr(key) {{
+        const lang = currentLang();
+        return (I18N[lang] && I18N[lang][key]) || (I18N.es && I18N.es[key]) || key;
+    }}
+
+    function setTextBySelector(selector, value) {{
+        const el = document.querySelector(selector);
+        if (el) el.textContent = value;
+    }}
+
+    function applyLanguage(lang) {{
+        lang = lang === "en" ? "en" : "es";
+        const input = document.getElementById("language");
+        if (input) input.value = lang;
+        try {{ localStorage.setItem("eterna_language", lang); }} catch (e) {{}}
+        document.documentElement.setAttribute("lang", lang);
+
+        document.querySelectorAll(".language-option").forEach(function(btn) {{
+            btn.classList.toggle("active", btn.getAttribute("data-lang") === lang);
+        }});
+
+        setTextBySelector('[data-i18n="subtitle"]', tr("subtitle"));
+        setTextBySelector('.intro-line.l1', tr("intro1"));
+        setTextBySelector('.intro-line.l2', tr("intro2"));
+        setTextBySelector('.intro-line.l3', tr("intro3"));
+        setTextBySelector('.intro-line.l4', tr("intro4"));
+
+        const atmospheres = document.querySelectorAll('.atmosphere-title');
+        if (atmospheres[0]) atmospheres[0].textContent = tr("atmosphere1");
+        if (atmospheres[1]) atmospheres[1].textContent = tr("atmosphere2");
+
+        const titles = Array.from(document.querySelectorAll('.section-title'));
+        const titleMap = [tr("creator"), tr("recipient"), tr("occasionTitle"), tr("photosTitle"), tr("emotionTitle"), tr("wordsTitle"), tr("exactMoment"), tr("giftTitle")];
+        titles.forEach(function(el, index) {{ if (titleMap[index]) el.textContent = titleMap[index]; }});
+
+        const setPlaceholder = function(id, value) {{ const el = document.getElementById(id); if (el) el.placeholder = value; }};
+        setPlaceholder("customer_name", tr("customerName"));
+        setPlaceholder("customer_email", tr("customerEmail"));
+        setPlaceholder("customer_phone", tr("customerPhone"));
+        setPlaceholder("recipient_name", tr("recipientName"));
+        setPlaceholder("recipient_phone", tr("recipientPhone"));
+        setPlaceholder("recipient_email", tr("recipientEmail"));
+        setPlaceholder("phrase_1", tr("phrase1"));
+        setPlaceholder("phrase_2", tr("phrase2"));
+        setPlaceholder("phrase_3", tr("phrase3"));
+
+        const autoLabel = document.querySelector('label[for="mode_auto"]');
+        if (autoLabel) autoLabel.innerHTML = tr("autoWords") + ' <span class="recommended">' + tr("recommended") + '</span>';
+        const manualLabel = document.querySelector('label[for="mode_manual"]');
+        if (manualLabel) manualLabel.textContent = tr("manualWords");
+    }}
+
+    document.querySelectorAll(".language-option").forEach(function(btn) {{
+        btn.addEventListener("click", function() {{ applyLanguage(btn.getAttribute("data-lang") || "es"); saveFormState(); }});
+    }});
+
+    const savedLanguage = localStorage.getItem("eterna_language");
+    const browserLanguage = (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "es";
+    applyLanguage(savedLanguage || browserLanguage);
+
     const STORAGE_KEY = "eterna_create_form_v4";
 
     const form = document.getElementById("createForm");
@@ -8257,7 +8438,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
         if (!messageType) {{
-            showError("Selecciona una emoción para continuar.");
+            showError(tr("selectEmotion"));
             scrollToEmotionChoice();
             return false;
         }}
@@ -9224,37 +9405,37 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     function validateBeforeSubmit() {{
         if (!form) {{
-            showError("Formulario no disponible.");
+            showError(tr("reviewFields"));
             return false;
         }}
 
         const responsibleUse = document.getElementById("responsible_use_accepted");
         if (responsibleUse && !responsibleUse.checked) {{
-            showError("Antes de continuar debes aceptar el uso responsable de ETERNA.");
+            showError(tr("acceptResponsible"));
             try {{ responsibleUse.focus(); }} catch (e) {{}}
             return false;
         }}
 
         if (!form.checkValidity()) {{
-            showError("Revisa los campos. Falta información.");
+            showError(tr("reviewFields"));
             return false;
         }}
 
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
         if (!messageType) {{
-            showError("Selecciona una emoción para continuar.");
+            showError(tr("selectEmotion"));
             scrollToEmotionChoice();
             return false;
         }}
 
         if (photoProcessingActive()) {{
-            showError("Estamos preparando tus fotos. El pago se desbloqueará automáticamente cuando estén listas.");
+            showError(tr("photosPreparing"));
             updatePhotoReadiness();
             return false;
         }}
 
         if (!allPhotosPresent()) {{
-            showError("Sube al menos 4 fotos. El pago se desbloqueará cuando estén subidas.");
+            showError(tr("need4Photos"));
             updatePhotoReadiness();
             return false;
         }}
@@ -9262,7 +9443,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         // RC107: defensa final Instagram.
         // El pago solo se abre si las fotos ya están subidas al servidor.
         if (!preuploadedMinimumReady()) {{
-            showError("Estamos subiendo tus fotos. Espera unos segundos: el pago se iluminará automáticamente.");
+            showError(tr("photosUploading"));
             updatePhotoReadiness();
             return false;
         }}
@@ -9273,7 +9454,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             const phrase3 = form.querySelector('[name="phrase_3"]')?.value.trim();
 
             if (!phrase1 || !phrase2 || !phrase3) {{
-                showError("Escribe tus 3 frases.");
+                showError(tr("write3"));
                 return false;
             }}
         }}
@@ -9283,7 +9464,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             const deliveryTime = document.getElementById("delivery_time")?.value || "";
 
             if (!deliveryDate || !deliveryTime) {{
-                showError("Elige la fecha y la hora de entrega.");
+                showError(tr("deliveryDate"));
                 return false;
             }}
 
@@ -9291,19 +9472,19 @@ document.addEventListener("DOMContentLoaded", function () {{
             const now = new Date();
 
             if (!(deliveryLocal instanceof Date) || isNaN(deliveryLocal.getTime())) {{
-                showError("La fecha de entrega no es válida.");
+                showError(tr("badDate"));
                 return false;
             }}
 
             if (deliveryLocal.getTime() <= now.getTime()) {{
-                showError("La fecha de entrega debe estar en el futuro.");
+                showError(tr("futureDate"));
                 return false;
             }}
         }}
 
         const giftAmount = parseFloat(document.getElementById("gift_amount")?.value || "0");
         if (Number.isNaN(giftAmount) || giftAmount < 0) {{
-            showError("El importe no es válido.");
+            showError(tr("badAmount"));
             return false;
         }}
 
@@ -9361,7 +9542,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (button) {{
             button.disabled = true;
             button.classList.add("is-loading");
-            button.innerText = "Abriendo pago seguro...";
+            button.innerText = tr("openingCheckout");
         }}
 
         // RC25: NO mostramos overlay intermedio dentro del formulario.
@@ -9859,6 +10040,7 @@ def crear_formulario_get():
 async def crear_post(
     customer_name: str = Form(...),
     customer_email: str = Form(""),
+    language: str = Form("es"),
     customer_country_code: str = Form(...),
     customer_phone: str = Form(...),
     recipient_name: str = Form(...),
@@ -9929,6 +10111,7 @@ async def crear_post(
             yul_magic_hint,
             occasion_date,
             marketing_opt_in,
+            language,
         )
 
     except HTTPException as e:
