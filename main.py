@@ -1501,7 +1501,7 @@ def render_eterna_image_screen(
     filter:contrast(1.08) saturate(1.10) brightness(1.04);
 }}
 .sender-reaction, video.sender-reaction, .reaction-video {{
-    object-fit:cover !important;
+    object-fit:contain !important;
     object-position:center center !important;
     transform:none !important;
     filter:contrast(1.12) saturate(1.08) brightness(1.08);
@@ -13575,7 +13575,7 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
 .sender-actions,.sender-buttons,.actions,.pack-actions,.cta-stack{display:flex!important;flex-direction:column!important;gap:12px!important;width:min(92%,430px)!important;margin:18px auto 22px!important;position:relative!important;z-index:30!important}
 .sender-actions a,.sender-actions button,.sender-buttons a,.sender-buttons button,.actions a,.actions button,.pack-actions a,.pack-actions button,.cta-stack a,.cta-stack button{width:100%!important;min-height:56px!important;border-radius:18px!important;text-align:center!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-decoration:none!important;box-sizing:border-box!important}
 .reaction-video,.reaction-box,.reaction-window,.reaction-preview,.sender-reaction{right:10px!important;bottom:10px!important;left:auto!important;top:auto!important;transform:none!important;width:clamp(86px,24%,126px)!important;aspect-ratio:9/16!important;border-radius:16px!important;overflow:hidden!important;z-index:20!important;background:#000!important}
-.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important;transform:none!important;background:#000!important}
+.reaction-video video,.reaction-box video,.reaction-window video,.reaction-preview video,.sender-reaction video{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center center!important;transform:none!important;background:#000!important}
 .rc81-hidden-old{display:none!important}
 @media(max-width:420px){.rc81-sender-actions{width:min(92%,360px);gap:10px;margin-top:14px}.rc81-sender-btn{min-height:54px;border-radius:16px;font-size:13px}}
 </style>
@@ -13739,7 +13739,7 @@ body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:fle
 video.sender-reaction{{
   width:100%!important;
   height:100%!important;
-  object-fit:cover!important;
+  object-fit:contain!important;
   object-position:center center!important;
   transform:none!important;
   background:#000!important;
