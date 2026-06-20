@@ -14,6 +14,7 @@
 # - teléfono de soporte ETERNA +34 641 63 53 14
 # - email opcional del destinatario como plan B de rescate
 # - selector de ocasión no invasivo
+# - MEMORY ENGINE V1 silencioso: guarda momentos importantes sin enviar recordatorios
 # - frases sugeridas en el formulario
 # - páginas simples /como-funciona, /faq y /soporte
 # - identidad opcional del remitente en llegada
@@ -53,6 +54,7 @@ print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — SOLO UN LUGAR 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — FORMULARIO LIMPIO 🛟")
 print("🛟 RC93 SENDER PACK REACTION NO ZOOM SAFE — YUL NO BLOQUEA ETERNA 🛟")
 print("🦋 RC101B FORM POST NATIVE SAFE — SENDER IDENTITY + TRUST 🦋")
+print("🧠 MEMORY ENGINE V1 SILENT SAFE — GUARDA MOMENTOS SIN ENVIAR NADA 🧠")
 import html
 import json
 import mimetypes
@@ -256,6 +258,14 @@ ETERNA_OPERATIONS_EMAIL = os.getenv("ETERNA_OPERATIONS_EMAIL", SMTP_FROM or "hol
 # =========================================================
 ETERNA_SUPPORT_EMAIL = os.getenv("ETERNA_SUPPORT_EMAIL", "hola@tueterna.com").strip()
 ETERNA_SUPPORT_PHONE = os.getenv("ETERNA_SUPPORT_PHONE", "+34 641 63 53 14").strip()
+
+# =========================================================
+# MEMORY ENGINE V1 — MODO SILENCIOSO
+# Guarda momentos importantes desde cada pedido.
+# No envía recordatorios, no campañas, no SMS, no WhatsApp.
+# =========================================================
+MEMORY_ENGINE_ENABLED = os.getenv("MEMORY_ENGINE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+MEMORY_REMINDERS_ENABLED = os.getenv("MEMORY_REMINDERS_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 # =========================================================
 # RC101 — IDENTIDAD OPCIONAL DEL REMITENTE
@@ -2269,7 +2279,62 @@ def init_db():
     # RC99 — conversión/soporte. Campos opcionales; no rompen pedidos antiguos.
     add_column_if_missing("recipients", "email", "ALTER TABLE recipients ADD COLUMN email TEXT")
     add_column_if_missing("orders", "occasion_type", "ALTER TABLE orders ADD COLUMN occasion_type TEXT")
+def init_memory_engine():
+    """
+    MEMORY ENGINE V1 — SILENT SAFE.
+    Crea una tabla separada para no contaminar orders ni tocar Stripe/Twilio/vídeo.
+    Solo guarda memoria. No envía recordatorios.
+    """
+    if not MEMORY_ENGINE_ENABLED:
+        print("🧠 Memory Engine V1 desactivado por configuración")
+        return
+
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS memory_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id TEXT NOT NULL UNIQUE,
+            sender_id INTEGER,
+            recipient_id INTEGER,
+            sender_name TEXT,
+            sender_email TEXT,
+            sender_phone TEXT,
+            recipient_name TEXT,
+            recipient_email TEXT,
+            recipient_phone TEXT,
+            occasion_type TEXT,
+            occasion_date TEXT,
+            delivery_mode TEXT,
+            scheduled_delivery_at TEXT,
+            marketing_opt_in INTEGER NOT NULL DEFAULT 0,
+            last_reminder_sent TEXT,
+            memory_created_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            meta_json TEXT,
+            FOREIGN KEY(order_id) REFERENCES orders(id),
+            FOREIGN KEY(sender_id) REFERENCES senders(id),
+            FOREIGN KEY(recipient_id) REFERENCES recipients(id)
+        )
+        """)
+
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_memory_events_sender_phone ON memory_events(sender_phone)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_memory_events_sender_email ON memory_events(sender_email)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_memory_events_recipient_name ON memory_events(recipient_name)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_memory_events_occasion_date ON memory_events(occasion_date)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_memory_events_occasion_type ON memory_events(occasion_type)")
+
+        conn.commit()
+        conn.close()
+        print("🧠 Memory Engine V1 listo: tabla memory_events activa")
+    except Exception as e:
+        print("[WARN] Memory Engine V1 no pudo inicializarse:", e)
+
+
 init_db()
+init_memory_engine()
 
 
 
@@ -3629,6 +3694,157 @@ def trigger_video_engine(order_id: str, phrases: list[str]) -> dict:
         raise Exception(f"video_engine_http_{response.status_code}: {response.text}")
 
     return data
+
+
+# =========================================================
+# MEMORY ENGINE V1 — HELPERS SILENCIOSOS
+# =========================================================
+
+def memory_truthy(value) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on", "si", "sí", "acepto", "accepted", "checked"}
+
+
+def clean_memory_text(value: str, max_len: int = 160) -> str:
+    return str(value or "").strip()[:max_len]
+
+
+def normalize_memory_date(value: str) -> str:
+    """
+    Acepta YYYY-MM-DD. Si viene vacío o raro, devuelve vacío.
+    No bloquea el pedido por una fecha mal escrita.
+    """
+    raw = str(value or "").strip()[:20]
+    if not raw:
+        return ""
+    try:
+        candidate = raw[:10]
+        datetime.strptime(candidate, "%Y-%m-%d")
+        return candidate
+    except Exception:
+        return ""
+
+
+def remember_order_moment_silent(
+    order_id: str,
+    sender_id: int,
+    recipient_id: int,
+    sender_name: str,
+    sender_email: str,
+    sender_phone: str,
+    recipient_name: str,
+    recipient_email: str,
+    recipient_phone: str,
+    occasion_type: str = "",
+    occasion_date: str = "",
+    delivery_mode: str = "instant",
+    scheduled_delivery_at: str = "",
+    marketing_opt_in=False,
+) -> bool:
+    """
+    MEMORY ENGINE V1 — guarda la memoria emocional del pedido.
+    - No envía emails.
+    - No envía SMS.
+    - No envía WhatsApp.
+    - No toca Stripe.
+    - No toca vídeo.
+    - Si falla, NO rompe la compra.
+    """
+    if not MEMORY_ENGINE_ENABLED:
+        return False
+
+    safe_order_id = str(order_id or "").strip()
+    if not safe_order_id:
+        return False
+
+    now = now_iso()
+    safe_occasion_type = clean_memory_text(occasion_type, 60).lower()
+    safe_occasion_date = normalize_memory_date(occasion_date)
+    safe_delivery_mode = clean_memory_text(delivery_mode or "instant", 30).lower()
+    safe_scheduled_delivery_at = clean_memory_text(scheduled_delivery_at, 40)
+    opt_in = 1 if memory_truthy(marketing_opt_in) else 0
+
+    meta = {
+        "version": "MEMORY_ENGINE_V1_SILENT_SAFE",
+        "source": "order_created",
+        "reminders_enabled": bool(MEMORY_REMINDERS_ENABLED),
+        "note": "Solo guarda memoria. No envía recordatorios todavía.",
+    }
+
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT OR REPLACE INTO memory_events (
+                order_id,
+                sender_id,
+                recipient_id,
+                sender_name,
+                sender_email,
+                sender_phone,
+                recipient_name,
+                recipient_email,
+                recipient_phone,
+                occasion_type,
+                occasion_date,
+                delivery_mode,
+                scheduled_delivery_at,
+                marketing_opt_in,
+                last_reminder_sent,
+                memory_created_at,
+                created_at,
+                updated_at,
+                meta_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            safe_order_id,
+            sender_id,
+            recipient_id,
+            clean_memory_text(sender_name, 160),
+            clean_memory_text(sender_email, 180),
+            clean_memory_text(sender_phone, 60),
+            clean_memory_text(recipient_name, 160),
+            clean_memory_text(recipient_email, 180),
+            clean_memory_text(recipient_phone, 60),
+            safe_occasion_type,
+            safe_occasion_date,
+            safe_delivery_mode,
+            safe_scheduled_delivery_at,
+            opt_in,
+            None,
+            now,
+            now,
+            now,
+            json.dumps(meta, ensure_ascii=False),
+        ))
+        conn.commit()
+        conn.close()
+
+        insert_order_event(
+            safe_order_id,
+            "memory_engine_saved",
+            "ok",
+            "Memory Engine V1 guardó el momento en modo silencioso",
+            {
+                "occasion_type": safe_occasion_type,
+                "occasion_date": safe_occasion_date,
+                "marketing_opt_in": bool(opt_in),
+            },
+        )
+        return True
+    except Exception as e:
+        print("[WARN] Memory Engine V1 no pudo guardar el momento:", e)
+        try:
+            insert_order_event(
+                safe_order_id,
+                "memory_engine_save_failed",
+                "warning",
+                str(e),
+                {"version": "MEMORY_ENGINE_V1_SILENT_SAFE"},
+            )
+        except Exception:
+            pass
+        return False
 
 
 # =========================================================
@@ -5428,6 +5644,8 @@ async def create_order_and_redirect(
     yul_memory_detail: str = "",
     yul_emotion_tone: str = "",
     yul_magic_hint: str = "",
+    occasion_date: str = "",
+    marketing_opt_in: str = "",
 ):
     customer_name = (customer_name or "").strip()
     customer_email = (customer_email or "").strip()
@@ -5443,6 +5661,8 @@ async def create_order_and_redirect(
     arrival_photo_slot = rc101_clean_photo_slot(arrival_photo_slot)
 
     occasion_type = (occasion_type or "").strip().lower()[:40]
+    occasion_date = normalize_memory_date(occasion_date or delivery_date)
+    marketing_opt_in = str(marketing_opt_in or "").strip()
     message_type = (message_type or "").strip()
     phrase_mode = (phrase_mode or "auto").strip().lower()
 
@@ -5630,6 +5850,30 @@ async def create_order_and_redirect(
                 update_order(order_id, occasion_type=occasion_type)
             except Exception as e:
                 print("[WARN] RC99 occasion_type no guardado:", e)
+
+        # =========================================================
+        # MEMORY ENGINE V1 — SILENT SAFE
+        # Guarda el momento importante sin enviar nada.
+        # =========================================================
+        try:
+            remember_order_moment_silent(
+                order_id=order_id,
+                sender_id=sender_id,
+                recipient_id=recipient_id,
+                sender_name=customer_name,
+                sender_email=customer_email,
+                sender_phone=sender_phone_e164,
+                recipient_name=recipient_name,
+                recipient_email=recipient_email,
+                recipient_phone=recipient_phone_e164,
+                occasion_type=occasion_type,
+                occasion_date=occasion_date,
+                delivery_mode=delivery_mode,
+                scheduled_delivery_at=scheduled_delivery_at,
+                marketing_opt_in=marketing_opt_in,
+            )
+        except Exception as e:
+            print("[WARN] Memory Engine V1 no bloquea pedido:", e)
 
         try:
             update_order(
@@ -8914,6 +9158,8 @@ async def crear_post(
     recipient_phone: str = Form(...),
     recipient_email: str = Form(""),
     occasion_type: str = Form(""),
+    occasion_date: str = Form(""),
+    marketing_opt_in: str = Form(""),
     message_type: str = Form(...),
     phrase_mode: str = Form(...),
     phrase_1: str = Form(""),
@@ -8971,6 +9217,8 @@ async def crear_post(
             yul_memory_detail,
             yul_emotion_tone,
             yul_magic_hint,
+            occasion_date,
+            marketing_opt_in,
         )
 
     except HTTPException as e:
@@ -8981,6 +9229,67 @@ async def crear_post(
         print("🔥 ERROR EN /crear:", str(e))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error creando el pedido")
+
+
+# =========================================================
+# MEMORY ENGINE V1 — ADMIN SOLO LECTURA
+# =========================================================
+
+@app.get("/admin/memory")
+def admin_memory(token: str = "", limit: int = 50):
+    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    safe_limit = max(1, min(int(limit or 50), 200))
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            id,
+            order_id,
+            sender_name,
+            sender_email,
+            sender_phone,
+            recipient_name,
+            recipient_email,
+            recipient_phone,
+            occasion_type,
+            occasion_date,
+            delivery_mode,
+            scheduled_delivery_at,
+            marketing_opt_in,
+            last_reminder_sent,
+            memory_created_at,
+            created_at
+        FROM memory_events
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (safe_limit,))
+    rows = [dict(r) for r in cur.fetchall()]
+
+    cur.execute("SELECT COUNT(*) AS total FROM memory_events")
+    total = cur.fetchone()["total"]
+
+    cur.execute("""
+        SELECT occasion_type, COUNT(*) AS total
+        FROM memory_events
+        WHERE COALESCE(occasion_type, '') <> ''
+        GROUP BY occasion_type
+        ORDER BY total DESC
+        LIMIT 20
+    """)
+    by_occasion = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    return {
+        "ok": True,
+        "version": "MEMORY_ENGINE_V1_SILENT_SAFE",
+        "enabled": bool(MEMORY_ENGINE_ENABLED),
+        "reminders_enabled": bool(MEMORY_REMINDERS_ENABLED),
+        "total_memory_events": total,
+        "by_occasion": by_occasion,
+        "items": rows,
+    }
 
 
 # =========================================================
