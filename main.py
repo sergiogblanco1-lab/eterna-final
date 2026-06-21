@@ -62,6 +62,7 @@ print("📸 RC106 INSTAGRAM 4-6 PHOTOS SAFE — PAGO BLOQUEADO HASTA FOTOS LISTA
 print("🛡️ RC107 INSTAGRAM PREFLIGHT UPLOAD SAFE — FOTOS SUBEN ANTES DEL PAGO 🛡️")
 print("🌍 RC108B INTERNATIONAL FORM CLEANUP SAFE — FORMULARIO ES/EN LIMPIO 🌍")
 print("🌍 RC111 LANGUAGE SWITCH SAFE — BOTÓN ES/EN BLINDADO 🌍")
+print("🌍 RC111 LANGUAGE SWITCH HARD FALLBACK — CLICK DIRECTO ES/EN 🌍")
 import html
 import json
 import mimetypes
@@ -7979,9 +7980,81 @@ def render_create_form() -> str:
                 <h1>ETERNA</h1>
                 <div class="subtitle" data-i18n="subtitle">Crea algo que no se abra. Se viva.</div>
                 <div class="language-switch" aria-label="Idioma / Language">
-                    <button type="button" class="language-option active" data-lang="es">🇪🇸 Español</button>
-                    <button type="button" class="language-option" data-lang="en">🇬🇧 English</button>
+                    <button type="button" class="language-option active" data-lang="es" onclick="window.eternaHardLanguageSwitch && window.eternaHardLanguageSwitch('es'); return false;">🇪🇸 Español</button>
+                    <button type="button" class="language-option" data-lang="en" onclick="window.eternaHardLanguageSwitch && window.eternaHardLanguageSwitch('en'); return false;">🇬🇧 English</button>
                 </div>
+                <script>
+                // RC111 LANGUAGE SWITCH HARD FALLBACK
+                // Este bloque pequeño vive pegado al botón para que ES/EN funcione aunque el JS grande del formulario falle después.
+                (function() {{
+                    function setText(selector, value) {{
+                        var el = document.querySelector(selector);
+                        if (el) el.textContent = value;
+                    }}
+                    function setPlaceholder(id, value) {{
+                        var el = document.getElementById(id);
+                        if (el) el.placeholder = value;
+                    }}
+                    var hardTexts = {{
+                        es: {{
+                            subtitle: "Crea algo que no se abra. Se viva.",
+                            intro1: "No todo lo importante",
+                            intro2: "debería desaparecer.",
+                            intro3: "Haz que vuelva convertido",
+                            intro4: "en emoción real.",
+                            creator: "QUIÉN LO CREA",
+                            recipient: "QUIÉN LO VA A VIVIR",
+                            customerName: "Tu nombre",
+                            customerEmail: "Tu email",
+                            customerPhone: "Tu teléfono",
+                            recipientName: "Su nombre",
+                            recipientPhone: "Su teléfono",
+                            recipientEmail: "Su email (opcional, por si el SMS falla)"
+                        }},
+                        en: {{
+                            subtitle: "Create something they do not just open. They live it.",
+                            intro1: "Not everything important",
+                            intro2: "should disappear.",
+                            intro3: "Make it return as",
+                            intro4: "real emotion.",
+                            creator: "WHO CREATES IT",
+                            recipient: "WHO WILL LIVE IT",
+                            customerName: "Your name",
+                            customerEmail: "Your email",
+                            customerPhone: "Your phone",
+                            recipientName: "Their name",
+                            recipientPhone: "Their phone",
+                            recipientEmail: "Their email (optional, in case SMS fails)"
+                        }}
+                    }};
+                    window.eternaHardLanguageSwitch = function(lang) {{
+                        lang = lang === "en" ? "en" : "es";
+                        var t = hardTexts[lang] || hardTexts.es;
+                        var input = document.getElementById("language");
+                        if (input) input.value = lang;
+                        try {{ localStorage.setItem("eterna_language", lang); }} catch(e) {{}}
+                        document.documentElement.setAttribute("lang", lang);
+                        document.querySelectorAll(".language-option").forEach(function(btn) {{
+                            btn.classList.toggle("active", btn.getAttribute("data-lang") === lang);
+                        }});
+                        setText('[data-i18n="subtitle"]', t.subtitle);
+                        setText('.intro-line.l1', t.intro1);
+                        setText('.intro-line.l2', t.intro2);
+                        setText('.intro-line.l3', t.intro3);
+                        setText('.intro-line.l4', t.intro4);
+                        var titles = document.querySelectorAll('.section-title');
+                        if (titles[0]) titles[0].textContent = t.creator;
+                        if (titles[1]) titles[1].textContent = t.recipient;
+                        setPlaceholder('customer_name', t.customerName);
+                        setPlaceholder('customer_email', t.customerEmail);
+                        setPlaceholder('customer_phone', t.customerPhone);
+                        setPlaceholder('recipient_name', t.recipientName);
+                        setPlaceholder('recipient_phone', t.recipientPhone);
+                        setPlaceholder('recipient_email', t.recipientEmail);
+                        try {{ if (typeof applyLanguage === 'function') applyLanguage(lang); }} catch(e) {{ console.log('ETERNA language full switch fallback:', e); }}
+                    }};
+                }})();
+                </script>
 
                 <div class="intro">
                     <p class="intro-line l1">No todo lo importante</p>
@@ -8773,12 +8846,25 @@ document.addEventListener("DOMContentLoaded", function () {{
     }}
 
     document.querySelectorAll(".language-option").forEach(function(btn) {{
-        btn.addEventListener("click", function() {{ applyLanguage(btn.getAttribute("data-lang") || "es"); saveFormState(); }});
+        btn.addEventListener("click", function() {{
+            const targetLang = btn.getAttribute("data-lang") || "es";
+            try {{
+                if (window.eternaHardLanguageSwitch) window.eternaHardLanguageSwitch(targetLang);
+                else applyLanguage(targetLang);
+            }} catch (e) {{
+                console.log("ETERNA language click fallback:", e);
+            }}
+            try {{ saveFormState(); }} catch (e) {{}}
+        }});
     }});
 
-    const savedLanguage = localStorage.getItem("eterna_language");
+    let savedLanguage = "";
+    try {{ savedLanguage = localStorage.getItem("eterna_language") || ""; }} catch (e) {{ savedLanguage = ""; }}
     const browserLanguage = (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "es";
-    applyLanguage(savedLanguage || browserLanguage);
+    try {{
+        if (window.eternaHardLanguageSwitch) window.eternaHardLanguageSwitch(savedLanguage || browserLanguage);
+        else applyLanguage(savedLanguage || browserLanguage);
+    }} catch (e) {{ console.log("ETERNA initial language fallback:", e); }}
 
     const STORAGE_KEY = "eterna_create_form_v4";
 
