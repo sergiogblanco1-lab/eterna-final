@@ -63,7 +63,7 @@ print("🛡️ RC107 INSTAGRAM PREFLIGHT UPLOAD SAFE — FOTOS SUBEN ANTES DEL P
 print("🌍 RC108B INTERNATIONAL FORM CLEANUP SAFE — FORMULARIO ES/EN LIMPIO 🌍")
 print("🌍 RC111 LANGUAGE SWITCH SAFE — BOTÓN ES/EN BLINDADO 🌍")
 print("🌍 RC111 LANGUAGE SWITCH HARD FALLBACK — CLICK DIRECTO ES/EN 🌍")
-print("🧾 RC111 FORM INTERNATIONAL PHOTO SAFE — FORMULARIO ES/EN + FOTOS 🧾")
+print("🧾 RC113 FORM EN NATIVE GALLERY LOCKED SAFE — FORMULARIO EN REAL + GALERÍA NATIVA 🧾")
 import html
 import json
 import mimetypes
@@ -138,9 +138,9 @@ a{display:block;margin-top:18px;text-align:center;text-decoration:none;color:#06
 </head>
 <body>
 <div class="card">
-<h1>No se ha enviado el formulario</h1>
-<p>Vuelve a intentarlo desde el formulario. Tus fotos deben terminar de cargarse antes de continuar.</p>
-<a href="/crear">Volver a crear mi ETERNA</a>
+<h1>Formulario incompleto / Incomplete form</h1>
+<p>Vuelve a intentarlo desde el formulario. / Please try again from the form.</p>
+<a href="/crear">Volver / Back to ETERNA</a>
 </div>
 </body>
 </html>
@@ -735,7 +735,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC111_LAUNCH_HARDENED_R2_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC113_FORM_EN_NATIVE_GALLERY_LOCKED_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -5956,7 +5956,7 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
 def render_viral_block_page() -> HTMLResponse:
     return HTMLResponse("""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="{initial_language}">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -6967,7 +6967,8 @@ def viral_final_cta(recipient_token: str):
 # FORM
 # =========================================================
 
-def render_create_form() -> str:
+def render_create_form(initial_language: str = "es") -> str:
+    initial_language = "en" if str(initial_language or "").lower().strip() == "en" else "es"
     return f"""
     <!DOCTYPE html>
     <html lang="es">
@@ -7981,8 +7982,8 @@ def render_create_form() -> str:
                 <h1>ETERNA</h1>
                 <div class="subtitle" data-i18n="subtitle">Crea algo que no se abra. Se viva.</div>
                 <div class="language-switch" aria-label="Idioma / Language">
-                    <button type="button" class="language-option active" data-lang="es" onclick="window.eternaHardLanguageSwitch && window.eternaHardLanguageSwitch('es'); return false;">🇪🇸 Español</button>
-                    <button type="button" class="language-option" data-lang="en" onclick="window.eternaHardLanguageSwitch && window.eternaHardLanguageSwitch('en'); return false;">🇬🇧 English</button>
+                    <a href="/crear?lang=es" role="button" class="language-option {'active' if initial_language == 'es' else ''}" data-lang="es">🇪🇸 Español</a>
+                    <a href="/crear?lang=en" role="button" class="language-option {'active' if initial_language == 'en' else ''}" data-lang="en">🇬🇧 English</a>
                 </div>
                 <script>
                 // RC111 LANGUAGE SWITCH HARD FALLBACK
@@ -8106,8 +8107,8 @@ def render_create_form() -> str:
                     <p class="intro-line l4">en emoción real.</p>
                 </div>
 
-                <form action="/crear" method="post" enctype="multipart/form-data" id="createForm">
-                    <input type="hidden" name="language" id="language" value="es">
+                <form action="/crear" method="post" enctype="multipart/form-data" id="createForm" novalidate>
+                    <input type="hidden" name="language" id="language" value="{initial_language}">
                     <input type="hidden" name="photo_upload_session" id="photo_upload_session" value="">
                     <div class="form-step active" id="formStep1">
                         <div class="atmosphere-title">Primero construimos el recuerdo. Luego decidimos cómo vuelve.</div>
@@ -8243,7 +8244,7 @@ def render_create_form() -> str:
 <div class="section s3">
                         <div class="section-title">Los recuerdos</div>
                         <div class="soft-copy">
-                            Elige 6 fotos directamente desde tu galería. ETERNA las optimiza automáticamente para que carguen mejor en iPhone.
+                            Elige 6 fotos directamente desde tu galería. Se cargan de forma nativa para que el proceso sea rápido.
                         </div>
 
                         <div class="photo-picker-main">
@@ -8263,7 +8264,7 @@ def render_create_form() -> str:
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo1">
                                     <div class="photo-placeholder" id="placeholder_photo1">Cambiar</div>
-                                    <input type="file" name="photo1" id="photo1" accept="image/*" required>
+                                    <input type="file" name="photo1" id="photo1" accept="image/*">
                                 </label>
                                 <div class="photo-status" id="status_photo1">Pendiente</div>
                             </div>
@@ -8273,7 +8274,7 @@ def render_create_form() -> str:
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo2">
                                     <div class="photo-placeholder" id="placeholder_photo2">Cambiar</div>
-                                    <input type="file" name="photo2" id="photo2" accept="image/*" required>
+                                    <input type="file" name="photo2" id="photo2" accept="image/*">
                                 </label>
                                 <div class="photo-status" id="status_photo2">Pendiente</div>
                             </div>
@@ -8283,7 +8284,7 @@ def render_create_form() -> str:
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo3">
                                     <div class="photo-placeholder" id="placeholder_photo3">Cambiar</div>
-                                    <input type="file" name="photo3" id="photo3" accept="image/*" required>
+                                    <input type="file" name="photo3" id="photo3" accept="image/*">
                                 </label>
                                 <div class="photo-status" id="status_photo3">Pendiente</div>
                             </div>
@@ -8293,7 +8294,7 @@ def render_create_form() -> str:
                                 <label class="photo-box">
                                     <img class="photo-preview" id="preview_photo4">
                                     <div class="photo-placeholder" id="placeholder_photo4">Cambiar</div>
-                                    <input type="file" name="photo4" id="photo4" accept="image/*" required>
+                                    <input type="file" name="photo4" id="photo4" accept="image/*">
                                 </label>
                                 <div class="photo-status" id="status_photo4">Pendiente</div>
                             </div>
@@ -8658,7 +8659,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             photosPreparing: "Estamos preparando tus fotos. El pago se desbloqueará automáticamente cuando estén listas.",
             need4Photos: "Sube al menos 4 fotos. El pago se desbloqueará cuando estén subidas.",
             reviewFields: "Revisa los campos. Falta algún dato.", acceptResponsible: "Antes de continuar debes aceptar el uso responsable de ETERNA.", selectEmotion: "Elige una emoción para continuar.", write3: "Escribe tus 3 frases.", deliveryDate: "Elige la fecha y hora de entrega.", badDate: "La fecha de entrega no es válida.", futureDate: "La fecha de entrega debe ser futura.", badAmount: "El importe no es válido.", openingCheckout: "Abriendo pago seguro...", firstStepMissing: "Falta completar los datos principales antes de continuar.", need6Photos: "Necesitas elegir las 6 fotos antes de continuar.", genericError: "Ha ocurrido un error.",
-            photoOptional: "Opcional si ya tienes 4 fotos.", photoOptionalRepeat: "Opcional: ETERNA puede repetir una foto.", photoRequired: "Necesaria para crear tu ETERNA.", photoUploaded: "Foto subida ✓", photoReady: "Foto lista ✓", optimizingPhoto: "Optimizando foto para ETERNA...", photoPreparedUploading: "Foto preparada. Subiendo...", photoPrepareError: "Esta foto no se ha podido preparar. Prueba con otra.", photoTryAnother: "Una foto no se ha podido preparar. Prueba con otra imagen o una captura.", photoRecovered: "Foto recuperada y subida ✓", photoTapAgain: "Toca esta foto otra vez para subirla.", photoLoading: "Subiendo foto...",
+            photoOptional: "Opcional si ya tienes 4 fotos.", photoOptionalRepeat: "Opcional: ETERNA puede repetir una foto.", photoRequired: "Necesaria para crear tu ETERNA.", photoUploaded: "Foto subida ✓", photoReady: "Foto lista ✓", optimizingPhoto: "Optimizando foto para ETERNA...", photoPreparedUploading: "Foto preparada. Subiendo...", photoPrepareError: "Esta foto no se ha podido preparar. Prueba con otra.", photoTryAnother: "Una foto no se ha podido preparar. Prueba con otra imagen o una captura.", photoRecovered: "Foto recuperada y subida ✓", photoTapAgain: "Toca esta foto otra vez para subirla.", photoLoading: "Subiendo foto...", photosPreparingButton: "PREPARANDO FOTOS...", uploadAtLeast4Button: "SUBE AL MENOS 4 FOTOS", continuePaymentButton: "CONTINUAR AL PAGO", continuePaymentCompleteButton: "CONTINUAR AL PAGO · ETERNA COMPLETARÁ LAS 6", photoPreparingHint: "Preparando tus fotos para que pesen menos. En cuanto haya 4 listas podrás continuar.", photoMinimumHint: "Sube al menos 4 fotos. Si no tienes 6, ETERNA repetirá alguna de forma discreta.", photoSixReadyHint: "6 fotos listas. Puedes continuar al pago.", photoPartialReadyHint: "{{count}} fotos listas. ETERNA completará las 6 repitiendo alguna de forma discreta.", formNativeFallback: "Enviando tus fotos de forma segura...",
             occasions: {{
                 pareja: ["❤️ Pareja", "Amor, aniversario o algo que no sabes decir."], madre: ["👩 Madre", "Para agradecer todo lo que siempre estuvo."], padre: ["👨 Padre", "Para reconocer lo que a veces no se dice."], cumpleanos: ["🎂 Cumpleaños", "Una sorpresa que se vive de verdad."], amistad: ["🤝 Amistad", "Para alguien que siempre estuvo cerca."], distancia: ["🌍 A distancia", "Cuando está lejos, pero sigue aquí."], otro: ["✨ Otro momento", "Cuando simplemente quieres emocionar."]
             }},
@@ -8710,7 +8711,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             photosPreparing: "We are preparing your photos. Payment will unlock automatically when they are ready.",
             need4Photos: "Upload at least 4 photos. Payment will unlock when they are uploaded.",
             reviewFields: "Please review the fields. Some information is missing.", acceptResponsible: "Before continuing, you must accept ETERNA's responsible use.", selectEmotion: "Select an emotion to continue.", write3: "Write your 3 messages.", deliveryDate: "Choose the delivery date and time.", badDate: "The delivery date is not valid.", futureDate: "The delivery date must be in the future.", badAmount: "The amount is not valid.", openingCheckout: "Opening secure checkout...", firstStepMissing: "Please complete the main details before continuing.", need6Photos: "You need to choose the 6 photos before continuing.", genericError: "Something went wrong.",
-            photoOptional: "Optional if you already have 4 photos.", photoOptionalRepeat: "Optional: ETERNA can repeat one photo.", photoRequired: "Required to create your ETERNA.", photoUploaded: "Photo uploaded ✓", photoReady: "Photo ready ✓", optimizingPhoto: "Optimizing photo for ETERNA...", photoPreparedUploading: "Photo prepared. Uploading...", photoPrepareError: "This photo could not be prepared. Try another one.", photoTryAnother: "A photo could not be prepared. Try another image or a screenshot.", photoRecovered: "Photo recovered and uploaded ✓", photoTapAgain: "Tap this photo again to upload it.", photoLoading: "Uploading photo...",
+            photoOptional: "Optional if you already have 4 photos.", photoOptionalRepeat: "Optional: ETERNA can repeat one photo.", photoRequired: "Required to create your ETERNA.", photoUploaded: "Photo uploaded ✓", photoReady: "Photo ready ✓", optimizingPhoto: "Optimizing photo for ETERNA...", photoPreparedUploading: "Photo prepared. Uploading...", photoPrepareError: "This photo could not be prepared. Try another one.", photoTryAnother: "A photo could not be prepared. Try another image or a screenshot.", photoRecovered: "Photo recovered and uploaded ✓", photoTapAgain: "Tap this photo again to upload it.", photoLoading: "Uploading photo...", photosPreparingButton: "PREPARING PHOTOS...", uploadAtLeast4Button: "UPLOAD AT LEAST 4 PHOTOS", continuePaymentButton: "CONTINUE TO PAYMENT", continuePaymentCompleteButton: "CONTINUE TO PAYMENT · ETERNA WILL COMPLETE THE 6", photoPreparingHint: "Preparing your photos so they load faster. As soon as 4 are ready, you can continue.", photoMinimumHint: "Upload at least 4 photos. If you do not have 6, ETERNA will discreetly repeat one.", photoSixReadyHint: "6 photos ready. You can continue to payment.", photoPartialReadyHint: "{{count}} photos ready. ETERNA will complete the 6 by discreetly repeating one.", formNativeFallback: "Sending your photos securely...",
             occasions: {{
                 pareja: ["❤️ Partner", "Love, anniversary or something you do not know how to say."], madre: ["👩 Mother", "To thank everything that was always there."], padre: ["👨 Father", "To recognize what is not always said."], cumpleanos: ["🎂 Birthday", "A surprise that is truly experienced."], amistad: ["🤝 Friendship", "For someone who was always close."], distancia: ["🌍 Long distance", "When they are far away, but still here."], otro: ["✨ Another moment", "When you simply want to move someone."]
             }},
@@ -8746,6 +8747,99 @@ document.addEventListener("DOMContentLoaded", function () {{
         const nodes = Array.from(document.querySelectorAll(selector));
         nodes.forEach(function(el, index) {{
             if (values[index] !== undefined) el.textContent = values[index];
+        }});
+    }}
+
+    function normalizeTextForI18n(value) {{
+        return String(value || "").replace(/\s+/g, " ").trim();
+    }}
+
+    function replaceExactTextNodes(map) {{
+        try {{
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach(function(node) {{
+                const raw = node.nodeValue || "";
+                const key = normalizeTextForI18n(raw);
+                if (!key || !map[key]) return;
+                const prefix = (raw.match(/^\s*/) || [""])[0];
+                const suffix = (raw.match(/\s*$/) || [""])[0];
+                node.nodeValue = prefix + map[key] + suffix;
+            }});
+        }} catch (e) {{ console.warn("RC112F replaceExactTextNodes skipped", e); }}
+    }}
+
+    function translateExactTextNodes(lang) {{
+        if (lang !== "en") return;
+        replaceExactTextNodes({{
+            "Primero construimos el recuerdo. Luego decidimos cómo vuelve.": "First we build the memory. Then we decide how it returns.",
+            "Quién lo crea": "Who creates it",
+            "Quién lo va a vivir": "Who will live it",
+            "Cuándo simplemente quieres emocionar.": "When you simply want to move someone.",
+            "El alma de Yul": "Yul's soul",
+            "Una sola pista. Un lugar. Yul no necesita saber más para encontrar una puerta.": "One clue. One place. Yul does not need more to find a doorway.",
+            "¿Hay algún lugar que forme parte de vuestra historia?": "Is there a place that belongs to your story?",
+            "No expliques el recuerdo. Solo escribe el lugar. Yul hará el resto.": "Do not explain the memory. Just write the place. Yul will do the rest.",
+            "Los recuerdos": "The memories",
+            "Qué quieres provocar": "Type of emotion",
+            "Cumpleaños": "Birthday",
+            "Un día que merece quedarse.": "A day worth keeping.",
+            "Amor": "Love",
+            "Cuando lo que sientes ya no cabe dentro.": "When what you feel no longer fits inside.",
+            "Mamá": "Mom",
+            "Para quien siempre fue hogar.": "For the one who was always home.",
+            "Papá": "Dad",
+            "Para quien dejó huella sin hacer ruido.": "For the one who left a mark quietly.",
+            "Familia": "Family",
+            "Para quienes siempre vuelven a ti.": "For those who always come back to you.",
+            "Amistad": "Friendship",
+            "Para esa persona que se quedó.": "For the person who stayed.",
+            "Distancia": "Distance",
+            "Cuando alguien está lejos, pero sigue cerca.": "When someone is far away, but still close.",
+            "Perdón": "Forgiveness",
+            "Para decir algo que cuesta decir.": "To say something hard to say.",
+            "Reencuentro": "Reunion",
+            "Cuando algo vuelve después del tiempo.": "When something returns after time.",
+            "Gracias": "Thank you",
+            "Para agradecer de verdad.": "To truly say thank you.",
+            "Superación": "Overcoming",
+            "Para recordarle todo lo que vale.": "To remind them how much they are worth.",
+            "Sorpresa": "Surprise",
+            "Cuando quieres tocar el corazón sin avisar.": "When you want to touch their heart without warning.",
+            "Esfuerzo": "Effort",
+            "Para reconocer lo que a veces no se dice.": "To recognize what is not always said.",
+            "No sé cómo decirlo": "I do not know how to say it",
+            "Cuando ETERNA debe decirlo por ti.": "When ETERNA should say it for you.",
+            "Ahora dale intención: palabras, momento de entrega y pago seguro.": "Now give it intention: words, delivery moment and secure payment.",
+            "Las palabras": "Your words",
+            "Quiero que ETERNA encuentre las palabras": "I want ETERNA to find the words",
+            "(recomendado)": "(recommended)",
+            "Quiero escribir lo que siento": "I want to write what I feel",
+            "¿Necesitas inspiración?": "Need inspiration?",
+            "Ver frases sugeridas": "See suggested phrases",
+            "Gracias por estar siempre.": "Thank you for always being there.",
+            "Hay personas que se quedan para siempre.": "Some people stay forever.",
+            "Hoy quería recordarte algo bonito.": "Today I wanted to remind you of something beautiful.",
+            "Aunque estemos lejos, sigues aquí.": "Even if we are far apart, you are still here.",
+            "Nunca olvides lo importante que eres para mí.": "Never forget how important you are to me.",
+            "El momento exacto": "The exact moment",
+            "Puedes dejar que llegue en cuanto esté lista... o programar ese momento íntimo en el que sabes que podrá vivirla de verdad.": "You can let it arrive as soon as it is ready... or schedule that intimate moment when you know they will truly be able to live it.",
+            "Enviarlo en cuanto esté listo": "Send it as soon as it is ready",
+            "Sin coste extra.": "No extra cost.",
+            "Guardarlo y entregarlo en un momento exacto": "Save it and deliver it at an exact moment",
+            "Dinero a regalar": "Gift amount",
+            "Precio base ETERNA: 1.00€": "Base ETERNA price: €1.00",
+            "Privado y seguro": "Private and secure",
+            "✓ Tus fotos son privadas.": "✓ Your photos are private.",
+            "✓ El pago se realiza de forma segura con Stripe.": "✓ Payment is processed securely with Stripe.",
+            "✓ La reacción solo vuelve a quien crea esta ETERNA.": "✓ The reaction only returns to the person who creates this ETERNA.",
+            "✓ Si añades dinero, lo recibirá la persona destinataria.": "✓ If you add money, the recipient will receive it.",
+            "No solo eliges lo que va a sentir. También eliges cuándo debe ocurrir.": "You do not only choose what they will feel. You also choose when it should happen.",
+            "Acepto crear esta ETERNA de forma responsable. Entiendo que, si la persona destinataria vive la experiencia, podré recibir un recuerdo privado de ese momento. Me comprometo a tratar ese contenido con respeto, a no utilizarlo de forma ofensiva, invasiva o pública, y a compartirlo solo de manera responsable.": "I accept creating this ETERNA responsibly. I understand that, if the recipient experiences it, I may receive a private memory of that moment. I commit to treating that content with respect, not using it in an offensive, invasive or public way, and sharing it only responsibly.",
+            "Al continuar, aceptas las": "By continuing, you accept the",
+            "condiciones": "terms",
+            "política de privacidad": "privacy policy"
         }});
     }}
 
@@ -8838,6 +8932,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         // applyLanguage() se ejecuta antes de inicializar algunas constantes del formulario.
         // Si tocamos `button` antes de tiempo, Safari/Chrome pueden romper todo el JS
         // y el selector ES/EN deja de responder.
+        translateExactTextNodes(lang);
         const submitButtonSafe = document.getElementById('submitBtn');
         if (submitButtonSafe) submitButtonSafe.textContent = tr('submit');
     }}
@@ -8890,28 +8985,84 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     document.querySelectorAll(".language-option").forEach(function(btn) {{
         btn.addEventListener("click", function(ev) {{
-            try {{ if (ev) {{ ev.preventDefault(); ev.stopPropagation(); }} }} catch (_) {{}}
             const targetLang = btn.getAttribute("data-lang") || "es";
+            try {{ localStorage.setItem("eterna_language", targetLang); }} catch (e) {{}}
+            try {{ saveFormState(); }} catch (e) {{}}
+
+            // RC112E: los botones de idioma son enlaces reales (/crear?lang=en).
+            // No bloqueamos la navegación: si cualquier JS falla, Safari recarga
+            // la página en el idioma correcto y no se queda atrapado en español.
+            if (btn.tagName && btn.tagName.toLowerCase() === "a" && btn.getAttribute("href")) {{
+                return true;
+            }}
+
+            try {{ if (ev) {{ ev.preventDefault(); ev.stopPropagation(); }} }} catch (_) {{}}
             try {{
                 if (window.eternaHardLanguageSwitch) window.eternaHardLanguageSwitch(targetLang);
                 else applyLanguage(targetLang);
             }} catch (e) {{
                 console.log("ETERNA language click fallback:", e);
             }}
-            try {{ saveFormState(); }} catch (e) {{}}
             return false;
         }});
     }});
 
     let savedLanguage = "";
+    let urlLanguage = "";
+    try {{
+        const params = new URLSearchParams(window.location.search || "");
+        const rawUrlLang = (params.get("lang") || params.get("language") || "").toLowerCase();
+        if (rawUrlLang === "en" || rawUrlLang === "es") urlLanguage = rawUrlLang;
+    }} catch (e) {{ urlLanguage = ""; }}
     try {{ savedLanguage = localStorage.getItem("eterna_language") || ""; }} catch (e) {{ savedLanguage = ""; }}
     const browserLanguage = (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "es";
     try {{
-        if (window.eternaHardLanguageSwitch) window.eternaHardLanguageSwitch(savedLanguage || browserLanguage);
-        else applyLanguage(savedLanguage || browserLanguage);
+        const initialLang = urlLanguage || savedLanguage || browserLanguage;
+        // RC112F: primero aplicamos el traductor completo. El hard switch queda solo como emergencia.
+        if (typeof applyLanguage === "function") applyLanguage(initialLang);
+        else if (window.eternaHardLanguageSwitch) window.eternaHardLanguageSwitch(initialLang);
     }} catch (e) {{ console.log("ETERNA initial language fallback:", e); }}
 
     const STORAGE_KEY = "eterna_create_form_v4";
+
+    function eternaFinalEnglishSweep() {{
+        if (currentLang() !== "en") return;
+        const map = {{
+            "Cumpleaños":"Birthday","Mamá":"Mom","Papá":"Dad","Esfuerzo":"Effort","No sé cómo decirlo":"I do not know how to say it",
+            "Quiero que ETERNA encuentre las palabras":"I want ETERNA to find the words","Quiero escribir lo que siento":"I want to write what I feel",
+            "Ver frases sugeridas":"See suggested phrases","Precio base ETERNA":"Base ETERNA price","Si añades regalo económico":"If you add a money gift",
+            "gestión segura":"secure handling","del importe regalado":"of the gifted amount","Entrega programada":"Scheduled delivery",
+            "Privado y seguro":"Private and secure","política de privacidad":"privacy policy","condiciones":"terms",
+            "Abrir galería":"Open gallery","Cambiar":"Change","Pendiente":"Pending","Foto":"Photo","Dinero a regalar":"Gift amount",
+            "Crear y pasar al pago seguro":"Continue to secure payment","Al continuar, aceptas las":"By continuing, you accept the",
+            "y la":"and the","Tus fotos son privadas.":"Your photos are private.","El pago se realiza de forma segura con Stripe.":"Payment is processed securely with Stripe.",
+            "La reacción solo vuelve a quien crea esta ETERNA.":"The reaction only returns to the person who created this ETERNA.",
+            "Si añades dinero, lo recibirá la persona destinataria.":"If you add money, the recipient will receive it.","Soporte:":"Support:"
+        }};
+        function replaceInTextNode(node) {{
+            let v = node.nodeValue;
+            if (!v || !v.trim()) return;
+            for (const k in map) v = v.split(k).join(map[k]);
+            node.nodeValue = v;
+        }}
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {{
+            acceptNode: function(node) {{
+                const p = node.parentElement;
+                if (!p || ["SCRIPT","STYLE"].includes(p.tagName)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }}
+        }});
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(replaceInTextNode);
+        document.querySelectorAll("input,textarea").forEach(function(el){{
+            if (!el.placeholder) return;
+            let p = el.placeholder;
+            for (const k in map) p = p.split(k).join(map[k]);
+            el.placeholder = p;
+        }});
+    }}
+    try {{ eternaFinalEnglishSweep(); setTimeout(eternaFinalEnglishSweep, 120); setTimeout(eternaFinalEnglishSweep, 800); }} catch(e) {{ console.warn("RC112H english sweep skipped", e); }}
 
     const form = document.getElementById("createForm");
     const button = document.getElementById("submitBtn");
@@ -8960,7 +9111,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             return false;
         }}
         if (!allPhotosPresent()) {{
-            showError(tr("need6Photos"));
+            showError(tr("need4Photos"));
             return false;
         }}
         clearError();
@@ -9305,8 +9456,8 @@ document.addEventListener("DOMContentLoaded", function () {{
     // Objetivo: nunca mandar fotos gigantes al navegador/backend.
     // =====================================================
     const ETERNA_PHOTO_IDS = ["photo1", "photo2", "photo3", "photo4", "photo5", "photo6"];
-    const ETERNA_PHOTO_MAX_SIDE = 1600;
-    const ETERNA_PHOTO_QUALITY = 0.78;
+    const ETERNA_PHOTO_MAX_SIDE = 1280;
+    const ETERNA_PHOTO_QUALITY = 0.72;
     const ETERNA_PHOTO_DB = "eterna_photo_draft_v1";
     const ETERNA_PHOTO_STORE = "photos";
     const ETERNA_OPTIMIZED_PREFIX = "eterna_optimized_";
@@ -9314,6 +9465,11 @@ document.addEventListener("DOMContentLoaded", function () {{
     const photoProcessing = {{}};
     const photoUploaded = {{}};
     const photoUploadErrors = {{}};
+    // RC112C: memoria segura de fotos por slot.
+    // Si Safari/Instagram no permite DataTransfer/input.files, no perdemos la foto:
+    // la enviamos por FormData manual solo en ese caso.
+    const photoNativeFiles = {{}};
+    const photoNativeAssigned = {{}};
     const photoUploadSessionInput = document.getElementById("photo_upload_session");
 
     function getPhotoUploadSession() {{
@@ -9340,14 +9496,14 @@ document.addEventListener("DOMContentLoaded", function () {{
     }}
 
     async function uploadPreparedPhotoToServer(inputId, file) {{
-        if (!file) throw new Error("Foto vacía");
+        if (!file) throw new Error(currentLang && currentLang() === "en" ? "Empty photo" : "Foto vacía");
         const sessionId = getPhotoUploadSession();
         const data = new FormData();
         data.append("photo_upload_session", sessionId);
         data.append("slot", inputId);
         data.append("photo", file, file.name || (inputId + ".jpg"));
 
-        setPhotoStatus(inputId, "Subiendo foto...");
+        setPhotoStatus(inputId, tr("photoLoading"));
         const response = await fetch("/preupload-photo", {{
             method: "POST",
             body: data,
@@ -9358,7 +9514,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         try {{ payload = await response.json(); }} catch (e) {{}}
 
         if (!response.ok || !payload.ok) {{
-            throw new Error(payload.detail || "No se pudo subir la foto");
+            throw new Error(payload.detail || (currentLang && currentLang() === "en" ? "Could not upload the photo" : "No se pudo subir la foto"));
         }}
 
         photoUploaded[inputId] = payload;
@@ -9547,7 +9703,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     }}
 
     async function optimizeImageFile(file, inputId) {{
-        if (!file) throw new Error("Foto vacía");
+        if (!file) throw new Error(currentLang && currentLang() === "en" ? "Empty photo" : "Foto vacía");
 
         const type = String(file.type || "").toLowerCase();
         const name = String(file.name || "foto.jpg").toLowerCase();
@@ -9620,16 +9776,26 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     function setInputFile(input, file, dispatchChange=true) {{
         if (!input || !file) return false;
+        const inputId = input.id || input.name || "photo";
+        photoNativeFiles[inputId] = file;
         try {{
+            if (typeof DataTransfer === "undefined") {{
+                throw new Error("DataTransfer no disponible");
+            }}
             const dt = new DataTransfer();
             dt.items.add(file);
             input.files = dt.files;
+            photoNativeAssigned[inputId] = !!(input.files && input.files.length > 0);
             if (dispatchChange) {{
                 input.dispatchEvent(new Event("change", {{ bubbles: true }}));
             }}
-            return true;
+            return photoNativeAssigned[inputId];
         }} catch (e) {{
-            console.error("No se pudo asignar la foto", e);
+            // RC112C: esto puede pasar en Safari/Instagram WebView.
+            // No borramos la foto ni bloqueamos la venta: la dejamos en memoria
+            // para enviarla con FormData manual si el submit nativo no la incluye.
+            console.warn("RC112F DataTransfer fallback activo", inputId, e);
+            photoNativeAssigned[inputId] = false;
             return false;
         }}
     }}
@@ -9639,34 +9805,69 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (!input || !rawFile) return false;
 
         try {{
+            // RC112 FAST FORM:
+            // La foto queda lista para avanzar en cuanto está colocada en el input.
+            // El preupload queda como acelerador en segundo plano, nunca como bloqueo de venta.
             photoProcessing[inputId] = true;
             setPhotoStatus(inputId, tr("optimizingPhoto"));
 
-            const optimized = isOptimizedEternaPhoto(rawFile)
-                ? rawFile
-                : await optimizeImageFile(rawFile, inputId);
+            // RC112F FAST GALLERY SAFE:
+            // No bloqueamos la selección múltiple con canvas/HEIC/optimización en Safari o Instagram.
+            // La foto queda lista inmediatamente y se envía como archivo original.
+            const optimized = rawFile;
 
             const ok = setInputFile(input, optimized, false);
-            if (!ok) throw new Error("No se pudo colocar la foto optimizada");
+            // RC112C:
+            // Si ok=false, no significa que la foto sea mala; significa que el navegador
+            // no nos deja recolocar input.files. La foto queda en photoNativeFiles
+            // y se enviará por fallback FormData en submit.
+            if (!ok && !(input.files && input.files.length > 0)) {{
+                console.warn("RC112F foto mantenida en memoria para submit seguro", inputId);
+            }}
 
-            updatePhotoUI(inputId, optimized, tr("photoPreparedUploading"));
-            await uploadPreparedPhotoToServer(inputId, optimized);
-            updatePhotoUI(inputId, optimized, tr("photoUploaded"));
+            delete photoUploadErrors[inputId];
+            updatePhotoUI(inputId, optimized, tr("photoReady"));
             await savePhotoDraft(inputId, optimized);
             saveFormState();
-            updatePhotoReadiness();
             clearError();
+
+            // Preupload no bloqueante: si sale bien, el backend usará esa copia.
+            // Si falla, /crear recibirá las fotos por multipart normal.
+            uploadPreparedPhotoToServer(inputId, optimized)
+                .then(function () {{
+                    updatePhotoUI(inputId, optimized, tr("photoUploaded"));
+                    updatePhotoReadiness();
+                    console.log("RC112 PHOTO_PREUPLOAD_OK", inputId);
+                }})
+                .catch(function (uploadErr) {{
+                    console.warn("RC112 PHOTO_PREUPLOAD_FAIL_FALLBACK_MULTIPART", inputId, uploadErr);
+                    delete photoUploaded[inputId];
+                    photoUploadErrors[inputId] = String(uploadErr && uploadErr.message ? uploadErr.message : uploadErr);
+                    updatePhotoUI(inputId, optimized, tr("photoReady"));
+                    updatePhotoReadiness();
+                }});
+
+            updatePhotoReadiness();
             return true;
         }} catch (e) {{
-            console.error("RC107 prepare/preupload error", inputId, e);
+            console.error("RC112F prepare photo error", inputId, e);
             delete photoUploaded[inputId];
             photoUploadErrors[inputId] = String(e && e.message ? e.message : e);
-            try {{ input.value = ""; }} catch (_) {{}}
+            // RC112C: si el input original conserva una foto, NO la borramos.
+            // Así el submit nativo sigue pudiendo mandarla.
+            const existing = input && input.files && input.files[0] ? input.files[0] : rawFile;
+            if (existing) {{
+                photoNativeFiles[inputId] = existing;
+                updatePhotoUI(inputId, existing, tr("photoReady"));
+                clearError();
+                return true;
+            }}
             updatePhotoUI(inputId, null, tr("photoPrepareError"));
             showError(tr("photoTryAnother"));
             return false;
         }} finally {{
             photoProcessing[inputId] = false;
+            updatePhotoReadiness();
         }}
     }}
 
@@ -9681,14 +9882,19 @@ document.addEventListener("DOMContentLoaded", function () {{
                 if (file) {{
                     const ok = setInputFile(input, file, false);
                     if (ok) {{
-                        try {{
-                            await uploadPreparedPhotoToServer(inputId, file);
-                            updatePhotoUI(inputId, file, tr("photoRecovered"));
-                            restored += 1;
-                        }} catch (uploadErr) {{
-                            console.warn("RC107 no pudo subir foto recuperada", inputId, uploadErr);
-                            updatePhotoUI(inputId, null, tr("photoTapAgain"));
-                        }}
+                        updatePhotoUI(inputId, file, tr("photoRecovered"));
+                        restored += 1;
+                        uploadPreparedPhotoToServer(inputId, file)
+                            .then(function () {{
+                                updatePhotoUI(inputId, file, tr("photoUploaded"));
+                                updatePhotoReadiness();
+                            }})
+                            .catch(function (uploadErr) {{
+                                console.warn("RC112 no pudo pre-subir foto recuperada; seguirá por multipart", inputId, uploadErr);
+                                delete photoUploaded[inputId];
+                                updatePhotoUI(inputId, file, tr("photoReady"));
+                                updatePhotoReadiness();
+                            }});
                     }}
                 }}
             }}
@@ -9704,8 +9910,12 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     function findNextEmptyPhotoSlot(startIndex) {{
         for (let i = startIndex || 0; i < ETERNA_PHOTO_IDS.length; i++) {{
-            const input = document.getElementById(ETERNA_PHOTO_IDS[i]);
-            if (!input || !input.files || input.files.length === 0) {{
+            const id = ETERNA_PHOTO_IDS[i];
+            const input = document.getElementById(id);
+            const nativeHasFile = !!(input && input.files && input.files.length > 0);
+            // RC112D: en Safari/Instagram puede fallar DataTransfer y quedarse la foto en memoria.
+            // Si no miramos photoNativeFiles, el selector múltiple volvería a pisar photo1/photo2.
+            if (!nativeHasFile && !photoNativeFiles[id]) {{
                 return i;
             }}
         }}
@@ -9713,11 +9923,29 @@ document.addEventListener("DOMContentLoaded", function () {{
     }}
 
     function currentPhotoCount() {{
-        return countPreuploadedPhotos();
+        let count = 0;
+        for (const id of ETERNA_PHOTO_IDS) {{
+            const input = document.getElementById(id);
+            if ((input && input.files && input.files.length > 0) || photoNativeFiles[id]) count += 1;
+        }}
+        return count;
     }}
 
     function photoIsReady(id) {{
-        return !!(photoUploaded[id] && photoUploaded[id].ok);
+        const input = document.getElementById(id);
+        return !!((input && input.files && input.files.length > 0) || photoNativeFiles[id]);
+    }}
+
+    function firstRequiredPhotoCount() {{
+        let count = 0;
+        for (const id of ["photo1", "photo2", "photo3", "photo4"]) {{
+            if (photoIsReady(id)) count += 1;
+        }}
+        return count;
+    }}
+
+    function firstRequiredPhotosPresent() {{
+        return firstRequiredPhotoCount() >= 4;
     }}
 
     function photoProcessingActive() {{
@@ -9728,8 +9956,9 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (!button) return;
 
         const count = currentPhotoCount();
+        const requiredCount = firstRequiredPhotoCount();
         const processing = photoProcessingActive();
-        const minimumReady = count >= 4;
+        const minimumReady = firstRequiredPhotosPresent();
 
         for (const id of ETERNA_PHOTO_IDS) {{
             const input = document.getElementById(id);
@@ -9760,7 +9989,7 @@ document.addEventListener("DOMContentLoaded", function () {{
                 status.classList.add("optional");
                 if (box) box.classList.remove("ready", "loading");
                 if (id === "photo5" || id === "photo6") {{
-                    status.innerText = count >= 4 ? tr("photoOptionalRepeat") : tr("photoOptional");
+                    status.innerText = minimumReady ? tr("photoOptionalRepeat") : tr("photoOptional");
                 }} else {{
                     status.innerText = tr("photoRequired");
                 }}
@@ -9770,26 +9999,26 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (processing) {{
             button.disabled = true;
             button.classList.remove("ready");
-            button.innerText = "Cargando fotos...";
-            updateGlobalPhotoHint("Preparando tus fotos. El pago se desbloqueará automáticamente cuando estén listas.");
+            button.innerText = tr("photosPreparingButton");
+            updateGlobalPhotoHint(tr("photoPreparingHint"));
             return;
         }}
 
         if (!minimumReady) {{
             button.disabled = true;
             button.classList.remove("ready");
-            button.innerText = "SUBE AL MENOS 4 FOTOS";
-            updateGlobalPhotoHint("Sube al menos 4 fotos. Si no tienes 6, ETERNA repetirá alguna de forma discreta.");
+            button.innerText = tr("uploadAtLeast4Button");
+            updateGlobalPhotoHint(tr("photoMinimumHint"));
             return;
         }}
 
         button.disabled = false;
         button.classList.add("ready");
-        button.innerText = count >= 6 ? "CONTINUAR AL PAGO" : "CONTINUAR AL PAGO · ETERNA COMPLETARÁ LAS 6";
+        button.innerText = count >= 6 ? tr("continuePaymentButton") : tr("continuePaymentCompleteButton");
         if (count >= 6) {{
-            updateGlobalPhotoHint("6 fotos listas. Puedes continuar al pago.");
+            updateGlobalPhotoHint(tr("photoSixReadyHint"));
         }} else {{
-            updateGlobalPhotoHint(count + " fotos listas. ETERNA completará las 6 repitiendo alguna de forma discreta.");
+            updateGlobalPhotoHint(tr("photoPartialReadyHint").replace("{{count}}", String(count)).replace("{{required}}", String(requiredCount)));
         }}
     }}
 
@@ -9802,15 +10031,10 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     const multiPhotoPicker = document.getElementById("multi_photo_picker");
     const multiPhotoButton = document.querySelector(".photo-picker-btn");
-    if (multiPhotoPicker && multiPhotoButton) {{
-        multiPhotoButton.addEventListener("click", function(ev) {{
-            try {{
-                if (ev && ev.target === multiPhotoPicker) return;
-                ev.preventDefault();
-                multiPhotoPicker.click();
-            }} catch (e) {{ console.warn("ETERNA gallery click fallback skipped", e); }}
-        }});
-    }}
+    // RC112H GALLERY NATIVE SAFE:
+    // NO interceptamos el click del label ni llamamos a input.click() con preventDefault.
+    // En iPhone/Safari/Instagram, el gesto nativo sobre <label><input type=file></label>
+    // es más fiable que el click programático.
     if (multiPhotoPicker) {{
         multiPhotoPicker.addEventListener("change", async function () {{
             clearError();
@@ -9826,7 +10050,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
             if (!validFiles.length) {{
                 multiPhotoPicker.value = "";
-                showError("No hemos encontrado imágenes válidas. Elige fotos desde tu galería.");
+                showError(currentLang() === "en" ? "We couldn't find valid images. Choose photos from your gallery." : "No hemos encontrado imágenes válidas. Elige fotos desde tu galería.");
                 return;
             }}
 
@@ -9834,7 +10058,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
             if (availableSlots <= 0) {{
                 multiPhotoPicker.value = "";
-                showError("Ya tienes 6 fotos. Si quieres cambiar una, toca directamente la foto que quieras sustituir.");
+                showError(currentLang() === "en" ? "You already have 6 photos. To change one, tap the photo you want to replace." : "Ya tienes 6 fotos. Si quieres cambiar una, toca directamente la foto que quieras sustituir.");
                 return;
             }}
 
@@ -9867,11 +10091,11 @@ document.addEventListener("DOMContentLoaded", function () {{
             const missing = Math.max(0, 4 - total);
 
             if (ignored > 0) {{
-                updateGlobalPhotoHint("Hemos colocado las fotos posibles. Para cambiar una, toca su casilla.");
+                updateGlobalPhotoHint(currentLang() === "en" ? "We placed the available photos. To change one, tap its box." : "Hemos colocado las fotos posibles. Para cambiar una, toca su casilla.");
             }} else if (missing > 0) {{
-                updateGlobalPhotoHint("Fotos cargadas. Te faltan " + missing + " para poder continuar. Si tienes 4, ETERNA completará las 6.");
+                updateGlobalPhotoHint(currentLang() === "en" ? ("Photos loaded. You still need " + missing + " to continue. If you have 4, ETERNA will complete the 6.") : ("Fotos cargadas. Te faltan " + missing + " para poder continuar. Si tienes 4, ETERNA completará las 6."));
             }} else {{
-                updateGlobalPhotoHint(total >= 6 ? "6 fotos listas. Puedes cambiar cualquiera tocando su casilla." : total + " fotos listas. ETERNA completará las 6.");
+                updateGlobalPhotoHint(total >= 6 ? (currentLang() === "en" ? "6 photos ready. You can change any of them by tapping its box." : "6 fotos listas. Puedes cambiar cualquiera tocando su casilla.") : (currentLang() === "en" ? (total + " photos ready. ETERNA will complete the 6.") : (total + " fotos listas. ETERNA completará las 6.")));
             }}
 
             clearError();
@@ -9898,7 +10122,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             if (!(type.startsWith("image/") || /\\.(jpg|jpeg|png|webp|heic|heif)$/i.test(name))) {{
                 fileInput.value = "";
                 updatePhotoUI(inputId, null);
-                showError("Una de las fotos no parece una imagen válida.");
+                showError(currentLang() === "en" ? "One of the selected files does not look like a valid image." : "Una de las fotos no parece una imagen válida.");
                 return;
             }}
 
@@ -9910,7 +10134,9 @@ document.addEventListener("DOMContentLoaded", function () {{
     ETERNA_PHOTO_IDS.forEach(bindPreview);
 
     function allPhotosPresent() {{
-        return currentPhotoCount() >= 4;
+        // RC112D: el backend exige específicamente photo1-photo4.
+        // No vale tener 4 fotos repartidas si falta una de las cuatro primeras.
+        return firstRequiredPhotosPresent();
     }}
 
     function autoGrowTextarea(el) {{
@@ -9943,9 +10169,19 @@ document.addEventListener("DOMContentLoaded", function () {{
             return false;
         }}
 
-        if (!form.checkValidity()) {{
-            showError(tr("reviewFields"));
-            return false;
+        // RC112H: no usamos form.checkValidity() global porque en Safari/Instagram
+        // DataTransfer puede fallar y los input[type=file] requeridos quedar vacíos
+        // aunque tengamos la foto segura en photoNativeFiles. Validamos los campos
+        // normales y las fotos por nuestra lógica firstRequiredPhotosPresent().
+        const requiredFields = Array.from(form.querySelectorAll("[required]")).filter(function(el) {{
+            return !(el && el.type === "file");
+        }});
+        for (const el of requiredFields) {{
+            if (el && typeof el.checkValidity === "function" && !el.checkValidity()) {{
+                showError(tr("reviewFields"));
+                try {{ el.focus(); }} catch(e) {{}}
+                return false;
+            }}
         }}
 
         const messageType = messageTypeInput ? messageTypeInput.value.trim() : "";
@@ -9967,13 +10203,9 @@ document.addEventListener("DOMContentLoaded", function () {{
             return false;
         }}
 
-        // RC107: defensa final Instagram.
-        // El pago solo se abre si las fotos ya están subidas al servidor.
-        if (!preuploadedMinimumReady()) {{
-            showError(tr("photosUploading"));
-            updatePhotoReadiness();
-            return false;
-        }}
+        // RC112 FAST FORM:
+        // No bloqueamos el pago por preupload. Si hay 4 fotos locales, /crear las recibe por multipart.
+        // El preupload sigue funcionando como acelerador, pero nunca frena una venta.
 
         if (manualRadio && manualRadio.checked) {{
             const phrase1 = form.querySelector('[name="phrase_1"]')?.value.trim();
@@ -10082,6 +10314,46 @@ document.addEventListener("DOMContentLoaded", function () {{
         }}
     }}
 
+    function needsManualPhotoSubmit() {{
+        for (const id of ETERNA_PHOTO_IDS) {{
+            const input = document.getElementById(id);
+            const nativeHasFile = !!(input && input.files && input.files.length > 0);
+            if (!nativeHasFile && photoNativeFiles[id]) return true;
+        }}
+        return false;
+    }}
+
+    async function submitWithPhotoMemoryFallback() {{
+        const fd = new FormData(form);
+        for (const id of ETERNA_PHOTO_IDS) {{
+            const input = document.getElementById(id);
+            const nativeHasFile = !!(input && input.files && input.files.length > 0);
+            if (!nativeHasFile && photoNativeFiles[id]) {{
+                fd.set(id, photoNativeFiles[id], photoNativeFiles[id].name || (id + ".jpg"));
+            }}
+        }}
+        const response = await fetch(form.action || "/crear", {{
+            method: "POST",
+            body: fd,
+            credentials: "same-origin",
+            redirect: "follow"
+        }});
+        if (response.redirected && response.url) {{
+            window.location.href = response.url;
+            return;
+        }}
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.indexOf("text/html") !== -1) {{
+            const html = await response.text();
+            document.open();
+            document.write(html);
+            document.close();
+            return;
+        }}
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        window.location.href = "/crear";
+    }}
+
     form.addEventListener("submit", function (e) {{
         if (eternaSubmitting) {{
             e.preventDefault();
@@ -10097,10 +10369,10 @@ document.addEventListener("DOMContentLoaded", function () {{
             return;
         }}
 
-        // RC101B:
-        // En móvil/Instagram WebView NO forzamos form.submit() programático.
-        // Dejamos que el navegador haga el submit nativo multipart/form-data,
-        // porque es la forma más segura de enviar textos + 6 fotos.
+        // RC101B/RC112C:
+        // Preferimos submit nativo multipart/form-data.
+        // Solo usamos fallback manual cuando Safari/Instagram no ha permitido
+        // meter alguna foto en input.files pero sí la tenemos guardada en memoria.
         eternaSubmitting = true;
         clearError();
         showPaymentLoadingNow();
@@ -10111,15 +10383,32 @@ document.addEventListener("DOMContentLoaded", function () {{
             console.error("localStorage remove error", err);
         }}
 
-        // RC107: las fotos ya están en servidor. No las reenviamos en el POST final.
-        // Así evitamos que Instagram/Safari rompan el multipart grande al abrir Stripe.
-        try {{
-            ETERNA_PHOTO_IDS.forEach(function(id) {{
-                const input = document.getElementById(id);
-                if (input) input.disabled = true;
+        // RC112B FAST PHOTO FALLBACK FIX:
+        // NO desactivamos los inputs de fotos antes del submit.
+        // Motivo: si el preupload falla o va lento, el backend necesita recibir las fotos
+        // por multipart/form-data normal. Desactivar inputs aquí rompería exactamente
+        // el fallback rápido que queremos para lanzamiento.
+        console.log("RC112D FORM_SUBMIT_NATIVE_MULTIPART_WITH_PHOTO_FALLBACK", {{
+            local_photos: currentPhotoCount(),
+            preuploaded_photos: countPreuploadedPhotos(),
+            preupload_required: false,
+            manual_memory_fallback: needsManualPhotoSubmit()
+        }});
+
+        if (needsManualPhotoSubmit()) {{
+            e.preventDefault();
+            if (button) button.innerText = tr("formNativeFallback");
+            submitWithPhotoMemoryFallback().catch(function(err) {{
+                console.error("RC112D manual photo submit fallback error", err);
+                eternaSubmitting = false;
+                if (button) {{
+                    button.disabled = false;
+                    button.classList.remove("is-loading");
+                    button.innerText = tr("submit");
+                }}
+                showError(tr("genericError"));
             }});
-        }} catch (disableErr) {{
-            console.error("RC107 disable file inputs error", disableErr);
+            return false;
         }}
 
         return true;
@@ -10545,8 +10834,9 @@ def home(request: Request):
 
 
 @app.get("/crear", response_class=HTMLResponse)
-def crear_get():
-    return render_create_form()
+def crear_get(request: Request):
+    raw_lang = (request.query_params.get("lang") or request.query_params.get("language") or "").strip().lower()
+    return render_create_form("en" if raw_lang == "en" else "es")
 
 
 @app.get("/crear/entrada", response_class=HTMLResponse)
@@ -17512,3 +17802,390 @@ def admin_blackbox_latest(token: str = "", limit: int = 20):
         "timestamp": now_iso(),
     }
 
+
+
+# =========================================================
+# RC112G — FULL ENGLISH SERVER-SIDE FORM PATCH
+# Último parche: si /crear?lang=en, el HTML sale ya traducido desde servidor.
+# No depende de que un botón JS recorra media pantalla.
+# Solo afecta al formulario /crear. No toca Stripe, SMS, vídeo, sender pack ni reacción.
+# =========================================================
+_ORIGINAL_RENDER_CREATE_FORM_RC112G = render_create_form
+
+
+def _eterna_force_english_create_form_html(html: str) -> str:
+    replacements = {
+        'lang="es"': 'lang="en"',
+        '<title>Crear ETERNA</title>': '<title>Create ETERNA</title>',
+        'Crea algo que no se abra. Se viva.': 'Create something they do not just open. They live it.',
+        'No todo lo importante': 'Not everything important',
+        'debería desaparecer.': 'should disappear.',
+        'Haz que vuelva convertido': 'Make it return as',
+        'en emoción real.': 'real emotion.',
+        'Primero construimos el recuerdo. Luego decidimos cómo vuelve.': 'First we build the memory. Then we decide how it returns.',
+        'Ahora dale intención: palabras, momento de entrega y pago seguro.': 'Now give it intention: words, delivery moment and secure payment.',
+        'Quién lo crea': 'Who creates it',
+        'QUIÉN LO CREA': 'WHO CREATES IT',
+        'Quién lo va a vivir': 'Who will live it',
+        'QUIÉN LO VA A VIVIR': 'WHO WILL LIVE IT',
+        'Tu nombre': 'Your name',
+        'Tu email': 'Your email',
+        'Tu teléfono': 'Your phone',
+        'Su nombre': 'Their name',
+        'Su teléfono': 'Their phone',
+        'Su email (opcional, por si el SMS falla)': 'Their email (optional, in case SMS fails)',
+        'Escríbelo como lo tengas guardado 💛': 'Write it as you have it saved 💛',
+        'No hace falta poner el prefijo.': 'No need to add the country code.',
+        '¿Para quién es esta ETERNA?': 'Who is this ETERNA for?',
+        'Elige una ocasión. Solo nos ayuda a entender el tono. No complica el proceso.': 'Choose an occasion. It only helps us understand the tone. It does not complicate the process.',
+        '❤️ Pareja': '❤️ Partner',
+        'Amor, aniversario o algo que no sabes decir.': 'Love, anniversary or something you do not know how to say.',
+        '👩 Madre': '👩 Mother',
+        'Para agradecer todo lo que siempre estuvo.': 'To thank everything that was always there.',
+        '👨 Padre': '👨 Father',
+        'Para reconocer lo que a veces no se dice.': 'To recognize what is not always said.',
+        '🎂 Cumpleaños': '🎂 Birthday',
+        'Una sorpresa que se vive de verdad.': 'A surprise that is truly lived.',
+        '🤝 Amistad': '🤝 Friendship',
+        'Para alguien que siempre estuvo cerca.': 'For someone who was always close.',
+        '🌍 A distancia': '🌍 Long distance',
+        'Cuando está lejos, pero sigue aquí.': 'When they are far away, but still here.',
+        '✨ Otro momento': '✨ Another moment',
+        'Cuando simplemente quieres emocionar.': 'When you simply want to move someone.',
+        'El alma de Yul': "Yul's soul",
+        'EL ALMA DE YUL': "YUL'S SOUL",
+        'Una sola pista. Un lugar. Yul no necesita saber más para encontrar una puerta.': 'One clue. One place. Yul does not need more to find a doorway.',
+        '¿Hay algún lugar que forme parte de vuestra historia?': 'Is there a place that belongs to your story?',
+        'Ej: Cádiz, la montaña, la casa de la abuela, un banco, París...': 'E.g. Cádiz, the mountains, grandma’s house, a bench, Paris...',
+        'No expliques el recuerdo. Solo escribe el lugar. Yul hará el resto.': 'Do not explain the memory. Just write the place. Yul will do the rest.',
+        'Los recuerdos': 'The memories',
+        'LOS RECUERDOS': 'THE MEMORIES',
+        'Elige entre 4 y 6 fotos desde tu galería. ETERNA las optimiza automáticamente para que carguen mejor en móvil.': 'Choose 4 to 6 photos from your gallery. ETERNA will prepare them safely for mobile.',
+        'Elige entre 4 y 6 fotos. Si subes 4, ETERNA completará el vídeo de forma discreta.': 'Choose 4 to 6 photos. If you upload 4, ETERNA will complete the video discreetly.',
+        'Seleccionar recuerdos': 'Select memories',
+        'Seleccionar 6 recuerdos': 'Select 6 memories',
+        'Puedes elegir varias fotos de una vez. Después podrás cambiar cualquiera individualmente.': 'You can choose several photos at once. Afterwards, you can replace any of them individually.',
+        'Puedes elegir las 6 fotos de una vez. Después podrás cambiar cualquiera individualmente.': 'You can choose all 6 photos at once. Afterwards, you can replace any of them individually.',
+        'Abrir galería': 'Open gallery',
+        'FOTO': 'PHOTO',
+        'Foto': 'Photo',
+        'Cambiar': 'Change',
+        'Pendiente': 'Pending',
+        'Recomendación: formato vertical. Lo importante es que sean recuerdos que de verdad tengan sentido.': 'Tip: vertical photos are ideal. What matters most is that they are real memories.',
+        'Sube al menos 4 fotos. Si tienes 6, mejor.': 'Upload at least 4 photos. 6 is ideal.',
+        '¿Quieres que la persona sepa quién le envía esta ETERNA?': 'Do you want the recipient to know who sent this ETERNA?',
+        'Sí, mostrar una foto': 'Yes, show a photo',
+        'No, mantener la sorpresa': 'No, keep the surprise',
+        'Foto de llegada:': 'Arrival photo:',
+        'Esta mini foto puede aparecer como imagen de llegada para dar confianza. No cambia el vídeo.': 'This mini photo may appear as an arrival image to build trust. It does not change the video.',
+        'Qué quieres provocar': 'Type of emotion',
+        'TIPO DE EMOCIÓN': 'TYPE OF EMOTION',
+        'Cumpleaños': 'Birthday',
+        'Un día que merece quedarse.': 'A day worth keeping.',
+        'Amor': 'Love',
+        'Cuando lo que sientes ya no cabe dentro.': 'When what you feel no longer fits inside.',
+        'Mamá': 'Mom',
+        'Para quien siempre fue hogar.': 'For the one who was always home.',
+        'Papá': 'Dad',
+        'Para quien dejó huella sin hacer ruido.': 'For the one who left a mark quietly.',
+        'Familia': 'Family',
+        'Para quienes siempre vuelven a ti.': 'For those who always come back to you.',
+        'Amistad': 'Friendship',
+        'Para esa persona que se quedó.': 'For the person who stayed.',
+        'Distancia': 'Distance',
+        'Cuando alguien está lejos, pero sigue cerca.': 'When someone is far away, but still close.',
+        'Perdón': 'Forgiveness',
+        'Para decir algo que cuesta decir.': 'To say something hard to say.',
+        'Reencuentro': 'Reunion',
+        'Cuando algo vuelve después del tiempo.': 'When something returns after time.',
+        'Gracias': 'Thank you',
+        'Para agradecer de verdad.': 'To truly say thank you.',
+        'Superación': 'Overcoming',
+        'Para recordarle todo lo que vale.': 'To remind them how much they are worth.',
+        'Sorpresa': 'Surprise',
+        'Cuando quieres tocar el corazón sin avisar.': 'When you want to touch their heart without warning.',
+        'Esfuerzo': 'Effort',
+        'No sé cómo decirlo': 'I do not know how to say it',
+        'Cuando ETERNA debe decirlo por ti.': 'When ETERNA should say it for you.',
+
+        'Elige 6 fotos directamente desde tu galería. Se cargan de forma nativa para que el proceso sea rápido.': 'Choose 6 photos directly from your gallery. They load natively so the process stays fast.',
+        'Se cargan de forma nativa para que el proceso sea rápido.': 'They load natively so the process stays fast.',
+        'para poder continuar. Si tienes 4, ETERNA completará las 6.': 'to continue. If you have 4, ETERNA will complete the 6.',
+        'Toca esta foto otra vez para subirla.': 'Tap this photo again to upload it.',
+        'Opcional si ya tienes 4 fotos.': 'Optional if you already have 4 photos.',
+        'Necesaria para crear tu ETERNA.': 'Required to create your ETERNA.',
+        'Las palabras': 'Your words',
+        'TUS PALABRAS': 'YOUR WORDS',
+        'Quiero que ETERNA encuentre las palabras': 'I want ETERNA to find the words',
+        '(recomendado)': '(recommended)',
+        'Quiero escribir lo que siento': 'I want to write what I feel',
+        'Lo que nunca quieres que olvide': 'What you never want them to forget',
+        'Eso que sientes y a veces no dices': 'What you feel and sometimes do not say',
+        'La frase que quieres dejarle para siempre': 'The sentence you want to leave them forever',
+        '¿Necesitas inspiración?': 'Need inspiration?',
+        'Ver frases sugeridas': 'See suggested phrases',
+        'Gracias por estar siempre.': 'Thank you for always being there.',
+        'Hay personas que se quedan para siempre.': 'Some people stay forever.',
+        'Hoy quería recordarte algo bonito.': 'Today I wanted to remind you of something beautiful.',
+        'Aunque estemos lejos, sigues aquí.': 'Even if we are far apart, you are still here.',
+        'Nunca olvides lo importante que eres para mí.': 'Never forget how important you are to me.',
+        'El momento exacto': 'The exact moment',
+        'Puedes dejar que llegue en cuanto esté lista...': 'You can let it arrive as soon as it is ready...',
+        'o programar ese momento íntimo en el que sabes que podrá vivirla de verdad.': 'or schedule that intimate moment when you know they will truly be able to live it.',
+        'Enviarlo en cuanto esté listo': 'Send it as soon as it is ready',
+        'Sin coste extra.': 'No extra cost.',
+        'Guardarlo y entregarlo en un momento exacto': 'Save it and deliver it at an exact moment',
+        'para guardarlo y hacer que llegue exactamente cuando tú elijas.': 'to save it and deliver it exactly when you choose.',
+        'Lo ideal es que pueda vivirlo con calma.': 'Ideally, they can experience it calmly.',
+        'Con unos cascos. En silencio. Sin que nadie le moleste.': 'With headphones. In silence. Without being disturbed.',
+        'Dinero a regalar': 'Gift amount',
+        'DINERO A REGALAR': 'GIFT AMOUNT',
+        'Precio base ETERNA:': 'Base ETERNA price:',
+        'Si añades regalo económico:': 'If you add a money gift:',
+        'gestión segura': 'secure handling',
+        'del importe regalado': 'of the gifted amount',
+        'Entrega programada:': 'Scheduled delivery:',
+        'solo si eliges guardarlo y entregarlo en un momento exacto': 'only if you choose to save it and deliver it at an exact moment',
+        'Privado y seguro': 'Private and secure',
+        '✓ Tus fotos son privadas.': '✓ Your photos are private.',
+        '✓ El pago se realiza de forma segura con Stripe.': '✓ Payment is processed securely with Stripe.',
+        '✓ La reacción solo vuelve a quien crea esta ETERNA.': '✓ The reaction only returns to the person who creates this ETERNA.',
+        '✓ Si añades dinero, lo recibirá la persona destinataria.': '✓ If you add money, the recipient will receive it.',
+        '✓ Soporte:': '✓ Support:',
+        'No solo eliges lo que va a sentir. También eliges cuándo debe ocurrir.': 'You do not only choose what they will feel. You also choose when it should happen.',
+        'Acepto crear esta ETERNA de forma responsable. Entiendo que, si la persona destinataria vive la experiencia, podré recibir un recuerdo privado de ese momento. Me comprometo a tratar ese contenido con respeto, a no utilizarlo de forma ofensiva, invasiva o pública, y a compartirlo solo de manera responsable.': 'I accept creating this ETERNA responsibly. I understand that, if the recipient experiences it, I may receive a private memory of that moment. I commit to treating that content with respect, not using it in an offensive, invasive or public way, and sharing it only responsibly.',
+        'Al continuar, aceptas las': 'By continuing, you accept the',
+        'condiciones': 'terms',
+        'política de privacidad': 'privacy policy',
+        'y la': 'and the',
+        'Crear y pasar al pago seguro': 'Continue to payment',
+        'CONTINUAR AL PAGO': 'CONTINUE TO PAYMENT',
+        'Abriendo pago seguro ETERNA': 'Opening secure ETERNA payment',
+        'Fotos cargadas. Te faltan': 'Photos loaded. You still need',
+        'para poder continuar. Si tienes 4, ETERNA completará las 6.': 'to continue. If you have 4, ETERNA will complete the 6.',
+        '6 fotos listas. Puedes cambiar cualquiera tocando su casilla.': '6 photos ready. You can change any of them by tapping its box.',
+        'fotos listas. ETERNA completará las 6.': 'photos ready. ETERNA will complete the 6.',
+    }
+    # RC112H — barrido final de textos visibles del formulario completo.
+    replacements.update({
+        'Elige 6 fotos directamente desde tu galería. Se cargan de forma nativa para que el proceso sea rápido.': 'Choose 6 photos directly from your gallery. They load natively so the process stays fast.',
+        'Elige 6 fotos directamente desde tu galería. ETERNA las optimiza automáticamente para que carguen mejor en móvil.': 'Choose 6 photos directly from your gallery. They load natively so the process stays fast.',
+        'Seleccionar 6 recuerdos': 'Select 6 memories',
+        'Puedes elegir las 6 fotos de una vez. Después podrás cambiar cualquiera individualmente.': 'You can select all 6 photos at once. Afterwards, you can replace any of them individually.',
+        'Pendiente': 'Pending', 'Cargando foto...': 'Loading photo...', 'Subiendo foto...': 'Uploading photo...',
+        'Foto lista': 'Photo ready', 'Foto subida': 'Photo uploaded', 'Foto recuperada': 'Photo recovered',
+        'Tus palabras': 'Your words', 'TUS PALABRAS': 'YOUR WORDS',
+        'Dinero a regalar (€)': 'Gift amount (€)', 'Dinero a regalar': 'Gift amount', 'DINERO A REGALAR': 'GIFT AMOUNT',
+        'Crear y pasar al pago seguro': 'Continue to secure payment', 'Abrir galería': 'Open gallery', 'Cambiar': 'Change',
+        'FOTO 1': 'PHOTO 1', 'FOTO 2': 'PHOTO 2', 'FOTO 3': 'PHOTO 3', 'FOTO 4': 'PHOTO 4', 'FOTO 5': 'PHOTO 5', 'FOTO 6': 'PHOTO 6',
+        'Foto 1': 'Photo 1', 'Foto 2': 'Photo 2', 'Foto 3': 'Photo 3', 'Foto 4': 'Photo 4', 'Foto 5': 'Photo 5', 'Foto 6': 'Photo 6',
+        'Elige una ocasión. Solo nos ayuda a entender el tono. No complica el proceso.': 'Choose an occasion. It only helps us understand the tone. It does not complicate the process.',
+        '¿Para quién es esta ETERNA?': 'Who is this ETERNA for?', 'Quién lo crea': 'Who creates it', 'Quién lo va a vivir': 'Who will receive it',
+        'El alma de Yul': "Yul's soul",
+        'Una sola pista. Un lugar. Yul no necesita saber más para encontrar una puerta.': 'One clue. One place. Yul does not need more to find a doorway.',
+        '¿Hay algún lugar que forme parte de vuestra historia?': 'Is there a place that belongs to your story?',
+        'Ej: Cádiz, la montaña, la casa de la abuela, un banco, París...': "E.g. Cádiz, the mountains, grandma's house, a bench, Paris...",
+        'No expliques el recuerdo. Solo escribe el lugar. Yul hará el resto.': 'Do not explain the memory. Just write the place. Yul will do the rest.',
+        'Los recuerdos': 'The memories', 'Qué quieres provocar': 'What do you want to make them feel?', 'TIPO DE EMOCIÓN': 'TYPE OF EMOTION',
+        'Las palabras': 'Your words', 'El momento exacto': 'The exact moment',
+        'Puedes dejar que llegue en cuanto esté lista...': 'You can let it arrive as soon as it is ready...',
+        'o programar ese momento íntimo en el que sabes que podrá vivirla de verdad.': 'or schedule that intimate moment when you know they can truly live it.',
+        'Enviarlo en cuanto esté listo': 'Send it as soon as it is ready', 'Sin coste extra.': 'No extra cost.',
+        'Guardarlo y entregarlo en un momento exacto': 'Save it and deliver it at an exact moment',
+        'para guardarlo y hacer que llegue exactamente cuando tú elijas.': 'to save it and make it arrive exactly when you choose.',
+        'Lo ideal es que pueda vivirlo con calma.': 'Ideally, they should experience it calmly.',
+        'Con unos cascos. En silencio. Sin que nadie le moleste.': 'With headphones. In silence. Without being disturbed.',
+        'Precio base ETERNA': 'Base ETERNA price', 'Si añades regalo económico': 'If you add a money gift',
+        'gestión segura': 'secure handling', 'del importe regalado': 'of the gifted amount',
+        'Entrega programada': 'Scheduled delivery',
+        'solo si eliges guardarlo y entregarlo en un momento exacto': 'only if you choose to save it and deliver it at an exact moment',
+        'Privado y seguro': 'Private and secure', 'Tus fotos son privadas.': 'Your photos are private.',
+        'El pago se realiza de forma segura con Stripe.': 'Payment is processed securely with Stripe.',
+        'La reacción solo vuelve a quien crea esta ETERNA.': 'The reaction only returns to the person who created this ETERNA.',
+        'Si añades dinero, lo recibirá la persona destinataria.': 'If you add money, the recipient will receive it.',
+        'Soporte:': 'Support:',
+        'No solo eliges lo que va a sentir. También eliges cuándo debe ocurrir.': 'You do not only choose what they will feel. You also choose when it should happen.',
+        'Acepto crear esta ETERNA de forma responsable. Entiendo que, si la persona destinataria vive la experiencia, podré recibir un recuerdo privado de ese momento. Me comprometo a tratar ese contenido con respeto, a no utilizarlo de forma ofensiva, invasiva o pública, y a compartirlo solo de manera responsable.': 'I accept creating this ETERNA responsibly. I understand that, if the recipient lives the experience, I may receive a private memory of that moment. I commit to treating that content with respect, not using it in an offensive, invasive or public way, and sharing it only responsibly.',
+        'Al continuar, aceptas las': 'By continuing, you accept the', 'condiciones': 'terms', 'y la': 'and the', 'política de privacidad': 'privacy policy',
+        'Abriendo pago seguro ETERNA': 'Opening secure ETERNA payment',
+        'Quiero que ETERNA encuentre las palabras': 'I want ETERNA to find the words', 'Quiero escribir lo que siento': 'I want to write what I feel',
+        'Ver frases sugeridas': 'See suggested phrases', 'Gracias por estar siempre.': 'Thank you for always being there.',
+        'Hay personas que se quedan para siempre.': 'Some people stay forever.', 'Hoy quería recordarte algo bonito.': 'Today I wanted to remind you of something beautiful.',
+        'Aunque estemos lejos, sigues aquí.': 'Even if we are far apart, you are still here.', 'Nunca olvides lo importante que eres para mí.': 'Never forget how important you are to me.',
+        'Lo que nunca quieres que olvide': 'What you never want them to forget', 'Eso que sientes y a veces no dices': 'What you feel and sometimes do not say',
+        'La frase que quieres dejarle para siempre': 'The sentence you want to leave them forever', '¿Necesitas inspiración?': 'Need inspiration?',
+        'Pareja': 'Partner', 'Madre': 'Mother', 'Padre': 'Father', 'Cumpleaños': 'Birthday', 'Amistad': 'Friendship', 'A distancia': 'Long distance',
+        'Otro momento': 'Another moment', 'Amor': 'Love', 'Mamá': 'Mom', 'Papá': 'Dad', 'Familia': 'Family', 'Distancia': 'Distance', 'Perdón': 'Forgiveness', 'Reencuentro': 'Reunion', 'Gracias': 'Thank you', 'Superación': 'Overcoming', 'Sorpresa': 'Surprise', 'Esfuerzo': 'Effort', 'No sé cómo decirlo': 'I do not know how to say it',
+        'Amor, aniversario o algo que no sabes decir.': 'Love, anniversary or something you do not know how to say.',
+        'Para agradecer todo lo que siempre estuvo.': 'To thank everything that was always there.',
+        'Para reconocer lo que a veces no se dice.': 'To recognize what is not always said.',
+        'Una sorpresa que se vive de verdad.': 'A surprise that is truly lived.',
+        'Para alguien que siempre estuvo cerca.': 'For someone who was always close.',
+        'Cuando está lejos, pero sigue aquí.': 'When they are far away, but still here.',
+        'Cuando simplemente quieres emocionar.': 'When you simply want to move someone.',
+        'Un día que merece quedarse.': 'A day worth keeping.',
+        'Cuando lo que sientes ya no cabe dentro.': 'When what you feel no longer fits inside.',
+        'Para quien siempre fue hogar.': 'For the one who was always home.',
+        'Para quien dejó huella sin hacer ruido.': 'For the one who left a mark quietly.',
+        'Para quienes siempre vuelven a ti.': 'For those who always come back to you.',
+        'Para esa persona que se quedó.': 'For the person who stayed.',
+        'Cuando alguien está lejos, pero sigue cerca.': 'When someone is far away, but still close.',
+        'Para decir algo que cuesta decir.': 'To say something hard to say.',
+        'Cuando algo vuelve después del tiempo.': 'When something returns after time.',
+        'Para agradecer de verdad.': 'To truly say thank you.',
+        'Para recordarle todo lo que vale.': 'To remind them how much they are worth.',
+        'Cuando quieres tocar el corazón sin avisar.': 'When you want to touch their heart without warning.',
+        'Cuando ETERNA debe decirlo por ti.': 'When ETERNA should say it for you.',
+
+        'Elige 6 fotos directamente desde tu galería. Se cargan de forma nativa para que el proceso sea rápido.': 'Choose 6 photos directly from your gallery. They load natively so the process stays fast.',
+        'Se cargan de forma nativa para que el proceso sea rápido.': 'They load natively so the process stays fast.',
+        'para poder continuar. Si tienes 4, ETERNA completará las 6.': 'to continue. If you have 4, ETERNA will complete the 6.',
+        'Toca esta foto otra vez para subirla.': 'Tap this photo again to upload it.',
+        'Opcional si ya tienes 4 fotos.': 'Optional if you already have 4 photos.',
+        'Necesaria para crear tu ETERNA.': 'Required to create your ETERNA.',
+    })
+    for old, new in replacements.items():
+        html = html.replace(old, new)
+    # RC112I: no reemplazamos value="es" de forma global porque rompe data-lang="es"
+    # del botón Español y cualquier otro atributo del formulario. Solo tocamos el hidden real.
+    html = html.replace('name="language" id="language" value="es"', 'name="language" id="language" value="en"')
+    # RC112J: algunos barridos de texto pueden tocar atributos data-lang por coincidencia.
+    # Blindamos los botones: Español siempre data-lang=es; English siempre data-lang=en.
+    html = html.replace('href="/crear?lang=es" role="button" class="language-option " data-lang="en"', 'href="/crear?lang=es" role="button" class="language-option " data-lang="es"')
+    html = html.replace('href="/crear?lang=es" role="button" class="language-option active" data-lang="en"', 'href="/crear?lang=es" role="button" class="language-option active" data-lang="es"')
+    return html
+
+
+def render_create_form(initial_language: str = "es") -> str:
+    lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
+    html = _ORIGINAL_RENDER_CREATE_FORM_RC112G(lang)
+    if lang == "en":
+        html = _eterna_force_english_create_form_html(html)
+    return html
+
+
+# =========================================================
+# RC113 — FORMULARIO ENGLISH FINAL SWEEP + NATIVE GALLERY SAFE
+# Último cerrojo limitado al formulario /crear:
+# - No toca Stripe, SMS, WhatsApp, vídeo, reacción, sender pack ni DB.
+# - Corrige textos dinámicos de galería.
+# - Traduce pantalla 422 básica de forma bilingüe.
+# - Mantiene data-lang blindado.
+# =========================================================
+_ORIGINAL_RENDER_CREATE_FORM_RC113 = render_create_form
+
+def _eterna_rc113_final_form_lock(html: str, lang: str = "es") -> str:
+    if str(lang or "").lower().strip() != "en":
+        return html
+
+    final_replacements = {
+        "Fotos cargadas. Te faltan": "Photos loaded. You still need",
+        "para poder continuar. Si tienes 4, ETERNA completará las 6.": "to continue. If you have 4, ETERNA will complete the 6.",
+        "6 fotos listas. Puedes cambiar cualquiera tocando su casilla.": "6 photos ready. You can change any of them by tapping its box.",
+        "fotos listas. ETERNA completará las 6.": "photos ready. ETERNA will complete the 6.",
+        "Elige 6 fotos directamente desde tu galería. Se cargan de forma nativa para que el proceso sea rápido.": "Choose 6 photos directly from your gallery. They load natively so the process stays fast.",
+        "Elige 6 fotos directamente desde tu galería. ETERNA las optimiza automáticamente para que carguen mejor en iPhone.": "Choose 6 photos directly from your gallery. They load natively so the process stays fast.",
+        "Elige 6 fotos directamente desde tu galería. ETERNA las optimiza automáticamente para que carguen mejor en móvil.": "Choose 6 photos directly from your gallery. They load natively so the process stays fast.",
+        "Formulario incompleto / Incomplete form": "Incomplete form",
+        "Vuelve a intentarlo desde el formulario. / Please try again from the form.": "Please try again from the form.",
+        "Volver / Back to ETERNA": "Back to ETERNA",
+    }
+    for old, new in final_replacements.items():
+        html = html.replace(old, new)
+
+    # Blindaje de botones de idioma y hidden real.
+    html = html.replace('name="language" id="language" value="es"', 'name="language" id="language" value="en"')
+    html = html.replace('href="/crear?lang=es" role="button" class="language-option " data-lang="en"', 'href="/crear?lang=es" role="button" class="language-option " data-lang="es"')
+    html = html.replace('href="/crear?lang=es" role="button" class="language-option active" data-lang="en"', 'href="/crear?lang=es" role="button" class="language-option active" data-lang="es"')
+    html = html.replace('data-lang="es">🇬🇧 English', 'data-lang="en">🇬🇧 English')
+    return html
+
+def render_create_form(initial_language: str = "es") -> str:
+    lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
+    return _eterna_rc113_final_form_lock(_ORIGINAL_RENDER_CREATE_FORM_RC113(lang), lang)
+
+# =========================================================
+# RC114 — ACTIVE OVERRIDE: REAL I18N + NATIVE PHOTOS SAFE
+# This final render_create_form intentionally overrides the older RC112/RC113
+# patched versions above. It does not use html.replace for translation.
+# =========================================================
+
+def render_create_form(initial_language: str = "es") -> str:
+    from string import Template
+
+    lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
+
+    TEXTS = {
+        "es": {
+            "html_lang":"es", "meta_title":"Crear ETERNA", "subtitle":"Crea algo que no se abra. Se viva.",
+            "intro1":"No todo lo importante", "intro2":"debería desaparecer.", "intro3":"Haz que vuelva convertido", "intro4":"en emoción real.",
+            "lang_es":"🇪🇸 Español", "lang_en":"🇬🇧 English",
+            "creator_title":"QUIÉN LO CREA", "customer_name":"Tu nombre", "customer_email":"Tu email", "customer_phone":"Tu teléfono",
+            "recipient_title":"QUIÉN LO RECIBE", "recipient_name":"Nombre de la persona que lo recibe", "recipient_phone":"Teléfono de quien lo recibe", "recipient_email":"Email opcional del destinatario",
+            "photos_title":"Selecciona 6 recuerdos", "photos_copy":"Elige 6 fotos directamente desde tu galería. Se cargan de forma nativa para que el proceso sea rápido.", "open_gallery":"Abrir galería", "change_photo":"Cambiar foto", "photo":"Foto",
+            "photo_required":"Necesaria para crear tu ETERNA.", "photo_optional":"Opcional si ya tienes 4 fotos.", "photo_ready":"Foto lista ✓", "photo_uploaded":"Foto subida ✓", "photo_uploading":"Subiendo foto...",
+            "photos_hint_initial":"Necesitas al menos las primeras 4 fotos. Si tienes 4, ETERNA completará las 6.", "photos_hint_partial":"{count} fotos listas. Te faltan {missing} para continuar.", "photos_hint_ready4":"{count} fotos listas. Puedes continuar; ETERNA completará las 6 si falta alguna.", "photos_hint_ready6":"6 fotos listas. Puedes cambiar cualquiera tocando su casilla.",
+            "occasion_title":"QUÉ MOMENTO ES", "occasion_date":"Fecha importante opcional", "emotion_title":"QUÉ QUIERES PROVOCAR", "words_title":"TUS PALABRAS", "phrase_auto":"Quiero que ETERNA encuentre las palabras", "phrase_manual":"Quiero escribir lo que siento",
+            "phrase_1":"Lo que nunca quieres que olvide", "phrase_2":"Eso que sientes y a veces no dices", "phrase_3":"La frase que quieres dejarle para siempre", "suggestions_title":"¿Necesitas inspiración?", "suggestions_button":"Ver frases sugeridas",
+            "yul_title":"YUL — detalle opcional", "yul_place":"Un lugar que recuerdes con esa persona", "yul_detail":"Un pequeño detalle que solo vosotros entendáis", "yul_tone":"Tono emocional que quieres provocar", "yul_hint":"Algo que ETERNA debería tener en cuenta",
+            "delivery_title":"EL MOMENTO EXACTO", "delivery_copy":"Puedes dejar que llegue en cuanto esté lista... o programar ese momento íntimo en el que sabes que podrá vivirla de verdad.", "delivery_instant":"Enviarlo en cuanto esté listo", "delivery_instant_sub":"Sin coste extra.", "delivery_scheduled":"Guardarlo y entregarlo en un momento exacto", "delivery_scheduled_sub":"+{fee} para guardarlo y hacer que llegue exactamente cuando tú elijas.", "delivery_date":"Fecha de entrega", "delivery_time":"Hora de entrega", "delivery_hint":"Lo ideal es que pueda vivirlo con calma. Con unos cascos. En silencio. Sin que nadie le moleste.",
+            "gift_title":"DINERO A REGALAR", "gift_placeholder":"Dinero a regalar (€)", "price_base":"Precio base ETERNA", "gift_fee":"Si añades regalo económico: gestión segura del importe regalado.", "scheduled_fee":"Entrega programada: solo si eliges guardarlo y entregarlo en un momento exacto.",
+            "trust_title":"Privado y seguro", "trust_1":"Tus fotos son privadas.", "trust_2":"El pago se realiza de forma segura con Stripe.", "trust_3":"La reacción solo vuelve a quien crea esta ETERNA.", "trust_4":"Si añades dinero, lo recibirá la persona destinataria.", "trust_5":"Soporte:",
+            "responsible":"Acepto crear esta ETERNA de forma responsable. Entiendo que, si la persona destinataria vive la experiencia, podré recibir un recuerdo privado de ese momento. Me comprometo a tratar ese contenido con respeto, a no utilizarlo de forma ofensiva, invasiva o pública, y a compartirlo solo de manera responsable.",
+            "legal_before":"Al continuar, aceptas las", "terms":"condiciones", "legal_middle":"y la", "privacy":"política de privacidad", "submit_disabled":"Completa los datos y sube 4 fotos", "submit_ready":"Crear y continuar al pago seguro", "opening_checkout":"Abriendo pago seguro ETERNA...",
+            "error_main":"Revisa los datos principales antes de continuar.", "error_photos":"Sube al menos las primeras 4 fotos para continuar.", "error_emotion":"Elige una emoción para continuar.", "error_manual":"Escribe tus 3 frases.", "error_responsible":"Debes aceptar el uso responsable de ETERNA.", "error_delivery":"Elige una fecha y hora de entrega válidas.", "error_amount":"El importe no es válido.", "error_generic":"Algo no ha ido bien. Revisa el formulario."
+        },
+        "en": {
+            "html_lang":"en", "meta_title":"Create ETERNA", "subtitle":"Create something that isn't opened. It's lived.",
+            "intro1":"Not everything important", "intro2":"should disappear.", "intro3":"Make it return as", "intro4":"real emotion.",
+            "lang_es":"🇪🇸 Español", "lang_en":"🇬🇧 English",
+            "creator_title":"WHO IS CREATING THIS?", "customer_name":"Your name", "customer_email":"Your email", "customer_phone":"Your phone",
+            "recipient_title":"WHO RECEIVES IT?", "recipient_name":"Recipient's name", "recipient_phone":"Recipient's phone", "recipient_email":"Recipient email (optional)",
+            "photos_title":"Select 6 memories", "photos_copy":"Choose 6 photos directly from your gallery. They load natively so the process stays fast.", "open_gallery":"Open gallery", "change_photo":"Change photo", "photo":"Photo",
+            "photo_required":"Required to create your ETERNA.", "photo_optional":"Optional if you already have 4 photos.", "photo_ready":"Photo ready ✓", "photo_uploaded":"Photo uploaded ✓", "photo_uploading":"Uploading photo...",
+            "photos_hint_initial":"You need at least the first 4 photos. If you have 4, ETERNA will complete the 6.", "photos_hint_partial":"{count} photos ready. You still need {missing} to continue.", "photos_hint_ready4":"{count} photos ready. You can continue; ETERNA will complete the 6 if needed.", "photos_hint_ready6":"6 photos ready. You can change any of them by tapping its box.",
+            "occasion_title":"WHAT MOMENT IS IT?", "occasion_date":"Optional important date", "emotion_title":"WHAT DO YOU WANT TO MAKE THEM FEEL?", "words_title":"YOUR WORDS", "phrase_auto":"I want ETERNA to find the words", "phrase_manual":"I want to write what I feel",
+            "phrase_1":"What you never want them to forget", "phrase_2":"What you feel and sometimes do not say", "phrase_3":"The sentence you want to leave them forever", "suggestions_title":"Need inspiration?", "suggestions_button":"See suggested phrases",
+            "yul_title":"YUL — optional detail", "yul_place":"A place you remember with this person", "yul_detail":"A small detail only you both understand", "yul_tone":"The emotional tone you want", "yul_hint":"Something ETERNA should keep in mind",
+            "delivery_title":"THE EXACT MOMENT", "delivery_copy":"You can let it arrive as soon as it is ready... or schedule the intimate moment when you know they can truly live it.", "delivery_instant":"Send it as soon as it is ready", "delivery_instant_sub":"No extra cost.", "delivery_scheduled":"Save it and deliver it at an exact moment", "delivery_scheduled_sub":"+{fee} to save it and make it arrive exactly when you choose.", "delivery_date":"Delivery date", "delivery_time":"Delivery time", "delivery_hint":"Ideally, they should be able to live it calmly. With headphones. In silence. Without being disturbed.",
+            "gift_title":"GIFT AMOUNT", "gift_placeholder":"Gift amount (€)", "price_base":"Base ETERNA price", "gift_fee":"If you add a money gift: secure handling of the gifted amount.", "scheduled_fee":"Scheduled delivery: only if you choose to save it and deliver it at an exact moment.",
+            "trust_title":"Private and secure", "trust_1":"Your photos are private.", "trust_2":"Payment is processed securely with Stripe.", "trust_3":"The reaction only returns to the person who creates this ETERNA.", "trust_4":"If you add money, the recipient will receive it.", "trust_5":"Support:",
+            "responsible":"I accept creating this ETERNA responsibly. I understand that, if the recipient lives the experience, I may receive a private memory of that moment. I commit to treating that content with respect, not using it in an offensive, invasive or public way, and sharing it only responsibly.",
+            "legal_before":"By continuing, you accept the", "terms":"terms", "legal_middle":"and the", "privacy":"privacy policy", "submit_disabled":"Complete the details and upload 4 photos", "submit_ready":"Create and continue to secure payment", "opening_checkout":"Opening secure ETERNA checkout...",
+            "error_main":"Please review the main details before continuing.", "error_photos":"Upload at least the first 4 photos to continue.", "error_emotion":"Select an emotion to continue.", "error_manual":"Write your 3 messages.", "error_responsible":"Before continuing, you must accept ETERNA's responsible use.", "error_delivery":"Choose a valid delivery date and time.", "error_amount":"The amount is not valid.", "error_generic":"Something went wrong. Please review the form."
+        }
+    }
+    OCCASIONS = {
+        "es":[("pareja","❤️ Pareja","Amor, aniversario o algo que no sabes decir."),("madre","👩 Mamá","Para agradecer todo lo que siempre estuvo."),("padre","👨 Papá","Para reconocer lo que a veces no se dice."),("cumpleanos","🎂 Cumpleaños","Una sorpresa que se vive de verdad."),("amistad","🤝 Amistad","Para alguien que siempre estuvo cerca."),("distancia","🌍 A distancia","Cuando está lejos, pero sigue aquí."),("otro","✨ Otro momento","Cuando simplemente quieres emocionar.")],
+        "en":[("pareja","❤️ Partner","Love, anniversary or something you do not know how to say."),("madre","👩 Mother","To thank everything that was always there."),("padre","👨 Father","To recognize what is not always said."),("cumpleanos","🎂 Birthday","A surprise that is truly experienced."),("amistad","🤝 Friendship","For someone who was always close."),("distancia","🌍 Long distance","When they are far away, but still here."),("otro","✨ Another moment","When you simply want to move someone.")]
+    }
+    EMOTIONS = {
+        "es":[("cumpleanos","Cumpleaños","Un día que merece quedarse."),("amor","Amor","Cuando lo que sientes ya no cabe dentro."),("mama","Mamá","Para quien siempre fue hogar."),("papa","Papá","Para quien dejó huella sin hacer ruido."),("familia","Familia","Para quienes siempre vuelven a ti."),("amistad","Amistad","Para esa persona que se quedó."),("distancia","Distancia","Cuando alguien está lejos, pero sigue cerca."),("perdon","Perdón","Para decir algo que cuesta decir."),("reencuentro","Reencuentro","Cuando algo vuelve después del tiempo."),("gracias","Gracias","Para agradecer de verdad."),("superacion","Superación","Para recordarle todo lo que vale."),("sorpresa","Sorpresa","Cuando quieres tocar el corazón sin avisar."),("esfuerzo","Esfuerzo","Para reconocer todo lo que ha dado."),("no_se","No sé cómo decirlo","Cuando ETERNA debe decirlo por ti.")],
+        "en":[("cumpleanos","Birthday","A day worth keeping."),("amor","Love","When what you feel no longer fits inside."),("mama","Mom","For the one who was always home."),("papa","Dad","For the one who left a mark quietly."),("familia","Family","For those who always come back to you."),("amistad","Friendship","For the person who stayed."),("distancia","Distance","When someone is far away, but still close."),("perdon","Forgiveness","To say something hard to say."),("reencuentro","Reunion","When something returns after time."),("gracias","Thank you","To truly say thank you."),("superacion","Overcoming","To remind them how much they are worth."),("sorpresa","Surprise","When you want to touch their heart without warning."),("esfuerzo","Effort","To recognize everything they have given."),("no_se","I do not know how to say it","When ETERNA should say it for you.")]
+    }
+    SUGGESTIONS = {"es":["Gracias por estar siempre.","Hay personas que se quedan para siempre.","Hoy quería recordarte algo bonito.","Aunque estemos lejos, sigues aquí.","Nunca olvides lo importante que eres para mí."],"en":["Thank you for always being there.","Some people stay forever.","Today I wanted to remind you of something beautiful.","Even if we are far apart, you are still here.","Never forget how important you are to me."]}
+    T = TEXTS[lang]
+    def esc(v):
+        return html.escape(str(v or ""), quote=True)
+    country_options = "".join([f'<option value="{esc(c)}"{" selected" if c=="+34" else ""}>{esc(c)}</option>' for c in KNOWN_COUNTRY_CODES])
+    occasion_cards = "".join([f'<label class="choice-card"><input type="radio" name="occasion_type" value="{esc(v)}"><span class="choice-title">{esc(t)}</span><span class="choice-sub">{esc(d)}</span></label>' for v,t,d in OCCASIONS[lang]])
+    emotion_cards = "".join([f'<label class="emotion-card"><input type="radio" name="message_type" value="{esc(v)}"><span class="emotion-title">{esc(t)}</span><span class="emotion-sub">{esc(d)}</span></label>' for v,t,d in EMOTIONS[lang]])
+    suggestions = "".join([f'<button type="button" class="suggestion-chip" data-text="{esc(s)}">{esc(s)}</button>' for s in SUGGESTIONS[lang]])
+    photo_slots = "".join([f'<label class="photo-box" for="photo{i}"><input id="photo{i}" name="photo{i}" type="file" accept="image/*" class="photo-input"><span class="photo-label">{esc(T["photo"])} {i}</span><span class="photo-preview" id="preview_photo{i}">{esc(T["change_photo"])}</span><span class="photo-status" id="status_photo{i}">{esc(T["photo_required"] if i<=4 else T["photo_optional"])}</span></label>' for i in range(1,7)])
+    js_texts = json.dumps({k:T[k] for k in ["photo_ready","photo_uploaded","photo_uploading","photos_hint_initial","photos_hint_partial","photos_hint_ready4","photos_hint_ready6","submit_disabled","submit_ready","opening_checkout","error_main","error_photos","error_emotion","error_manual","error_responsible","error_delivery","error_amount","error_generic"]}, ensure_ascii=False)
+    return Template(r'''
+<!DOCTYPE html><html lang="$html_lang"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>$meta_title</title><meta name="theme-color" content="#02050a"><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;min-height:100%;background:#02050a;color:#fff7e6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}body{padding:18px;overflow-x:hidden;background:radial-gradient(circle at 50% -10%,rgba(245,210,139,.24),transparent 30%),linear-gradient(180deg,#020817,#000 52%,#020817)}.wrap{width:100%;max-width:920px;margin:0 auto}.card{border:1px solid rgba(245,210,139,.22);border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035));box-shadow:0 28px 100px rgba(0,0,0,.58);padding:24px}.brand{text-align:center;letter-spacing:.42em;color:#f5d28b;font-weight:900;font-size:13px;margin:8px 0 10px}h1{margin:0;text-align:center;font-size:clamp(38px,10vw,68px);letter-spacing:.12em;color:#f7dfaa}.subtitle{text-align:center;color:rgba(255,255,255,.72);margin:12px auto 20px;line-height:1.5}.language-switch{display:flex;justify-content:center;gap:10px;margin:14px 0 24px}.language-option{border:1px solid rgba(245,210,139,.25);border-radius:999px;padding:10px 14px;text-decoration:none;color:rgba(255,255,255,.68);font-weight:800;background:rgba(255,255,255,.04)}.language-option.active{color:#0b1018;background:#f5d28b}.intro{text-align:center;margin:8px auto 28px;max-width:620px}.intro p{margin:0;color:rgba(255,255,255,.88);font-size:19px;line-height:1.65}.section{margin:22px 0;padding:20px;border:1px solid rgba(255,255,255,.09);border-radius:24px;background:rgba(0,0,0,.20)}.section-title{font-size:13px;letter-spacing:.18em;color:#f5d28b;font-weight:900;margin-bottom:14px;text-transform:uppercase}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.phone-row{display:grid;grid-template-columns:112px 1fr;gap:10px}input,select,textarea{width:100%;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(255,255,255,.07);color:#fff;padding:15px;font-size:16px;outline:none}textarea{min-height:92px;resize:vertical}input::placeholder,textarea::placeholder{color:rgba(255,255,255,.42)}select option{background:#111;color:#fff}.soft-copy,.hint,.legal,.trust li{color:rgba(255,255,255,.70);line-height:1.55}.choice-grid,.emotion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.choice-card,.emotion-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.05);padding:14px;cursor:pointer}.choice-card input,.emotion-card input{width:auto;margin-right:8px}.choice-title,.emotion-title{display:block;font-weight:900;color:#fff;margin-bottom:6px}.choice-sub,.emotion-sub{display:block;color:rgba(255,255,255,.60);font-size:13px;line-height:1.4}.photo-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}.gallery-button{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;background:#f5d28b;color:#08111d;padding:14px 18px;font-weight:900;cursor:pointer}.photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.photo-box{position:relative;min-height:152px;border:1px solid rgba(255,255,255,.13);border-radius:20px;background:rgba(255,255,255,.045);padding:12px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;cursor:pointer}.photo-box.ready{border-color:rgba(88,255,184,.45);background:rgba(88,255,184,.06)}.photo-input{position:absolute;inset:0;opacity:0;cursor:pointer}.photo-label{font-weight:900;color:#f5d28b;z-index:2}.photo-preview{height:76px;border-radius:14px;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;text-align:center;color:rgba(255,255,255,.50);font-size:13px;background-size:cover;background-position:center;z-index:1}.photo-preview.has-image{color:transparent}.photo-status{font-size:12px;color:rgba(255,255,255,.55);z-index:2}.photo-status.ready{color:#89ffc9}.photo-status.loading{color:#f5d28b}.error{display:none;border:1px solid rgba(255,80,80,.35);background:rgba(255,80,80,.12);color:#ffd6d6;border-radius:16px;padding:14px;margin:16px 0;line-height:1.45}.error.show{display:block}.radio-row{display:flex;gap:10px;align-items:flex-start;margin:10px 0;color:rgba(255,255,255,.82)}.radio-row input{width:auto;margin-top:3px}.hidden{display:none!important}.suggestions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.suggestion-chip{border:1px solid rgba(245,210,139,.25);border-radius:999px;background:rgba(245,210,139,.08);color:#f7dfaa;padding:9px 12px;cursor:pointer}.price-line{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid rgba(255,255,255,.08);padding:10px 0;color:rgba(255,255,255,.75)}.trust ul{padding-left:18px;margin:10px 0}.responsible{display:flex;gap:10px;align-items:flex-start;margin-top:16px;color:rgba(255,255,255,.76);line-height:1.5}.responsible input{width:auto;margin-top:3px}.submit{width:100%;border:0;border-radius:20px;min-height:62px;background:linear-gradient(135deg,#fff0b9,#d49c37);color:#08111d;font-size:17px;font-weight:950;cursor:pointer;margin-top:18px}.submit:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}a{color:#f7dfaa}@media(max-width:720px){body{padding:14px}.card{padding:18px;border-radius:24px}.grid,.choice-grid,.emotion-grid{grid-template-columns:1fr}.photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.phone-row{grid-template-columns:96px 1fr}.section{padding:16px}}
+</style></head><body><div class="wrap"><main class="card"><div class="brand">ETERNA</div><h1>ETERNA</h1><p class="subtitle">$subtitle</p><nav class="language-switch"><a href="/crear?lang=es" class="language-option $es_active" data-lang="es">$lang_es</a><a href="/crear?lang=en" class="language-option $en_active" data-lang="en">$lang_en</a></nav><div class="intro"><p>$intro1</p><p>$intro2</p><p>$intro3</p><p>$intro4</p></div><form id="createForm" action="/crear" method="post" enctype="multipart/form-data" novalidate><input type="hidden" name="language" id="language" value="$lang"><input type="hidden" name="photo_upload_session" id="photo_upload_session" value=""><div id="formError" class="error"></div>
+<section class="section"><div class="section-title">$creator_title</div><div class="grid"><input name="customer_name" id="customer_name" placeholder="$customer_name" required><input name="customer_email" id="customer_email" type="email" placeholder="$customer_email" required></div><div class="phone-row" style="margin-top:12px"><select name="customer_country_code">$country_options</select><input name="customer_phone" id="customer_phone" inputmode="tel" placeholder="$customer_phone" required></div></section>
+<section class="section"><div class="section-title">$recipient_title</div><input name="recipient_name" id="recipient_name" placeholder="$recipient_name" required><div class="phone-row" style="margin-top:12px"><select name="recipient_country_code">$country_options</select><input name="recipient_phone" id="recipient_phone" inputmode="tel" placeholder="$recipient_phone" required></div><input style="margin-top:12px" name="recipient_email" id="recipient_email" type="email" placeholder="$recipient_email"></section>
+<section class="section"><div class="section-title">$photos_title</div><div class="soft-copy">$photos_copy</div><div class="photo-actions"><label class="gallery-button" for="allPhotosInput">$open_gallery</label><input id="allPhotosInput" type="file" accept="image/*" multiple style="display:none"><span class="hint" id="photoHint">$photos_hint_initial</span></div><div class="photo-grid">$photo_slots</div></section>
+<section class="section"><div class="section-title">$occasion_title</div><div class="choice-grid">$occasion_cards</div><input style="margin-top:12px" type="date" name="occasion_date" aria-label="$occasion_date"></section><section class="section"><div class="section-title">$emotion_title</div><div class="emotion-grid">$emotion_cards</div></section>
+<section class="section"><div class="section-title">$words_title</div><label class="radio-row"><input type="radio" name="phrase_mode" value="auto" checked> <span>$phrase_auto</span></label><label class="radio-row"><input type="radio" name="phrase_mode" value="manual"> <span>$phrase_manual</span></label><div id="manualPhrases" class="hidden"><textarea name="phrase_1" id="phrase_1" maxlength="220" placeholder="$phrase_1"></textarea><textarea name="phrase_2" id="phrase_2" maxlength="220" placeholder="$phrase_2"></textarea><textarea name="phrase_3" id="phrase_3" maxlength="220" placeholder="$phrase_3"></textarea><div class="section-title" style="margin-top:12px">$suggestions_title</div><button type="button" class="gallery-button" id="suggestionsToggle">$suggestions_button</button><div class="suggestions hidden" id="suggestionsBox">$suggestions</div></div></section>
+<section class="section"><div class="section-title">$yul_title</div><div class="grid"><input name="yul_memory_place" placeholder="$yul_place"><input name="yul_memory_detail" placeholder="$yul_detail"><input name="yul_emotion_tone" placeholder="$yul_tone"><input name="yul_magic_hint" placeholder="$yul_hint"></div></section>
+<section class="section"><div class="section-title">$delivery_title</div><div class="soft-copy">$delivery_copy</div><label class="radio-row"><input type="radio" name="delivery_mode" value="instant" checked> <span><strong>$delivery_instant</strong><br><small>$delivery_instant_sub</small></span></label><label class="radio-row"><input type="radio" name="delivery_mode" value="scheduled"> <span><strong>$delivery_scheduled</strong><br><small>$delivery_scheduled_sub</small></span></label><div id="scheduledFields" class="grid hidden"><input type="date" name="delivery_date" id="delivery_date" aria-label="$delivery_date"><input type="time" name="delivery_time" id="delivery_time" aria-label="$delivery_time"></div><div class="hint">$delivery_hint</div></section>
+<section class="section"><div class="section-title">$gift_title</div><input name="gift_amount" id="gift_amount" type="number" min="0" step="0.01" value="0" placeholder="$gift_placeholder" required><div class="price-line"><span>$price_base</span><strong>$base_price</strong></div><div class="price-line"><span>$gift_fee</span><strong>5%</strong></div><div class="price-line"><span>$scheduled_fee</span><strong>$scheduled_fee_value</strong></div></section>
+<section class="section trust"><div class="section-title">$trust_title</div><ul><li>$trust_1</li><li>$trust_2</li><li>$trust_3</li><li>$trust_4</li><li>$trust_5 $support_email · $support_phone</li></ul><label class="responsible"><input type="checkbox" name="responsible_use_accepted" value="accepted" id="responsible_use_accepted"> <span>$responsible</span></label><p class="legal">$legal_before <a href="/condiciones" target="_blank">$terms</a> $legal_middle <a href="/privacidad" target="_blank">$privacy</a>.</p></section><button class="submit" id="submitBtn" type="submit" disabled>$submit_disabled</button></form></main></div>
+<script>(function(){'use strict';const T=$js_texts;const IDS=['photo1','photo2','photo3','photo4','photo5','photo6'];const REQ=['photo1','photo2','photo3','photo4'];const form=document.getElementById('createForm'),btn=document.getElementById('submitBtn'),err=document.getElementById('formError'),multi=document.getElementById('allPhotosInput'),session=document.getElementById('photo_upload_session'),hint=document.getElementById('photoHint');const nativeFiles={},preuploaded={};if(session&&!session.value){session.value='rc114_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}function show(m){if(err){err.textContent=m||T.error_generic;err.classList.add('show');err.scrollIntoView({behavior:'smooth',block:'center'});}}function clear(){if(err){err.textContent='';err.classList.remove('show');}}function ready(id){const i=document.getElementById(id);return !!(nativeFiles[id]||preuploaded[id]||(i&&i.files&&i.files.length));}function miss(){return REQ.filter(id=>!ready(id));}function count(){return IDS.filter(ready).length;}function setFile(input,file){if(!input||!file)return false;nativeFiles[input.id]=file;try{if(typeof DataTransfer==='undefined')throw new Error('no DataTransfer');const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;return !!(input.files&&input.files.length);}catch(e){console.warn('RC114 keeps file in memory',input.id,e);return false;}}function preview(id,file){const box=document.getElementById(id)?.closest('.photo-box'),prev=document.getElementById('preview_'+id),st=document.getElementById('status_'+id);if(box)box.classList.add('ready');if(prev){prev.classList.add('has-image');try{prev.style.backgroundImage='url('+URL.createObjectURL(file)+')';}catch(e){}}if(st){st.textContent=T.photo_ready;st.classList.remove('loading');st.classList.add('ready');}}function status(id,msg,cls){const st=document.getElementById('status_'+id);if(!st)return;st.textContent=msg;st.classList.remove('ready','loading');if(cls)st.classList.add(cls);}function preupload(id,file){if(!file||!session)return;status(id,T.photo_uploading,'loading');const fd=new FormData();fd.append('photo_upload_session',session.value);fd.append('slot',id);fd.append('photo',file,file.name||id+'.jpg');fetch('/preupload-photo',{method:'POST',body:fd}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{if(j&&j.ok){preuploaded[id]=true;status(id,T.photo_uploaded,'ready');}}).catch(e=>{console.warn('RC114 preupload failed, native multipart fallback',id,e);status(id,T.photo_ready,'ready');}).finally(update);}function place(id,file){const input=document.getElementById(id);if(!input||!file)return;setFile(input,file);preview(id,file);preupload(id,file);update();}function update(){const c=count(),m=miss();if(hint){if(c>=6)hint.textContent=T.photos_hint_ready6;else if(!m.length)hint.textContent=T.photos_hint_ready4.replace('{count}',String(c));else if(c>0)hint.textContent=T.photos_hint_partial.replace('{count}',String(c)).replace('{missing}',String(m.length));else hint.textContent=T.photos_hint_initial;}const ok=basic(false)&&!m.length;if(btn){btn.disabled=!ok;btn.textContent=ok?T.submit_ready:T.submit_disabled;}}function basic(showErr){for(const id of ['customer_name','customer_email','customer_phone','recipient_name','recipient_phone']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_main);return false;}}if(!document.querySelector('input[name="message_type"]:checked')){if(showErr)show(T.error_emotion);return false;}const manual=document.querySelector('input[name="phrase_mode"][value="manual"]');if(manual&&manual.checked){for(const id of ['phrase_1','phrase_2','phrase_3']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_manual);return false;}}}const scheduled=document.querySelector('input[name="delivery_mode"][value="scheduled"]');if(scheduled&&scheduled.checked){const d=document.getElementById('delivery_date')?.value||'',tm=document.getElementById('delivery_time')?.value||'';const dt=new Date(d+'T'+tm);if(!d||!tm||isNaN(dt.getTime())||dt.getTime()<=Date.now()){if(showErr)show(T.error_delivery);return false;}}const amount=parseFloat(document.getElementById('gift_amount')?.value||'0');if(Number.isNaN(amount)||amount<0){if(showErr)show(T.error_amount);return false;}if(!document.getElementById('responsible_use_accepted')?.checked){if(showErr)show(T.error_responsible);return false;}return true;}if(multi){multi.addEventListener('change',()=>{clear();Array.from(multi.files||[]).slice(0,6).forEach((f,idx)=>place(IDS[idx],f));multi.value='';update();});}IDS.forEach(id=>{const input=document.getElementById(id);if(input)input.addEventListener('change',()=>{const f=input.files&&input.files[0];if(f){nativeFiles[id]=f;preview(id,f);preupload(id,f);}update();});});document.querySelectorAll('input,textarea,select').forEach(el=>{el.addEventListener('input',update);el.addEventListener('change',update);});document.querySelectorAll('input[name="phrase_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('manualPhrases')?.classList.toggle('hidden',!(el.value==='manual'&&el.checked));update();}));document.querySelectorAll('input[name="delivery_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('scheduledFields')?.classList.toggle('hidden',!document.querySelector('input[name="delivery_mode"][value="scheduled"]')?.checked);update();}));document.getElementById('suggestionsToggle')?.addEventListener('click',()=>document.getElementById('suggestionsBox')?.classList.toggle('hidden'));document.querySelectorAll('.suggestion-chip').forEach(b=>b.addEventListener('click',()=>{const t=['phrase_1','phrase_2','phrase_3'].map(id=>document.getElementById(id)).find(el=>el&&!String(el.value||'').trim());if(t){t.value=b.getAttribute('data-text')||b.textContent||'';t.dispatchEvent(new Event('input',{bubbles:true}));}}));if(form)form.addEventListener('submit',e=>{clear();if(!basic(true)){e.preventDefault();return false;}if(miss().length){e.preventDefault();show(T.error_photos);return false;}btn.disabled=true;btn.textContent=T.opening_checkout;return true;});update();})();</script></body></html>
+''').safe_substitute(
+        html_lang=esc(T["html_lang"]), meta_title=esc(T["meta_title"]), subtitle=esc(T["subtitle"]), es_active="active" if lang=="es" else "", en_active="active" if lang=="en" else "", lang_es=esc(T["lang_es"]), lang_en=esc(T["lang_en"]), intro1=esc(T["intro1"]), intro2=esc(T["intro2"]), intro3=esc(T["intro3"]), intro4=esc(T["intro4"]), lang=esc(lang), creator_title=esc(T["creator_title"]), customer_name=esc(T["customer_name"]), customer_email=esc(T["customer_email"]), customer_phone=esc(T["customer_phone"]), recipient_title=esc(T["recipient_title"]), recipient_name=esc(T["recipient_name"]), recipient_phone=esc(T["recipient_phone"]), recipient_email=esc(T["recipient_email"]), country_options=country_options, photos_title=esc(T["photos_title"]), photos_copy=esc(T["photos_copy"]), open_gallery=esc(T["open_gallery"]), photos_hint_initial=esc(T["photos_hint_initial"]), photo_slots=photo_slots, occasion_title=esc(T["occasion_title"]), occasion_cards=occasion_cards, occasion_date=esc(T["occasion_date"]), emotion_title=esc(T["emotion_title"]), emotion_cards=emotion_cards, words_title=esc(T["words_title"]), phrase_auto=esc(T["phrase_auto"]), phrase_manual=esc(T["phrase_manual"]), phrase_1=esc(T["phrase_1"]), phrase_2=esc(T["phrase_2"]), phrase_3=esc(T["phrase_3"]), suggestions_title=esc(T["suggestions_title"]), suggestions_button=esc(T["suggestions_button"]), suggestions=suggestions, yul_title=esc(T["yul_title"]), yul_place=esc(T["yul_place"]), yul_detail=esc(T["yul_detail"]), yul_tone=esc(T["yul_tone"]), yul_hint=esc(T["yul_hint"]), delivery_title=esc(T["delivery_title"]), delivery_copy=esc(T["delivery_copy"]), delivery_instant=esc(T["delivery_instant"]), delivery_instant_sub=esc(T["delivery_instant_sub"]), delivery_scheduled=esc(T["delivery_scheduled"]), delivery_scheduled_sub=esc(T["delivery_scheduled_sub"].format(fee=money(SCHEDULED_DELIVERY_FEE))), delivery_date=esc(T["delivery_date"]), delivery_time=esc(T["delivery_time"]), delivery_hint=esc(T["delivery_hint"]), gift_title=esc(T["gift_title"]), gift_placeholder=esc(T["gift_placeholder"]), price_base=esc(T["price_base"]), gift_fee=esc(T["gift_fee"]), scheduled_fee=esc(T["scheduled_fee"]), base_price=esc(money(BASE_PRICE)), scheduled_fee_value=esc(money(SCHEDULED_DELIVERY_FEE)), trust_title=esc(T["trust_title"]), trust_1=esc(T["trust_1"]), trust_2=esc(T["trust_2"]), trust_3=esc(T["trust_3"]), trust_4=esc(T["trust_4"]), trust_5=esc(T["trust_5"]), support_email=esc(ETERNA_SUPPORT_EMAIL), support_phone=esc(ETERNA_SUPPORT_PHONE), responsible=esc(T["responsible"]), legal_before=esc(T["legal_before"]), terms=esc(T["terms"]), legal_middle=esc(T["legal_middle"]), privacy=esc(T["privacy"]), submit_disabled=esc(T["submit_disabled"]), js_texts=js_texts)
