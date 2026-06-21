@@ -61,6 +61,7 @@ print("🦋 RC104 FOUNDER EDITION SAFE — REPORT + HEALTH + BACKUP 🦋")
 print("📸 RC106 INSTAGRAM 4-6 PHOTOS SAFE — PAGO BLOQUEADO HASTA FOTOS LISTAS 📸")
 print("🛡️ RC107 INSTAGRAM PREFLIGHT UPLOAD SAFE — FOTOS SUBEN ANTES DEL PAGO 🛡️")
 print("🌍 RC108B INTERNATIONAL FORM CLEANUP SAFE — FORMULARIO ES/EN LIMPIO 🌍")
+print("🌍 RC111 LANGUAGE SWITCH SAFE — BOTÓN ES/EN BLINDADO 🌍")
 import html
 import json
 import mimetypes
@@ -8717,7 +8718,12 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (resp) resp.textContent = tr('responsibleText');
         const legal = document.querySelector('.s7 div[style*="text-align:center"]');
         if (legal) legal.innerHTML = tr('legalText');
-        if (button) button.textContent = tr('submit');
+        // RC111 LANGUAGE SWITCH SAFE — no usamos la const `button` aquí porque
+        // applyLanguage() se ejecuta antes de inicializar algunas constantes del formulario.
+        // Si tocamos `button` antes de tiempo, Safari/Chrome pueden romper todo el JS
+        // y el selector ES/EN deja de responder.
+        const submitButtonSafe = document.getElementById('submitBtn');
+        if (submitButtonSafe) submitButtonSafe.textContent = tr('submit');
     }}
 
     function applyLanguage(lang) {{
