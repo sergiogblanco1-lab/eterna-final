@@ -1,3 +1,4 @@
+
 # =========================================================
 # RC101B_FORM_POST_NATIVE_SAFE
 # Base: RC100 reacción congelada + soporte.
@@ -65,6 +66,7 @@ print("🌍 RC111 LANGUAGE SWITCH SAFE — BOTÓN ES/EN BLINDADO 🌍")
 print("🌍 RC111 LANGUAGE SWITCH HARD FALLBACK — CLICK DIRECTO ES/EN 🌍")
 print("🧾 RC113 FORM EN NATIVE GALLERY LOCKED SAFE — FORMULARIO EN REAL + GALERÍA NATIVA 🧾")
 print("🚀 RC115 WEBHOOK RECOVERY LAUNCH SAFE — PAGO REAL → VIDEOENGINE 🛟")
+print("🛟 RC116 FORM RECOVERY SAFE — VUELTA DE STRIPE SIN PERDER FORMULARIO 🛟")
 import html
 import json
 import mimetypes
@@ -749,7 +751,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC115_WEBHOOK_RECOVERY_LAUNCH_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC116_FORM_RECOVERY_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -6904,8 +6906,26 @@ def checkout_loading(order_id: Optional[str] = None):
 def render_checkout_success_visual(order: dict) -> HTMLResponse:
     """
     Pantalla de pago realizado. Visual únicamente.
+    RC116: al confirmar pago correcto limpiamos el borrador local del formulario
+    y los drafts de fotos del navegador para evitar mezclar Eternas antiguas.
     No fuerza envío, no toca webhook y no modifica el estado del pedido.
     """
+    rc116_cleanup_script = """
+<script>
+(function(){
+    try { localStorage.removeItem("eterna_create_form_v4"); } catch(e) {}
+    try { localStorage.setItem("eterna_last_paid_order", "%s"); } catch(e) {}
+    try {
+        if ("indexedDB" in window) {
+            var req = indexedDB.deleteDatabase("eterna_photo_draft_v1");
+            req.onerror = function(){ console.warn("RC116 photo draft cleanup skipped"); };
+        }
+    } catch(e) {
+        console.warn("RC116 checkout cleanup skipped", e);
+    }
+})();
+</script>
+""" % safe_attr(order.get("id") or "")
     return render_eterna_image_screen(
         image_name="payment-success-v1.png",
         fallback_image_name="payment-success-v1.png",
@@ -6913,6 +6933,7 @@ def render_checkout_success_visual(order: dict) -> HTMLResponse:
         button_url="/crear",
         button_label=eterna_ui_text(order.get("language"), "create_another"),
         extra_note=eterna_ui_text(order.get("language"), "payment_started"),
+        extra_script=rc116_cleanup_script,
     )
 
 
@@ -10286,10 +10307,10 @@ document.addEventListener("DOMContentLoaded", function () {{
 
     // RC105 FORM DRAFT TTL SAFE — lanzamiento Instagram
     // Mantiene el borrador reciente, pero limpia datos antiguos.
-    // Si alguien sale y vuelve en pocos minutos, recupera.
-    // Si vuelve mucho después, entra limpio.
+    // Si alguien sale a Stripe y vuelve/cancela, recupera.
+    // Si vuelve mucho después, entra limpio. Pago correcto limpia todo desde /checkout-exito.
     // No toca Stripe, SMS, WhatsApp, R2, reacción ni Sender Pack.
-    const FORM_DRAFT_TTL_MS = 10 * 60 * 1000;
+    const FORM_DRAFT_TTL_MS = 30 * 60 * 1000;
 
     try {{
         const rawDraft = localStorage.getItem(STORAGE_KEY);
@@ -10408,10 +10429,15 @@ document.addEventListener("DOMContentLoaded", function () {{
         clearError();
         showPaymentLoadingNow();
 
+        // RC116 FORM RECOVERY SAFE:
+        // NO borramos el borrador al salir hacia Stripe.
+        // Si el usuario pulsa atrás/cancela porque Stripe preselecciona una tarjeta,
+        // recupera textos y fotos draft/preupload.
+        // El borrado definitivo ocurre solo en /checkout-exito/{order_id}, cuando el pago ya es correcto.
         try {{
-            localStorage.removeItem(STORAGE_KEY);
+            saveFormState();
         }} catch (err) {{
-            console.error("localStorage remove error", err);
+            console.error("RC116 save before Stripe error", err);
         }}
 
         // RC112B FAST PHOTO FALLBACK FIX:
