@@ -64,6 +64,7 @@ print("🌍 RC108B INTERNATIONAL FORM CLEANUP SAFE — FORMULARIO ES/EN LIMPIO �
 print("🌍 RC111 LANGUAGE SWITCH SAFE — BOTÓN ES/EN BLINDADO 🌍")
 print("🌍 RC111 LANGUAGE SWITCH HARD FALLBACK — CLICK DIRECTO ES/EN 🌍")
 print("🧾 RC113 FORM EN NATIVE GALLERY LOCKED SAFE — FORMULARIO EN REAL + GALERÍA NATIVA 🧾")
+print("🚀 RC115 WEBHOOK RECOVERY LAUNCH SAFE — PAGO REAL → VIDEOENGINE 🛟")
 import html
 import json
 import mimetypes
@@ -467,6 +468,19 @@ async def eterna_security_headers_and_light_rate_limit(request: Request, call_ne
 
 
 # =========================================================
+# RC115 — SAFE ENV MONEY PARSER
+# Acepta 0.50 y 0,50 para evitar caídas de Render por variables españolas.
+# =========================================================
+def env_float(name: str, default: str = "0") -> float:
+    raw = os.getenv(name, str(default))
+    try:
+        clean = str(raw or default).strip().replace("€", "").replace(" ", "").replace(",", ".")
+        return float(clean)
+    except Exception as e:
+        print(f"[WARN] ENV_FLOAT inválido {name}={raw!r}; usando {default}: {e}")
+        return float(str(default).replace(",", "."))
+
+# =========================================================
 # CONFIG
 # =========================================================
 
@@ -556,13 +570,13 @@ VIDEO_READY_CALLBACK_SECRET = os.getenv(
     "",
 ).strip()
 
-BASE_PRICE = float(os.getenv("ETERNA_BASE_PRICE", "29"))
+BASE_PRICE = env_float("ETERNA_BASE_PRICE", "29")
 CURRENCY = os.getenv("ETERNA_CURRENCY", "eur").strip().lower()
 
-GIFT_COMMISSION_RATE = float(os.getenv("GIFT_COMMISSION_RATE", "0.05"))
-FIXED_PLATFORM_FEE = float(os.getenv("ETERNA_FIXED_FEE", "2"))
+GIFT_COMMISSION_RATE = env_float("GIFT_COMMISSION_RATE", "0.05")
+FIXED_PLATFORM_FEE = env_float("ETERNA_FIXED_FEE", "2")
 
-SCHEDULED_DELIVERY_FEE = float(os.getenv("SCHEDULED_DELIVERY_FEE", "2"))
+SCHEDULED_DELIVERY_FEE = env_float("SCHEDULED_DELIVERY_FEE", "2")
 GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
 
 # RC60: controles seguros de estabilización.
@@ -735,7 +749,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC113_FORM_EN_NATIVE_GALLERY_LOCKED_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC115_WEBHOOK_RECOVERY_LAUNCH_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -6905,8 +6919,9 @@ def render_checkout_success_visual(order: dict) -> HTMLResponse:
 @app.get("/checkout-exito/{order_id}", response_class=HTMLResponse)
 def checkout_exito(order_id: str):
     """
-    Landing posterior al pago. Stripe vuelve aquí tras pago correcto.
-    El webhook sigue siendo quien marca paid/render/SMS; esta ruta solo muestra pantalla.
+    Landing posterior al pago. RC115 mantiene el webhook como vía principal,
+    pero añade rescate seguro: si el webhook falló, verifica la sesión en Stripe
+    y dispara el mismo procesador de pago real.
     """
     try:
         order = get_order_by_id(order_id)
@@ -6919,6 +6934,22 @@ def checkout_exito(order_id: str):
             button_label="Volver a crear",
             extra_note="No hemos podido encontrar este pedido.",
         )
+
+    try:
+        if STRIPE_SECRET_KEY and not bool(order.get("paid")):
+            stripe_session_id = (order.get("stripe_session_id") or "").strip()
+            if stripe_session_id:
+                print("🛟 RC115 checkout-exito recovery intentando verificar sesión:", stripe_session_id)
+                session = stripe.checkout.Session.retrieve(stripe_session_id)
+                result = process_paid_checkout_session(session, source="checkout_exito_recovery")
+                print("🛟 RC115 checkout-exito recovery result:", result)
+                order = get_order_by_id(order_id)
+            else:
+                print("⚠️ RC115 checkout-exito sin stripe_session_id para recovery:", order_id)
+    except Exception as e:
+        # No rompemos la pantalla de éxito al comprador; dejamos log para corregir Stripe/secret.
+        log_error("checkout_exito_payment_recovery", e)
+
     return render_checkout_success_visual(order)
 
 
@@ -12065,151 +12096,149 @@ def admin_rc90_version(token: str = ""):
 # Stripe webhook + callback video engine + resumen
 # =========================================================
 
-@app.post("/stripe/webhook")
-@app.post("/stripe/webhook/")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
 
-    if not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            STRIPE_WEBHOOK_SECRET,
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Payload inválido")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Firma inválida")
-
-    if event["type"] != "checkout.session.completed":
-        return {"status": "ignored"}
-
-    stripe_event_id = (event.get("id") or "").strip()
-    session = event["data"]["object"]
-
-    order_id = (session.get("client_reference_id") or "").strip()
-    if not order_id:
-        metadata = session.get("metadata", {}) or {}
-        order_id = (metadata.get("order_id") or "").strip()
+# =========================================================
+# RC115 — STRIPE PAID SESSION PROCESSOR + CHECKOUT RECOVERY SAFE
+# Unifica pago real -> pedido paid -> VideoEngine.
+# Mantiene el webhook como fuente principal, pero si Stripe vuelve a
+# /checkout-exito y el webhook ha fallado por firma/secret, verifica la
+# sesión con Stripe API y rescata el render sin tocar formulario, fotos ni SMS.
+# =========================================================
+def process_paid_checkout_session(session, stripe_event_id: str = "", source: str = "stripe") -> dict:
+    metadata = session.get("metadata", {}) or {}
+    order_id = (session.get("client_reference_id") or metadata.get("order_id") or "").strip()
 
     if not order_id:
-        stripe_session_id = (session.get("id") or "").strip()
-        if stripe_session_id:
+        stripe_session_id_lookup = (session.get("id") or "").strip()
+        if stripe_session_id_lookup:
             try:
-                order = get_order_by_stripe_session_id(stripe_session_id)
+                order = get_order_by_stripe_session_id(stripe_session_id_lookup)
                 order_id = order["id"]
             except Exception:
                 order_id = ""
 
-    print("📦 order_id webhook:", order_id)
+    print(f"📦 RC115 order_id {source}:", order_id)
 
     if not order_id:
         raise HTTPException(status_code=400, detail="order_id missing")
 
     try:
         order = get_order_by_id(order_id)
-
-        # RC53 — idempotencia webhook Stripe: si Stripe reenvía el mismo evento, no relanzamos motor ni SMS.
-        if stripe_event_id and (order.get("stripe_event_id") or "") == stripe_event_id and order.get("stripe_event_processed_at"):
-            # RC95: si el webhook se repite pero los emails no salieron, intentamos rescatar sin tocar render/SMS.
-            try:
-                email_result = send_order_received_emails(order_id)
-                print("📧 RC95 emails pedido webhook duplicado:", email_result)
-            except Exception as e:
-                log_error("order_emails_duplicate_webhook", e)
-            return {"status": "ok", "reason": "stripe_event_already_processed", "order_id": order_id}
-
-        log_info("💳 PAGO RECIBIDO EN STRIPE")
-        log_info("🆔 Order ID", order_id)
-        log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
-        log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
-        log_info("🎬 Estado", "voy a preparar el vídeo")
     except Exception:
         raise HTTPException(status_code=404, detail="order_not_found")
 
-    try:
-        stripe_payment_status = (session.get("payment_status") or "paid").strip()
-        stripe_payment_intent_id = (session.get("payment_intent") or "").strip() or None
-        stripe_session_id = (session.get("id") or "").strip() or None
+    stripe_payment_status = (session.get("payment_status") or "").strip() or "paid"
+    if stripe_payment_status != "paid":
+        print(f"⚠️ RC115 sesión no pagada todavía: {order_id} status={stripe_payment_status}")
+        return {"status": "ignored", "reason": "payment_not_paid", "order_id": order_id, "payment_status": stripe_payment_status}
 
-        update_order(
-            order_id,
-            paid=1,
-            stripe_session_id=stripe_session_id or order.get("stripe_session_id"),
-            stripe_payment_status=stripe_payment_status,
-            stripe_payment_intent_id=stripe_payment_intent_id,
-            gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
-            delivery_locked=1 if (order.get("delivery_mode") or "instant") == "scheduled" else 0,
-            stripe_event_id=stripe_event_id or order.get("stripe_event_id"),
-            stripe_event_processed_at=now_iso() if stripe_event_id else order.get("stripe_event_processed_at"),
-            order_state="PAID",
-        )
-
-        order = get_order_by_id(order_id)
-
-        # RC95 — correo simple al comprador + copia operativa a ETERNA/Sergio.
-        # No bloquea render ni SMS; si falla queda registrado en order_events.
+    # Idempotencia: nunca relanzar motor si el mismo evento ya se procesó.
+    if stripe_event_id and (order.get("stripe_event_id") or "") == stripe_event_id and order.get("stripe_event_processed_at"):
         try:
             email_result = send_order_received_emails(order_id)
-            print("📧 RC95 emails pedido:", email_result)
+            print("📧 RC115 emails pedido webhook duplicado:", email_result)
         except Exception as e:
-            log_error("order_emails_after_payment", e)
+            log_error("order_emails_duplicate_webhook", e)
+        return {"status": "ok", "reason": "stripe_event_already_processed", "order_id": order_id}
 
-        if original_video_ready(order):
-            set_order_state(order_id, "VIDEO_READY", "stripe_webhook_video_already_ready")
-            return {
-                "status": "ok",
-                "reason": "video_already_ready",
-                "order_id": order_id,
-            }
+    log_info("💳 PAGO RECIBIDO EN STRIPE")
+    log_info("🆔 Order ID", order_id)
+    log_info("👤 Regalante", f"{order.get('sender_name')} | {order.get('sender_email') or 'sin email'} | {order.get('sender_phone')}")
+    log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
+    log_info("🎬 Estado", f"voy a preparar el vídeo · source={source}")
 
-        if render_request_already_marked(order):
-            return {
-                "status": "ok",
-                "reason": "render_already_requested",
-                "order_id": order_id,
-            }
+    stripe_payment_intent_id = (session.get("payment_intent") or "").strip() or None
+    stripe_session_id = (session.get("id") or "").strip() or None
 
-        phrases = [
-            (order.get("phrase_1") or "").strip(),
-            (order.get("phrase_2") or "").strip(),
-            (order.get("phrase_3") or "").strip(),
-        ]
+    update_order(
+        order_id,
+        paid=1,
+        stripe_session_id=stripe_session_id or order.get("stripe_session_id"),
+        stripe_payment_status=stripe_payment_status,
+        stripe_payment_intent_id=stripe_payment_intent_id,
+        gift_refund_deadline_at=order.get("gift_refund_deadline_at") or gift_refund_deadline_iso(),
+        delivery_locked=1 if (order.get("delivery_mode") or "instant") == "scheduled" else 0,
+        stripe_event_id=stripe_event_id or order.get("stripe_event_id"),
+        stripe_event_processed_at=now_iso() if stripe_event_id else order.get("stripe_event_processed_at"),
+        order_state="PAID",
+    )
 
-        try:
-            mark_video_render_requested(order_id)
-            set_order_state(order_id, "RENDERING", "stripe_webhook_render_requested")
-            data = trigger_video_engine(order_id, phrases)
-            print("✅ Video engine aceptó el trabajo:", data)
-        except Exception as e:
-            clear_video_render_requested(order_id, error=str(e))
-            log_error("webhook_video_engine_queued_for_recovery", e)
-            try:
-                alert_order = get_order_by_id(order_id)
-                send_admin_error_email(
-                    f"🚨 ETERNA ERROR render {order_public_code(alert_order)}",
-                    build_critical_alert_body(alert_order, "Pago recibido pero el motor de vídeo no ha arrancado correctamente", str(e)),
-                    order_id=order_id,
-                    reason="video_engine_error_after_payment",
-                )
-            except Exception as email_error:
-                log_error("email_alert_video_engine_error", email_error)
-            return {
-                "status": "ok",
-                "reason": "video_engine_error_queued_for_recovery",
-                "order_id": order_id,
-                "error": str(e),
-            }
+    order = get_order_by_id(order_id)
 
-        return {"status": "ok", "reason": "render_requested"}
-
+    # Email operativo: no bloquea render ni SMS.
+    try:
+        email_result = send_order_received_emails(order_id)
+        print(f"📧 RC115 emails pedido {source}:", email_result)
     except Exception as e:
-        log_error("webhook", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        log_error(f"order_emails_after_payment_{source}", e)
+
+    if original_video_ready(order):
+        set_order_state(order_id, "VIDEO_READY", f"{source}_video_already_ready")
+        return {"status": "ok", "reason": "video_already_ready", "order_id": order_id}
+
+    if render_request_already_marked(order):
+        return {"status": "ok", "reason": "render_already_requested", "order_id": order_id}
+
+    phrases = [
+        (order.get("phrase_1") or "").strip(),
+        (order.get("phrase_2") or "").strip(),
+        (order.get("phrase_3") or "").strip(),
+    ]
+
+    try:
+        mark_video_render_requested(order_id)
+        set_order_state(order_id, "RENDERING", f"{source}_render_requested")
+        data = trigger_video_engine(order_id, phrases)
+        print("✅ RC115 Video engine aceptó el trabajo:", data)
+    except Exception as e:
+        clear_video_render_requested(order_id, error=str(e))
+        log_error(f"{source}_video_engine_queued_for_recovery", e)
+        try:
+            alert_order = get_order_by_id(order_id)
+            send_admin_error_email(
+                f"🚨 ETERNA ERROR render {order_public_code(alert_order)}",
+                build_critical_alert_body(alert_order, "Pago recibido pero el motor de vídeo no ha arrancado correctamente", str(e)),
+                order_id=order_id,
+                reason=f"video_engine_error_after_payment_{source}",
+            )
+        except Exception as email_error:
+            log_error(f"email_alert_video_engine_error_{source}", email_error)
+        return {"status": "ok", "reason": "video_engine_error_queued_for_recovery", "order_id": order_id, "error": str(e)}
+
+    return {"status": "ok", "reason": "render_requested", "order_id": order_id}
+
+@app.post("/stripe/webhook")
+@app.post("/stripe/webhook/")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    print("🔔 RC115 STRIPE WEBHOOK RECIBIDO")
+    print("🔔 RC115 signature header:", "present" if sig_header else "missing")
+    print("🔔 RC115 webhook secret:", "present" if STRIPE_WEBHOOK_SECRET else "missing")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_WEBHOOK_SECRET")
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except ValueError as e:
+        print("❌ RC115 STRIPE WEBHOOK payload inválido:", str(e))
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError as e:
+        print("❌ RC115 STRIPE WEBHOOK firma inválida:", str(e))
+        # Importante: no procesamos webhooks sin firma válida.
+        # Si Stripe devuelve al usuario a /checkout-exito, RC115 intentará rescate
+        # verificando la sesión directamente contra Stripe API.
+        raise HTTPException(status_code=400, detail="Firma inválida")
+
+    print("🔔 RC115 stripe event:", event.get("type"), event.get("id"))
+
+    if event["type"] != "checkout.session.completed":
+        return {"status": "ignored", "event_type": event.get("type")}
+
+    session = event["data"]["object"]
+    return process_paid_checkout_session(session, stripe_event_id=(event.get("id") or "").strip(), source="webhook")
 
 @app.post("/internal/video-ready")
 @app.post("/internal/video-ready/")
