@@ -60,7 +60,7 @@ print("🧩 RC103 BLACKBOX + SENDER PACK NO ZOOM SAFE 🧩")
 print("🦋 RC104 FOUNDER EDITION SAFE — REPORT + HEALTH + BACKUP 🦋")
 print("📸 RC106 INSTAGRAM 4-6 PHOTOS SAFE — PAGO BLOQUEADO HASTA FOTOS LISTAS 📸")
 print("🛡️ RC107 INSTAGRAM PREFLIGHT UPLOAD SAFE — FOTOS SUBEN ANTES DEL PAGO 🛡️")
-print("🌍 RC108 INTERNATIONAL FORM + SMS SAFE — ES/EN SIN TOCAR EL CORAZÓN 🌍")
+print("🌍 RC108B INTERNATIONAL FORM CLEANUP SAFE — FORMULARIO ES/EN LIMPIO 🌍")
 import html
 import json
 import mimetypes
@@ -472,6 +472,11 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
 ADMIN_ALERT_PHONE = os.getenv("ADMIN_ALERT_PHONE", "").strip()
 
+# RC111 — Lanzamiento seguro:
+# En producción NO permitimos crear pedidos pagados sin Stripe.
+# Solo para pruebas locales/controladas se puede activar ETERNA_ALLOW_NO_STRIPE_TEST=1.
+ETERNA_ALLOW_NO_STRIPE_TEST = os.getenv("ETERNA_ALLOW_NO_STRIPE_TEST", "0").strip().lower() in {"1", "true", "yes", "on"}
+
 # =========================================================
 # RC95 — EMAIL CORPORATIVO / PEDIDOS / ALERTAS
 # Config recomendado Namecheap Private Email:
@@ -641,10 +646,35 @@ REACTION_MIN_VALID_BYTES = int(os.getenv("REACTION_MIN_VALID_BYTES", "4096"))
 
 
 # =========================================================
-# RC75F — RUNTIME FOLDER RESCUE
-# Si /data no existe o no tiene permisos, ETERNA no debe caerse al arrancar.
-# Cae a ./data/<fallback> y deja log claro.
+# RC111 — DB PERSISTENT SAFE
+# Mantiene RC111 como versión de lanzamiento, pero endurece la persistencia.
+# Prioridad en Render: /data/eterna.db o DATABASE_PATH explícito.
+# Si /data no existe o no tiene permisos, ETERNA no se cae: vuelve a ./data.
+# Además, si existe una DB antigua en ./data/eterna.db y la nueva DB aún no
+# existe, la copia una sola vez como rescate seguro.
 # =========================================================
+
+def ensure_base_data_folder(path_value: str = "") -> Path:
+    requested = Path(str(path_value or "").strip() or "/data")
+    try:
+        requested.mkdir(parents=True, exist_ok=True)
+        test_file = requested / ".eterna_write_test"
+        test_file.write_text("ok", encoding="utf-8")
+        try:
+            test_file.unlink()
+        except Exception:
+            pass
+        print(f"🗄️ DATA_FOLDER activo: {requested}")
+        return requested
+    except Exception as e:
+        fallback = Path("data")
+        fallback.mkdir(parents=True, exist_ok=True)
+        print(f"[WARN] DATA_FOLDER fallback: {requested} -> {fallback} ({e})")
+        return fallback
+
+
+DATA_FOLDER = ensure_base_data_folder(os.getenv("DATA_FOLDER", "/data"))
+
 
 def ensure_runtime_folder(path_value: str, fallback_name: str) -> Path:
     requested = Path(str(path_value or "").strip() or str(DATA_FOLDER / fallback_name))
@@ -657,15 +687,34 @@ def ensure_runtime_folder(path_value: str, fallback_name: str) -> Path:
         print(f"[WARN] Runtime folder fallback: {requested} -> {fallback} ({e})")
         return fallback
 
-DATA_FOLDER = Path("data")
-DATA_FOLDER.mkdir(parents=True, exist_ok=True)
+
+def resolve_db_path() -> Path:
+    configured = os.getenv("DATABASE_PATH", "").strip()
+    requested = Path(configured) if configured else (DATA_FOLDER / "eterna.db")
+    try:
+        requested.parent.mkdir(parents=True, exist_ok=True)
+        legacy = Path("data") / "eterna.db"
+        if legacy.exists() and legacy.resolve() != requested.resolve() and not requested.exists():
+            try:
+                shutil.copy2(legacy, requested)
+                print(f"🛟 DB rescue: copiada DB antigua {legacy} -> {requested}")
+            except Exception as copy_error:
+                print(f"[WARN] DB rescue no pudo copiar {legacy} -> {requested}: {copy_error}")
+        print(f"🗄️ DB_PATH activo: {requested}")
+        return requested
+    except Exception as e:
+        fallback = Path("data") / "eterna.db"
+        fallback.parent.mkdir(parents=True, exist_ok=True)
+        print(f"[WARN] DB_PATH fallback: {requested} -> {fallback} ({e})")
+        return fallback
+
 
 VIDEO_FOLDER = Path("videos")
 VIDEO_FOLDER.mkdir(parents=True, exist_ok=True)
 
-REACTIONS_FOLDER = ensure_runtime_folder(os.getenv("REACTIONS_FOLDER", "/data/reactions"), "reactions")
-REACTION_CHUNKS_FOLDER = ensure_runtime_folder(os.getenv("REACTION_CHUNKS_FOLDER", "/data/reaction_chunks"), "reaction_chunks")
-PREUPLOAD_FOLDER = ensure_runtime_folder(os.getenv("PREUPLOAD_FOLDER", "/data/preuploads"), "preuploads")
+REACTIONS_FOLDER = ensure_runtime_folder(os.getenv("REACTIONS_FOLDER", str(DATA_FOLDER / "reactions")), "reactions")
+REACTION_CHUNKS_FOLDER = ensure_runtime_folder(os.getenv("REACTION_CHUNKS_FOLDER", str(DATA_FOLDER / "reaction_chunks")), "reaction_chunks")
+PREUPLOAD_FOLDER = ensure_runtime_folder(os.getenv("PREUPLOAD_FOLDER", str(DATA_FOLDER / "preuploads")), "preuploads")
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -673,7 +722,7 @@ STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
 PHOTO_FOLDER = Path("uploads")
 PHOTO_FOLDER.mkdir(parents=True, exist_ok=True)
 
-DB_PATH = DATA_FOLDER / "eterna.db"
+DB_PATH = resolve_db_path()
 
 DELIVERY_WORKER_INTERVAL_SECONDS = int(os.getenv("DELIVERY_WORKER_INTERVAL_SECONDS", "15"))
 DELIVERY_WORKER_ENABLED = os.getenv("DELIVERY_WORKER_ENABLED", "1").strip() != "0"
@@ -683,7 +732,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC101B_FORM_POST_NATIVE_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC111_LAUNCH_HARDENED_R2_SAFE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -3632,6 +3681,66 @@ def upload_bytes_to_r2(data: bytes, remote_name: str, content_type: str = "appli
     return f"{R2_PUBLIC_URL}/{remote_name}"
 
 
+def r2_status_summary() -> dict:
+    missing = r2_missing_config()
+    return {
+        "configured": not missing,
+        "missing": missing,
+        "bucket": R2_BUCKET or None,
+        "endpoint": R2_ENDPOINT or None,
+        "public_url": R2_PUBLIC_URL or None,
+        "has_access_key": bool(R2_ACCESS_KEY),
+        "has_secret_key": bool(R2_SECRET_KEY),
+        "has_api_token_note": bool(R2_API_TOKEN),
+        "note": "R2_API_TOKEN no sirve para boto3; hacen falta Access Key ID y Secret Access Key." if R2_API_TOKEN and (not R2_ACCESS_KEY or not R2_SECRET_KEY) else None,
+    }
+
+
+def r2_write_probe() -> dict:
+    status = r2_status_summary()
+    if not status["configured"]:
+        return {"ok": False, "stage": "config", "status": status}
+
+    key = f"diagnostics/go-live/r2_probe_{int(time.time())}_{secrets.token_hex(4)}.txt"
+    body = f"ETERNA R2 probe {now_iso()} {ETERNA_APP_VERSION}\n".encode("utf-8")
+    try:
+        public_url = upload_bytes_to_r2(body, key, content_type="text/plain; charset=utf-8")
+        if not public_url:
+            return {"ok": False, "stage": "upload", "status": status, "key": key}
+
+        public_read_ok = False
+        public_status_code = None
+        try:
+            response = requests.get(public_url, timeout=20)
+            public_status_code = response.status_code
+            public_read_ok = response.status_code == 200 and body.decode("utf-8").strip() in response.text
+        except Exception as public_error:
+            return {
+                "ok": True,
+                "upload_ok": True,
+                "public_read_ok": False,
+                "stage": "public_read",
+                "warning": str(public_error),
+                "status": status,
+                "key": key,
+                "public_url": public_url,
+            }
+
+        return {
+            "ok": bool(public_read_ok),
+            "upload_ok": True,
+            "public_read_ok": bool(public_read_ok),
+            "public_status_code": public_status_code,
+            "stage": "complete" if public_read_ok else "public_read",
+            "status": status,
+            "key": key,
+            "public_url": public_url,
+        }
+    except Exception as e:
+        log_error("r2_write_probe", e)
+        return {"ok": False, "stage": "upload", "error": str(e), "status": status, "key": key}
+
+
 def preserve_remote_video_to_r2(order: dict, video_url: str, kind: str = "original") -> Optional[str]:
     if not r2_enabled():
         log_human("ARCHIVO PERMANENTE R2", "ℹ️ R2 no está configurado. Uso la URL actual del vídeo.")
@@ -4583,6 +4692,70 @@ def normalize_order_language(value: str) -> str:
     return "es"
 
 
+def eterna_ui_text(language: str, key: str) -> str:
+    """RC109 INTERNATIONAL UI SAFE — textos backend ES/EN sin tocar imágenes ni assets."""
+    lang = normalize_order_language(language or "es")
+    texts = {
+        "es": {
+            "back_create": "Volver a crear",
+            "not_found": "No hemos podido encontrar este pedido.",
+            "checkout_life": "Tu ETERNA está cobrando vida...",
+            "create_another": "Crear otra ETERNA",
+            "payment_started": "Tu ETERNA ya está en marcha.",
+            "create_one": "Crear una ETERNA",
+            "not_available": "Esta experiencia ya no está disponible.",
+            "check_again": "Volver a comprobar",
+            "still_returning": "Tu ETERNA todavía está volviendo. La reacción se está guardando.",
+            "sender_title_html": "Aquí vuelve<br><span>lo que provocaste.</span>",
+            "sender_page_title": "Aquí vuelve lo que provocaste",
+            "sender_aria": "Sender Pack ETERNA",
+            "reaction_aria": "Reacción",
+            "share": "↗ Compartir",
+            "download": "↓ Descargar",
+            "link_copied": "Enlace copiado",
+            "share_text": "Aquí vuelve lo que provocaste.",
+            "view_again": "Volver a ver mi ETERNA",
+            "receive_gift": "Recibir mi regalo",
+            "try_receive_gift": "Intentar recibir mi regalo",
+            "gift_no_money": "Este regalo no incluía dinero.",
+            "gift_sent": "Tu regalo de {amount} ya ha sido enviado.",
+            "gift_processing": "Estamos procesando tu regalo de {amount}.",
+            "gift_received": "Has recibido {amount}.",
+            "mine_title": "Esto ya es tuyo.",
+            "back_start": "Volver al inicio",
+        },
+        "en": {
+            "back_create": "Create again",
+            "not_found": "We could not find this order.",
+            "checkout_life": "Your ETERNA is coming to life...",
+            "create_another": "Create another ETERNA",
+            "payment_started": "Your ETERNA is already in motion.",
+            "create_one": "Create an ETERNA",
+            "not_available": "This experience is no longer available.",
+            "check_again": "Check again",
+            "still_returning": "Your ETERNA is still returning. The reaction is being saved.",
+            "sender_title_html": "Here returns<br><span>what you made them feel.</span>",
+            "sender_page_title": "Here returns what you made them feel",
+            "sender_aria": "ETERNA Sender Pack",
+            "reaction_aria": "Reaction",
+            "share": "↗ Share",
+            "download": "↓ Download",
+            "link_copied": "Link copied",
+            "share_text": "Here returns what you made them feel.",
+            "view_again": "Watch my ETERNA again",
+            "receive_gift": "Receive my gift",
+            "try_receive_gift": "Try to receive my gift",
+            "gift_no_money": "This gift did not include money.",
+            "gift_sent": "Your gift of {amount} has already been sent.",
+            "gift_processing": "We are processing your gift of {amount}.",
+            "gift_received": "You have received {amount}.",
+            "mine_title": "This is yours now.",
+            "back_start": "Back to the start",
+        },
+    }
+    return texts.get(lang, texts["es"]).get(key, texts["es"].get(key, key))
+
+
 def build_recipient_arrival_intro(order: dict, language: str = "es") -> str:
     sender_name = (order.get("sender_name") or "").strip()
     lang = normalize_order_language(language or order.get("language") or "es")
@@ -4908,8 +5081,21 @@ def get_phrases_by_type(message_type: str):
     return phrase_templates.get(message_type, phrase_templates["sorpresa"])
 
 
+def twilio_base_configured() -> bool:
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and Client)
+
+
+def twilio_sms_enabled() -> bool:
+    return bool(twilio_base_configured() and TWILIO_FROM_NUMBER)
+
+
+def twilio_whatsapp_enabled() -> bool:
+    return bool(twilio_base_configured() and whatsapp_from_number())
+
+
 def twilio_enabled() -> bool:
-    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and Client)
+    # Compatibilidad con código antiguo: significa SMS Twilio configurado.
+    return twilio_sms_enabled()
 
 
 def send_sms(phone: str, message: str) -> dict:
@@ -4957,8 +5143,8 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "whatsapp_disabled"}
     if not wa_from:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "missing_twilio_whatsapp_from"}
-    if not twilio_enabled():
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_not_configured"}
+    if not twilio_base_configured():
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_base_not_configured"}
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
         kwargs = {"body": message, "from_": wa_from, "to": f"whatsapp:{to_phone}"}
@@ -6561,6 +6747,19 @@ async def create_order_and_redirect(
                 pass
 
     if not STRIPE_SECRET_KEY:
+        if not ETERNA_ALLOW_NO_STRIPE_TEST:
+            insert_order_event(
+                order_id,
+                "stripe_missing_blocked",
+                "error",
+                "Pedido bloqueado: falta STRIPE_SECRET_KEY y ETERNA_ALLOW_NO_STRIPE_TEST no está activo.",
+                {"version": ETERNA_APP_VERSION},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="ETERNA no puede aceptar pedidos ahora mismo: Stripe no está configurado en producción.",
+            )
+
         update_order(
             order_id,
             paid=1,
@@ -6681,7 +6880,7 @@ def checkout_loading(order_id: Optional[str] = None):
         overlay_kind="loading",
         redirect_url=target_url,
         redirect_delay_ms=6000,
-        extra_note="Tu ETERNA está cobrando vida...",
+        extra_note=eterna_ui_text(order.get("language"), "checkout_life"),
     )
 
 
@@ -6695,8 +6894,8 @@ def render_checkout_success_visual(order: dict) -> HTMLResponse:
         fallback_image_name="payment-success-v1.png",
         overlay_kind="soft",
         button_url="/crear",
-        button_label="Crear otra ETERNA",
-        extra_note="Tu ETERNA ya está en marcha.",
+        button_label=eterna_ui_text(order.get("language"), "create_another"),
+        extra_note=eterna_ui_text(order.get("language"), "payment_started"),
     )
 
 
@@ -8303,28 +8502,104 @@ document.addEventListener("DOMContentLoaded", function () {{
             intro1: "No todo lo importante", intro2: "debería desaparecer.", intro3: "Haz que vuelva convertido", intro4: "en emoción real.",
             atmosphere1: "Primero construimos el recuerdo. Luego decidimos cómo vuelve.",
             atmosphere2: "Ahora dale intención: palabras, momento de entrega y pago seguro.",
-            creator: "Quién lo crea", recipient: "Quién lo va a vivir", occasionTitle: "¿Para quién es esta ETERNA?", emotionTitle: "Qué quieres provocar", wordsTitle: "Las palabras", exactMoment: "El momento exacto", giftTitle: "El regalo", photosTitle: "Las fotos",
+            creator: "Quién lo crea", recipient: "Quién lo va a vivir", occasionTitle: "¿Para quién es esta ETERNA?", yulTitle: "El alma de Yul", emotionTitle: "Qué quieres provocar", wordsTitle: "Las palabras", exactMoment: "El momento exacto", giftTitle: "El regalo", photosTitle: "Los recuerdos",
             customerName: "Tu nombre", customerEmail: "Tu email", customerPhone: "Tu teléfono", recipientName: "Su nombre", recipientPhone: "Su teléfono", recipientEmail: "Su email (opcional, por si el SMS falla)",
+            phoneHelp: "Escríbelo como lo tengas guardado 💛<br>No hace falta poner el prefijo.",
+            occasionCopy: "Elige una ocasión. Solo nos ayuda a entender el tono. No complica el proceso.",
+            yulCopy: "Una sola pista. Un lugar. Yul no necesita saber más para encontrar una puerta.",
+            yulQuestion: "¿Hay algún lugar que forme parte de vuestra historia?",
+            yulPlaceholder: "Ej: Cádiz, la montaña, la casa de la abuela, un banco, París...",
+            yulNote: "No expliques el recuerdo. Solo escribe el lugar. Yul hará el resto.",
+            photosCopy: "Elige entre 4 y 6 fotos desde tu galería. ETERNA las optimiza automáticamente para que carguen mejor en móvil.",
+            pickerTitle: "Seleccionar recuerdos",
+            pickerSub: "Puedes elegir varias fotos de una vez. Después podrás cambiar cualquiera individualmente.",
+            openGallery: "Abrir galería",
+            photo: "Foto",
+            change: "Cambiar",
+            pending: "Pendiente",
+            photoNote: "Recomendación: formato vertical. Lo importante es que sean recuerdos que de verdad tengan sentido.",
+            senderIdentityQuestion: "¿Quieres que la persona sepa quién le envía esta ETERNA?",
+            senderIdentityYes: "Sí, mostrar una foto",
+            senderIdentityNo: "No, mantener la sorpresa",
+            arrivalPhoto: "Foto de llegada:",
+            arrivalPhotoNote: "Esta mini foto puede aparecer como imagen de llegada para dar confianza. No cambia el vídeo.",
             phrase1: "Lo que nunca quieres que olvide", phrase2: "Eso que sientes y a veces no dices", phrase3: "La frase que quieres dejarle para siempre",
             autoWords: "Quiero que ETERNA encuentre las palabras", manualWords: "Quiero escribir lo que siento", recommended: "(recomendado)",
+            inspirationTitle: "¿Necesitas inspiración?", inspirationBtn: "Ver frases sugeridas",
+            suggested1: "Gracias por estar siempre.", suggested2: "Hay personas que se quedan para siempre.", suggested3: "Hoy quería recordarte algo bonito.", suggested4: "Aunque estemos lejos, sigues aquí.", suggested5: "Nunca olvides lo importante que eres para mí.",
+            deliveryCopy: "Puedes dejar que llegue en cuanto esté lista...<br>o programar ese momento íntimo en el que sabes que podrá vivirla de verdad.",
+            deliveryInstant: "Enviarlo en cuanto esté listo", deliveryInstantSub: "Sin coste extra.", deliveryScheduled: "Guardarlo y entregarlo en un momento exacto", deliveryScheduledSub: "+{money(SCHEDULED_DELIVERY_FEE)}€ para guardarlo y hacer que llegue exactamente cuando tú elijas.",
+            deliveryHint: "Lo ideal es que pueda vivirlo con calma.<br>Con unos cascos. En silencio. Sin que nadie le moleste.",
+            giftAmountTitle: "Dinero a regalar", giftAmountPlaceholder: "Dinero a regalar (€)",
+            priceBox: "Precio base ETERNA: {money(BASE_PRICE)}€<br>Si añades regalo económico: +{money(FIXED_PLATFORM_FEE)}€ gestión segura + {(GIFT_COMMISSION_RATE * 100):.0f}% del importe regalado<br>Entrega programada: +{money(SCHEDULED_DELIVERY_FEE)}€ solo si eliges guardarlo y entregarlo en un momento exacto",
+            trustTitle: "Privado y seguro", trust1: "✓ Tus fotos son privadas.", trust2: "✓ El pago se realiza de forma segura con Stripe.", trust3: "✓ La reacción solo vuelve a quien crea esta ETERNA.", trust4: "✓ Si añades dinero, lo recibirá la persona destinataria.", trust5: "✓ Soporte: hola@tueterna.com · +34 641 63 53 14",
+            finalHint: "No solo eliges lo que va a sentir. También eliges cuándo debe ocurrir.",
+            responsibleText: "Acepto crear esta ETERNA de forma responsable. Entiendo que, si la persona destinataria vive la experiencia, podré recibir un recuerdo privado de ese momento. Me comprometo a tratar ese contenido con respeto, a no utilizarlo de forma ofensiva, invasiva o pública, y a compartirlo solo de manera responsable.",
+            legalText: "Al continuar, aceptas las <a href=\"/condiciones\" target=\"_blank\" style=\"color:#fff7e6;text-decoration:underline;\">condiciones</a> y la <a href=\"/privacidad\" target=\"_blank\" style=\"color:#fff7e6;text-decoration:underline;\">política de privacidad</a>.",
+            submit: "Crear y pasar al pago seguro",
             photosUploading: "Las fotos se están cargando. Espera unos segundos: el pago se desbloqueará automáticamente.",
             photosPreparing: "Estamos preparando tus fotos. El pago se desbloqueará automáticamente cuando estén listas.",
             need4Photos: "Sube al menos 4 fotos. El pago se desbloqueará cuando estén subidas.",
-            reviewFields: "Revisa los campos. Falta algún dato.", acceptResponsible: "Antes de continuar debes aceptar el uso responsable de ETERNA.", selectEmotion: "Elige una emoción para continuar.", write3: "Escribe tus 3 frases.", deliveryDate: "Elige la fecha y hora de entrega.", badDate: "La fecha de entrega no es válida.", futureDate: "La fecha de entrega debe ser futura.", badAmount: "El importe no es válido.", openingCheckout: "Abriendo pago seguro..."
+            reviewFields: "Revisa los campos. Falta algún dato.", acceptResponsible: "Antes de continuar debes aceptar el uso responsable de ETERNA.", selectEmotion: "Elige una emoción para continuar.", write3: "Escribe tus 3 frases.", deliveryDate: "Elige la fecha y hora de entrega.", badDate: "La fecha de entrega no es válida.", futureDate: "La fecha de entrega debe ser futura.", badAmount: "El importe no es válido.", openingCheckout: "Abriendo pago seguro...", firstStepMissing: "Falta completar los datos principales antes de continuar.", need6Photos: "Necesitas elegir las 6 fotos antes de continuar.", genericError: "Ha ocurrido un error.",
+            photoOptional: "Opcional si ya tienes 4 fotos.", photoOptionalRepeat: "Opcional: ETERNA puede repetir una foto.", photoRequired: "Necesaria para crear tu ETERNA.", photoUploaded: "Foto subida ✓", photoReady: "Foto lista ✓", optimizingPhoto: "Optimizando foto para ETERNA...", photoPreparedUploading: "Foto preparada. Subiendo...", photoPrepareError: "Esta foto no se ha podido preparar. Prueba con otra.", photoTryAnother: "Una foto no se ha podido preparar. Prueba con otra imagen o una captura.", photoRecovered: "Foto recuperada y subida ✓", photoTapAgain: "Toca esta foto otra vez para subirla.", photoLoading: "Subiendo foto...",
+            occasions: {{
+                pareja: ["❤️ Pareja", "Amor, aniversario o algo que no sabes decir."], madre: ["👩 Madre", "Para agradecer todo lo que siempre estuvo."], padre: ["👨 Padre", "Para reconocer lo que a veces no se dice."], cumpleanos: ["🎂 Cumpleaños", "Una sorpresa que se vive de verdad."], amistad: ["🤝 Amistad", "Para alguien que siempre estuvo cerca."], distancia: ["🌍 A distancia", "Cuando está lejos, pero sigue aquí."], otro: ["✨ Otro momento", "Cuando simplemente quieres emocionar."]
+            }},
+            emotions: {{
+                cumpleanos: ["Cumpleaños", "Un día que merece quedarse."], amor: ["Amor", "Cuando lo que sientes ya no cabe dentro."], madre: ["Mamá", "Para quien siempre fue hogar."], padre: ["Papá", "Para quien dejó huella sin hacer ruido."], familia: ["Familia", "Para quienes siempre vuelven a ti."], amistad: ["Amistad", "Para esa persona que se quedó."], distancia: ["Distancia", "Cuando alguien está lejos, pero sigue cerca."], perdon: ["Perdón", "Para decir algo que cuesta decir."], reencuentro: ["Reencuentro", "Cuando algo vuelve después del tiempo."], gratitud: ["Gracias", "Para agradecer de verdad."], superacion: ["Superación", "Para recordarle todo lo que vale."], sorpresa: ["Sorpresa", "Cuando quieres tocar el corazón sin avisar."], esfuerzo: ["Esfuerzo", "Para reconocer lo que a veces no se dice."], no_se_decirlo: ["No sé cómo decirlo", "Cuando ETERNA debe decirlo por ti."]
+            }}
         }},
         en: {{
             subtitle: "Create something that is not opened. It is felt.",
             intro1: "Not everything important", intro2: "should disappear.", intro3: "Make it come back", intro4: "as real emotion.",
             atmosphere1: "First we build the memory. Then we decide how it returns.",
             atmosphere2: "Now give it intention: words, delivery moment and secure payment.",
-            creator: "Who creates it", recipient: "Who will experience it", occasionTitle: "Who is this ETERNA for?", emotionTitle: "What do you want to awaken?", wordsTitle: "The words", exactMoment: "The exact moment", giftTitle: "The gift", photosTitle: "The photos",
+            creator: "Who creates it", recipient: "Who will experience it", occasionTitle: "Who is this ETERNA for?", yulTitle: "Yul's soul", emotionTitle: "What do you want to awaken?", wordsTitle: "The words", exactMoment: "The exact moment", giftTitle: "The gift", photosTitle: "The memories",
             customerName: "Your name", customerEmail: "Your email", customerPhone: "Your phone", recipientName: "Their name", recipientPhone: "Their phone", recipientEmail: "Their email (optional, in case SMS fails)",
+            phoneHelp: "Write it as you have it saved 💛<br>You do not need to add the country code here.",
+            occasionCopy: "Choose an occasion. It only helps us understand the tone. It does not complicate the process.",
+            yulCopy: "One clue. One place. Yul does not need more to find a door.",
+            yulQuestion: "Is there a place that is part of your story?",
+            yulPlaceholder: "Example: Paris, the beach, grandma's house, a bench, London...",
+            yulNote: "Do not explain the memory. Just write the place. Yul will do the rest.",
+            photosCopy: "Choose between 4 and 6 photos from your gallery. ETERNA optimizes them automatically so they load better on mobile.",
+            pickerTitle: "Select memories",
+            pickerSub: "You can choose several photos at once. Afterwards, you can change any of them individually.",
+            openGallery: "Open gallery",
+            photo: "Photo",
+            change: "Change",
+            pending: "Pending",
+            photoNote: "Recommendation: vertical format. What matters is that they are memories that truly mean something.",
+            senderIdentityQuestion: "Do you want the person to know who sent this ETERNA?",
+            senderIdentityYes: "Yes, show a photo",
+            senderIdentityNo: "No, keep the surprise",
+            arrivalPhoto: "Arrival photo:",
+            arrivalPhotoNote: "This small photo can appear as the arrival image to build trust. It does not change the video.",
             phrase1: "What you never want them to forget", phrase2: "What you feel but do not always say", phrase3: "The sentence you want to leave forever",
             autoWords: "I want ETERNA to find the words", manualWords: "I want to write what I feel", recommended: "(recommended)",
+            inspirationTitle: "Need inspiration?", inspirationBtn: "See suggested messages",
+            suggested1: "Thank you for always being there.", suggested2: "Some people stay forever.", suggested3: "Today I wanted to remind you of something beautiful.", suggested4: "Even if we are far apart, you are still here.", suggested5: "Never forget how important you are to me.",
+            deliveryCopy: "You can send it as soon as it is ready...<br>or schedule that intimate moment when you know they will truly be able to experience it.",
+            deliveryInstant: "Send it as soon as it is ready", deliveryInstantSub: "No extra cost.", deliveryScheduled: "Save it and deliver it at an exact moment", deliveryScheduledSub: "+{money(SCHEDULED_DELIVERY_FEE)}€ to save it and make it arrive exactly when you choose.",
+            deliveryHint: "Ideally, they should experience it calmly.<br>With headphones. In silence. Without anyone disturbing them.",
+            giftAmountTitle: "Gift money", giftAmountPlaceholder: "Gift money (€)",
+            priceBox: "Base ETERNA price: {money(BASE_PRICE)}€<br>If you add gift money: +{money(FIXED_PLATFORM_FEE)}€ secure handling + {(GIFT_COMMISSION_RATE * 100):.0f}% of the gifted amount<br>Scheduled delivery: +{money(SCHEDULED_DELIVERY_FEE)}€ only if you choose to save it and deliver it at an exact moment",
+            trustTitle: "Private and secure", trust1: "✓ Your photos are private.", trust2: "✓ Payment is processed securely with Stripe.", trust3: "✓ The reaction only returns to the person who creates this ETERNA.", trust4: "✓ If you add money, the recipient will receive it.", trust5: "✓ Support: hola@tueterna.com · +34 641 63 53 14",
+            finalHint: "You do not only choose what they will feel. You also choose when it should happen.",
+            responsibleText: "I accept creating this ETERNA responsibly. I understand that, if the recipient experiences it, I may receive a private memory of that moment. I commit to treating that content with respect, not using it in an offensive, invasive or public way, and sharing it only responsibly.",
+            legalText: "By continuing, you accept the <a href=\"/condiciones\" target=\"_blank\" style=\"color:#fff7e6;text-decoration:underline;\">terms</a> and the <a href=\"/privacidad\" target=\"_blank\" style=\"color:#fff7e6;text-decoration:underline;\">privacy policy</a>.",
+            submit: "Create and continue to secure payment",
             photosUploading: "Photos are uploading. Please wait a few seconds: payment will unlock automatically.",
             photosPreparing: "We are preparing your photos. Payment will unlock automatically when they are ready.",
             need4Photos: "Upload at least 4 photos. Payment will unlock when they are uploaded.",
-            reviewFields: "Please review the fields. Some information is missing.", acceptResponsible: "Before continuing, you must accept ETERNA's responsible use.", selectEmotion: "Select an emotion to continue.", write3: "Write your 3 messages.", deliveryDate: "Choose the delivery date and time.", badDate: "The delivery date is not valid.", futureDate: "The delivery date must be in the future.", badAmount: "The amount is not valid.", openingCheckout: "Opening secure checkout..."
+            reviewFields: "Please review the fields. Some information is missing.", acceptResponsible: "Before continuing, you must accept ETERNA's responsible use.", selectEmotion: "Select an emotion to continue.", write3: "Write your 3 messages.", deliveryDate: "Choose the delivery date and time.", badDate: "The delivery date is not valid.", futureDate: "The delivery date must be in the future.", badAmount: "The amount is not valid.", openingCheckout: "Opening secure checkout...", firstStepMissing: "Please complete the main details before continuing.", need6Photos: "You need to choose the 6 photos before continuing.", genericError: "Something went wrong.",
+            photoOptional: "Optional if you already have 4 photos.", photoOptionalRepeat: "Optional: ETERNA can repeat one photo.", photoRequired: "Required to create your ETERNA.", photoUploaded: "Photo uploaded ✓", photoReady: "Photo ready ✓", optimizingPhoto: "Optimizing photo for ETERNA...", photoPreparedUploading: "Photo prepared. Uploading...", photoPrepareError: "This photo could not be prepared. Try another one.", photoTryAnother: "A photo could not be prepared. Try another image or a screenshot.", photoRecovered: "Photo recovered and uploaded ✓", photoTapAgain: "Tap this photo again to upload it.", photoLoading: "Uploading photo...",
+            occasions: {{
+                pareja: ["❤️ Partner", "Love, anniversary or something you do not know how to say."], madre: ["👩 Mother", "To thank everything that was always there."], padre: ["👨 Father", "To recognize what is not always said."], cumpleanos: ["🎂 Birthday", "A surprise that is truly experienced."], amistad: ["🤝 Friendship", "For someone who was always close."], distancia: ["🌍 Long distance", "When they are far away, but still here."], otro: ["✨ Another moment", "When you simply want to move someone."]
+            }},
+            emotions: {{
+                cumpleanos: ["Birthday", "A day that deserves to stay."], amor: ["Love", "When what you feel no longer fits inside."], madre: ["Mother", "For the person who has always felt like home."], padre: ["Father", "For the person who left a mark quietly."], familia: ["Family", "For the people who always come back to you."], amistad: ["Friendship", "For that person who stayed."], distancia: ["Distance", "When someone is far away, but still close."], perdon: ["Apology", "To say something that is hard to say."], reencuentro: ["Reunion", "When something returns after time."], gratitud: ["Thank you", "To truly say thank you."], superacion: ["Encouragement", "To remind them of everything they are worth."], sorpresa: ["Surprise", "When you want to touch their heart without warning."], esfuerzo: ["Effort", "To recognize what is not always said."], no_se_decirlo: ["I do not know how to say it", "When ETERNA should say it for you."]
+            }}
         }}
     }};
 
@@ -8342,6 +8617,107 @@ document.addEventListener("DOMContentLoaded", function () {{
     function setTextBySelector(selector, value) {{
         const el = document.querySelector(selector);
         if (el) el.textContent = value;
+    }}
+
+
+    function setHTMLBySelector(selector, value) {{
+        const el = document.querySelector(selector);
+        if (el) el.innerHTML = value;
+    }}
+
+    function setAllTextBySelector(selector, values) {{
+        const nodes = Array.from(document.querySelectorAll(selector));
+        nodes.forEach(function(el, index) {{
+            if (values[index] !== undefined) el.textContent = values[index];
+        }});
+    }}
+
+    function translateCards(lang) {{
+        const dict = I18N[lang] || I18N.es;
+        document.querySelectorAll('[data-occasion]').forEach(function(card) {{
+            const key = card.getAttribute('data-occasion');
+            const val = dict.occasions && dict.occasions[key];
+            if (!val) return;
+            const title = card.querySelector('.emotion-title');
+            const sub = card.querySelector('.emotion-sub');
+            if (title) title.textContent = val[0];
+            if (sub) sub.textContent = val[1];
+        }});
+        document.querySelectorAll('[data-type]').forEach(function(card) {{
+            const key = card.getAttribute('data-type');
+            const val = dict.emotions && dict.emotions[key];
+            if (!val) return;
+            const title = card.querySelector('.emotion-title');
+            const sub = card.querySelector('.emotion-sub');
+            if (title) title.textContent = val[0];
+            if (sub) sub.textContent = val[1];
+        }});
+    }}
+
+    function translateStaticForm(lang) {{
+        setHTMLBySelector('#phone-help', tr('phoneHelp'));
+        setTextBySelector('.s-occasion .soft-copy', tr('occasionCopy'));
+        setTextBySelector('.s-yul .soft-copy', tr('yulCopy'));
+        const yulLabel = document.querySelector('.s-yul .field-label');
+        if (yulLabel) {{
+            const input = yulLabel.querySelector('input');
+            yulLabel.childNodes[0].nodeValue = tr('yulQuestion') + ' ';
+            if (input) input.placeholder = tr('yulPlaceholder');
+        }}
+        setTextBySelector('.yul-one-place-note', tr('yulNote'));
+        setTextBySelector('.s3 .soft-copy', tr('photosCopy'));
+        setTextBySelector('.photo-picker-title', tr('pickerTitle'));
+        setTextBySelector('.photo-picker-sub', tr('pickerSub'));
+        const pickerBtn = document.querySelector('.photo-picker-btn');
+        if (pickerBtn) {{
+            const input = pickerBtn.querySelector('input');
+            pickerBtn.childNodes[0].nodeValue = tr('openGallery') + ' ';
+        }}
+        document.querySelectorAll('.photo-label').forEach(function(el, index) {{ el.textContent = tr('photo') + ' ' + (index + 1); }});
+        document.querySelectorAll('.photo-placeholder').forEach(function(el) {{ el.textContent = tr('change'); }});
+        document.querySelectorAll('.photo-status').forEach(function(el) {{ if ((el.textContent || '').trim() === 'Pendiente' || (el.textContent || '').trim() === 'Pending') el.textContent = tr('pending'); }});
+        setTextBySelector('.mini-note', tr('photoNote'));
+        const senderTrust = document.querySelector('.s3 .trust-box');
+        if (senderTrust) {{
+            const b = senderTrust.querySelector('b');
+            if (b) b.textContent = tr('senderIdentityQuestion');
+            const labels = senderTrust.querySelectorAll('label');
+            if (labels[0]) labels[0].lastChild.nodeValue = ' ' + tr('senderIdentityYes');
+            if (labels[1]) labels[1].lastChild.nodeValue = ' ' + tr('senderIdentityNo');
+            const arrivalTitle = document.querySelector('#arrivalPhotoSelector > div');
+            if (arrivalTitle) arrivalTitle.textContent = tr('arrivalPhoto');
+            const note = document.querySelector('#arrivalPhotoSelector div[style*="font-size:12px"]');
+            if (note) note.textContent = tr('arrivalPhotoNote');
+        }}
+        const inspirationBox = document.querySelector('.s5 .trust-box');
+        if (inspirationBox) {{
+            const b = inspirationBox.querySelector('b');
+            if (b) b.textContent = tr('inspirationTitle');
+            const btn = document.getElementById('inspirationBtn');
+            if (btn) btn.textContent = tr('inspirationBtn');
+            setAllTextBySelector('.suggested-phrase', [tr('suggested1'), tr('suggested2'), tr('suggested3'), tr('suggested4'), tr('suggested5')]);
+        }}
+        setHTMLBySelector('.delivery-copy', tr('deliveryCopy'));
+        const deliveryTitles = document.querySelectorAll('.delivery-option-title');
+        if (deliveryTitles[0]) deliveryTitles[0].textContent = tr('deliveryInstant');
+        if (deliveryTitles[1]) deliveryTitles[1].textContent = tr('deliveryScheduled');
+        const deliverySubs = document.querySelectorAll('.delivery-option-sub');
+        if (deliverySubs[0]) deliverySubs[0].textContent = tr('deliveryInstantSub');
+        if (deliverySubs[1]) deliverySubs[1].textContent = tr('deliveryScheduledSub');
+        setHTMLBySelector('.delivery-hint', tr('deliveryHint'));
+        const giftInput = document.getElementById('gift_amount');
+        if (giftInput) giftInput.placeholder = tr('giftAmountPlaceholder');
+        setHTMLBySelector('.price-box', tr('priceBox'));
+        const trustBoxes = document.querySelectorAll('.s7 .trust-box');
+        if (trustBoxes[0]) {{
+            trustBoxes[0].innerHTML = '<b style="color:#f5d28b;">' + tr('trustTitle') + '</b><br>' + tr('trust1') + '<br>' + tr('trust2') + '<br>' + tr('trust3') + '<br>' + tr('trust4') + '<br>' + tr('trust5');
+        }}
+        setTextBySelector('.s7 .hint', tr('finalHint'));
+        const resp = document.querySelector('#responsible_use_accepted')?.closest('label')?.querySelector('span');
+        if (resp) resp.textContent = tr('responsibleText');
+        const legal = document.querySelector('.s7 div[style*="text-align:center"]');
+        if (legal) legal.innerHTML = tr('legalText');
+        if (button) button.textContent = tr('submit');
     }}
 
     function applyLanguage(lang) {{
@@ -8366,7 +8742,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (atmospheres[1]) atmospheres[1].textContent = tr("atmosphere2");
 
         const titles = Array.from(document.querySelectorAll('.section-title'));
-        const titleMap = [tr("creator"), tr("recipient"), tr("occasionTitle"), tr("photosTitle"), tr("emotionTitle"), tr("wordsTitle"), tr("exactMoment"), tr("giftTitle")];
+        const titleMap = [tr("creator"), tr("recipient"), tr("occasionTitle"), tr("yulTitle"), tr("photosTitle"), tr("emotionTitle"), tr("wordsTitle"), tr("exactMoment"), tr("giftTitle")];
         titles.forEach(function(el, index) {{ if (titleMap[index]) el.textContent = titleMap[index]; }});
 
         const setPlaceholder = function(id, value) {{ const el = document.getElementById(id); if (el) el.placeholder = value; }};
@@ -8384,6 +8760,10 @@ document.addEventListener("DOMContentLoaded", function () {{
         if (autoLabel) autoLabel.innerHTML = tr("autoWords") + ' <span class="recommended">' + tr("recommended") + '</span>';
         const manualLabel = document.querySelector('label[for="mode_manual"]');
         if (manualLabel) manualLabel.textContent = tr("manualWords");
+
+        translateCards(lang);
+        translateStaticForm(lang);
+        try {{ updatePhotoReadiness(); }} catch (e) {{}}
     }}
 
     document.querySelectorAll(".language-option").forEach(function(btn) {{
@@ -8431,7 +8811,7 @@ document.addEventListener("DOMContentLoaded", function () {{
         for (const id of requiredIds) {{
             const el = document.getElementById(id);
             if (el && !String(el.value || "").trim()) {{
-                showError("Falta completar los datos principales antes de continuar.");
+                showError(tr("firstStepMissing"));
                 try {{ el.focus(); }} catch (e) {{}}
                 return false;
             }}
@@ -8443,7 +8823,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             return false;
         }}
         if (!allPhotosPresent()) {{
-            showError("Necesitas elegir las 6 fotos antes de continuar.");
+            showError(tr("need6Photos"));
             return false;
         }}
         clearError();
@@ -8455,7 +8835,7 @@ document.addEventListener("DOMContentLoaded", function () {{
     function showError(message) {{
         if (!errorBox) return;
         errorBox.style.display = "block";
-        errorBox.innerText = message || "Ha ocurrido un error.";
+        errorBox.innerText = message || tr("genericError");
     }}
 
     function clearError() {{
@@ -8875,7 +9255,7 @@ document.addEventListener("DOMContentLoaded", function () {{
                 placeholder.style.display = "block";
             }}
             if (status) {{
-                status.innerText = message || "Opcional si ya tienes 4 fotos.";
+                status.innerText = message || tr("photoOptional");
                 status.classList.remove("ready", "loading");
                 status.classList.add("optional");
             }}
@@ -8904,7 +9284,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
         if (status) {{
             const kb = Math.max(1, Math.round((file.size || 0) / 1024));
-            status.innerText = message || (photoUploaded[inputId] && photoUploaded[inputId].ok ? "Foto subida ✓" : ("Foto lista ✓ · " + kb + " KB"));
+            status.innerText = message || (photoUploaded[inputId] && photoUploaded[inputId].ok ? tr("photoUploaded") : (tr("photoReady") + " · " + kb + " KB"));
             status.classList.remove("loading", "optional");
             status.classList.add("ready");
         }}
@@ -9123,7 +9503,7 @@ document.addEventListener("DOMContentLoaded", function () {{
 
         try {{
             photoProcessing[inputId] = true;
-            setPhotoStatus(inputId, "Optimizando foto para ETERNA...");
+            setPhotoStatus(inputId, tr("optimizingPhoto"));
 
             const optimized = isOptimizedEternaPhoto(rawFile)
                 ? rawFile
@@ -9132,9 +9512,9 @@ document.addEventListener("DOMContentLoaded", function () {{
             const ok = setInputFile(input, optimized, false);
             if (!ok) throw new Error("No se pudo colocar la foto optimizada");
 
-            updatePhotoUI(inputId, optimized, "Foto preparada. Subiendo...");
+            updatePhotoUI(inputId, optimized, tr("photoPreparedUploading"));
             await uploadPreparedPhotoToServer(inputId, optimized);
-            updatePhotoUI(inputId, optimized, "Foto subida ✓");
+            updatePhotoUI(inputId, optimized, tr("photoUploaded"));
             await savePhotoDraft(inputId, optimized);
             saveFormState();
             updatePhotoReadiness();
@@ -9145,8 +9525,8 @@ document.addEventListener("DOMContentLoaded", function () {{
             delete photoUploaded[inputId];
             photoUploadErrors[inputId] = String(e && e.message ? e.message : e);
             try {{ input.value = ""; }} catch (_) {{}}
-            updatePhotoUI(inputId, null, "No se pudo preparar esta foto. Prueba con otra.");
-            showError("Una foto no se pudo preparar. Prueba con otra imagen o captura de pantalla.");
+            updatePhotoUI(inputId, null, tr("photoPrepareError"));
+            showError(tr("photoTryAnother"));
             return false;
         }} finally {{
             photoProcessing[inputId] = false;
@@ -9166,11 +9546,11 @@ document.addEventListener("DOMContentLoaded", function () {{
                     if (ok) {{
                         try {{
                             await uploadPreparedPhotoToServer(inputId, file);
-                            updatePhotoUI(inputId, file, "Foto recuperada y subida ✓");
+                            updatePhotoUI(inputId, file, tr("photoRecovered"));
                             restored += 1;
                         }} catch (uploadErr) {{
                             console.warn("RC107 no pudo subir foto recuperada", inputId, uploadErr);
-                            updatePhotoUI(inputId, null, "Toca de nuevo esta foto para subirla.");
+                            updatePhotoUI(inputId, null, tr("photoTapAgain"));
                         }}
                     }}
                 }}
@@ -9221,7 +9601,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             if (!status) continue;
 
             if (photoProcessing[id]) {{
-                status.innerText = "Cargando foto...";
+                status.innerText = tr("photoLoading");
                 status.classList.remove("ready", "optional");
                 status.classList.add("loading");
                 if (box) {{
@@ -9236,16 +9616,16 @@ document.addEventListener("DOMContentLoaded", function () {{
                     box.classList.add("ready");
                 }}
                 if (!status.innerText || status.innerText === "Pendiente" || status.innerText.includes("Aún no")) {{
-                    status.innerText = "Foto lista ✓";
+                    status.innerText = tr("photoReady");
                 }}
             }} else {{
                 status.classList.remove("ready", "loading");
                 status.classList.add("optional");
                 if (box) box.classList.remove("ready", "loading");
                 if (id === "photo5" || id === "photo6") {{
-                    status.innerText = count >= 4 ? "Opcional: ETERNA puede repetir una foto." : "Opcional si ya tienes 4 fotos.";
+                    status.innerText = count >= 4 ? tr("photoOptionalRepeat") : tr("photoOptional");
                 }} else {{
-                    status.innerText = "Necesaria para crear tu ETERNA.";
+                    status.innerText = tr("photoRequired");
                 }}
             }}
         }}
@@ -10130,7 +10510,7 @@ async def crear_post(
 
 @app.get("/admin/memory")
 def admin_memory(token: str = "", limit: int = 50):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
 
     safe_limit = max(1, min(int(limit or 50), 200))
@@ -10567,6 +10947,7 @@ def admin_health(token: str = ""):
     checks["whatsapp_enabled"] = bool(WHATSAPP_ENABLED)
     checks["video_engine_url"] = VIDEO_ENGINE_URL or "missing"
     checks["r2"] = "ok" if r2_enabled() else "local_fallback"
+    checks["r2_status"] = r2_status_summary()
     checks["delivery_worker_enabled"] = bool(DELIVERY_WORKER_ENABLED)
     checks["recovery_worker_enabled"] = bool(ETERNA_RECOVERY_WORKER_ENABLED)
     checks["safe_mode"] = bool(ETERNA_SAFE_MODE)
@@ -10651,14 +11032,33 @@ def admin_go_live(token: str = ""):
     if ETERNA_SAFE_MODE:
         blocking.append("SAFE MODE activo")
 
+    warnings = []
+    if not r2_enabled():
+        warnings.append("R2 no está completo: ETERNA seguirá con respaldo local, pero conviene validar R2 antes de escalar ventas.")
+
     decision = "APTA_PARA_PRUEBA_CONTROLADA" if not blocking else "NO_LANZAR_AUN"
     return {
         "version": ETERNA_APP_VERSION,
         "decision": decision,
         "blocking": blocking,
+        "warnings": warnings,
+        "r2_status": r2_status_summary(),
         "health": health,
         "confidence": confidence,
         "principle": "Todo puede fallar. Ningún pedido puede perderse jamás.",
+        "timestamp": now_iso(),
+    }
+
+
+@app.get("/admin/r2-check")
+def admin_r2_check(token: str = "", write: int = 0):
+    rc74_admin_guard(token)
+    if write:
+        return r2_write_probe()
+    return {
+        "ok": r2_enabled(),
+        "status": r2_status_summary(),
+        "hint": "Usa /admin/r2-check?token=ADMIN_TOKEN&write=1 para probar subida real y lectura pública.",
         "timestamp": now_iso(),
     }
 
@@ -10801,7 +11201,7 @@ def pedido(request: Request, recipient_token: str):
 
 @app.get("/admin/yul-version")
 def admin_yul_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -10817,7 +11217,7 @@ def admin_yul_version(token: str = ""):
 
 @app.get("/admin/rc76-version")
 def admin_rc76_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -10834,7 +11234,7 @@ def admin_rc76_version(token: str = ""):
 
 @app.get("/admin/rc77-version")
 def admin_rc77_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {"version":"RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE","yul_uses_form_values":True,"post_consent_story_bridge":True,"auto_opens_after_camera_ready":True,"touches_critical_core":False}
 
@@ -10842,7 +11242,7 @@ def admin_rc77_version(token: str = ""):
 
 @app.get("/admin/rc78-version")
 def admin_rc78_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -10857,7 +11257,7 @@ def admin_rc78_version(token: str = ""):
 
 @app.get("/admin/rc78b-version")
 def admin_rc78b_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -10872,7 +11272,7 @@ def admin_rc78b_version(token: str = ""):
 
 @app.get("/admin/rc78c-version")
 def admin_rc78c_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -10914,7 +11314,7 @@ async def internal_yul_event(recipient_token: str, request: Request):
 
 @app.get("/admin/rc79-version")
 def admin_rc79_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11034,7 +11434,7 @@ def admin_force_sender_sms(order_id: str, token: str = "", reset: int = 0):
 
 @app.get("/admin/rc81-version")
 def admin_rc81_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11052,7 +11452,7 @@ def admin_rc81_version(token: str = ""):
 
 @app.get("/admin/rc82-version")
 def admin_rc82_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11068,7 +11468,7 @@ def admin_rc82_version(token: str = ""):
 
 @app.get("/admin/rc84-version")
 def admin_rc84_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11086,7 +11486,7 @@ def admin_rc84_version(token: str = ""):
 
 @app.get("/admin/rc85-version")
 def admin_rc85_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11103,7 +11503,7 @@ def admin_rc85_version(token: str = ""):
 
 @app.get("/admin/rc86-version")
 def admin_rc86_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11120,7 +11520,7 @@ def admin_rc86_version(token: str = ""):
 
 @app.get("/admin/rc89-version")
 def admin_rc89_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11141,7 +11541,7 @@ def admin_rc89_version(token: str = ""):
 
 @app.get("/admin/rc93-version")
 def admin_rc93_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11161,7 +11561,7 @@ def admin_rc93_version(token: str = ""):
 
 @app.get("/admin/rc92-version")
 def admin_rc92_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11181,7 +11581,7 @@ def admin_rc92_version(token: str = ""):
 
 @app.get("/admin/rc91-version")
 def admin_rc91_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -11201,7 +11601,7 @@ def admin_rc91_version(token: str = ""):
 
 @app.get("/admin/rc90-version")
 def admin_rc90_version(token: str = ""):
-    if ADMIN_TOKEN and token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="No autorizado")
     return {
         "version": "RC94_SENDER_PACK_PIP_FRAME_9X16_NO_BANDS_SAFE",
@@ -12853,7 +13253,7 @@ body.video-clean-mode video {
 
     <div class="payoff" id="payoff">
         <div class="payoff-card">
-            <div class="payoff-mark">♥</div>
+            <div class="payoff-mark" id="payoffMark">♥</div>
             <div class="payoff-title" id="payoffTitle">__PAYOFF_TITLE__</div>
             <div class="payoff-text" id="payoffText">__PAYOFF_TEXT__</div>
             <div class="eterna-progress" aria-hidden="true"></div>
@@ -12895,9 +13295,18 @@ function showCinematicLayersAfterVideo() {
 
 const recipientToken = "__RECIPIENT_TOKEN__";
 const hasGift = __HAS_GIFT__;
+const recipientName = __RECIPIENT_NAME_JSON__;
+const giftAmountDisplay = __GIFT_AMOUNT_DISPLAY_JSON__;
+const postGiftHoldMs = hasGift ? 15000 : 3500;
+const giftRevealTitle = hasGift
+    ? "Has recibido un regalo"
+    : "Este momento ya es tuyo";
+const giftRevealText = hasGift
+    ? giftAmountDisplay
+    : "Lo estamos guardando para quien pensó en ti.";
 const finalWaitingTitle = "Espere un momento…";
 const finalWaitingText = hasGift
-    ? "Estamos generando su regalo."
+    ? "Estamos guardando tu reacción."
     : "Estamos guardando este vídeo para que pueda volver a verlo.";
 
 let stream = null;
@@ -12908,6 +13317,7 @@ let recordingMimeType = "";
 let recordingExtension = "webm";
 let experienceStarted = false;
 let finishTimeout = null;
+let postGiftHoldActive = false;
 
 // Blindaje industrial Safari:
 // además de guardar chunks en memoria, subimos trozos en paralelo mientras se vive la experiencia.
@@ -13012,11 +13422,45 @@ function showFinalWaitingScreen() {
     showCinematicLayersAfterVideo();
     const titleEl = document.getElementById("payoffTitle");
     const textEl = document.getElementById("payoffText");
+    const markEl = document.getElementById("payoffMark");
+    if (markEl) markEl.innerText = "♥";
     if (titleEl) titleEl.innerText = finalWaitingTitle;
     if (textEl) textEl.innerText = finalWaitingText;
     if (payoffLoader) payoffLoader.innerText = "";
     payoff.classList.add("show");
     hideRetryActions();
+}
+
+function showGiftRevealScreen() {
+    showCinematicLayersAfterVideo();
+    const titleEl = document.getElementById("payoffTitle");
+    const textEl = document.getElementById("payoffText");
+    const markEl = document.getElementById("payoffMark");
+    if (markEl) markEl.innerText = hasGift ? "🎁" : "♥";
+    if (titleEl) titleEl.innerText = giftRevealTitle;
+    if (textEl) textEl.innerText = giftRevealText;
+    if (payoffLoader) payoffLoader.innerText = hasGift ? "" : "";
+    payoff.classList.add("show");
+    hideRetryActions();
+}
+
+function startPostVideoGiftHold() {
+    if (finishing || postGiftHoldActive) return;
+    postGiftHoldActive = true;
+
+    try {
+        if (finishTimeout) {
+            clearTimeout(finishTimeout);
+            finishTimeout = null;
+        }
+    } catch (_) {}
+
+    showGiftRevealScreen();
+    logClientStep("post_video_gift_reveal_started", "ok", "La reacción sigue grabando mientras ve el regalo", { has_gift: hasGift, hold_ms: postGiftHoldMs });
+
+    setTimeout(() => {
+        finalizeExperienceFlow();
+    }, postGiftHoldMs);
 }
 
 function buildFriendlyUploadMessage(errorCode) {
@@ -13067,6 +13511,7 @@ function resetRecordingState() {
     recordingMimeType = "";
     recordingExtension = "webm";
     finishing = false;
+    postGiftHoldActive = false;
     experienceStarted = false;
     liveUploadSessionId = "";
     liveChunkIndex = 0;
@@ -13381,6 +13826,7 @@ async function uploadReactionSafely(blob) {
 async function finalizeExperienceFlow() {
     if (finishing) return;
     finishing = true;
+    postGiftHoldActive = false;
 
     payoff.classList.add("show");
     showFinalWaitingScreen();
@@ -13485,17 +13931,17 @@ async function finalizeExperienceFlow() {
 function armFinishFallbacks() {
     video.addEventListener("ended", () => {
         logClientStep("experience_video_ended", "ok", "El vídeo terminó en Safari");
-        finalizeExperienceFlow();
+        startPostVideoGiftHold();
     }, { once: true });
 
     let fallbackMs = 120000;
 
     if (Number.isFinite(video.duration) && video.duration > 0) {
-        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + 2500);
+        fallbackMs = Math.max(15000, Math.floor(video.duration * 1000) + postGiftHoldMs + 3500);
     }
 
     finishTimeout = setTimeout(() => {
-        finalizeExperienceFlow();
+        startPostVideoGiftHold();
     }, fallbackMs);
 }
 
@@ -13504,7 +13950,7 @@ async function safeResumePlayback() {
         if (!experienceStarted || finishing) return;
 
         if (video.ended) {
-            finalizeExperienceFlow();
+            startPostVideoGiftHold();
             return;
         }
 
@@ -13697,6 +14143,8 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
     html_page = html_page.replace("__HAS_GIFT__", "true" if gift_amount > 0 else "false")
+    html_page = html_page.replace("__RECIPIENT_NAME_JSON__", json.dumps((order.get("recipient_name") or "").strip() or "esta persona"))
+    html_page = html_page.replace("__GIFT_AMOUNT_DISPLAY_JSON__", json.dumps(format_amount_display(gift_amount)))
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
     html_page = html_page.replace("__PAYOFF_BG__", safe_attr(eterna_asset("uploading_reaction")))
@@ -14366,29 +14814,30 @@ def cobrar(request: Request, recipient_token: str):
     gift_amount = float(order.get("gift_amount") or 0)
     cashout_status = compute_cashout_status(order)
 
+    ui_lang = normalize_order_language(order.get("language") or "es")
     if gift_amount <= 0:
-        amount_text = "Este regalo no incluía dinero."
-        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver mi ETERNA</a>'
+        amount_text = eterna_ui_text(ui_lang, "gift_no_money")
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
     elif cashout_status == "completed":
-        amount_text = f"Tu regalo de {format_amount_display(gift_amount)} ya ha sido enviado."
-        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver mi ETERNA</a>'
+        amount_text = eterna_ui_text(ui_lang, "gift_sent").format(amount=format_amount_display(gift_amount))
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
     elif cashout_status == "processing":
-        amount_text = f"Estamos procesando tu regalo de {format_amount_display(gift_amount)}."
-        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">Volver a ver mi ETERNA</a>'
+        amount_text = eterna_ui_text(ui_lang, "gift_processing").format(amount=format_amount_display(gift_amount))
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
     elif cashout_status == "ready_to_send":
-        amount_text = f"Has recibido {format_amount_display(gift_amount)}."
-        cta_html = f'<form action="/connect/payout/{safe_attr(recipient_token)}" method="post"><button type="submit" class="btn primary">Recibir mi regalo</button></form>'
+        amount_text = eterna_ui_text(ui_lang, "gift_received").format(amount=format_amount_display(gift_amount))
+        cta_html = f'<form action="/connect/payout/{safe_attr(recipient_token)}" method="post"><button type="submit" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "receive_gift"))}</button></form>'
     else:
-        amount_text = f"Has recibido {format_amount_display(gift_amount)}."
+        amount_text = eterna_ui_text(ui_lang, "gift_received").format(amount=format_amount_display(gift_amount))
         connect_url = None
         try:
             connect_url = create_connect_onboarding_link(order)
         except Exception as e:
             log_error("create_connect_onboarding_link_en_cobrar", e)
         if connect_url:
-            cta_html = f'<a href="{safe_attr(connect_url)}" class="btn primary">Recibir mi regalo</a>'
+            cta_html = f'<a href="{safe_attr(connect_url)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "receive_gift"))}</a>'
         else:
-            cta_html = '<a href="" class="btn primary">Intentar recibir mi regalo</a>'
+            cta_html = f'<a href="" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "try_receive_gift"))}</a>'
 
     return render_gift_code_screen(recipient_token, amount_text, cta_html)
 
@@ -14558,8 +15007,8 @@ def sender_pack(sender_token: str, view: str = ""):
             image_name="uploading_reaction",
             fallback_image_name="uploading_reaction",
             button_url=f"/sender/{sender_token}",
-            button_label="Volver a comprobar",
-            extra_note="Tu ETERNA todavía está volviendo. La reacción se está guardando.",
+            button_label=eterna_ui_text(order.get("language"), "check_again"),
+            extra_note=eterna_ui_text(order.get("language"), "still_returning"),
         )
 
     share_url = sender_pack_url_from_order(order)
@@ -14569,14 +15018,31 @@ def sender_pack(sender_token: str, view: str = ""):
     if original_video_url:
         original_source_html = f'<source src="{safe_attr(original_video_url)}" type="video/mp4">'
     reaction_source_html = f'<source src="{safe_attr(reaction_url)}" type="{safe_attr(reaction_video_type)}">'
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    sender_page_title = eterna_ui_text(ui_lang, "sender_page_title")
+    sender_title_html = eterna_ui_text(ui_lang, "sender_title_html")
+    sender_aria = eterna_ui_text(ui_lang, "sender_aria")
+    reaction_aria = eterna_ui_text(ui_lang, "reaction_aria")
+    sender_create_label = "♡ " + eterna_ui_text(ui_lang, "create_another")
+    sender_share_label = eterna_ui_text(ui_lang, "share")
+    sender_download_label = eterna_ui_text(ui_lang, "download")
+    sender_link_copied = eterna_ui_text(ui_lang, "link_copied")
+    sender_share_text = eterna_ui_text(ui_lang, "share_text")
+    sender_recipient_name = (order.get("recipient_name") or "").strip() or "Esta persona"
+    sender_gift_amount = float(order.get("gift_amount") or 0)
+    sender_gift_display = format_amount_display(sender_gift_amount)
+    if ui_lang == "en":
+        sender_gift_card_title = f"{sender_recipient_name} is receiving your gift"
+    else:
+        sender_gift_card_title = f"{sender_recipient_name} está recibiendo tu regalo"
 
     return HTMLResponse(f"""
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{safe_attr(ui_lang)}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Aquí vuelve lo que provocaste</title>
+<title>{safe_text(sender_page_title)}</title>
 <meta name="theme-color" content="#02050a">
 <style>
 *{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
@@ -14602,6 +15068,12 @@ body{{height:100svh;height:100dvh;background:#02050a;overflow:hidden;display:fle
 .call-frame:before{{content:"";position:absolute;left:50%;top:9px;transform:translateX(-50%);width:72px;height:5px;border-radius:999px;background:rgba(255,236,190,.22);z-index:8;box-shadow:0 0 14px rgba(255,222,150,.18)}}
 .main-video{{position:absolute;inset:0;background:#000}}
 .main-video video{{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;background:#000}}
+.gift-card{{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;text-align:center;padding:28px;background:#02050a;opacity:0;pointer-events:none;transition:opacity .55s ease}}
+.gift-card.show{{opacity:1}}
+.gift-inner{{width:100%;max-width:300px;margin:0 auto}}
+.gift-icon{{width:72px;height:72px;margin:0 auto 22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:36px;color:#f2c878;border:1px solid rgba(242,200,120,.34);background:rgba(242,200,120,.08);box-shadow:0 0 42px rgba(242,200,120,.16)}}
+.gift-title{{font-family:Georgia,"Times New Roman",serif;font-size:clamp(22px,6vw,34px);line-height:1.14;color:#fff5e8;text-shadow:0 0 22px rgba(0,0,0,.82);margin:0 0 18px}}
+.gift-amount{{font-size:clamp(34px,9vw,58px);font-weight:900;letter-spacing:.02em;color:#f4c46c;text-shadow:0 0 34px rgba(255,199,92,.34)}}
 
 /* RC90: reacción más grande, sin etiqueta */
 .reaction-video{{position:absolute;right:10px;top:52px;width:24%;min-width:86px;max-width:126px;aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#000;border:1.8px solid rgba(255,205,104,.97);box-shadow:0 0 0 1px rgba(255,245,207,.20),0 0 26px rgba(255,183,70,.62),inset 0 0 14px rgba(255,218,137,.20);z-index:9}}
@@ -14679,17 +15151,24 @@ video.sender-reaction{{
 
   <div class="header">
     <div class="logo">ETERNA</div>
-    <div class="title">Aquí vuelve<br><span>lo que provocaste.</span></div>
+    <div class="title">{sender_title_html}</div>
   </div>
 
-  <section class="call-frame" aria-label="Sender Pack ETERNA">
+  <section class="call-frame" aria-label="{safe_attr(sender_aria)}">
     <div class="main-video">
       <video id="originalVideo" controls playsinline preload="metadata" poster="{safe_attr(sender_bg)}">
         {original_source_html}
       </video>
+      <div class="gift-card" id="giftCard" aria-hidden="true">
+        <div class="gift-inner">
+          <div class="gift-icon">🎁</div>
+          <div class="gift-title">{safe_text(sender_gift_card_title)}</div>
+          <div class="gift-amount">{safe_text(sender_gift_display)}</div>
+        </div>
+      </div>
     </div>
 
-    <div class="reaction-video" aria-label="Reacción">
+    <div class="reaction-video" aria-label="{safe_attr(reaction_aria)}">
       <video id="reactionVideo" muted playsinline preload="metadata">
         {reaction_source_html}
       </video>
@@ -14697,12 +15176,12 @@ video.sender-reaction{{
   </section>
 
   <nav class="actions">
-    <a class="btn primary" href="/crear">♡ Crear otra ETERNA</a>
-    <a class="btn" href="#" id="shareBtn">↗ Compartir</a>
-    <a class="btn" href="{safe_attr(reaction_url)}" download>↓ Descargar</a>
+    <a class="btn primary" href="/crear">{safe_text(sender_create_label)}</a>
+    <a class="btn" href="#" id="shareBtn">{safe_text(sender_share_label)}</a>
+    <a class="btn" href="{safe_attr(reaction_url)}" download>{safe_text(sender_download_label)}</a>
   </nav>
 
-  <div class="toast" id="toast">Enlace copiado</div>
+  <div class="toast" id="toast">{safe_text(sender_link_copied)}</div>
 </div>
 
 <script>
@@ -14711,6 +15190,7 @@ video.sender-reaction{{
   const reaction = document.getElementById("reactionVideo");
   const share = document.getElementById("shareBtn");
   const toast = document.getElementById("toast");
+  const giftCard = document.getElementById("giftCard");
 
   function showToast(msg){{ 
     if(!toast) return; 
@@ -14721,20 +15201,28 @@ video.sender-reaction{{
 
   if(original && reaction){{
     original.addEventListener("play", ()=>{{ 
+      try{{ if(giftCard){{ giftCard.classList.remove("show"); giftCard.setAttribute("aria-hidden","true"); }} }}catch(e){{}}
       try{{ reaction.currentTime = original.currentTime || 0; reaction.play().catch(()=>{{}}); }}catch(e){{}} 
     }});
     original.addEventListener("pause", ()=>{{ try{{ reaction.pause(); }}catch(e){{}} }});
-    original.addEventListener("seeking", ()=>{{ try{{ reaction.currentTime = original.currentTime || 0; }}catch(e){{}} }});
-    original.addEventListener("ended", ()=>{{ try{{ reaction.pause(); }}catch(e){{}} }});
+    original.addEventListener("seeking", ()=>{{ 
+      try{{ if(giftCard){{ giftCard.classList.remove("show"); giftCard.setAttribute("aria-hidden","true"); }} }}catch(e){{}}
+      try{{ reaction.currentTime = original.currentTime || 0; }}catch(e){{}} 
+    }});
+    original.addEventListener("ended", ()=>{{
+      try{{ if(giftCard){{ giftCard.classList.add("show"); giftCard.setAttribute("aria-hidden","false"); }} }}catch(e){{}}
+      try{{ reaction.play().catch(()=>{{}}); }}catch(e){{}}
+      setTimeout(()=>{{ try{{ reaction.pause(); }}catch(e){{}} }}, 15500);
+    }});
   }}
 
   if(share){{
     share.addEventListener("click", async function(e){{
       e.preventDefault();
-      const data={{title:"ETERNA", text:"Aquí vuelve lo que provocaste.", url:{json.dumps(share_url)}}};
+      const data={{title:"ETERNA", text:{json.dumps(sender_share_text)}, url:{json.dumps(share_url)}}};
       try{{
         if(navigator.share) await navigator.share(data);
-        else {{ await navigator.clipboard.writeText(data.url); showToast("Enlace copiado"); }}
+        else {{ await navigator.clipboard.writeText(data.url); showToast({json.dumps(sender_link_copied)}); }}
       }}catch(err){{}}
     }});
   }}
