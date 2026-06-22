@@ -66,6 +66,7 @@ print("🌍 RC111 LANGUAGE SWITCH HARD FALLBACK — CLICK DIRECTO ES/EN 🌍")
 print("🧾 RC113 FORM EN NATIVE GALLERY LOCKED SAFE — FORMULARIO EN REAL + GALERÍA NATIVA 🧾")
 print("🚀 RC115 WEBHOOK RECOVERY LAUNCH SAFE — PAGO REAL → VIDEOENGINE 🛟")
 print("🛟 RC116 FORM RECOVERY SAFE — VUELTA DE STRIPE SIN PERDER FORMULARIO 🛟")
+print("🦋 RC118B LAUNCH AUTONOMOUS GUARD — DINERO REGISTRADO + ORDER LOCK + CRITICAL ALERTS + RESCUE EMAIL 🦋")
 import html
 import json
 import mimetypes
@@ -750,8 +751,12 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC117B_MONEY_FORTRESS_PAYOUT_GUARD").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC118B_LAUNCH_AUTONOMOUS_GUARD_RESCUE_EMAIL").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_CRITICAL_ALERTS_ENABLED = os.getenv("ETERNA_CRITICAL_ALERTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_CRITICAL_ALERT_SMS_ENABLED = os.getenv("ETERNA_CRITICAL_ALERT_SMS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_STUCK_MINUTES = int(os.getenv("ETERNA_RENDER_STUCK_MINUTES", "25"))
@@ -2574,6 +2579,22 @@ def init_db():
     add_column_if_missing("orders", "payout_completed_at", "ALTER TABLE orders ADD COLUMN payout_completed_at TEXT")
     add_column_if_missing("orders", "payout_manual_review", "ALTER TABLE orders ADD COLUMN payout_manual_review INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "payout_alert_sent", "ALTER TABLE orders ADD COLUMN payout_alert_sent INTEGER NOT NULL DEFAULT 0")
+
+    # RC118 — lanzamiento autosuficiente: bloqueo final, dinero registrado y rescue/email operativo.
+    add_column_if_missing("orders", "order_locked", "ALTER TABLE orders ADD COLUMN order_locked INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "order_locked_at", "ALTER TABLE orders ADD COLUMN order_locked_at TEXT")
+    add_column_if_missing("orders", "order_lock_reason", "ALTER TABLE orders ADD COLUMN order_lock_reason TEXT")
+    add_column_if_missing("orders", "money_registered_at", "ALTER TABLE orders ADD COLUMN money_registered_at TEXT")
+    add_column_if_missing("orders", "money_registered_message_shown_at", "ALTER TABLE orders ADD COLUMN money_registered_message_shown_at TEXT")
+    add_column_if_missing("orders", "critical_alert_sent_at", "ALTER TABLE orders ADD COLUMN critical_alert_sent_at TEXT")
+    add_column_if_missing("orders", "critical_alert_reason", "ALTER TABLE orders ADD COLUMN critical_alert_reason TEXT")
+    add_column_if_missing("orders", "rescue_mode_status", "ALTER TABLE orders ADD COLUMN rescue_mode_status TEXT")
+    add_column_if_missing("orders", "rescue_requested_at", "ALTER TABLE orders ADD COLUMN rescue_requested_at TEXT")
+    add_column_if_missing("orders", "rescue_last_error", "ALTER TABLE orders ADD COLUMN rescue_last_error TEXT")
+    add_column_if_missing("orders", "rescue_sender_email_sent_at", "ALTER TABLE orders ADD COLUMN rescue_sender_email_sent_at TEXT")
+    add_column_if_missing("orders", "rescue_recipient_email_sent_at", "ALTER TABLE orders ADD COLUMN rescue_recipient_email_sent_at TEXT")
+    add_column_if_missing("orders", "sender_pack_email_sent_at", "ALTER TABLE orders ADD COLUMN sender_pack_email_sent_at TEXT")
+    add_column_if_missing("orders", "sender_pack_email_last_error", "ALTER TABLE orders ADD COLUMN sender_pack_email_last_error TEXT")
 
     add_column_if_missing("orders", "transfer_started_at", "ALTER TABLE orders ADD COLUMN transfer_started_at TEXT")
     add_column_if_missing("orders", "stripe_gift_refund_id", "ALTER TABLE orders ADD COLUMN stripe_gift_refund_id TEXT")
@@ -4751,6 +4772,9 @@ def eterna_ui_text(language: str, key: str) -> str:
             "gift_sent": "Tu regalo de {amount} ya ha sido enviado.",
             "gift_processing": "Estamos procesando tu regalo de {amount}.",
             "gift_received": "Has recibido {amount}.",
+            "gift_registered": "DINERO REGISTRADO ✅\nTu regalo de {amount} ha sido registrado correctamente. Stripe suele procesar las transferencias en 4-5 días laborables. Tendrás noticias de ETERNA pronto.",
+            "gift_pending_balance": "DINERO REGISTRADO ✅\nTu regalo de {amount} está registrado. Stripe todavía está liberando el saldo y lo enviaremos en cuanto esté disponible.",
+            "gift_manual_review": "DINERO REGISTRADO ✅\nTu regalo de {amount} está registrado. ETERNA lo revisará para asegurar que llegue correctamente.",
             "mine_title": "Esto ya es tuyo.",
             "back_start": "Volver al inicio",
         },
@@ -4779,6 +4803,9 @@ def eterna_ui_text(language: str, key: str) -> str:
             "gift_sent": "Your gift of {amount} has already been sent.",
             "gift_processing": "We are processing your gift of {amount}.",
             "gift_received": "You have received {amount}.",
+            "gift_registered": "MONEY REGISTERED ✅\nYour gift of {amount} has been registered correctly. Stripe usually processes transfers within 4-5 business days. ETERNA will keep you updated.",
+            "gift_pending_balance": "MONEY REGISTERED ✅\nYour gift of {amount} is registered. Stripe is still releasing the balance and we will send it as soon as it becomes available.",
+            "gift_manual_review": "MONEY REGISTERED ✅\nYour gift of {amount} is registered. ETERNA will review it to make sure it arrives correctly.",
             "mine_title": "This is yours now.",
             "back_start": "Back to the start",
         },
@@ -4892,6 +4919,10 @@ def try_send_sender_sms(order: dict) -> dict:
 
     if bool(order.get("sender_sms_sent_at")):
         set_order_state(order["id"], "SENDER_PACK_READY", "sender_sms_already_sent")
+        try:
+            maybe_lock_order_final(order["id"], "sender_sms_already_sent")
+        except Exception as e:
+            print("[WARN] RC118B no pudo aplicar order lock tras sender already_sent:", e)
         return {
             "ok": True,
             "reason": "already_sent",
@@ -4903,6 +4934,10 @@ def try_send_sender_sms(order: dict) -> dict:
 
     if attempts >= 3:
         insert_order_event(order["id"], "sender_sms_error", "warning", "Máximo de intentos de SMS al regalante alcanzado", {"attempts": attempts})
+        try:
+            send_sender_pack_rescue_email(order, "sender_sms_max_attempts")
+        except Exception as rescue_error:
+            log_error("sender_pack_rescue_email_max_attempts", rescue_error)
         try:
             send_admin_error_email(
                 f"🚨 ETERNA ERROR sender pack {order_public_code(order)}",
@@ -4970,6 +5005,10 @@ def try_send_sender_sms(order: dict) -> dict:
                 sender_notified=1,
             )
             set_order_state(order["id"], "SENDER_PACK_READY", "sender_sms_sent")
+            try:
+                maybe_lock_order_final(order["id"], "sender_notified")
+            except Exception as e:
+                print("[WARN] RC118 no pudo aplicar order lock tras sender_notified:", e)
 
             refreshed = get_order_by_id(order["id"])
             return {
@@ -4988,6 +5027,10 @@ def try_send_sender_sms(order: dict) -> dict:
         )
 
         if attempts >= 3:
+            try:
+                send_sender_pack_rescue_email(order, "sender_sms_failed_after_retries")
+            except Exception as rescue_error:
+                log_error("sender_pack_rescue_email_failed_after_retries", rescue_error)
             try:
                 send_admin_error_email(
                     f"🚨 ETERNA ERROR sender pack {order_public_code(order)}",
@@ -5454,6 +5497,295 @@ def send_admin_eterna_completed(order: dict):
     except Exception as e:
         log_error("admin_eterna_completed", e)
 
+def send_critical_admin_alert_once(order: dict, reason: str, title: str, detail: str, sms: bool = True) -> dict:
+    """
+    RC118 — alerta crítica única por pedido.
+    No se usa para estados normales como PENDING_STRIPE_BALANCE.
+    Solo para casos donde Sergio debe enterarse rápido.
+    """
+    if not ETERNA_CRITICAL_ALERTS_ENABLED:
+        return {"ok": False, "reason": "critical_alerts_disabled"}
+
+    order_id = (order or {}).get("id") or ""
+    if not order_id:
+        return {"ok": False, "reason": "missing_order_id"}
+
+    refreshed = get_order_by_id(order_id)
+    if refreshed.get("critical_alert_sent_at") and refreshed.get("critical_alert_reason") == reason:
+        return {"ok": True, "reason": "already_sent", "sent_at": refreshed.get("critical_alert_sent_at")}
+
+    body = build_critical_alert_body(refreshed, title, detail)
+    email_result = send_admin_error_email(
+        f"🚨 ETERNA CRÍTICO {order_public_code(refreshed)} — {reason}",
+        body,
+        order_id=order_id,
+        reason=reason,
+    )
+
+    sms_result = {"ok": False, "reason": "sms_not_requested"}
+    if sms and ETERNA_CRITICAL_ALERT_SMS_ENABLED and ADMIN_ALERT_PHONE:
+        sms_result = send_sms(ADMIN_ALERT_PHONE, f"🚨 ETERNA CRÍTICO {order_public_code(refreshed)}\n{reason}\n{sender_pack_url_from_order(refreshed)}")
+
+    update_order(
+        order_id,
+        critical_alert_sent_at=now_iso(),
+        critical_alert_reason=reason,
+    )
+    insert_order_event(order_id, "critical_admin_alert", "warning", reason, {"email": email_result, "sms": sms_result})
+    return {"ok": True, "email": email_result, "sms": sms_result}
+
+
+
+# =========================================================
+# RC118B — RESCUE MODE EMAIL REAL
+# Salva ventas cuando Twilio/SMS/WhatsApp no entrega.
+# No regenera vídeo, no toca Video Engine, no toca Stripe Checkout.
+# Reutiliza los enlaces ya existentes del pedido.
+# =========================================================
+
+def update_recipient_email_for_order(order: dict, email: str) -> None:
+    clean = str(email or "").strip()
+    if not clean or "@" not in clean:
+        return
+    recipient_id = order.get("recipient_id")
+    if not recipient_id:
+        return
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("UPDATE recipients SET email = ? WHERE id = ?", (clean, recipient_id))
+    conn.commit()
+    conn.close()
+
+
+def rescue_url_from_order(order: dict) -> str:
+    return f"{PUBLIC_BASE_URL}/rescue/{order['sender_token']}"
+
+
+def build_sender_delivery_rescue_email(order: dict, reason: str = "") -> str:
+    return f"""Hola {(order.get('sender_name') or '').strip() or 'de nuevo'},
+
+Tu ETERNA está creada y guardada correctamente.
+
+Hemos intentado entregar la experiencia por mensaje al destinatario, pero puede que el operador no la haya entregado correctamente.
+
+No se ha perdido nada.
+
+Para salvar la entrega, introduce aquí el email del destinatario y ETERNA le enviará el enlace de la experiencia por email:
+
+{rescue_url_from_order(order)}
+
+Pedido: {order_public_code(order)}
+Destinatario: {order.get('recipient_name') or 'sin nombre'}
+Motivo técnico: {reason or 'delivery_rescue'}
+
+Enlace interno de experiencia:
+{recipient_experience_url_from_order(order)}
+
+Si necesitas ayuda:
+{ETERNA_SUPPORT_EMAIL}
+{ETERNA_SUPPORT_PHONE}
+
+ETERNA
+""".strip()
+
+
+def build_recipient_experience_rescue_email(order: dict) -> str:
+    sender = (order.get("sender_name") or "Alguien").strip()
+    recipient = (order.get("recipient_name") or "").strip()
+    greeting = f"Hola {recipient}," if recipient else "Hola,"
+    return f"""{greeting}
+
+{sender} ha creado una ETERNA para ti.
+
+El mensaje original puede no haberte llegado correctamente, así que te enviamos tu experiencia por email para que no se pierda.
+
+Vívela aquí:
+{recipient_experience_url_from_order(order)}
+
+Busca un momento tranquilo, sube el sonido y deja que ocurra.
+
+ETERNA
+""".strip()
+
+
+def build_sender_pack_rescue_email(order: dict, reason: str = "") -> str:
+    sender = (order.get("sender_name") or "").strip()
+    greeting = f"Hola {sender}," if sender else "Hola,"
+    return f"""{greeting}
+
+Tu ETERNA ha vuelto.
+
+Hemos intentado avisarte por mensaje, pero puede que el operador no lo haya entregado correctamente.
+
+No se ha perdido nada.
+
+Puedes ver tu Sender Pack aquí:
+{sender_pack_url_from_order(order)}
+
+Pedido: {order_public_code(order)}
+Motivo técnico: {reason or 'sender_pack_rescue'}
+
+ETERNA
+""".strip()
+
+
+def send_sender_pack_rescue_email(order: dict, reason: str = "") -> dict:
+    """Si falla el SMS/WhatsApp al regalante, se rescata gratis por email."""
+    order = get_order_by_id(order["id"])
+    sender_email = (order.get("sender_email") or "").strip()
+    if not sender_email or "@" not in sender_email:
+        update_order(order["id"], sender_pack_email_last_error="missing_sender_email")
+        return {"ok": False, "reason": "missing_sender_email"}
+    if order.get("sender_pack_email_sent_at"):
+        return {"ok": True, "reason": "already_sent", "sent_at": order.get("sender_pack_email_sent_at")}
+
+    res = send_eterna_email(
+        sender_email,
+        f"Tu ETERNA ha vuelto — {order_public_code(order)}",
+        build_sender_pack_rescue_email(order, reason),
+    )
+    if res.get("ok"):
+        update_order(
+            order["id"],
+            sender_pack_email_sent_at=now_iso(),
+            sender_pack_email_last_error=None,
+            rescue_mode_status="SENDER_PACK_EMAIL_SENT",
+        )
+        insert_order_event(order["id"], "sender_pack_email_rescue_sent", "ok", reason, {"to": mask_email(sender_email)})
+    else:
+        update_order(order["id"], sender_pack_email_last_error=res.get("error") or "email_error")
+        insert_order_event(order["id"], "sender_pack_email_rescue_error", "warning", res.get("error") or "email_error", {"to": mask_email(sender_email)})
+    return res
+
+
+def send_recipient_experience_rescue_email(order: dict, recipient_email: str, source: str = "manual") -> dict:
+    clean_email = str(recipient_email or "").strip()
+    if not clean_email or "@" not in clean_email:
+        return {"ok": False, "reason": "invalid_recipient_email"}
+
+    update_recipient_email_for_order(order, clean_email)
+    order = get_order_by_id(order["id"])
+
+    if order.get("rescue_recipient_email_sent_at") and source != "manual_repeat":
+        return {"ok": True, "reason": "already_sent", "sent_at": order.get("rescue_recipient_email_sent_at")}
+
+    res = send_eterna_email(
+        clean_email,
+        f"Tienes una ETERNA para ti — {order_public_code(order)}",
+        build_recipient_experience_rescue_email(order),
+    )
+    if res.get("ok"):
+        update_order(
+            order["id"],
+            rescue_mode_status="RECIPIENT_EMAIL_SENT",
+            rescue_recipient_email_sent_at=now_iso(),
+            rescue_last_error=None,
+        )
+        insert_order_event(order["id"], "recipient_experience_email_rescue_sent", "ok", source, {"to": mask_email(clean_email)})
+    else:
+        update_order(
+            order["id"],
+            rescue_mode_status="RECIPIENT_EMAIL_ERROR",
+            rescue_last_error=res.get("error") or "email_error",
+        )
+        insert_order_event(order["id"], "recipient_experience_email_rescue_error", "warning", res.get("error") or "email_error", {"to": mask_email(clean_email)})
+    return res
+
+
+def trigger_recipient_delivery_rescue(order: dict, reason: str = "") -> dict:
+    """
+    Entra cuando el envío al destinatario queda agotado o bloqueado.
+    1) Si ya tenemos email del destinatario, manda la experiencia por email.
+    2) Si no, escribe al regalante para que lo introduzca.
+    """
+    order = get_order_by_id(order["id"])
+    recipient_email = (order.get("recipient_email") or "").strip()
+    sender_email = (order.get("sender_email") or "").strip()
+
+    update_order(
+        order["id"],
+        rescue_mode_status="REQUESTED",
+        rescue_requested_at=order.get("rescue_requested_at") or now_iso(),
+        rescue_last_error=reason or None,
+    )
+
+    if recipient_email and "@" in recipient_email:
+        return send_recipient_experience_rescue_email(order, recipient_email, source="auto_existing_recipient_email")
+
+    if not sender_email or "@" not in sender_email:
+        insert_order_event(order["id"], "recipient_delivery_rescue_missing_sender_email", "warning", reason or "missing_sender_email")
+        try:
+            send_critical_admin_alert_once(
+                order,
+                "recipient_delivery_rescue_missing_sender_email",
+                "No se puede rescatar entrega por email",
+                f"No hay email del regalante ni del destinatario. Motivo: {reason}",
+            )
+        except Exception as e:
+            log_error("recipient_rescue_missing_email_alert", e)
+        return {"ok": False, "reason": "missing_sender_and_recipient_email"}
+
+    if order.get("rescue_sender_email_sent_at"):
+        return {"ok": True, "reason": "sender_rescue_already_requested", "sent_at": order.get("rescue_sender_email_sent_at")}
+
+    res = send_eterna_email(
+        sender_email,
+        f"Necesitamos un email para entregar tu ETERNA — {order_public_code(order)}",
+        build_sender_delivery_rescue_email(order, reason),
+    )
+    if res.get("ok"):
+        update_order(
+            order["id"],
+            rescue_mode_status="WAITING_RECIPIENT_EMAIL",
+            rescue_sender_email_sent_at=now_iso(),
+            rescue_last_error=None,
+        )
+        insert_order_event(order["id"], "recipient_delivery_rescue_requested", "ok", reason, {"to": mask_email(sender_email)})
+    else:
+        update_order(
+            order["id"],
+            rescue_mode_status="SENDER_RESCUE_EMAIL_ERROR",
+            rescue_last_error=res.get("error") or "email_error",
+        )
+        insert_order_event(order["id"], "recipient_delivery_rescue_request_error", "warning", res.get("error") or "email_error", {"to": mask_email(sender_email)})
+    return res
+
+def maybe_lock_order_final(order_id: str, reason: str = "auto_final_lock") -> dict:
+    """
+    RC118 — ORDER LOCK final.
+    Cuando todo está cerrado, el pedido queda congelado para que ningún worker lo vuelva a tocar.
+    """
+    if not ETERNA_ORDER_LOCK_ENABLED:
+        return {"locked": False, "reason": "order_lock_disabled"}
+
+    order = get_order_by_id(order_id)
+    if bool(order.get("order_locked")):
+        return {"locked": True, "reason": "already_locked", "locked_at": order.get("order_locked_at")}
+
+    gift_amount = float(order.get("gift_amount") or 0)
+    money_done = bool(order.get("transfer_completed")) or bool(order.get("cashout_completed")) or bool(order.get("stripe_transfer_id")) or gift_amount <= 0
+    sender_done = bool(order.get("sender_notified")) or bool(order.get("sender_sms_sent_at"))
+    experience_done = bool(order.get("experience_completed")) and bool(order.get("reaction_uploaded"))
+
+    if experience_done and sender_done and money_done:
+        update_order(
+            order_id,
+            order_locked=1,
+            order_locked_at=now_iso(),
+            order_lock_reason=reason,
+        )
+        insert_order_event(order_id, "order_locked", "ok", reason)
+        return {"locked": True, "reason": reason}
+
+    return {
+        "locked": False,
+        "reason": "not_ready",
+        "experience_done": experience_done,
+        "sender_done": sender_done,
+        "money_done": money_done,
+    }
+
+
 def process_scheduled_recipient_delivery(order_id: str) -> dict:
     order = get_order_by_id(order_id)
 
@@ -5507,6 +5839,10 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
 
         if attempts >= 3:
             insert_order_event(order_id, "recipient_sms_failed", "warning", "Máximo de intentos al destinatario alcanzado", {"attempts": attempts})
+            try:
+                trigger_recipient_delivery_rescue(order, "recipient_sms_max_attempts")
+            except Exception as rescue_error:
+                log_error("recipient_delivery_rescue_max_attempts", rescue_error)
             return {
                 "ok": False,
                 "reason": "max_attempts_reached",
@@ -5588,6 +5924,12 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
 
         updated = get_order_by_id(order_id)
         insert_order_event(order_id, "recipient_sms_failed", "error", final_error, {"attempts": int(updated.get("recipient_sms_attempts") or 0)})
+
+        if int(updated.get("recipient_sms_attempts") or 0) >= 3:
+            try:
+                trigger_recipient_delivery_rescue(updated, "recipient_sms_failed_after_retries")
+            except Exception as rescue_error:
+                log_error("recipient_delivery_rescue_failed_after_retries", rescue_error)
 
         return {
             "ok": False,
@@ -5807,14 +6149,25 @@ def process_all_pending_reaction_recoveries() -> list[dict]:
 # =========================================================
 
 def compute_cashout_status(order: dict) -> str:
+    """
+    RC118 — estado económico pensado para no confundir al regalado.
+    Una vez Stripe Connect está completado, ya no hablamos de "recibir" otra vez:
+    hablamos de dinero registrado / en proceso.
+    """
+    payout_status = str(order.get("payout_status") or "").strip().upper()
+
     if bool(order.get("gift_refunded")):
         return "gift_refunded"
-    if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")):
+    if bool(order.get("cashout_completed")) or bool(order.get("transfer_completed")) or bool(order.get("stripe_transfer_id")):
         return "completed"
-    if bool(order.get("transfer_in_progress")):
+    if bool(order.get("payout_manual_review")) or payout_status == "MANUAL_REVIEW":
+        return "manual_review"
+    if payout_status in {"PENDING_STRIPE_BALANCE", "TRANSFER_FAILED"}:
+        return "pending_balance"
+    if bool(order.get("transfer_in_progress")) or payout_status in {"TRANSFER_ATTEMPTING", "TRANSFER_CREATED", "TRANSFER_SENT"}:
         return "processing"
     if bool(order.get("connect_onboarding_completed")):
-        return "ready_to_send"
+        return "registered"
     return "pending"
 
 
@@ -5941,6 +6294,17 @@ def mark_payout_waiting_for_balance(order_id: str, error: str) -> dict:
         "status=", status,
     )
 
+    if manual_review:
+        try:
+            send_critical_admin_alert_once(
+                get_order_by_id(order_id),
+                "payout_manual_review",
+                "Payout en revisión manual",
+                f"Stripe sigue sin saldo disponible tras {attempts} intentos. Último error: {str(error or '')[:700]}",
+            )
+        except Exception as alert_error:
+            log_error("payout_manual_review_alert", alert_error)
+
     return {
         "status": status.lower(),
         "retry": not bool(manual_review),
@@ -5971,6 +6335,10 @@ def mark_payout_transfer_completed(order_id: str, transfer_id: str):
         "Transferencia Stripe creada y guardada",
         {"stripe_transfer_id": transfer_id},
     )
+    try:
+        maybe_lock_order_final(order_id, "payout_transfer_created")
+    except Exception as e:
+        print("[WARN] RC118 no pudo aplicar order lock tras payout:", e)
 
 
 def try_start_experience(order_id: str) -> str:
@@ -6301,6 +6669,20 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     order = recover_stuck_transfer_if_needed(order)
     gift_amount = float(order.get("gift_amount") or 0)
 
+    if bool(order.get("order_locked")):
+        return {"status": "order_locked", "retry": False}
+
+    if not ETERNA_PAYOUTS_ENABLED:
+        update_order(
+            order["id"],
+            payout_status="PAYOUTS_DISABLED",
+            payout_last_error="ETERNA_PAYOUTS_ENABLED=0",
+            transfer_in_progress=0,
+            transfer_started_at=None,
+        )
+        insert_order_event(order["id"], "payouts_disabled", "warning", "Kill switch económico activo: no se intenta transferencia")
+        return {"status": "payouts_disabled", "retry": False}
+
     if bool(order.get("gift_refunded")):
         return {"status": "gift_already_refunded"}
 
@@ -6315,6 +6697,10 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             payout_status="NO_GIFT",
             payout_completed_at=now_iso(),
         )
+        try:
+            maybe_lock_order_final(order["id"], "no_gift_payout_completed")
+        except Exception as e:
+            print("[WARN] RC118B no pudo aplicar order lock tras no_gift:", e)
         return {"status": "no_gift"}
 
     if not STRIPE_SECRET_KEY:
@@ -11242,6 +11628,7 @@ def list_pending_scheduled_deliveries():
             AND COALESCE(delivery_sent, 0) = 0
             AND COALESCE(experience_video_url, '') <> ''
             AND COALESCE(recipient_sms_attempts, 0) < 3
+            AND COALESCE(order_locked, 0) = 0
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -11277,6 +11664,7 @@ def list_pending_sender_notifications():
             AND COALESCE(sender_sms_sent_at, '') = ''
             AND COALESCE(sender_notified, 0) = 0
             AND COALESCE(sender_sms_attempts, 0) < 3
+            AND COALESCE(order_locked, 0) = 0
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -11309,6 +11697,7 @@ def list_pending_payout_orders():
             AND COALESCE(cashout_completed, 0) = 0
             AND COALESCE(gift_refunded, 0) = 0
             AND COALESCE(payout_manual_review, 0) = 0
+            AND COALESCE(order_locked, 0) = 0
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -11846,10 +12235,12 @@ def startup_event():
                 log_human("RC60 SWEEP ARRANQUE", "Buscando entregas y avisos pendientes tras deploy/reinicio")
                 delivery_results = process_all_due_scheduled_deliveries()
                 sender_results = process_all_due_sender_notifications()
+                payout_results = process_all_due_payouts()
                 log_human(
                     "RC60 SWEEP COMPLETADO",
                     f"📦 Entregas revisadas: {len(delivery_results)}",
                     f"📩 Avisos regalante revisados: {len(sender_results)}",
+                    f"💶 Payouts revisados: {len(payout_results)}",
                 )
             except Exception as e:
                 log_error("startup_safe_sweep_rc60", e)
@@ -12783,7 +13174,7 @@ html,body{{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;fon
 body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#02050a}}
 .shell{{position:relative;width:100vw;max-width:520px;height:100svh;height:100dvh;overflow:hidden;background:#02050a}}
 .bg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;z-index:0;user-select:none;pointer-events:none}}
-.amount{{position:absolute;z-index:3;left:18%;right:18%;top:45.8%;min-height:9.4%;border-radius:22px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 14px;color:#ffe0a0;font-size:clamp(20px,6vw,33px);font-weight:950;line-height:1.15;text-shadow:0 0 18px rgba(255,196,72,.58);background:rgba(0,0,0,.18);border:1px solid rgba(255,212,126,.22);box-shadow:0 0 28px rgba(255,190,72,.18),inset 0 0 20px rgba(0,0,0,.28)}}
+.amount{{position:absolute;z-index:3;left:18%;right:18%;top:45.8%;min-height:9.4%;border-radius:22px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 14px;color:#ffe0a0;font-size:clamp(20px,6vw,33px);font-weight:950;line-height:1.22;white-space:pre-line;text-shadow:0 0 18px rgba(255,196,72,.58);background:rgba(0,0,0,.18);border:1px solid rgba(255,212,126,.22);box-shadow:0 0 28px rgba(255,190,72,.18),inset 0 0 20px rgba(0,0,0,.28)}}
 .actions{{position:absolute;z-index:4;left:8.2%;right:8.2%;bottom:calc(env(safe-area-inset-bottom) + 7.0%);display:grid;gap:1.15vh}}
 .actions form{{margin:0}}
 .btn,.actions form button{{width:100%;min-height:6.9svh;border-radius:18px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;text-transform:uppercase;letter-spacing:.06em;font-weight:950;font-size:clamp(13px,3.6vw,18px);border:1px solid rgba(255,213,130,.42);background:rgba(0,7,15,.64);color:#fff2d6;box-shadow:0 14px 34px rgba(0,0,0,.34),0 0 22px rgba(255,189,75,.12);backdrop-filter:blur(6px)}}
@@ -15537,12 +15928,20 @@ def cobrar(request: Request, recipient_token: str):
     elif cashout_status == "completed":
         amount_text = eterna_ui_text(ui_lang, "gift_sent").format(amount=format_amount_display(gift_amount))
         cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
-    elif cashout_status == "processing":
-        amount_text = eterna_ui_text(ui_lang, "gift_processing").format(amount=format_amount_display(gift_amount))
+    elif cashout_status == "manual_review":
+        amount_text = eterna_ui_text(ui_lang, "gift_manual_review").format(amount=format_amount_display(gift_amount))
         cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
-    elif cashout_status == "ready_to_send":
-        amount_text = eterna_ui_text(ui_lang, "gift_received").format(amount=format_amount_display(gift_amount))
-        cta_html = f'<form action="/connect/payout/{safe_attr(recipient_token)}" method="post"><button type="submit" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "receive_gift"))}</button></form>'
+    elif cashout_status == "pending_balance":
+        amount_text = eterna_ui_text(ui_lang, "gift_pending_balance").format(amount=format_amount_display(gift_amount))
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
+    elif cashout_status in {"processing", "registered"}:
+        if not order.get("money_registered_at"):
+            try:
+                update_order(order["id"], money_registered_at=now_iso(), money_registered_message_shown_at=now_iso())
+            except Exception as e:
+                print("[WARN] RC118 no pudo marcar money_registered:", e)
+        amount_text = eterna_ui_text(ui_lang, "gift_registered").format(amount=format_amount_display(gift_amount))
+        cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
     else:
         amount_text = eterna_ui_text(ui_lang, "gift_received").format(amount=format_amount_display(gift_amount))
         connect_url = None
@@ -15559,6 +15958,48 @@ def cobrar(request: Request, recipient_token: str):
 
 
 
+@app.get("/rescue/{sender_token}", response_class=HTMLResponse)
+def rescue_recipient_email_form(sender_token: str):
+    """RC118B — formulario mínimo para que el regalante aporte email del destinatario."""
+    order = get_order_by_sender_token_or_404(sender_token)
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rescate ETERNA</title>
+<style>
+*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:22px}}.card{{width:min(100%,440px);border:1px solid rgba(245,210,139,.28);border-radius:26px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));box-shadow:0 25px 90px rgba(0,0,0,.5)}}h1{{margin:0 0 12px;color:#f5d28b;font-size:24px}}p{{line-height:1.55;color:rgba(255,255,255,.78)}}input{{width:100%;padding:15px 16px;border-radius:16px;border:1px solid rgba(245,210,139,.32);background:rgba(0,0,0,.35);color:#fff;font-size:16px;margin:10px 0 14px}}button{{width:100%;padding:15px 18px;border:0;border-radius:999px;background:#f5d28b;color:#07101c;font-weight:900;font-size:15px}}small{{display:block;margin-top:14px;color:rgba(255,255,255,.55);line-height:1.45}}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Salvar entrega ETERNA</h1>
+<p>Tu ETERNA está creada. Si el mensaje no ha llegado bien al destinatario, escribe aquí su email y le enviaremos la experiencia directamente.</p>
+<form method="post" action="/rescue/{safe_attr(sender_token)}">
+<input required type="email" name="recipient_email" placeholder="Email del destinatario">
+<button type="submit">ENVIAR ETERNA POR EMAIL</button>
+</form>
+<small>Pedido {safe_text(order_public_code(order))}. No se genera nada nuevo: se envía el enlace seguro ya existente.</small>
+</div>
+</body>
+</html>
+""")
+
+
+@app.post("/rescue/{sender_token}", response_class=HTMLResponse)
+def rescue_recipient_email_submit(sender_token: str, recipient_email: str = Form(...)):
+    order = get_order_by_sender_token_or_404(sender_token)
+    result = send_recipient_experience_rescue_email(order, recipient_email, source="sender_form")
+    ok = bool(result.get("ok"))
+    title = "ETERNA enviada ✅" if ok else "No hemos podido enviarla"
+    text = "Hemos enviado la experiencia al email indicado." if ok else f"Error: {safe_text(result.get('error') or result.get('reason') or 'email_error')}"
+    return HTMLResponse(f"""
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ETERNA</title><style>body{{margin:0;min-height:100vh;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:420px;border:1px solid rgba(245,210,139,.28);border-radius:24px;padding:24px;background:rgba(255,255,255,.06)}}h1{{color:#f5d28b}}p{{line-height:1.55;color:rgba(255,255,255,.78)}}a{{display:block;margin-top:16px;color:#06111d;background:#f5d28b;text-align:center;text-decoration:none;border-radius:999px;padding:14px;font-weight:900}}</style></head><body><div class="card"><h1>{title}</h1><p>{text}</p><a href="/sender/{safe_attr(sender_token)}">Volver a mi Sender Pack</a></div></body></html>
+""")
+
+
 @app.get("/recibir-regalo/{recipient_token}", response_class=HTMLResponse)
 def recibir_regalo(request: Request, recipient_token: str):
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
@@ -15573,10 +16014,23 @@ def connect_refresh(recipient_token: str):
 def connect_return(recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
+    ready = False
     try:
-        refresh_connect_status(order)
+        ready = refresh_connect_status(order)
     except Exception as e:
         log_error("refresh_connect_status", e)
+
+    try:
+        refreshed = get_order_by_recipient_token_or_404(recipient_token)
+        if ready or bool(refreshed.get("connect_onboarding_completed")):
+            update_order(
+                refreshed["id"],
+                money_registered_at=refreshed.get("money_registered_at") or now_iso(),
+                payout_status=refreshed.get("payout_status") or "MONEY_REGISTERED",
+            )
+            process_gift_transfer_for_order(refreshed)
+    except Exception as e:
+        log_error("connect_return_auto_payout_rc118", e)
 
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
@@ -15608,6 +16062,11 @@ def connect_payout(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     try:
+        update_order(
+            refreshed["id"],
+            money_registered_at=refreshed.get("money_registered_at") or now_iso(),
+            payout_status=refreshed.get("payout_status") or "MONEY_REGISTERED",
+        )
         process_gift_transfer_for_order(refreshed)
     except Exception as e:
         log_error("process_gift_transfer_for_order", e)
