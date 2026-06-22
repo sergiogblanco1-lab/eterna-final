@@ -68,6 +68,8 @@ print("🚀 RC115 WEBHOOK RECOVERY LAUNCH SAFE — PAGO REAL → VIDEOENGINE �
 print("🛟 RC116 FORM RECOVERY SAFE — VUELTA DE STRIPE SIN PERDER FORMULARIO 🛟")
 print("🦋 RC118B LAUNCH AUTONOMOUS GUARD — DINERO REGISTRADO + ORDER LOCK + CRITICAL ALERTS + RESCUE EMAIL 🦋")
 print("🚀 RC119 LAUNCH RECOVERY — RESCATE 3H/12H + FOUNDER REPORT 12H 🚀")
+print("🌍 RC119B INTERNATIONAL LOCK — ES/EN END-TO-END TEXT SAFE 🌍")
+print("🌍 RC119C FINAL TEXT LOCK — ALL NON-IMAGE USER TEXT ES/EN SAFE 🌍")
 import html
 import json
 import mimetypes
@@ -752,7 +754,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC119_LAUNCH_RECOVERY_3H_12H_FOUNDER_REPORT").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC119C_FINAL_TEXT_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -4835,6 +4837,116 @@ def eterna_ui_text(language: str, key: str) -> str:
     return texts.get(lang, texts["es"]).get(key, texts["es"].get(key, key))
 
 
+
+
+def eterna_i18n_text(language: str, key: str, **kwargs) -> str:
+    """
+    RC119B INTERNATIONAL LOCK — textos visibles ES/EN con fallback español.
+    No toca lógica de pago, webhook, reacción, R2, Sender Pack técnico ni workers.
+    """
+    lang = normalize_order_language(language or "es")
+    texts = {
+        "es": {
+            "pre_html_lang": "es",
+            "pre_title": "ETERNA - El Umbral",
+            "place_line_empty": "Hay un lugar escondido dentro de esta historia.",
+            "place_line_with": "Hay un lugar escondido dentro de esta historia:<br><span>{place}</span>.",
+            "consent_title": "Antes de seguir...<br><span>debo confiarte algo.</span>",
+            "consent_recorded": "Este momento será grabado.",
+            "consent_legal": "Y cuando termine, viajará únicamente hacia la persona que hizo posible que existiera.",
+            "consent_story": "Si decides continuar, aceptas formar parte de esta historia.",
+            "consent_check": "He leído y acepto que mi reacción sea grabada y enviada únicamente a la persona que preparó esta ETERNA.",
+            "consent_button": "Acepto y continúo",
+            "camera_title": "Algunas historias merecen<br><span>encontrar un rostro.</span>",
+            "camera_hint": "Así te verá este momento.",
+            "ready_shhh": "Shhh...",
+            "ready_1": "Esto no es un vídeo.",
+            "ready_2": "Es un momento.",
+            "ready_3": "No pienses. Solo deja que ocurra.",
+            "ready_button": "Estoy listo",
+            "rescue_button": "Abrir mi ETERNA",
+            "safe_note": "No cierres esta página. ETERNA está abriendo el camino.",
+            "guide_line_1": "Algunas historias comenzaron<br>mucho antes de que llegaras aquí.",
+            "guide_line_2": "Escucha...",
+            "guide_line_3": "Hay rincones donde los minutos<br>pasan sin hacer ruido.",
+            "guide_line_4": "Si conoces uno...<br>quédate allí un instante.",
+            "guide_line_5": "Los recuerdos no desaparecen.<br><span>Solo esperan una forma de volver.</span>",
+            "exp_payoff_gift_title": "Espere un momento…",
+            "exp_payoff_gift_text": "Estamos generando su regalo.",
+            "exp_payoff_no_gift_title": "Espere un momento…",
+            "exp_payoff_no_gift_text": "Estamos guardando este vídeo para que pueda volver a verlo.",
+            "exp_retry": "Volver a intentarlo",
+            "exp_back_start": "Volver al inicio",
+            "exp_error_prepare": "No hemos podido preparar la grabación.",
+            "exp_error_prepare_late": "No hemos podido preparar este momento. Vuelve a intentarlo.",
+            "exp_gift_reveal_title": "Has recibido un regalo",
+            "exp_no_gift_reveal_title": "Este momento ya es tuyo",
+            "exp_no_gift_reveal_text": "Lo estamos guardando para quien pensó en ti.",
+            "exp_final_wait_title": "Espere un momento…",
+            "exp_final_wait_gift_text": "Estamos guardando tu reacción.",
+            "exp_final_wait_no_gift_text": "Estamos guardando este vídeo para que pueda volver a verlo.",
+            "generic_recipient": "esta persona",
+            "link_expired_title": "Este momento no está disponible",
+            "link_expired_subtitle": "Puede que el enlace haya expirado o que haya ocurrido un problema temporal.",
+            "back_home": "Volver al inicio",
+            "not_active": "Este acceso aún no está activo.",
+            "video_loading": "Tu ETERNA está tomando forma. No cierres esta pantalla.",
+            "scheduled_locked": "Esta ETERNA se abrirá en el momento elegido: {when}.",
+        },
+        "en": {
+            "pre_html_lang": "en",
+            "pre_title": "ETERNA - The Threshold",
+            "place_line_empty": "There is a hidden place inside this story.",
+            "place_line_with": "There is a hidden place inside this story:<br><span>{place}</span>.",
+            "consent_title": "Before we continue...<br><span>I need to tell you something.</span>",
+            "consent_recorded": "This moment will be recorded.",
+            "consent_legal": "And when it ends, it will travel only to the person who made it possible.",
+            "consent_story": "If you choose to continue, you agree to be part of this story.",
+            "consent_check": "I understand and agree that my reaction will be recorded and sent only to the person who created this ETERNA.",
+            "consent_button": "I accept and continue",
+            "camera_title": "Some stories deserve<br><span>to find a face.</span>",
+            "camera_hint": "This is how this moment will see you.",
+            "ready_shhh": "Shhh...",
+            "ready_1": "This is not a video.",
+            "ready_2": "It is a moment.",
+            "ready_3": "Do not think. Just let it happen.",
+            "ready_button": "I am ready",
+            "rescue_button": "Open my ETERNA",
+            "safe_note": "Do not close this page. ETERNA is opening the way.",
+            "guide_line_1": "Some stories began<br>long before you arrived here.",
+            "guide_line_2": "Listen...",
+            "guide_line_3": "There are corners where minutes<br>pass without making a sound.",
+            "guide_line_4": "If you know one...<br>stay there for a moment.",
+            "guide_line_5": "Memories do not disappear.<br><span>They only wait for a way back.</span>",
+            "exp_payoff_gift_title": "One moment…",
+            "exp_payoff_gift_text": "We are preparing your gift.",
+            "exp_payoff_no_gift_title": "One moment…",
+            "exp_payoff_no_gift_text": "We are saving this video so it can return to the person who thought of you.",
+            "exp_retry": "Try again",
+            "exp_back_start": "Back to the start",
+            "exp_error_prepare": "We could not prepare the recording.",
+            "exp_error_prepare_late": "We could not prepare this moment. Please try again.",
+            "exp_gift_reveal_title": "You have received a gift",
+            "exp_no_gift_reveal_title": "This moment is yours now",
+            "exp_no_gift_reveal_text": "We are saving it for the person who thought of you.",
+            "exp_final_wait_title": "One moment…",
+            "exp_final_wait_gift_text": "We are saving your reaction.",
+            "exp_final_wait_no_gift_text": "We are saving this video so it can return to the person who thought of you.",
+            "generic_recipient": "this person",
+            "link_expired_title": "This moment is not available",
+            "link_expired_subtitle": "The link may have expired or a temporary problem may have occurred.",
+            "back_home": "Back to the start",
+            "not_active": "This access is not active yet.",
+            "video_loading": "Your ETERNA is taking shape. Do not close this screen.",
+            "scheduled_locked": "This ETERNA will open at the chosen moment: {when}.",
+        },
+    }
+    raw = texts.get(lang, texts["es"]).get(key, texts["es"].get(key, key))
+    try:
+        return raw.format(**kwargs)
+    except Exception:
+        return raw
+
 def build_recipient_arrival_intro(order: dict, language: str = "es") -> str:
     sender_name = (order.get("sender_name") or "").strip()
     lang = normalize_order_language(language or order.get("language") or "es")
@@ -5100,80 +5212,47 @@ def calculate_fees(gift_amount: float, delivery_mode: str) -> dict:
     }
 
 
-def get_phrases_by_type(message_type: str):
+def get_phrases_by_type(message_type: str, language: str = "es"):
+    """RC119B — frases automáticas ES/EN para el vídeo."""
+    lang = normalize_order_language(language or "es")
     phrase_templates = {
-        "cumpleanos": [
-            "Hoy no es un día cualquiera.",
-            "Es tu historia celebrándose.",
-            "Y lo mejor… aún está por venir.",
-        ],
-        "amor": [
-            "Si volviera a empezar,",
-            "te elegiría otra vez.",
-            "Siempre tú.",
-        ],
-        "familia": [
-            "Todo empieza contigo.",
-            "Todo vuelve a ti.",
-            "Gracias por tanto.",
-        ],
-        "amistad": [
-            "Hay personas que aparecen",
-            "y se quedan para siempre.",
-            "Gracias por estar.",
-        ],
-        "madre": [
-            "Nunca podré devolverte todo.",
-            "Pero sí recordarte lo importante que eres.",
-            "Gracias por ser hogar.",
-        ],
-        "padre": [
-            "Aunque no siempre lo diga,",
-            "muchas cosas que soy empezaron contigo.",
-            "Gracias por todo.",
-        ],
-        "distancia": [
-            "Aunque hoy no estés cerca,",
-            "hay algo de ti que sigue aquí.",
-            "Y eso no se va.",
-        ],
-        "perdon": [
-            "A veces cuesta decirlo.",
-            "Pero hay cosas que merecen sanar.",
-            "Ojalá esto llegue donde mis palabras no llegaron.",
-        ],
-        "reencuentro": [
-            "Hay caminos que se separan,",
-            "pero hay recuerdos que vuelven.",
-            "Y este vuelve para ti.",
-        ],
-        "gratitud": [
-            "A veces no sabemos cómo decirlo.",
-            "Pero hay personas que cambian la vida.",
-            "Y tú eres una de ellas.",
-        ],
-        "superacion": [
-            "Nunca dejaste de intentarlo.",
-            "Y eso lo cambia todo.",
-            "Creemos en ti.",
-        ],
-        "esfuerzo": [
-            "Todo lo que has dado",
-            "no ha pasado desapercibido.",
-            "Y lo valoramos más de lo que imaginas.",
-        ],
-        "sorpresa": [
-            "Pensabas que hoy era un día normal…",
-            "Pero alguien ha estado pensando en ti.",
-            "Mucho más de lo que imaginas.",
-        ],
-        "no_se_decirlo": [
-            "No siempre encuentro las palabras.",
-            "Pero sí sé lo que siento.",
-            "Y quería que lo vivieras así.",
-        ],
+        "es": {
+            "cumpleanos": ["Hoy no es un día cualquiera.", "Es tu historia celebrándose.", "Y lo mejor… aún está por venir."],
+            "amor": ["Si volviera a empezar,", "te elegiría otra vez.", "Siempre tú."],
+            "familia": ["Todo empieza contigo.", "Todo vuelve a ti.", "Gracias por tanto."],
+            "amistad": ["Hay personas que aparecen", "y se quedan para siempre.", "Gracias por estar."],
+            "madre": ["Nunca podré devolverte todo.", "Pero sí recordarte lo importante que eres.", "Gracias por ser hogar."],
+            "padre": ["Aunque no siempre lo diga,", "muchas cosas que soy empezaron contigo.", "Gracias por todo."],
+            "distancia": ["Aunque hoy no estés cerca,", "hay algo de ti que sigue aquí.", "Y eso no se va."],
+            "perdon": ["A veces cuesta decirlo.", "Pero hay cosas que merecen sanar.", "Ojalá esto llegue donde mis palabras no llegaron."],
+            "reencuentro": ["Hay caminos que se separan,", "pero hay recuerdos que vuelven.", "Y este vuelve para ti."],
+            "gratitud": ["A veces no sabemos cómo decirlo.", "Pero hay personas que cambian la vida.", "Y tú eres una de ellas."],
+            "superacion": ["Nunca dejaste de intentarlo.", "Y eso lo cambia todo.", "Creemos en ti."],
+            "esfuerzo": ["Todo lo que has dado", "no ha pasado desapercibido.", "Y lo valoramos más de lo que imaginas."],
+            "sorpresa": ["Pensabas que hoy era un día normal…", "Pero alguien ha estado pensando en ti.", "Mucho más de lo que imaginas."],
+            "no_se_decirlo": ["No siempre encuentro las palabras.", "Pero sí sé lo que siento.", "Y quería que lo vivieras así."],
+        },
+        "en": {
+            "cumpleanos": ["Today is not just another day.", "It is your story being celebrated.", "And the best part… is still ahead."],
+            "amor": ["If I could start again,", "I would choose you again.", "Always you."],
+            "familia": ["Everything begins with you.", "Everything comes back to you.", "Thank you for so much."],
+            "amistad": ["Some people appear", "and stay forever.", "Thank you for being there."],
+            "madre": ["I could never give back everything.", "But I can remind you how important you are.", "Thank you for being home."],
+            "padre": ["Even if I do not always say it,", "so much of who I am began with you.", "Thank you for everything."],
+            "distancia": ["Even if you are not close today,", "a part of you is still here.", "And that does not go away."],
+            "perdon": ["Sometimes it is hard to say it.", "But some things deserve to heal.", "I hope this reaches where my words could not."],
+            "reencuentro": ["Some paths separate,", "but some memories return.", "And this one returns for you."],
+            "gratitud": ["Sometimes we do not know how to say it.", "But some people change a life.", "And you are one of them."],
+            "superacion": ["You never stopped trying.", "And that changes everything.", "We believe in you."],
+            "esfuerzo": ["Everything you have given", "has not gone unnoticed.", "And we value it more than you imagine."],
+            "sorpresa": ["You thought today was just a normal day…", "But someone has been thinking about you.", "Much more than you imagine."],
+            "no_se_decirlo": ["I do not always find the words.", "But I do know what I feel.", "And I wanted you to live it like this."],
+        },
     }
-    return phrase_templates.get(message_type, phrase_templates["sorpresa"])
+    templates = phrase_templates.get(lang, phrase_templates["es"])
+    fallback = phrase_templates["es"]
+    key = (message_type or "sorpresa").strip().lower()
+    return templates.get(key) or fallback.get(key) or templates["sorpresa"]
 
 
 def twilio_base_configured() -> bool:
@@ -6644,8 +6723,9 @@ def attach_recipient_session_if_needed(order: dict, request: Request, response) 
     return False
 
 
-def render_viral_block_page() -> HTMLResponse:
-    return HTMLResponse("""
+def render_viral_block_page(language: str = "es") -> HTMLResponse:
+    lang = normalize_order_language(language or "es")
+    html_doc = """
     <!DOCTYPE html>
     <html lang="{initial_language}">
     <head>
@@ -6790,7 +6870,22 @@ def render_viral_block_page() -> HTMLResponse:
         </div>
     </body>
     </html>
-    """)
+    """
+    if lang == "en":
+        replacements = {
+            '<html lang="{initial_language}">': '<html lang="en">',
+            'Esto no era para ti': 'This was not meant for you',
+            'Alguien compartió contigo un acceso privado.<br>': 'Someone shared a private access with you.<br>',
+            'Pero esta experiencia solo podía vivirse una vez, por quien iba dirigida.': 'But this experience could only be lived once, by the person it was meant for.',
+            'Puedes crear algo igual de especial para otra persona.': 'You can create something just as special for someone else.',
+            'Crear una ETERNA': 'Create an ETERNA',
+            'Volver al inicio': 'Back to the start',
+        }
+    else:
+        replacements = {'<html lang="{initial_language}">': '<html lang="es">'}
+    for src, dst in replacements.items():
+        html_doc = html_doc.replace(src, dst)
+    return HTMLResponse(html_doc)
 
 
 # =========================================================
@@ -7121,7 +7216,7 @@ async def create_order_and_redirect(
         )
 
     if phrase_mode == "auto":
-        phrase_1, phrase_2, phrase_3 = get_phrases_by_type(message_type)
+        phrase_1, phrase_2, phrase_3 = get_phrases_by_type(message_type, language)
     else:
         if not phrase_1 or not phrase_2 or not phrase_3:
             raise HTTPException(status_code=400, detail="Las 3 frases son obligatorias")
@@ -7744,7 +7839,7 @@ def viral_final_cta(recipient_token: str):
     return HTMLResponse('''
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>ETERNA</title><meta name="theme-color" content="#02050a"><style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}body{min-height:100svh;min-height:100dvh;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(72,185,255,.26),transparent 30%),radial-gradient(circle at 18% 84%,rgba(255,205,112,.12),transparent 32%),#02050a}.card{width:min(92vw,440px);text-align:center;border:1px solid rgba(255,213,130,.24);border-radius:30px;background:rgba(255,255,255,.055);padding:34px 22px;box-shadow:0 28px 90px rgba(0,0,0,.68)}.logo{letter-spacing:.42em;color:#d8b76d;font-weight:900;font-size:12px;margin-bottom:22px}.heart{font-size:44px;color:#ffd37b;text-shadow:0 0 34px rgba(255,200,90,.54);animation:pulse 2.8s ease-in-out infinite}@keyframes pulse{0%,100%{transform:scale(.96);opacity:.82}50%{transform:scale(1.06);opacity:1}}h1{font-size:clamp(34px,9vw,52px);line-height:1.02;margin:14px 0 12px;letter-spacing:-.06em}.gold{color:#f5c46e}p{margin:0 auto 24px;color:rgba(255,245,229,.75);font-size:17px;line-height:1.5;max-width:330px}.btn{min-height:60px;border-radius:19px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:16px;padding:12px 16px;background:linear-gradient(135deg,#fff0b9,#d79a35);color:#171007;text-decoration:none;box-shadow:0 0 34px rgba(255,190,72,.28)}.small{margin-top:18px;color:rgba(255,245,229,.52);font-size:13px}
-</style></head><body><main class="card"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>¿Quieres provocar <span class="gold">algo así?</span></h1><p>Haz que alguien viva un momento que no se olvida.</p><a class="btn" href="/crear">Crear mi ETERNA</a><div class="small">Privado. Seguro. Emocional.</div></main></body></html>
+</style></head><body><main class="card"><div class="logo">ETERNA</div><div class="heart">♡</div><h1>¿Quieres provocar <span class="gold">algo así?</span></h1><p>Haz que alguien viva un momento que no se olvida.</p><a class="btn" href="/crear">{safe_text(create_my_label)}</a><div class="small">Privado. Seguro. Emocional.</div></main></body></html>
 ''')
 
 
@@ -12443,9 +12538,9 @@ def pedido(request: Request, recipient_token: str):
             insert_order_event(order["id"], "recipient_link_expired", "warning", "Enlace de destinatario caducado por configuración RC60")
             return render_eterna_image_screen(
                 image_name="error-v1.png",
-                title="Este momento no está disponible",
-                subtitle="Puede que el enlace haya expirado o que haya ocurrido un problema temporal.",
-                button_text="Volver al inicio",
+                title=eterna_i18n_text(order.get("language"), "link_expired_title"),
+                subtitle=eterna_i18n_text(order.get("language"), "link_expired_subtitle"),
+                button_text=eterna_i18n_text(order.get("language"), "back_home"),
                 button_href="/",
             )
         insert_order_event(order["id"], "recipient_opened", "ok", "El destinatario abrió el enlace recibido")
@@ -12455,14 +12550,14 @@ def pedido(request: Request, recipient_token: str):
             image_name="error-v1.png",
             fallback_image_name="error-v1.png",
             button_url="/",
-            button_label="Volver al inicio",
+            button_label=eterna_i18n_text("es", "back_home"),
         )
 
     if not bool(order.get("paid")):
         return render_eterna_image_screen(
             image_name="error-v1.png",
             fallback_image_name="error-v1.png",
-            extra_note="Este acceso aún no está activo.",
+            extra_note=eterna_i18n_text(order.get("language"), "not_active"),
         )
 
     if not original_video_ready(order):
@@ -12471,14 +12566,14 @@ def pedido(request: Request, recipient_token: str):
             fallback_image_name="error-v1.png",
             redirect_url=f"/pedido/{recipient_token}",
             redirect_delay_ms=8000,
-            extra_note="Tu ETERNA está tomando forma. No cierres esta pantalla.",
+            extra_note=eterna_i18n_text(order.get("language"), "video_loading"),
         )
 
     if not delivery_is_unlocked(order):
         return render_eterna_image_screen(
             image_name="gift-ready-v1.png",
             fallback_image_name="error-v1.png",
-            extra_note=f"Esta ETERNA se abrirá en el momento elegido: {scheduled_delivery_display(order)}.",
+            extra_note=eterna_i18n_text(order.get("language"), "scheduled_locked", when=scheduled_delivery_display(order)),
         )
 
     if bool(order.get("experience_completed")):
@@ -13336,15 +13431,21 @@ def render_terms_code_screen(recipient_token: str) -> HTMLResponse:
 </style></head><body><main class="screen"><div class="scene" aria-hidden="true"></div><i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><div class="logo">ETERNA</div><section class="content"><h1>Acepta los <span>términos</span></h1><p class="lead">Antes de continuar, lee y acepta las condiciones para vivir esta experiencia de forma privada, respetuosa y segura.</p><div class="legal-card"><div class="legal-scroll"><a class="row" href="/condiciones" target="_blank" rel="noopener"><div class="ico">▤</div><div><strong>Términos y condiciones</strong><small>Lo esencial para vivir la experiencia con respeto.</small></div><div class="chev">›</div></a><a class="row" href="/privacidad" target="_blank" rel="noopener"><div class="ico">◈</div><div><strong>Privacidad</strong><small>Tu experiencia es personal y privada.</small></div><div class="chev">›</div></a><div class="mini-legal">Al continuar aceptas vivir esta experiencia de forma privada y respetuosa. El navegador podrá pedir cámara y micrófono para que el momento pueda conservarse y enviarse de forma privada a quien lo creó.<br><br><b>Uso responsable:</b> este recuerdo es personal. Trátalo con respeto y no lo compartas públicamente sin consentimiento.</div></div></div><div class="actions"><label class="accept"><input id="termsCheck" type="checkbox"><span class="box"></span><span>He leído y acepto los términos y la política de privacidad.</span></label><div id="termsWarn" class="warn">Marca la casilla para continuar.</div><button id="continueBtn" class="btn" type="button">Aceptar y continuar</button><div class="note"></div></div></section></main><script>(function(){{const check=document.getElementById('termsCheck');const btn=document.getElementById('continueBtn');const warn=document.getElementById('termsWarn');function sync(){{btn.classList.toggle('ready',check.checked);if(check.checked&&warn)warn.classList.remove('on');}}check.addEventListener('change',sync);btn.addEventListener('click',function(){{if(!check.checked){{if(warn)warn.classList.add('on');return;}}window.location.href={json.dumps(next_url)};}});sync();}})();</script></body></html>
 ''')
 
-def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: str) -> HTMLResponse:
+def render_gift_code_screen(recipient_token: str, amount_text: str, cta_html: str, language: str = "es") -> HTMLResponse:
     """
     RC53 — pantalla recipient-gift-screen-v3 como fondo definitivo.
     Los botones y el importe siguen siendo HTML real encima: no dependen del PNG.
     """
     bg = eterna_asset("recipient_gift")
+    lang = normalize_order_language(language or "es")
+    html_lang = "en" if lang == "en" else "es"
+    video_alt = "Your ETERNA is not finished yet" if lang == "en" else "Tu ETERNA aún no ha terminado"
+    watch_again_label = eterna_ui_text(lang, "view_again")
+    create_my_label = "Create my ETERNA" if lang == "en" else "Crear mi ETERNA"
+    small_note = "Private and secure · A gesture that remains" if lang == "en" else "Privado y seguro · Un gesto que permanece"
     return HTMLResponse(f'''
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{safe_attr(html_lang)}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -13551,15 +13652,15 @@ body{{min-height:100svh;min-height:100dvh;overflow:hidden;display:flex;align-ite
 </head>
 <body>
 <main class="shell">
-  <img class="bg" src="{safe_attr(bg)}" alt="Tu ETERNA aún no ha terminado">
+  <img class="bg" src="{safe_attr(bg)}" alt="{safe_attr(video_alt)}">
   <div class="glow" aria-hidden="true"></div>
   <div class="amount">{safe_text(amount_text)}</div>
   <nav class="actions">
     {cta_html}
-    <a class="btn blue" href="/mi-video/{safe_attr(recipient_token)}">Volver a ver mi ETERNA</a>
+    <a class="btn blue" href="/mi-video/{safe_attr(recipient_token)}">{safe_text(watch_again_label)}</a>
     <a class="btn" href="/crear">Crear mi ETERNA</a>
   </nav>
-  <div class="small">Privado y seguro · Un gesto que permanece</div>
+  <div class="small">{safe_text(small_note)}</div>
 </main>
 </body>
 </html>
@@ -13673,11 +13774,13 @@ def render_eterna_prologo_experience(recipient_token: str) -> HTMLResponse:
     try:
         order = get_order_by_recipient_token_or_404(recipient_token)
         yul_context = rc75_yul_context_from_order(order)
+        language = normalize_order_language(order.get("language") or "es")
     except Exception:
         yul_context = {"memory_place": "", "memory_detail": "", "emotion_tone": "", "magic_hint": ""}
+        language = "es"
 
     place = safe_text(yul_context.get("memory_place") or "")
-    place_line = "Hay un lugar escondido dentro de esta historia." if not place else f"Hay un lugar escondido dentro de esta historia:<br><span>{place}</span>."
+    place_line = eterna_i18n_text(language, "place_line_empty") if not place else eterna_i18n_text(language, "place_line_with", place=place)
 
     html_doc = """
 <!DOCTYPE html>
@@ -13869,6 +13972,33 @@ else run();
 </body>
 </html>
 """
+    pre_replacements = {
+        '<html lang="es">': f'<html lang="{safe_attr(eterna_i18n_text(language, "pre_html_lang"))}">',
+        '<title>ETERNA - El Umbral</title>': f'<title>{safe_text(eterna_i18n_text(language, "pre_title"))}</title>',
+        'Antes de seguir...<br><span>debo confiarte algo.</span>': eterna_i18n_text(language, "consent_title"),
+        'Este momento será grabado.': eterna_i18n_text(language, "consent_recorded"),
+        'Y cuando termine, viajará únicamente hacia la persona que hizo posible que existiera.': eterna_i18n_text(language, "consent_legal"),
+        'Si decides continuar, aceptas formar parte de esta historia.': eterna_i18n_text(language, "consent_story"),
+        'He leído y acepto que mi reacción sea grabada y enviada únicamente a la persona que preparó esta ETERNA.': eterna_i18n_text(language, "consent_check"),
+        'Acepto y continúo': eterna_i18n_text(language, "consent_button"),
+        'Algunas historias merecen<br><span>encontrar un rostro.</span>': eterna_i18n_text(language, "camera_title"),
+        'Así te verá este momento.': eterna_i18n_text(language, "camera_hint"),
+        'Esto no es un vídeo.': eterna_i18n_text(language, "ready_1"),
+        'Es un momento.': eterna_i18n_text(language, "ready_2"),
+        'No pienses. Solo deja que ocurra.': eterna_i18n_text(language, "ready_3"),
+        'Estoy listo': eterna_i18n_text(language, "ready_button"),
+        'Abrir mi ETERNA': eterna_i18n_text(language, "rescue_button"),
+        'No cierres esta página. ETERNA está abriendo el camino.': eterna_i18n_text(language, "safe_note"),
+        'No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.': 'We could not activate camera and microphone. Please allow them and tap again.' if normalize_order_language(language) == 'en' else 'No hemos podido activar cámara y micrófono. Permítelos y vuelve a pulsar.',
+        'No hemos podido iniciar el vídeo. Vuelve a intentarlo.': 'We could not start the video. Please try again.' if normalize_order_language(language) == 'en' else 'No hemos podido iniciar el vídeo. Vuelve a intentarlo.',
+        'Algunas historias comenzaron<br>mucho antes de que llegaras aquí.': eterna_i18n_text(language, "guide_line_1"),
+        'Escucha...': eterna_i18n_text(language, "guide_line_2"),
+        'Hay rincones donde los minutos<br>pasan sin hacer ruido.': eterna_i18n_text(language, "guide_line_3"),
+        'Si conoces uno...<br>quédate allí un instante.': eterna_i18n_text(language, "guide_line_4"),
+        'Los recuerdos no desaparecen.<br><span>Solo esperan una forma de volver.</span>': eterna_i18n_text(language, "guide_line_5"),
+    }
+    for src, dst in pre_replacements.items():
+        html_doc = html_doc.replace(src, dst)
     html_doc = html_doc.replace("__RECIPIENT_TOKEN_JSON__", recipient_token_json)
     html_doc = html_doc.replace("__PLACE_LINE_JSON__", json.dumps(place_line))
     return HTMLResponse(html_doc)
@@ -13947,13 +14077,14 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     if not has_valid_recipient_session(order, request):
-        return render_viral_block_page()
+        return render_viral_block_page(normalize_order_language(order.get("language") or "es"))
 
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
     experience_video_url = (order.get("experience_video_url") or "").strip()
     gift_amount = float(order.get("gift_amount") or 0)
+    ui_lang = normalize_order_language(order.get("language") or "es")
 
     try:
         ritual_step = int(ritual_step or 0)
@@ -13963,11 +14094,18 @@ def experiencia(request: Request, recipient_token: str, ritual_step: int = 0):
     next_ritual_step = min(ritual_step + 1, 7)
 
     if gift_amount > 0:
-        payoff_title = "Espere un momento…"
-        payoff_text = "Estamos generando su regalo."
+        payoff_title = eterna_i18n_text(ui_lang, "exp_payoff_gift_title")
+        payoff_text = eterna_i18n_text(ui_lang, "exp_payoff_gift_text")
     else:
-        payoff_title = "Espere un momento…"
-        payoff_text = "Estamos guardando este vídeo para que pueda volver a verlo."
+        payoff_title = eterna_i18n_text(ui_lang, "exp_payoff_no_gift_title")
+        payoff_text = eterna_i18n_text(ui_lang, "exp_payoff_no_gift_text")
+
+    gift_reveal_title = eterna_i18n_text(ui_lang, "exp_gift_reveal_title")
+    no_gift_reveal_title = eterna_i18n_text(ui_lang, "exp_no_gift_reveal_title")
+    no_gift_reveal_text = eterna_i18n_text(ui_lang, "exp_no_gift_reveal_text")
+    final_waiting_title = eterna_i18n_text(ui_lang, "exp_final_wait_title")
+    final_waiting_gift_text = eterna_i18n_text(ui_lang, "exp_final_wait_gift_text")
+    final_waiting_no_gift_text = eterna_i18n_text(ui_lang, "exp_final_wait_no_gift_text")
 
     # =========================================================
     # EXPERIENCIA FUNCIONAL RECUPERADA DEL MAIN ESTABLE
@@ -14549,8 +14687,8 @@ body.video-clean-mode video {
             <div class="loader" id="payoffLoader"></div>
 
             <div class="retry-actions" id="retryActions">
-                <button class="retry-btn" id="retryExperienceBtn">Volver a intentarlo</button>
-                <button class="retry-btn secondary" id="backToStartBtn">Volver al inicio</button>
+                <button class="retry-btn" id="retryExperienceBtn">__RETRY_TEXT__</button>
+                <button class="retry-btn secondary" id="backToStartBtn">__BACK_START_TEXT__</button>
             </div>
         </div>
     </div>
@@ -14588,15 +14726,15 @@ const recipientName = __RECIPIENT_NAME_JSON__;
 const giftAmountDisplay = __GIFT_AMOUNT_DISPLAY_JSON__;
 const postGiftHoldMs = hasGift ? 15000 : 3500;
 const giftRevealTitle = hasGift
-    ? "Has recibido un regalo"
-    : "Este momento ya es tuyo";
+    ? __GIFT_REVEAL_TITLE_JSON__
+    : __NO_GIFT_REVEAL_TITLE_JSON__;
 const giftRevealText = hasGift
     ? giftAmountDisplay
-    : "Lo estamos guardando para quien pensó en ti.";
-const finalWaitingTitle = "Espere un momento…";
+    : __NO_GIFT_REVEAL_TEXT_JSON__;
+const finalWaitingTitle = __FINAL_WAITING_TITLE_JSON__;
 const finalWaitingText = hasGift
-    ? "Estamos guardando tu reacción."
-    : "Estamos guardando este vídeo para que pueda volver a verlo.";
+    ? __FINAL_WAITING_GIFT_TEXT_JSON__
+    : __FINAL_WAITING_NO_GIFT_TEXT_JSON__;
 
 let stream = null;
 let mediaRecorder = null;
@@ -14619,7 +14757,7 @@ let liveLastError = null;
 
 function showStartError(message) {
     if (!errorNote) return;
-    errorNote.textContent = message || "No hemos podido preparar la grabación.";
+    errorNote.textContent = message || __ERROR_PREPARE_JSON__;
     errorNote.classList.add("show");
 }
 
@@ -15374,7 +15512,7 @@ startBtn.addEventListener("click", async () => {
         recordingMimeType = "";
         recordingExtension = "webm";
 
-        showStartError("No hemos podido preparar este momento. Vuelve a intentarlo.");
+        showStartError(__ERROR_PREPARE_LATE_JSON__);
     }
 });
 
@@ -15432,11 +15570,21 @@ if (backToStartBtn) {
     html_page = html_page.replace("__VIDEO_TYPE__", safe_attr(guess_media_type_from_url(experience_video_url)))
     html_page = html_page.replace("__RECIPIENT_TOKEN__", safe_attr(recipient_token))
     html_page = html_page.replace("__HAS_GIFT__", "true" if gift_amount > 0 else "false")
-    html_page = html_page.replace("__RECIPIENT_NAME_JSON__", json.dumps((order.get("recipient_name") or "").strip() or "esta persona"))
+    html_page = html_page.replace("__RECIPIENT_NAME_JSON__", json.dumps((order.get("recipient_name") or "").strip() or eterna_i18n_text(ui_lang, "generic_recipient")))
     html_page = html_page.replace("__GIFT_AMOUNT_DISPLAY_JSON__", json.dumps(format_amount_display(gift_amount)))
     html_page = html_page.replace("__PAYOFF_TITLE__", safe_text(payoff_title))
     html_page = html_page.replace("__PAYOFF_TEXT__", safe_text(payoff_text))
     html_page = html_page.replace("__PAYOFF_BG__", safe_attr(eterna_asset("uploading_reaction")))
+    html_page = html_page.replace("__RETRY_TEXT__", safe_text(eterna_i18n_text(ui_lang, "exp_retry")))
+    html_page = html_page.replace("__BACK_START_TEXT__", safe_text(eterna_i18n_text(ui_lang, "exp_back_start")))
+    html_page = html_page.replace("__GIFT_REVEAL_TITLE_JSON__", json.dumps(gift_reveal_title))
+    html_page = html_page.replace("__NO_GIFT_REVEAL_TITLE_JSON__", json.dumps(no_gift_reveal_title))
+    html_page = html_page.replace("__NO_GIFT_REVEAL_TEXT_JSON__", json.dumps(no_gift_reveal_text))
+    html_page = html_page.replace("__FINAL_WAITING_TITLE_JSON__", json.dumps(final_waiting_title))
+    html_page = html_page.replace("__FINAL_WAITING_GIFT_TEXT_JSON__", json.dumps(final_waiting_gift_text))
+    html_page = html_page.replace("__FINAL_WAITING_NO_GIFT_TEXT_JSON__", json.dumps(final_waiting_no_gift_text))
+    html_page = html_page.replace("__ERROR_PREPARE_JSON__", json.dumps(eterna_i18n_text(ui_lang, "exp_error_prepare")))
+    html_page = html_page.replace("__ERROR_PREPARE_LATE_JSON__", json.dumps(eterna_i18n_text(ui_lang, "exp_error_prepare_late")))
 
     return HTMLResponse(html_page)
 
@@ -15830,7 +15978,7 @@ def mi_video(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
-        return render_viral_block_page()
+        return render_viral_block_page(normalize_order_language(order.get("language") or "es"))
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -15844,9 +15992,14 @@ def mi_video(request: Request, recipient_token: str):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
     media_type = guess_media_type_from_url(video_url)
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    html_lang = "en" if ui_lang == "en" else "es"
+    mine_title = eterna_ui_text(ui_lang, "mine_title")
+    back_start_label = eterna_ui_text(ui_lang, "back_start")
+    create_one_label = eterna_ui_text(ui_lang, "create_one")
     return HTMLResponse(f'''
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{safe_attr(html_lang)}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -16055,15 +16208,15 @@ video{{width:100%;height:100%;display:block;object-fit:contain;background:#000}}
 <div class="scene"></div>
 <main class="wrap">
   <div class="logo">ETERNA</div>
-  <h1>Esto ya es tuyo.</h1>
+  <h1>{safe_text(mine_title)}</h1>
   <section class="video-shell">
     <video controls playsinline preload="metadata">
       <source src="{safe_attr(video_url)}" type="{safe_attr(media_type)}">
     </video>
   </section>
   <nav class="actions">
-    <a class="btn primary" href="/pedido/{safe_attr(recipient_token)}">Volver al inicio</a>
-    <a class="btn" href="/crear">Crear una ETERNA</a>
+    <a class="btn primary" href="/pedido/{safe_attr(recipient_token)}">{safe_text(back_start_label)}</a>
+    <a class="btn" href="/crear">{safe_text(create_one_label)}</a>
   </nav>
 </main>
 </body>
@@ -16085,7 +16238,7 @@ def cobrar(request: Request, recipient_token: str):
     log_info("🎁 Regalo", f"{order.get('gift_amount') or 0}€")
 
     if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
-        return render_viral_block_page()
+        return render_viral_block_page(normalize_order_language(order.get("language") or "es"))
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
     if not original_video_ready(order):
@@ -16136,7 +16289,7 @@ def cobrar(request: Request, recipient_token: str):
         else:
             cta_html = f'<a href="" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "try_receive_gift"))}</a>'
 
-    return render_gift_code_screen(recipient_token, amount_text, cta_html)
+    return render_gift_code_screen(recipient_token, amount_text, cta_html, ui_lang)
 
 
 
@@ -16144,26 +16297,34 @@ def cobrar(request: Request, recipient_token: str):
 def rescue_recipient_email_form(sender_token: str):
     """RC118B — formulario mínimo para que el regalante aporte email del destinatario."""
     order = get_order_by_sender_token_or_404(sender_token)
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    html_lang = "en" if ui_lang == "en" else "es"
+    rescue_title = "Save ETERNA delivery" if ui_lang == "en" else "Salvar entrega ETERNA"
+    rescue_text = "Your ETERNA has been created. If the message did not arrive properly, enter the recipient email and we will send the experience directly." if ui_lang == "en" else "Tu ETERNA está creada. Si el mensaje no ha llegado bien al destinatario, escribe aquí su email y le enviaremos la experiencia directamente."
+    rescue_placeholder = "Recipient email" if ui_lang == "en" else "Email del destinatario"
+    rescue_button = "SEND ETERNA BY EMAIL" if ui_lang == "en" else "ENVIAR ETERNA POR EMAIL"
+    rescue_small = "Order" if ui_lang == "en" else "Pedido"
+    rescue_small_tail = "Nothing new is generated: the existing secure link is sent." if ui_lang == "en" else "No se genera nada nuevo: se envía el enlace seguro ya existente."
     return HTMLResponse(f"""
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{safe_attr(html_lang)}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rescate ETERNA</title>
+<title>ETERNA</title>
 <style>
 *{{box-sizing:border-box}}body{{margin:0;min-height:100vh;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:22px}}.card{{width:min(100%,440px);border:1px solid rgba(245,210,139,.28);border-radius:26px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));box-shadow:0 25px 90px rgba(0,0,0,.5)}}h1{{margin:0 0 12px;color:#f5d28b;font-size:24px}}p{{line-height:1.55;color:rgba(255,255,255,.78)}}input{{width:100%;padding:15px 16px;border-radius:16px;border:1px solid rgba(245,210,139,.32);background:rgba(0,0,0,.35);color:#fff;font-size:16px;margin:10px 0 14px}}button{{width:100%;padding:15px 18px;border:0;border-radius:999px;background:#f5d28b;color:#07101c;font-weight:900;font-size:15px}}small{{display:block;margin-top:14px;color:rgba(255,255,255,.55);line-height:1.45}}
 </style>
 </head>
 <body>
 <div class="card">
-<h1>Salvar entrega ETERNA</h1>
-<p>Tu ETERNA está creada. Si el mensaje no ha llegado bien al destinatario, escribe aquí su email y le enviaremos la experiencia directamente.</p>
+<h1>{safe_text(rescue_title)}</h1>
+<p>{safe_text(rescue_text)}</p>
 <form method="post" action="/rescue/{safe_attr(sender_token)}">
-<input required type="email" name="recipient_email" placeholder="Email del destinatario">
-<button type="submit">ENVIAR ETERNA POR EMAIL</button>
+<input required type="email" name="recipient_email" placeholder="{safe_attr(rescue_placeholder)}">
+<button type="submit">{safe_text(rescue_button)}</button>
 </form>
-<small>Pedido {safe_text(order_public_code(order))}. No se genera nada nuevo: se envía el enlace seguro ya existente.</small>
+<small>{safe_text(rescue_small)} {safe_text(order_public_code(order))}. {safe_text(rescue_small_tail)}</small>
 </div>
 </body>
 </html>
@@ -16173,12 +16334,14 @@ def rescue_recipient_email_form(sender_token: str):
 @app.post("/rescue/{sender_token}", response_class=HTMLResponse)
 def rescue_recipient_email_submit(sender_token: str, recipient_email: str = Form(...)):
     order = get_order_by_sender_token_or_404(sender_token)
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    html_lang = "en" if ui_lang == "en" else "es"
     result = send_recipient_experience_rescue_email(order, recipient_email, source="sender_form")
     ok = bool(result.get("ok"))
-    title = "ETERNA enviada ✅" if ok else "No hemos podido enviarla"
-    text = "Hemos enviado la experiencia al email indicado." if ok else f"Error: {safe_text(result.get('error') or result.get('reason') or 'email_error')}"
+    title = ("ETERNA sent ✅" if ok else "We could not send it") if ui_lang == "en" else ("ETERNA enviada ✅" if ok else "No hemos podido enviarla")
+    text = ("We have sent the experience to the email address provided." if ok else f"Error: {safe_text(result.get('error') or result.get('reason') or 'email_error')}") if ui_lang == "en" else ("Hemos enviado la experiencia al email indicado." if ok else f"Error: {safe_text(result.get('error') or result.get('reason') or 'email_error')}")
     return HTMLResponse(f"""
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ETERNA</title><style>body{{margin:0;min-height:100vh;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:420px;border:1px solid rgba(245,210,139,.28);border-radius:24px;padding:24px;background:rgba(255,255,255,.06)}}h1{{color:#f5d28b}}p{{line-height:1.55;color:rgba(255,255,255,.78)}}a{{display:block;margin-top:16px;color:#06111d;background:#f5d28b;text-align:center;text-decoration:none;border-radius:999px;padding:14px;font-weight:900}}</style></head><body><div class="card"><h1>{title}</h1><p>{text}</p><a href="/sender/{safe_attr(sender_token)}">Volver a mi Sender Pack</a></div></body></html>
+<!DOCTYPE html><html lang="{safe_attr(html_lang)}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ETERNA</title><style>body{{margin:0;min-height:100vh;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:420px;border:1px solid rgba(245,210,139,.28);border-radius:24px;padding:24px;background:rgba(255,255,255,.06)}}h1{{color:#f5d28b}}p{{line-height:1.55;color:rgba(255,255,255,.78)}}a{{display:block;margin-top:16px;color:#06111d;background:#f5d28b;text-align:center;text-decoration:none;border-radius:999px;padding:14px;font-weight:900}}</style></head><body><div class="card"><h1>{title}</h1><p>{text}</p><a href="/sender/{safe_attr(sender_token)}">{safe_text("Back to my Sender Pack" if ui_lang == "en" else "Volver a mi Sender Pack")}</a></div></body></html>
 """)
 
 
@@ -16222,7 +16385,7 @@ def connect_payout(request: Request, recipient_token: str):
     order = get_order_by_recipient_token_or_404(recipient_token)
 
     if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
-        return render_viral_block_page()
+        return render_viral_block_page(normalize_order_language(order.get("language") or "es"))
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
@@ -16301,11 +16464,16 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
   var createHref=hrefOf(createOld,"/crear");
   var shareHref=hrefOf(shareOld,"#");
   var downloadHref=hrefOf(downloadOld,"#");
+  var eternaLang = "{safe_js_string(normalize_order_language(order.get('language') or 'es'))}";
+  var labelCreate = eternaLang === "en" ? "♡ Create another ETERNA" : "♡ Crear otra ETERNA";
+  var labelShare = eternaLang === "en" ? "↗ Share" : "↗ Compartir";
+  var labelDownload = eternaLang === "en" ? "↓ Download" : "↓ Descargar";
+  var labelShareTitle = eternaLang === "en" ? "Here returns what you made them feel" : "Aquí vuelve lo que provocaste";
   var host=document.querySelector(".rc81-sender-actions");
   if(!host){
     host=document.createElement("div");
     host.className="rc81-sender-actions";
-    host.innerHTML='<a class="rc81-sender-btn primary" href="'+createHref+'">♡ Crear otra ETERNA</a><a class="rc81-sender-btn secondary" href="'+shareHref+'" id="rc81ShareBtn">↗ Compartir</a><a class="rc81-sender-btn download" href="'+downloadHref+'" id="rc81DownloadBtn">↓ Descargar</a>';
+    host.innerHTML='<a class="rc81-sender-btn primary" href="'+createHref+'">'+labelCreate+'</a><a class="rc81-sender-btn secondary" href="'+shareHref+'" id="rc81ShareBtn">'+labelShare+'</a><a class="rc81-sender-btn download" href="'+downloadHref+'" id="rc81DownloadBtn">'+labelDownload+'</a>';
     var video=document.querySelector("video");
     var insertAfter=video?(video.closest("section,div,main")||video.parentElement):null;
     if(insertAfter&&insertAfter.parentNode){insertAfter.parentNode.insertBefore(host,insertAfter.nextSibling);}
@@ -16319,7 +16487,7 @@ def rc81_polish_sender_pack_html(html_doc: str) -> str:
   var shareBtn=document.getElementById("rc81ShareBtn");
   if(shareBtn){
     shareBtn.addEventListener("click",function(e){
-      if(shareHref==="#"&&navigator.share){e.preventDefault();navigator.share({title:"Aquí vuelve lo que provocaste",url:location.href}).catch(function(){});}
+      if(shareHref==="#"&&navigator.share){e.preventDefault();navigator.share({title:labelShareTitle,url:location.href}).catch(function(){});}
     });
   }
 })();
@@ -17124,7 +17292,7 @@ def finalizar_experiencia(request: Request, recipient_token: str):
     print("🏁 FINALIZANDO EXPERIENCE:", order["id"])
 
     if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
-        return render_viral_block_page()
+        return render_viral_block_page(normalize_order_language(order.get("language") or "es"))
 
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
