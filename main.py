@@ -1,4 +1,3 @@
-
 # =========================================================
 # RC101B_FORM_POST_NATIVE_SAFE
 # Base: RC100 reacción congelada + soporte.
@@ -751,7 +750,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC116_FORM_RECOVERY_SAFE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC117_MONEY_FORTRESS").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2564,6 +2563,18 @@ def init_db():
     add_column_if_missing("orders", "stripe_payment_intent_id", "ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT")
     add_column_if_missing("orders", "stripe_connected_account_id", "ALTER TABLE orders ADD COLUMN stripe_connected_account_id TEXT")
     add_column_if_missing("orders", "stripe_transfer_id", "ALTER TABLE orders ADD COLUMN stripe_transfer_id TEXT")
+
+    # RC117 MONEY FORTRESS — observabilidad financiera y anti-bucle.
+    # No toca checkout, webhook, vídeo, reacción, SMS ni Sender Pack.
+    add_column_if_missing("orders", "payout_status", "ALTER TABLE orders ADD COLUMN payout_status TEXT")
+    add_column_if_missing("orders", "payout_attempts", "ALTER TABLE orders ADD COLUMN payout_attempts INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "payout_last_attempt_at", "ALTER TABLE orders ADD COLUMN payout_last_attempt_at TEXT")
+    add_column_if_missing("orders", "payout_next_attempt_at", "ALTER TABLE orders ADD COLUMN payout_next_attempt_at TEXT")
+    add_column_if_missing("orders", "payout_last_error", "ALTER TABLE orders ADD COLUMN payout_last_error TEXT")
+    add_column_if_missing("orders", "payout_completed_at", "ALTER TABLE orders ADD COLUMN payout_completed_at TEXT")
+    add_column_if_missing("orders", "payout_manual_review", "ALTER TABLE orders ADD COLUMN payout_manual_review INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "payout_alert_sent", "ALTER TABLE orders ADD COLUMN payout_alert_sent INTEGER NOT NULL DEFAULT 0")
+
     add_column_if_missing("orders", "transfer_started_at", "ALTER TABLE orders ADD COLUMN transfer_started_at TEXT")
     add_column_if_missing("orders", "stripe_gift_refund_id", "ALTER TABLE orders ADD COLUMN stripe_gift_refund_id TEXT")
     add_column_if_missing("orders", "gift_refund_deadline_at", "ALTER TABLE orders ADD COLUMN gift_refund_deadline_at TEXT")
@@ -5845,6 +5856,109 @@ def recover_stuck_transfer_if_needed(order: dict, max_age_seconds: int = 600) ->
     return get_order_by_id(order["id"])
 
 
+# =========================================================
+# RC117 MONEY FORTRESS — control financiero sin tocar flujo
+# =========================================================
+
+PAYOUT_RETRY_DELAYS_HOURS = [1, 6, 12, 24, 48]
+PAYOUT_MANUAL_REVIEW_AFTER_ATTEMPTS = len(PAYOUT_RETRY_DELAYS_HOURS)
+
+def is_stripe_insufficient_funds_error(exc: Exception) -> bool:
+    text = str(exc or "").lower()
+    return (
+        "insufficient funds" in text
+        or "insufficient available balance" in text
+        or "saldo insuficiente" in text
+        or "fondos insuficientes" in text
+    )
+
+def payout_next_retry_at(attempts: int) -> str:
+    index = max(0, min(int(attempts or 1) - 1, len(PAYOUT_RETRY_DELAYS_HOURS) - 1))
+    return (now_dt() + timedelta(hours=PAYOUT_RETRY_DELAYS_HOURS[index])).isoformat()
+
+def payout_retry_is_due(order: dict) -> bool:
+    if bool(order.get("payout_manual_review")):
+        return False
+    next_attempt = (order.get("payout_next_attempt_at") or "").strip()
+    if not next_attempt:
+        return True
+    dt = parse_iso_dt(next_attempt)
+    if not dt:
+        return True
+    return dt <= now_dt()
+
+def mark_payout_waiting_for_balance(order_id: str, error: str) -> dict:
+    order = get_order_by_id(order_id)
+    attempts = int(order.get("payout_attempts") or 0) + 1
+    manual_review = 1 if attempts >= PAYOUT_MANUAL_REVIEW_AFTER_ATTEMPTS else 0
+    status = "MANUAL_REVIEW" if manual_review else "PENDING_STRIPE_BALANCE"
+    next_attempt_at = None if manual_review else payout_next_retry_at(attempts)
+
+    update_order(
+        order_id,
+        payout_status=status,
+        payout_attempts=attempts,
+        payout_last_attempt_at=now_iso(),
+        payout_next_attempt_at=next_attempt_at,
+        payout_last_error=str(error or "")[:900],
+        payout_manual_review=manual_review,
+        transfer_in_progress=0,
+        transfer_started_at=None,
+    )
+
+    insert_order_event(
+        order_id,
+        "payout_waiting_stripe_balance",
+        "warning" if not manual_review else "manual_review",
+        "Stripe todavía no tiene saldo disponible para transferir el regalo",
+        {
+            "status": status,
+            "attempts": attempts,
+            "next_attempt_at": next_attempt_at,
+            "error": str(error or "")[:900],
+        },
+    )
+
+    print(
+        "💶 RC117 payout pendiente por saldo Stripe:",
+        order_id,
+        "attempts=", attempts,
+        "next_attempt_at=", next_attempt_at,
+        "status=", status,
+    )
+
+    return {
+        "status": status.lower(),
+        "retry": not bool(manual_review),
+        "attempts": attempts,
+        "next_attempt_at": next_attempt_at,
+        "manual_review": bool(manual_review),
+        "error": str(error or ""),
+    }
+
+def mark_payout_transfer_completed(order_id: str, transfer_id: str):
+    update_order(
+        order_id,
+        stripe_transfer_id=transfer_id,
+        transfer_completed=1,
+        cashout_completed=1,
+        transfer_in_progress=0,
+        transfer_started_at=None,
+        payout_status="TRANSFER_CREATED",
+        payout_completed_at=now_iso(),
+        payout_last_error=None,
+        payout_next_attempt_at=None,
+        payout_manual_review=0,
+    )
+    insert_order_event(
+        order_id,
+        "payout_transfer_created",
+        "ok",
+        "Transferencia Stripe creada y guardada",
+        {"stripe_transfer_id": transfer_id},
+    )
+
+
 def try_start_experience(order_id: str) -> str:
     order = get_order_by_id(order_id)
 
@@ -6173,8 +6287,6 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     order = recover_stuck_transfer_if_needed(order)
     gift_amount = float(order.get("gift_amount") or 0)
 
-    
-
     if bool(order.get("gift_refunded")):
         return {"status": "gift_already_refunded"}
 
@@ -6186,6 +6298,8 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_in_progress=0,
             transfer_started_at=None,
             connect_onboarding_completed=1,
+            payout_status="NO_GIFT",
+            payout_completed_at=now_iso(),
         )
         return {"status": "no_gift"}
 
@@ -6197,6 +6311,8 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_in_progress=0,
             transfer_started_at=None,
             connect_onboarding_completed=1,
+            payout_status="STRIPE_DISABLED_TEST_MODE",
+            payout_completed_at=now_iso(),
         )
         return {"status": "stripe_disabled_test_mode"}
 
@@ -6216,14 +6332,33 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             cashout_completed=1,
             transfer_in_progress=0,
             transfer_started_at=None,
+            payout_status="TRANSFER_CREATED",
+            payout_completed_at=order.get("payout_completed_at") or now_iso(),
+            payout_next_attempt_at=None,
+            payout_manual_review=0,
         )
         return {
             "status": "already_transferred",
             "transfer_id": order.get("stripe_transfer_id"),
         }
 
+    if not payout_retry_is_due(order):
+        return {
+            "status": "waiting_next_payout_attempt",
+            "payout_status": order.get("payout_status") or "PENDING_STRIPE_BALANCE",
+            "next_attempt_at": order.get("payout_next_attempt_at"),
+            "attempts": int(order.get("payout_attempts") or 0),
+            "retry": True,
+        }
+
     destination = (order.get("stripe_connected_account_id") or "").strip()
     if not destination:
+        update_order(
+            order["id"],
+            payout_status="MISSING_DESTINATION",
+            payout_last_error="missing_stripe_connected_account_id",
+            payout_last_attempt_at=now_iso(),
+        )
         return {"status": "missing_destination"}
 
     if not try_acquire_transfer_lock(order["id"]):
@@ -6238,6 +6373,12 @@ def process_gift_transfer_for_order(order: dict) -> dict:
         return {"status": "transfer_in_progress"}
 
     try:
+        update_order(
+            order["id"],
+            payout_status="TRANSFER_ATTEMPTING",
+            payout_last_attempt_at=now_iso(),
+        )
+
         transfer = stripe.Transfer.create(
             amount=int(round(gift_amount * 100)),
             currency=CURRENCY,
@@ -6249,19 +6390,32 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             transfer_group=f"ETERNA_ORDER_{order['id']}",
         )
 
-        update_order(
-            order["id"],
-            stripe_transfer_id=transfer.id,
-            transfer_completed=1,
-            cashout_completed=1,
-            transfer_in_progress=0,
-            transfer_started_at=None,
-        )
+        mark_payout_transfer_completed(order["id"], transfer.id)
         return {"status": "ok", "transfer_id": transfer.id}
 
     except Exception as e:
+        if is_stripe_insufficient_funds_error(e):
+            return mark_payout_waiting_for_balance(order["id"], str(e))
+
         log_error("Transfer error", e)
-        update_order(order["id"], transfer_in_progress=0, transfer_started_at=None)
+        attempts = int(order.get("payout_attempts") or 0) + 1
+        update_order(
+            order["id"],
+            transfer_in_progress=0,
+            transfer_started_at=None,
+            payout_status="TRANSFER_FAILED",
+            payout_attempts=attempts,
+            payout_last_attempt_at=now_iso(),
+            payout_next_attempt_at=payout_next_retry_at(attempts),
+            payout_last_error=str(e)[:900],
+        )
+        insert_order_event(
+            order["id"],
+            "payout_transfer_failed",
+            "error",
+            "Error Stripe al crear transferencia",
+            {"attempts": attempts, "error": str(e)[:900]},
+        )
         return {
             "status": "error",
             "error": str(e),
@@ -11130,8 +11284,14 @@ def list_pending_payout_orders():
             AND COALESCE(transfer_completed, 0) = 0
             AND COALESCE(cashout_completed, 0) = 0
             AND COALESCE(gift_refunded, 0) = 0
+            AND COALESCE(payout_manual_review, 0) = 0
+            AND (
+                payout_next_attempt_at IS NULL
+                OR TRIM(COALESCE(payout_next_attempt_at, '')) = ''
+                OR payout_next_attempt_at <= ?
+            )
         ORDER BY created_at ASC
-    """)
+    """, (now_iso(),))
     rows = cur.fetchall()
     conn.close()
     return [r["id"] for r in rows]
