@@ -750,7 +750,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC117_MONEY_FORTRESS").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC117B_MONEY_FORTRESS_PAYOUT_GUARD").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RECOVERY_WORKER_ENABLED = os.getenv("ETERNA_RECOVERY_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -5864,12 +5864,26 @@ PAYOUT_RETRY_DELAYS_HOURS = [1, 6, 12, 24, 48]
 PAYOUT_MANUAL_REVIEW_AFTER_ATTEMPTS = len(PAYOUT_RETRY_DELAYS_HOURS)
 
 def is_stripe_insufficient_funds_error(exc: Exception) -> bool:
-    text = str(exc or "").lower()
+    """
+    RC117B — detección defensiva del caso normal de Stripe:
+    pago cobrado pero balance todavía en Pending, por eso Transfer.create falla.
+    No debe loguearse como error infinito ni reintentarse cada 15 segundos.
+    """
+    pieces = [str(exc or "")]
+    for attr in ("user_message", "message", "code", "param", "request_id"):
+        try:
+            value = getattr(exc, attr, "")
+            if value:
+                pieces.append(str(value))
+        except Exception:
+            pass
+    text = " | ".join(pieces).lower()
     return (
         "insufficient funds" in text
         or "insufficient available balance" in text
         or "saldo insuficiente" in text
         or "fondos insuficientes" in text
+        or "balance" in text and "insufficient" in text
     )
 
 def payout_next_retry_at(attempts: int) -> str:
@@ -6348,7 +6362,7 @@ def process_gift_transfer_for_order(order: dict) -> dict:
             "payout_status": order.get("payout_status") or "PENDING_STRIPE_BALANCE",
             "next_attempt_at": order.get("payout_next_attempt_at"),
             "attempts": int(order.get("payout_attempts") or 0),
-            "retry": True,
+            "retry": False,
         }
 
     destination = (order.get("stripe_connected_account_id") or "").strip()
@@ -11270,6 +11284,16 @@ def list_pending_sender_notifications():
     return [r["id"] for r in rows]
 
 def list_pending_payout_orders():
+    """
+    RC117B MONEY FORTRESS — selección amplia y segura.
+
+    No filtramos aquí por payout_next_attempt_at con comparación SQL de texto.
+    Motivo: si hay mezcla de formatos ISO/zonas, SQLite puede comparar cadenas
+    de forma inesperada y volver a meter el pedido en bucle.
+
+    El corte real del bucle se hace en Python con payout_retry_is_due(order)
+    dentro de process_all_due_payouts(), usando parse_iso_dt().
+    """
     conn = db_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -11285,16 +11309,12 @@ def list_pending_payout_orders():
             AND COALESCE(cashout_completed, 0) = 0
             AND COALESCE(gift_refunded, 0) = 0
             AND COALESCE(payout_manual_review, 0) = 0
-            AND (
-                payout_next_attempt_at IS NULL
-                OR TRIM(COALESCE(payout_next_attempt_at, '')) = ''
-                OR payout_next_attempt_at <= ?
-            )
         ORDER BY created_at ASC
-    """, (now_iso(),))
+    """)
     rows = cur.fetchall()
     conn.close()
     return [r["id"] for r in rows]
+
 
 def process_all_due_scheduled_deliveries() -> list[dict]:
     results = []
@@ -11335,11 +11355,42 @@ def process_all_due_sender_notifications() -> list[dict]:
     return results
 
 def process_all_due_payouts() -> list[dict]:
+    """
+    RC117B MONEY FORTRESS — anti-bucle real del worker de cobro.
+
+    Regla: antes de llamar a Stripe.Transfer.create(), SIEMPRE se comprueba
+    payout_retry_is_due(order) en Python. Así un pedido en PENDING_STRIPE_BALANCE
+    no vuelve a intentar transferencia hasta payout_next_attempt_at.
+
+    No toca vídeo, reacción, Sender Pack, formulario, SMS, WhatsApp ni Checkout.
+    """
     results = []
 
     for order_id in list_pending_payout_orders():
         try:
             order = get_order_by_id(order_id)
+
+            if not order:
+                results.append({
+                    "order_id": order_id,
+                    "result": {"status": "order_not_found", "retry": False},
+                })
+                continue
+
+            # RC117B — corte principal del log infinito.
+            # Si Stripe dijo "Insufficient funds" y ya guardamos próximo intento,
+            # este pedido NO vuelve a llamar a Stripe hasta que toque.
+            if not payout_retry_is_due(order):
+                result = {
+                    "status": "waiting_next_payout_attempt",
+                    "payout_status": order.get("payout_status") or "PENDING_STRIPE_BALANCE",
+                    "next_attempt_at": order.get("payout_next_attempt_at"),
+                    "attempts": int(order.get("payout_attempts") or 0),
+                    "retry": True,
+                }
+                print("⏳ Worker payout pausado por RC117B:", order_id, result)
+                results.append({"order_id": order_id, "result": result})
+                continue
 
             try:
                 if order.get("stripe_connected_account_id"):
@@ -11347,6 +11398,19 @@ def process_all_due_payouts() -> list[dict]:
                     order = get_order_by_id(order_id)
             except Exception as e:
                 log_error("payout_worker_refresh_connect_status", e)
+
+            # Repetimos guardia tras refresh por si el pedido cambió.
+            if not payout_retry_is_due(order):
+                result = {
+                    "status": "waiting_next_payout_attempt",
+                    "payout_status": order.get("payout_status") or "PENDING_STRIPE_BALANCE",
+                    "next_attempt_at": order.get("payout_next_attempt_at"),
+                    "attempts": int(order.get("payout_attempts") or 0),
+                    "retry": True,
+                }
+                print("⏳ Worker payout pausado por RC117B tras refresh:", order_id, result)
+                results.append({"order_id": order_id, "result": result})
+                continue
 
             if not bool(order.get("connect_onboarding_completed")):
                 results.append({
