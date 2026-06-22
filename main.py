@@ -67,6 +67,7 @@ print("🧾 RC113 FORM EN NATIVE GALLERY LOCKED SAFE — FORMULARIO EN REAL + GA
 print("🚀 RC115 WEBHOOK RECOVERY LAUNCH SAFE — PAGO REAL → VIDEOENGINE 🛟")
 print("🛟 RC116 FORM RECOVERY SAFE — VUELTA DE STRIPE SIN PERDER FORMULARIO 🛟")
 print("🦋 RC118B LAUNCH AUTONOMOUS GUARD — DINERO REGISTRADO + ORDER LOCK + CRITICAL ALERTS + RESCUE EMAIL 🦋")
+print("🚀 RC119 LAUNCH RECOVERY — RESCATE 3H/12H + FOUNDER REPORT 12H 🚀")
 import html
 import json
 import mimetypes
@@ -751,7 +752,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC118B_LAUNCH_AUTONOMOUS_GUARD_RESCUE_EMAIL").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC119_LAUNCH_RECOVERY_3H_12H_FOUNDER_REPORT").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -762,6 +763,19 @@ ETERNA_RENDER_QUEUE_ENABLED = os.getenv("ETERNA_RENDER_QUEUE_ENABLED", "1").stri
 ETERNA_RENDER_STUCK_MINUTES = int(os.getenv("ETERNA_RENDER_STUCK_MINUTES", "25"))
 ETERNA_RENDER_MAX_ATTEMPTS = int(os.getenv("ETERNA_RENDER_MAX_ATTEMPTS", "3"))
 ETERNA_RENDER_QUEUE_BATCH_SIZE = int(os.getenv("ETERNA_RENDER_QUEUE_BATCH_SIZE", "1"))
+
+# =========================================================
+# RC119 — LAUNCH RECOVERY SAFE
+# Rescate SMS elegante si el destinatario no abre la experiencia.
+# Founder Report dos veces al día. No toca Stripe, webhook, vídeo,
+# reacción, Sender Pack ni motor.
+# =========================================================
+ETERNA_RECIPIENT_RESCUE_SMS_ENABLED = os.getenv("ETERNA_RECIPIENT_RESCUE_SMS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_RECIPIENT_RESCUE_3H_ENABLED = os.getenv("ETERNA_RECIPIENT_RESCUE_3H_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_RECIPIENT_RESCUE_12H_ENABLED = os.getenv("ETERNA_RECIPIENT_RESCUE_12H_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_RECIPIENT_RESCUE_3H_HOURS = int(os.getenv("ETERNA_RECIPIENT_RESCUE_3H_HOURS", "3"))
+ETERNA_RECIPIENT_RESCUE_12H_HOURS = int(os.getenv("ETERNA_RECIPIENT_RESCUE_12H_HOURS", "12"))
+ETERNA_RECIPIENT_RESCUE_BATCH_SIZE = int(os.getenv("ETERNA_RECIPIENT_RESCUE_BATCH_SIZE", "20"))
 
 COOKIE_SECURE = PUBLIC_BASE_URL.startswith("https://")
 
@@ -2595,6 +2609,14 @@ def init_db():
     add_column_if_missing("orders", "rescue_recipient_email_sent_at", "ALTER TABLE orders ADD COLUMN rescue_recipient_email_sent_at TEXT")
     add_column_if_missing("orders", "sender_pack_email_sent_at", "ALTER TABLE orders ADD COLUMN sender_pack_email_sent_at TEXT")
     add_column_if_missing("orders", "sender_pack_email_last_error", "ALTER TABLE orders ADD COLUMN sender_pack_email_last_error TEXT")
+
+    # RC119 — rescate elegante al destinatario si no abre la ETERNA.
+    add_column_if_missing("orders", "recipient_rescue_3h_sent_at", "ALTER TABLE orders ADD COLUMN recipient_rescue_3h_sent_at TEXT")
+    add_column_if_missing("orders", "recipient_rescue_3h_sid", "ALTER TABLE orders ADD COLUMN recipient_rescue_3h_sid TEXT")
+    add_column_if_missing("orders", "recipient_rescue_3h_error", "ALTER TABLE orders ADD COLUMN recipient_rescue_3h_error TEXT")
+    add_column_if_missing("orders", "recipient_rescue_12h_sent_at", "ALTER TABLE orders ADD COLUMN recipient_rescue_12h_sent_at TEXT")
+    add_column_if_missing("orders", "recipient_rescue_12h_sid", "ALTER TABLE orders ADD COLUMN recipient_rescue_12h_sid TEXT")
+    add_column_if_missing("orders", "recipient_rescue_12h_error", "ALTER TABLE orders ADD COLUMN recipient_rescue_12h_error TEXT")
 
     add_column_if_missing("orders", "transfer_started_at", "ALTER TABLE orders ADD COLUMN transfer_started_at TEXT")
     add_column_if_missing("orders", "stripe_gift_refund_id", "ALTER TABLE orders ADD COLUMN stripe_gift_refund_id TEXT")
@@ -5749,6 +5771,163 @@ def trigger_recipient_delivery_rescue(order: dict, reason: str = "") -> dict:
         )
         insert_order_event(order["id"], "recipient_delivery_rescue_request_error", "warning", res.get("error") or "email_error", {"to": mask_email(sender_email)})
     return res
+
+
+# =========================================================
+# RC119 — RESCATE DESTINATARIO 3H / 12H
+# Solo actúa si la ETERNA fue entregada pero aún no se ha abierto/vivido.
+# No incrementa recipient_sms_attempts del envío principal.
+# No toca Stripe, video engine, reacción ni Sender Pack.
+# =========================================================
+
+def recipient_has_opened_experience(order_id: str) -> bool:
+    """Detecta apertura real usando flags y eventos, sin modificar el pedido."""
+    try:
+        order = get_order_by_id(order_id)
+        if bool(order.get("experience_started")) or bool(order.get("experience_completed")):
+            return True
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 1
+            FROM order_events
+            WHERE order_id = ?
+              AND step IN ('recipient_opened','guide_prologue_opened','guide_rc89_started','experience_started','recording_started')
+            LIMIT 1
+        """, (order_id,))
+        found = cur.fetchone() is not None
+        conn.close()
+        return bool(found)
+    except Exception as e:
+        log_error("rc119_recipient_has_opened_experience", e)
+        return False
+
+
+def build_recipient_rescue_sms_message(order: dict, stage: str = "3h") -> str:
+    url = recipient_experience_url_from_order(order)
+    lang = normalize_order_language(order.get("language") or "es")
+    sender = (order.get("sender_name") or "Alguien").strip()
+
+    if lang == "en":
+        if stage == "12h":
+            return (
+                "Your ETERNA is still waiting for you.\n\n"
+                "Open it when you have a quiet moment.\n\n"
+                f"{url}"
+            ).strip()
+        return (
+            f"{sender} thought of you.\n\n"
+            "Your ETERNA is still waiting.\n\n"
+            f"{url}"
+        ).strip()
+
+    if stage == "12h":
+        return (
+            "Tu ETERNA sigue esperándote.\n\n"
+            "Ábrela cuando tengas un momento tranquilo.\n\n"
+            f"{url}"
+        ).strip()
+
+    return (
+        f"{sender} pensó en ti.\n\n"
+        "Tu ETERNA sigue esperándote.\n\n"
+        f"{url}"
+    ).strip()
+
+
+def rc119_delivery_reference_dt(order: dict) -> Optional[datetime]:
+    for key in ("recipient_sms_sent_at", "delivery_sent_at", "delivered_at", "updated_at"):
+        dt = parse_iso_dt(order.get(key) or "")
+        if dt:
+            return dt
+    return None
+
+
+def try_send_recipient_rescue_sms(order: dict, stage: str) -> dict:
+    order = get_order_by_id(order["id"])
+    order_id = order["id"]
+
+    if not ETERNA_RECIPIENT_RESCUE_SMS_ENABLED:
+        return {"ok": False, "reason": "recipient_rescue_disabled"}
+    if bool(order.get("order_locked")):
+        return {"ok": False, "reason": "order_locked"}
+    if not bool(order.get("paid")):
+        return {"ok": False, "reason": "order_not_paid"}
+    if not bool(order.get("delivery_sent")) and not bool(order.get("recipient_sms_sent_at")):
+        return {"ok": False, "reason": "recipient_not_delivered_yet"}
+    if recipient_has_opened_experience(order_id):
+        return {"ok": False, "reason": "recipient_already_opened"}
+
+    if stage == "3h":
+        sent_field, sid_field, error_field = "recipient_rescue_3h_sent_at", "recipient_rescue_3h_sid", "recipient_rescue_3h_error"
+    elif stage == "12h":
+        sent_field, sid_field, error_field = "recipient_rescue_12h_sent_at", "recipient_rescue_12h_sid", "recipient_rescue_12h_error"
+    else:
+        return {"ok": False, "reason": "invalid_stage"}
+
+    if order.get(sent_field):
+        return {"ok": True, "reason": "already_sent", "sent_at": order.get(sent_field)}
+
+    phone = order.get("recipient_phone") or ""
+    message = build_recipient_rescue_sms_message(order, stage=stage)
+    result = send_message_best_effort(phone, message)
+
+    update_fields = {}
+    if result.get("ok"):
+        update_fields[sent_field] = now_iso()
+        update_fields[sid_field] = result.get("sid")
+        update_fields[error_field] = None
+        update_order(order_id, **update_fields)
+        insert_order_event(order_id, f"recipient_rescue_{stage}_sms_sent", "ok", "RC119 rescate destinatario", {"sid": result.get("sid"), "channel": result.get("channel")})
+        return {"ok": True, "reason": "sent", "stage": stage, "sid": result.get("sid")}
+
+    update_fields[error_field] = result.get("error") or "sms_error"
+    update_order(order_id, **update_fields)
+    insert_order_event(order_id, f"recipient_rescue_{stage}_sms_error", "warning", result.get("error") or "sms_error", {"result": result})
+    return {"ok": False, "reason": "send_error", "stage": stage, "error": result.get("error")}
+
+
+def process_all_due_recipient_rescues() -> list:
+    if not ETERNA_RECIPIENT_RESCUE_SMS_ENABLED:
+        return []
+
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE paid = 1
+          AND COALESCE(order_locked,0) = 0
+          AND COALESCE(experience_started,0) = 0
+          AND COALESCE(experience_completed,0) = 0
+          AND (COALESCE(delivery_sent,0)=1 OR recipient_sms_sent_at IS NOT NULL)
+        ORDER BY COALESCE(recipient_sms_sent_at, delivery_sent_at, created_at) ASC
+        LIMIT ?
+    """, (max(1, ETERNA_RECIPIENT_RESCUE_BATCH_SIZE),))
+    ids = [r["id"] for r in cur.fetchall()]
+    conn.close()
+
+    results = []
+    now = now_dt()
+    for order_id in ids:
+        try:
+            order = get_order_by_id(order_id)
+            if recipient_has_opened_experience(order_id):
+                continue
+            delivered_dt = rc119_delivery_reference_dt(order)
+            if not delivered_dt:
+                continue
+            age_hours = (now - delivered_dt).total_seconds() / 3600.0
+
+            if ETERNA_RECIPIENT_RESCUE_3H_ENABLED and age_hours >= ETERNA_RECIPIENT_RESCUE_3H_HOURS and not order.get("recipient_rescue_3h_sent_at"):
+                results.append({"order_id": order_id, "stage": "3h", "result": try_send_recipient_rescue_sms(order, "3h")})
+                continue
+
+            if ETERNA_RECIPIENT_RESCUE_12H_ENABLED and age_hours >= ETERNA_RECIPIENT_RESCUE_12H_HOURS and not order.get("recipient_rescue_12h_sent_at"):
+                results.append({"order_id": order_id, "stage": "12h", "result": try_send_recipient_rescue_sms(order, "12h")})
+        except Exception as e:
+            log_error("process_all_due_recipient_rescues", e)
+    return results
 
 def maybe_lock_order_final(order_id: str, reason: str = "auto_final_lock") -> dict:
     """
@@ -12188,6 +12367,7 @@ def delivery_worker_loop():
                 process_all_due_scheduled_deliveries()
                 process_all_pending_reaction_recoveries()
                 process_all_due_sender_notifications()
+                process_all_due_recipient_rescues()
                 process_all_due_payouts()
         except Exception as e:
             log_error("delivery_worker_loop", e)
@@ -12235,11 +12415,13 @@ def startup_event():
                 log_human("RC60 SWEEP ARRANQUE", "Buscando entregas y avisos pendientes tras deploy/reinicio")
                 delivery_results = process_all_due_scheduled_deliveries()
                 sender_results = process_all_due_sender_notifications()
+                recipient_rescue_results = process_all_due_recipient_rescues()
                 payout_results = process_all_due_payouts()
                 log_human(
                     "RC60 SWEEP COMPLETADO",
                     f"📦 Entregas revisadas: {len(delivery_results)}",
                     f"📩 Avisos regalante revisados: {len(sender_results)}",
+                    f"🛟 Rescates destinatario revisados: {len(recipient_rescue_results)}",
                     f"💶 Payouts revisados: {len(payout_results)}",
                 )
             except Exception as e:
@@ -17967,9 +18149,23 @@ table{{width:100%;border-collapse:collapse;margin-top:18px;background:rgba(255,2
 # cámara, grabación, subida de reacción, Sender Pack ni workers actuales.
 # =========================================================
 
-RC104_FOUNDER_VERSION = "RC104_FOUNDER_EDITION_SAFE"
+RC104_FOUNDER_VERSION = "RC119_LAUNCH_RECOVERY_FOUNDER_12H_SAFE"
 FOUNDER_REPORT_ENABLED = os.getenv("FOUNDER_REPORT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
-FOUNDER_REPORT_HOUR = int(os.getenv("FOUNDER_REPORT_HOUR", "0"))
+FOUNDER_REPORT_HOUR = int(os.getenv("FOUNDER_REPORT_HOUR", "8"))
+FOUNDER_REPORT_HOURS_RAW = os.getenv("FOUNDER_REPORT_HOURS", "8,20").strip()
+def parse_founder_report_hours(raw: str) -> set[int]:
+    hours = set()
+    for part in str(raw or "").replace(";", ",").split(","):
+        try:
+            h = int(part.strip())
+            if 0 <= h <= 23:
+                hours.add(h)
+        except Exception:
+            pass
+    if not hours:
+        hours.add(max(0, min(23, int(FOUNDER_REPORT_HOUR))))
+    return hours
+FOUNDER_REPORT_HOURS = parse_founder_report_hours(FOUNDER_REPORT_HOURS_RAW)
 FOUNDER_REPORT_TO = os.getenv("FOUNDER_REPORT_TO", ADMIN_ALERT_EMAIL or ETERNA_OPERATIONS_EMAIL).strip()
 FOUNDER_REPORT_WORKER_INTERVAL_SECONDS = int(os.getenv("FOUNDER_REPORT_WORKER_INTERVAL_SECONDS", "900"))
 
@@ -18137,7 +18333,7 @@ def rc104_build_founder_report_text(metrics: dict, health: dict) -> str:
         return f"{rc104_safe_float(v):.2f} €"
 
     lines = []
-    lines.append("🦋 ETERNA FOUNDER REPORT")
+    lines.append("🦋 ETERNA FOUNDER REPORT — RC119")
     lines.append("")
     lines.append(f"Fecha: {metrics.get('date')}")
     lines.append(f"Estado sistema: {str(health.get('overall') or '').upper()}")
@@ -18279,10 +18475,13 @@ def rc104_heartbeat_tick():
             state["last_backup_date"] = today
             changed = True
 
-        if FOUNDER_REPORT_ENABLED and now.hour == FOUNDER_REPORT_HOUR and state.get("last_founder_report_date") != today:
-            rc104_send_founder_report(reason="auto_daily")
-            state["last_founder_report_date"] = today
-            changed = True
+        if FOUNDER_REPORT_ENABLED and now.hour in FOUNDER_REPORT_HOURS:
+            report_slot = f"{today}T{now.hour:02d}"
+            if state.get("last_founder_report_slot") != report_slot:
+                rc104_send_founder_report(reason=f"auto_12h_{now.hour:02d}")
+                state["last_founder_report_slot"] = report_slot
+                state["last_founder_report_date"] = today
+                changed = True
 
         if SAFE_CLEANUP_ENABLED and state.get("last_safe_cleanup_date") != today:
             rc104_safe_cleanup(dry_run=SAFE_CLEANUP_DRY_RUN)
