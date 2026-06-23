@@ -21,6 +21,7 @@
 # - foto de llegada opcional reutilizando una de las 6 fotos
 # - bloque de confianza reforzado con soporte
 # - RC101B: submit nativo multipart para evitar POST vacío en móvil/Instagram
+# - RC126: Instagram opcional en Club Mariposa + consentimiento separado para etiqueta
 #
 # Mantiene intacto:
 # Stripe Checkout, webhook de pago, SMS, WhatsApp, video engine,
@@ -70,6 +71,13 @@ print("🦋 RC118B LAUNCH AUTONOMOUS GUARD — DINERO REGISTRADO + ORDER LOCK + 
 print("🚀 RC119 LAUNCH RECOVERY — RESCATE 3H/12H + FOUNDER REPORT 12H 🚀")
 print("🌍 RC119B INTERNATIONAL LOCK — ES/EN END-TO-END TEXT SAFE 🌍")
 print("🌍 RC119C FINAL TEXT LOCK — ALL NON-IMAGE USER TEXT ES/EN SAFE 🌍")
+print("🦋 RC120 CLUB MARIPOSA SAFE ISLAND — COMUNIDAD + DESCUENTO AISLADO 🦋")
+print("💌 RC122 CLUB MARIPOSA EMAIL BEAUTY LOCK — ES/EN HTML SAFE 💌")
+print("🛡️ RC121 MARIPOSA LAUNCH LOCK — ES/EN + SMS TRACKING + RECOVERY + FOUNDER REPORT 🛡️")
+print("🧼 RC123 MINI CLEAN LOCK — VERSION + SMS REPORT + PHOTO PRIVACY 🧼")
+print("🚀 RC124 LAUNCH AUDIT FIX — EN FORM DISCOUNT KEY LOCK 🚀")
+print("🛟 RC125 HUMAN ERROR LOCK — INVALID CODE + TOKEN NICE ERROR + IP PRIVACY 🛟")
+print("📲 RC126 MARIPOSA INSTAGRAM TAG LOCK — OPTIONAL @ + SEPARATE TAG CONSENT 📲")
 import html
 import json
 import mimetypes
@@ -189,7 +197,7 @@ VISITOR_GEO_URL_TEMPLATE = os.getenv(
     "VISITOR_GEO_URL_TEMPLATE",
     "https://ipapi.co/{ip}/json/",
 ).strip()
-VISITOR_LOG_FULL_IP = os.getenv("VISITOR_LOG_FULL_IP", "1").strip().lower() in {"1", "true", "yes", "on"}
+VISITOR_LOG_FULL_IP = os.getenv("VISITOR_LOG_FULL_IP", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 _visitor_geo_cache = {}
 _visitor_geo_cache_lock = threading.Lock()
@@ -528,6 +536,17 @@ ETERNA_SUPPORT_EMAIL = os.getenv("ETERNA_SUPPORT_EMAIL", "hola@tueterna.com").st
 ETERNA_SUPPORT_PHONE = os.getenv("ETERNA_SUPPORT_PHONE", "+34 641 63 53 14").strip()
 
 # =========================================================
+# RC120 — CLUB MARIPOSA SAFE ISLAND
+# Comunidad separada de ETERNA. No red social. No app.
+# Landing /mariposa + código único 15% de uso único.
+# El descuento se aplica solo al precio base de ETERNA, nunca al dinero regalado.
+# =========================================================
+CLUB_MARIPOSA_ENABLED = os.getenv("CLUB_MARIPOSA_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+CLUB_MARIPOSA_DISCOUNT_PERCENT = int(os.getenv("CLUB_MARIPOSA_DISCOUNT_PERCENT", "15"))
+CLUB_MARIPOSA_CODE_PREFIX = os.getenv("CLUB_MARIPOSA_CODE_PREFIX", "MARIPOSA").strip().upper() or "MARIPOSA"
+CLUB_MARIPOSA_MAX_PHOTO_MB = int(os.getenv("CLUB_MARIPOSA_MAX_PHOTO_MB", "10"))
+
+# =========================================================
 # MEMORY ENGINE V1 — MODO SILENCIOSO
 # Guarda momentos importantes desde cada pedido.
 # No envía recordatorios, no campañas, no SMS, no WhatsApp.
@@ -737,6 +756,8 @@ VIDEO_FOLDER.mkdir(parents=True, exist_ok=True)
 REACTIONS_FOLDER = ensure_runtime_folder(os.getenv("REACTIONS_FOLDER", str(DATA_FOLDER / "reactions")), "reactions")
 REACTION_CHUNKS_FOLDER = ensure_runtime_folder(os.getenv("REACTION_CHUNKS_FOLDER", str(DATA_FOLDER / "reaction_chunks")), "reaction_chunks")
 PREUPLOAD_FOLDER = ensure_runtime_folder(os.getenv("PREUPLOAD_FOLDER", str(DATA_FOLDER / "preuploads")), "preuploads")
+CLUB_MARIPOSA_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_FOLDER", str(DATA_FOLDER / "club_mariposa")), "club_mariposa")
+CLUB_MARIPOSA_THUMB_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_THUMB_FOLDER", str(DATA_FOLDER / "club_mariposa_thumbs")), "club_mariposa_thumbs")
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -754,7 +775,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC119C_FINAL_TEXT_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC126_MARIPOSA_INSTAGRAM_TAG_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2550,6 +2571,52 @@ def init_db():
     )
     """)
 
+    # =========================================================
+    # RC120 — CLUB MARIPOSA SAFE ISLAND
+    # Tablas separadas: comunidad + códigos. No toca flujo principal.
+    # =========================================================
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS butterfly_club (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        member_number INTEGER UNIQUE,
+        member_code TEXT UNIQUE,
+        email TEXT NOT NULL,
+        instagram_handle TEXT,
+        instagram_tag_authorized INTEGER NOT NULL DEFAULT 0,
+        city TEXT,
+        story TEXT,
+        joined_club INTEGER NOT NULL DEFAULT 0,
+        publication_authorized INTEGER NOT NULL DEFAULT 0,
+        photo_original_local TEXT,
+        photo_public_local TEXT,
+        thumbnail_local TEXT,
+        discount_code TEXT UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        meta_json TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS butterfly_discount_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        discount_percent INTEGER NOT NULL DEFAULT 15,
+        used INTEGER NOT NULL DEFAULT 0,
+        used_at TEXT,
+        used_order_id TEXT,
+        member_id INTEGER,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(member_id) REFERENCES butterfly_club(id)
+    )
+    """)
+
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_butterfly_club_email ON butterfly_club(email)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_butterfly_discount_codes_code ON butterfly_discount_codes(code)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_butterfly_discount_codes_email ON butterfly_discount_codes(email)")
+
     conn.commit()
     conn.close()
 
@@ -2632,6 +2699,15 @@ def init_db():
     add_column_if_missing("orders", "sender_sms_attempts", "ALTER TABLE orders ADD COLUMN sender_sms_attempts INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "recipient_sms_error", "ALTER TABLE orders ADD COLUMN recipient_sms_error TEXT")
     add_column_if_missing("orders", "sender_sms_error", "ALTER TABLE orders ADD COLUMN sender_sms_error TEXT")
+
+    # RC121 — SMS TRACKING REAL SAFE
+    # No cambia Twilio: solo guarda estados callback queued/sent/delivered/undelivered/failed.
+    add_column_if_missing("orders", "recipient_sms_status", "ALTER TABLE orders ADD COLUMN recipient_sms_status TEXT")
+    add_column_if_missing("orders", "recipient_sms_status_updated_at", "ALTER TABLE orders ADD COLUMN recipient_sms_status_updated_at TEXT")
+    add_column_if_missing("orders", "recipient_sms_status_raw", "ALTER TABLE orders ADD COLUMN recipient_sms_status_raw TEXT")
+    add_column_if_missing("orders", "sender_sms_status", "ALTER TABLE orders ADD COLUMN sender_sms_status TEXT")
+    add_column_if_missing("orders", "sender_sms_status_updated_at", "ALTER TABLE orders ADD COLUMN sender_sms_status_updated_at TEXT")
+    add_column_if_missing("orders", "sender_sms_status_raw", "ALTER TABLE orders ADD COLUMN sender_sms_status_raw TEXT")
     add_column_if_missing("orders", "reaction_upload_pending", "ALTER TABLE orders ADD COLUMN reaction_upload_pending INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "reaction_upload_error", "ALTER TABLE orders ADD COLUMN reaction_upload_error TEXT")
     add_column_if_missing("orders", "eterna_completed", "ALTER TABLE orders ADD COLUMN eterna_completed INTEGER NOT NULL DEFAULT 0")
@@ -2675,6 +2751,17 @@ def init_db():
     # RC99 — conversión/soporte. Campos opcionales; no rompen pedidos antiguos.
     add_column_if_missing("recipients", "email", "ALTER TABLE recipients ADD COLUMN email TEXT")
     add_column_if_missing("orders", "occasion_type", "ALTER TABLE orders ADD COLUMN occasion_type TEXT")
+
+    # RC120 — Club Mariposa Safe Island: descuento opcional aislado.
+    add_column_if_missing("orders", "butterfly_discount_code", "ALTER TABLE orders ADD COLUMN butterfly_discount_code TEXT")
+    add_column_if_missing("orders", "butterfly_discount_percent", "ALTER TABLE orders ADD COLUMN butterfly_discount_percent INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "butterfly_discount_amount", "ALTER TABLE orders ADD COLUMN butterfly_discount_amount REAL NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "butterfly_discount_status", "ALTER TABLE orders ADD COLUMN butterfly_discount_status TEXT")
+
+    # RC126 — Club Mariposa: Instagram opcional + permiso separado de etiqueta.
+    # No es obligatorio y no toca ETERNA core.
+    add_column_if_missing("butterfly_club", "instagram_handle", "ALTER TABLE butterfly_club ADD COLUMN instagram_handle TEXT")
+    add_column_if_missing("butterfly_club", "instagram_tag_authorized", "ALTER TABLE butterfly_club ADD COLUMN instagram_tag_authorized INTEGER NOT NULL DEFAULT 0")
 def init_memory_engine():
     """
     MEMORY ENGINE V1 — SILENT SAFE.
@@ -2745,6 +2832,469 @@ try:
     add_column_if_missing("orders", "yul_magic_hint", "ALTER TABLE orders ADD COLUMN yul_magic_hint TEXT")
 except Exception as e:
     print("[WARN] RC75 yul emotional columns skipped:", e)
+
+
+# =========================================================
+# RC120 — CLUB MARIPOSA SAFE ISLAND HELPERS
+# Comunidad separada: no toca Stripe/Twilio/vídeo/reacción/Sender Pack.
+# =========================================================
+def rc120_truthy(value: str) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on", "accepted", "si", "sí"}
+
+
+def rc120_clean_email(value: str) -> str:
+    clean = str(value or "").strip().lower()[:180]
+    return clean if "@" in clean and "." in clean.split("@")[-1] else ""
+
+
+def rc120_clean_text(value: str, max_len: int = 500) -> str:
+    clean = str(value or "").replace("\x00", " ").strip()
+    clean = " ".join(clean.split())
+    return clean[:max_len]
+
+
+def rc120_clean_city(value: str) -> str:
+    return rc120_clean_text(value, 80)
+
+
+def rc120_clean_story(value: str) -> str:
+    return rc120_clean_text(value, 700)
+
+
+def rc126_clean_instagram_handle(value: str) -> str:
+    """
+    RC126 — Instagram opcional Club Mariposa.
+    Guarda solo el usuario normalizado, sin URL, sin espacios, sin hacerlo obligatorio.
+    """
+    raw = str(value or "").strip()
+    raw = raw.replace("https://www.instagram.com/", "")
+    raw = raw.replace("https://instagram.com/", "")
+    raw = raw.replace("http://www.instagram.com/", "")
+    raw = raw.replace("http://instagram.com/", "")
+    raw = raw.split("?")[0].split("/")[0].strip()
+    raw = raw.lstrip("@").strip().lower()
+    safe = []
+    for ch in raw:
+        if ch.isalnum() or ch in {"_", "."}:
+            safe.append(ch)
+    handle = "".join(safe)[:30].strip("._")
+    return f"@{handle}" if handle else ""
+
+
+def rc120_normalize_discount_code(value: str) -> str:
+    raw = str(value or "").strip().upper()
+    raw = raw.replace(" ", "").replace("_", "-")
+    safe = []
+    for ch in raw:
+        if ch.isalnum() or ch == "-":
+            safe.append(ch)
+    return "".join(safe)[:40]
+
+
+def rc120_generate_discount_code() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    suffix = "".join(secrets.choice(alphabet) for _ in range(6))
+    return f"{CLUB_MARIPOSA_CODE_PREFIX}-{suffix}"
+
+
+def rc120_next_member_number(cur) -> int:
+    cur.execute("SELECT COALESCE(MAX(member_number), 0) + 1 AS next_number FROM butterfly_club")
+    row = cur.fetchone()
+    return int((row["next_number"] if row else 1) or 1)
+
+
+def rc120_member_code(member_number: int) -> str:
+    return f"Miembro #{int(member_number):04d}"
+
+
+def rc120_validate_butterfly_image_upload(upload: UploadFile) -> None:
+    if not upload or not getattr(upload, "filename", ""):
+        raise HTTPException(status_code=400, detail="Sube una foto para unirte al Club Mariposa")
+    validate_upload_metadata_safe(upload, "image", "foto Club Mariposa")
+    filename = (upload.filename or "").lower().strip()
+    if not any(filename.endswith(f".{ext}") for ext in ALLOWED_IMAGE_EXTENSIONS):
+        ctype = (upload.content_type or "").lower().strip()
+        if not ctype.startswith("image/"):
+            raise HTTPException(status_code=400, detail="La foto del Club Mariposa debe ser una imagen")
+
+
+async def rc120_save_butterfly_photo(upload: UploadFile, member_number: int) -> dict:
+    """
+    Reduce foto, elimina metadatos y crea miniatura.
+    Devuelve rutas locales. Si PIL no soporta HEIC en el entorno, falla de forma controlada.
+    """
+    rc120_validate_butterfly_image_upload(upload)
+    raw = await upload.read()
+    max_bytes = CLUB_MARIPOSA_MAX_PHOTO_MB * 1024 * 1024
+    if len(raw) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"La foto supera {CLUB_MARIPOSA_MAX_PHOTO_MB} MB")
+    if len(raw) < 128:
+        raise HTTPException(status_code=400, detail="La foto parece vacía")
+
+    CLUB_MARIPOSA_FOLDER.mkdir(parents=True, exist_ok=True)
+    CLUB_MARIPOSA_THUMB_FOLDER.mkdir(parents=True, exist_ok=True)
+
+    token = secrets.token_hex(6)
+
+    # RC123 PRIVACY CLEAN LOCK:
+    # No conservamos el archivo original con metadatos.
+    # Solo usamos los bytes en memoria para generar JPG limpio + miniatura.
+    try:
+        from io import BytesIO
+        img = Image.open(BytesIO(raw))
+        img = ImageOps.exif_transpose(img)
+        if img.mode not in {"RGB", "L"}:
+            img = img.convert("RGB")
+        elif img.mode == "L":
+            img = img.convert("RGB")
+
+        public_img = img.copy()
+        public_img.thumbnail((1400, 1400), Image.LANCZOS)
+        public_path = CLUB_MARIPOSA_FOLDER / f"member_{member_number:04d}_{token}.jpg"
+        public_img.save(public_path, format="JPEG", quality=86, optimize=True)
+
+        thumb_img = img.copy()
+        thumb_img.thumbnail((420, 420), Image.LANCZOS)
+        thumb_path = CLUB_MARIPOSA_THUMB_FOLDER / f"member_{member_number:04d}_{token}_thumb.jpg"
+        thumb_img.save(thumb_path, format="JPEG", quality=82, optimize=True)
+
+        return {
+            "original": "",
+            "public": str(public_path),
+            "thumbnail": str(thumb_path),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo procesar la foto del Club Mariposa: {e}")
+
+
+def rc120_get_discount_by_code(code: str) -> Optional[dict]:
+    clean = rc120_normalize_discount_code(code)
+    if not clean:
+        return None
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM butterfly_discount_codes WHERE code = ?", (clean,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def rc120_validate_discount_for_order(code: str) -> dict:
+    clean = rc120_normalize_discount_code(code)
+    if not clean:
+        return {"ok": False, "reason": "empty", "code": "", "percent": 0, "amount": 0.0}
+    row = rc120_get_discount_by_code(clean)
+    if not row:
+        return {"ok": False, "reason": "not_found", "code": clean, "percent": 0, "amount": 0.0}
+    if int(row.get("used") or 0) == 1:
+        return {"ok": False, "reason": "already_used", "code": clean, "percent": 0, "amount": 0.0}
+    percent = int(row.get("discount_percent") or CLUB_MARIPOSA_DISCOUNT_PERCENT or 15)
+    if percent != CLUB_MARIPOSA_DISCOUNT_PERCENT:
+        return {"ok": False, "reason": "invalid_percent", "code": clean, "percent": percent, "amount": 0.0}
+    # SAFE MONEY RULE: descuento solo sobre BASE_PRICE. Nunca reduce dinero regalado ni comisiones de regalo.
+    amount = round(max(0.0, BASE_PRICE * (percent / 100.0)), 2)
+    return {"ok": True, "reason": "ok", "code": clean, "percent": percent, "amount": amount}
+
+
+def rc120_apply_discount_to_fees(fees: dict, discount: dict) -> dict:
+    updated = dict(fees or {})
+    if not discount or not discount.get("ok"):
+        updated["discount_amount"] = 0.0
+        updated["discount_code"] = ""
+        updated["discount_percent"] = 0
+        return updated
+    amount = round(float(discount.get("amount") or 0), 2)
+    updated["total_amount"] = round(max(0.50, float(updated.get("total_amount") or 0) - amount), 2)
+    updated["discount_amount"] = amount
+    updated["discount_code"] = discount.get("code") or ""
+    updated["discount_percent"] = int(discount.get("percent") or 0)
+    return updated
+
+
+def rc120_mark_discount_code_used(code: str, order_id: str) -> dict:
+    clean = rc120_normalize_discount_code(code)
+    if not clean:
+        return {"ok": False, "reason": "empty"}
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        now = now_iso()
+        cur.execute(
+            """
+            UPDATE butterfly_discount_codes
+            SET used = 1, used_at = ?, used_order_id = ?, updated_at = ?
+            WHERE code = ? AND used = 0
+            """,
+            (now, order_id, now, clean),
+        )
+        changed = cur.rowcount
+        conn.commit()
+        if changed:
+            return {"ok": True, "reason": "marked_used", "code": clean}
+        cur.execute("SELECT used_order_id FROM butterfly_discount_codes WHERE code = ?", (clean,))
+        row = cur.fetchone()
+        return {"ok": False, "reason": "not_marked_or_already_used", "code": clean, "used_order_id": row["used_order_id"] if row else None}
+    finally:
+        conn.close()
+
+
+def send_eterna_email_html_safe(to_email: str, subject: str, plain_body: str, html_body: str, reply_to: str = "") -> dict:
+    """
+    RC122 — email HTML seguro para piezas especiales de ETERNA.
+    No sustituye el email simple global. Si falla, no rompe el flujo principal.
+    """
+    recipients = _email_recipients(to_email)
+    if not recipients:
+        return {"ok": False, "error": "missing_recipient"}
+    if not email_enabled_and_configured():
+        return {"ok": False, "error": "email_not_configured"}
+
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = str(subject or "ETERNA").strip()[:180]
+        msg["From"] = f"{SMTP_FROM_NAME} <{SMTP_FROM}>" if SMTP_FROM_NAME else SMTP_FROM
+        msg["To"] = ", ".join(recipients)
+        if reply_to and "@" in reply_to:
+            msg["Reply-To"] = reply_to.strip()
+
+        msg.set_content(str(plain_body or "").strip() or "ETERNA")
+        msg.add_alternative(str(html_body or "").strip() or "<p>ETERNA</p>", subtype="html")
+
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+                smtp.login(SMTP_USER, SMTP_PASSWORD)
+                smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+                smtp.ehlo()
+                smtp.starttls()
+                smtp.ehlo()
+                smtp.login(SMTP_USER, SMTP_PASSWORD)
+                smtp.send_message(msg)
+        return {"ok": True, "error": None}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def rc120_send_butterfly_welcome_email(email: str, member_code: str, discount_code: str, language: str = "es") -> dict:
+    """
+    RC122 — Email bonito bilingüe del Club Mariposa ETERNA.
+    Mantiene el descuento V1 y potencia comunidad sin convertirlo en red social.
+    """
+    lang = normalize_order_language(language or "es")
+    create_url = f"{PUBLIC_BASE_URL}/crear?lang={lang}"
+    club_url = f"{PUBLIC_BASE_URL}/mariposa?lang={lang}"
+    safe_discount = safe_text(discount_code)
+    safe_member = safe_text(member_code)
+    safe_create_url = safe_attr(create_url)
+    safe_club_url = safe_attr(club_url)
+
+    if lang == "en":
+        subject = "You are now part of the ETERNA Butterfly Club 🦋"
+        plain_body = f"""
+Hello,
+
+you are now part of the ETERNA Butterfly Club. 🦋
+
+You did not just upload a photo.
+
+You left a beautiful sign in the world: an image, a story, a memory that can now fly and meet others.
+
+At ETERNA, we believe some moments should not disappear.
+Some people deserve to be remembered.
+Some stories begin in someone… and one day, they return.
+
+Your member number:
+{member_code}
+
+Your exclusive code is:
+{discount_code}
+
+With it, you have a {CLUB_MARIPOSA_DISCOUNT_PERCENT}% discount to create your first ETERNA.
+It is single-use. It is yours. And it can become a gift someone never forgets.
+
+Create your ETERNA:
+{create_url}
+
+Share your story. Invite someone to become part of the Butterfly Club. Let another butterfly begin to fly:
+{club_url}
+
+Very soon, some stories may appear on our website: different cities, different emotions, different memories… but all with something in common.
+Someone wanted to leave something beautiful behind.
+
+Welcome to the ETERNA Butterfly Club.
+This is not just a community. It is a way of remembering that what we give… can one day come back.
+
+What you shared is now part of the flight.
+
+With care,
+ETERNA 🦋
+""".strip()
+        title = "You are now part of the ETERNA Butterfly Club"
+        eyebrow = "WELCOME TO THE FLIGHT"
+        intro = "You did not just upload a photo. You left a beautiful sign in the world."
+        belief_1 = "At ETERNA, we believe some moments should not disappear."
+        belief_2 = "Some people deserve to be remembered."
+        belief_3 = "Some stories begin in someone… and one day, they return."
+        member_label = "Your member number"
+        code_label = "Your exclusive code"
+        discount_label = f"{CLUB_MARIPOSA_DISCOUNT_PERCENT}% discount · single-use"
+        cta_create = "CREATE MY ETERNA"
+        cta_share = "INVITE ANOTHER BUTTERFLY"
+        share_text = "Share your story. Invite someone to become part of the Butterfly Club. Let another butterfly begin to fly."
+        future_text = "Very soon, some stories may appear on our website: different cities, different emotions, different memories… but all with something in common. Someone wanted to leave something beautiful behind."
+        closing = "This is not just a community. It is a way of remembering that what we give… can one day come back."
+        signature = "What you shared is now part of the flight."
+    else:
+        subject = "Ya eres parte del Club Mariposa ETERNA 🦋"
+        plain_body = f"""
+Hola,
+
+ya eres parte del Club Mariposa ETERNA. 🦋
+
+No has subido solo una foto.
+
+Has dejado una señal bonita en el mundo: una imagen, una historia, un recuerdo que ahora puede volar y encontrarse con otros.
+
+En ETERNA creemos que hay momentos que no deberían perderse.
+Personas que merecen ser recordadas.
+Historias que empiezan en alguien… y un día vuelven.
+
+Tu número de miembro:
+{member_code}
+
+Tu código exclusivo es:
+{discount_code}
+
+Con él tienes un {CLUB_MARIPOSA_DISCOUNT_PERCENT}% de descuento para crear tu primera ETERNA.
+Es de uso único. Es tuyo. Y puede convertirse en un regalo que alguien no olvide nunca.
+
+Crea tu ETERNA:
+{create_url}
+
+Comparte tu historia. Invita a alguien a formar parte del Club Mariposa. Haz que otra mariposa empiece a volar:
+{club_url}
+
+Muy pronto, algunas historias podrán aparecer en nuestra página: ciudades distintas, emociones distintas, recuerdos distintos… pero todas con algo en común.
+Alguien quiso dejar una señal bonita.
+
+Bienvenido/a al Club Mariposa ETERNA.
+Esto no es solo una comunidad. Es una forma de recordar que lo que damos… también vuelve.
+
+Lo que has compartido ya forma parte del vuelo.
+
+Con cariño,
+ETERNA 🦋
+""".strip()
+        title = "Ya eres parte del Club Mariposa ETERNA"
+        eyebrow = "BIENVENIDO/A AL VUELO"
+        intro = "No has subido solo una foto. Has dejado una señal bonita en el mundo."
+        belief_1 = "En ETERNA creemos que hay momentos que no deberían perderse."
+        belief_2 = "Personas que merecen ser recordadas."
+        belief_3 = "Historias que empiezan en alguien… y un día vuelven."
+        member_label = "Tu número de miembro"
+        code_label = "Tu código exclusivo"
+        discount_label = f"{CLUB_MARIPOSA_DISCOUNT_PERCENT}% de descuento · uso único"
+        cta_create = "CREAR MI ETERNA"
+        cta_share = "INVITAR A OTRA MARIPOSA"
+        share_text = "Comparte tu historia. Invita a alguien a formar parte del Club Mariposa. Haz que otra mariposa empiece a volar."
+        future_text = "Muy pronto, algunas historias podrán aparecer en nuestra página: ciudades distintas, emociones distintas, recuerdos distintos… pero todas con algo en común. Alguien quiso dejar una señal bonita."
+        closing = "Esto no es solo una comunidad. Es una forma de recordar que lo que damos… también vuelve."
+        signature = "Lo que has compartido ya forma parte del vuelo."
+
+    html_body = f"""
+<!DOCTYPE html>
+<html lang="{safe_attr(lang)}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{safe_text(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background:#02050a;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    {safe_text(intro)} {safe_text(discount_label)}.
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:radial-gradient(circle at 50% 0%,#10213a 0%,#02050a 46%,#010206 100%);padding:28px 14px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;border-radius:28px;overflow:hidden;border:1px solid rgba(245,210,139,.28);background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.025));box-shadow:0 24px 90px rgba(0,0,0,.55);">
+          <tr>
+            <td style="padding:34px 26px 20px;text-align:center;">
+              <div style="font-size:34px;line-height:1;margin-bottom:12px;">🦋</div>
+              <div style="font-size:12px;letter-spacing:.20em;text-transform:uppercase;color:#f5d28b;font-weight:700;margin-bottom:14px;">{safe_text(eyebrow)}</div>
+              <h1 style="margin:0;color:#ffffff;font-size:30px;line-height:1.12;font-weight:800;letter-spacing:-.03em;">{safe_text(title)}</h1>
+              <p style="margin:18px auto 0;max-width:480px;color:rgba(255,255,255,.78);font-size:16px;line-height:1.65;">{safe_text(intro)}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 26px 8px;">
+              <div style="border-radius:22px;background:rgba(4,13,25,.76);border:1px solid rgba(98,211,255,.18);padding:22px;">
+                <p style="margin:0 0 8px;color:rgba(255,255,255,.82);font-size:16px;line-height:1.65;">{safe_text(belief_1)}</p>
+                <p style="margin:0 0 8px;color:rgba(255,255,255,.82);font-size:16px;line-height:1.65;">{safe_text(belief_2)}</p>
+                <p style="margin:0;color:rgba(255,255,255,.82);font-size:16px;line-height:1.65;">{safe_text(belief_3)}</p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 26px 4px;text-align:center;">
+              <div style="display:inline-block;padding:9px 15px;border-radius:999px;border:1px solid rgba(245,210,139,.28);color:rgba(245,210,139,.92);font-size:13px;">
+                {safe_text(member_label)} · <strong>{safe_member}</strong>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 26px 8px;">
+              <div style="text-align:center;margin:0;padding:24px 18px;border-radius:22px;background:#06111d;border:1px solid rgba(245,210,139,.38);box-shadow:0 0 38px rgba(245,210,139,.08);">
+                <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#f5d28b;margin-bottom:10px;font-weight:800;">{safe_text(code_label)}</div>
+                <div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:.045em;line-height:1.15;">{safe_discount}</div>
+                <div style="font-size:14px;color:rgba(255,255,255,.70);margin-top:12px;">{safe_text(discount_label)}</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 26px;text-align:center;">
+              <a href="{safe_create_url}" style="display:block;text-decoration:none;background:#f5d28b;color:#06111d;font-weight:900;letter-spacing:.08em;border-radius:999px;padding:16px 18px;font-size:14px;">{safe_text(cta_create)}</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:4px 26px 4px;">
+              <p style="margin:0;color:rgba(255,255,255,.78);font-size:16px;line-height:1.65;text-align:center;">{safe_text(share_text)}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 26px;text-align:center;">
+              <a href="{safe_club_url}" style="display:inline-block;text-decoration:none;border:1px solid rgba(98,211,255,.35);color:#9fe7ff;background:rgba(98,211,255,.08);font-weight:800;border-radius:999px;padding:13px 18px;font-size:13px;letter-spacing:.06em;">{safe_text(cta_share)}</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 26px 26px;">
+              <div style="border-top:1px solid rgba(255,255,255,.10);padding-top:22px;text-align:center;">
+                <p style="margin:0 0 16px;color:rgba(255,255,255,.70);font-size:15px;line-height:1.65;">{safe_text(future_text)}</p>
+                <p style="margin:0 0 16px;color:rgba(255,255,255,.82);font-size:16px;line-height:1.65;">{safe_text(closing)}</p>
+                <p style="margin:0;color:#f5d28b;font-size:18px;line-height:1.45;font-weight:800;">{safe_text(signature)}</p>
+                <p style="margin:24px 0 0;color:rgba(255,255,255,.62);font-size:14px;line-height:1.5;">ETERNA 🦋</p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+""".strip()
+
+    result = send_eterna_email_html_safe(email, subject, plain_body, html_body)
+    if result.get("ok"):
+        return result
+
+    # Fallback: si el HTML fallase por cualquier razón, intenta texto simple.
+    fallback = send_eterna_email(email, subject, plain_body)
+    if fallback.get("ok"):
+        fallback["fallback_from_html_error"] = result.get("error")
+    return fallback
 
 # =========================================================
 # HELPERS BASE
@@ -5135,6 +5685,9 @@ def try_send_sender_sms(order: dict) -> dict:
                 sender_sms_attempts=attempts,
                 sender_sms_error=None,
                 sender_sms_sid=result.get("sid"),
+                sender_sms_status=(result.get("status") or "queued"),
+                sender_sms_status_updated_at=sent_at,
+                sender_sms_status_raw=json.dumps(result, ensure_ascii=False)[:2000],
                 sender_sms_sent_at=sent_at,
                 sender_notified=1,
             )
@@ -5158,6 +5711,9 @@ def try_send_sender_sms(order: dict) -> dict:
             order["id"],
             sender_sms_attempts=attempts,
             sender_sms_error=result.get("error") or "sms_error",
+            sender_sms_status="failed",
+            sender_sms_status_updated_at=now_iso(),
+            sender_sms_status_raw=json.dumps(result, ensure_ascii=False)[:2000],
         )
 
         if attempts >= 3:
@@ -5272,6 +5828,16 @@ def twilio_enabled() -> bool:
     return twilio_sms_enabled()
 
 
+def twilio_status_callback_url() -> str:
+    """
+    RC121 — URL de callback de estado Twilio.
+    Solo observabilidad: queued/sent/delivered/undelivered/failed.
+    """
+    if not PUBLIC_BASE_URL or not PUBLIC_BASE_URL.startswith("https://"):
+        return ""
+    return f"{PUBLIC_BASE_URL}/twilio/status-callback"
+
+
 def send_sms(phone: str, message: str) -> dict:
     to_phone = to_e164(phone)
 
@@ -5289,12 +5855,16 @@ def send_sms(phone: str, message: str) -> dict:
 
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        sms = client.messages.create(
-            body=message,
-            from_=TWILIO_FROM_NUMBER,
-            to=to_phone,
-        )
-        return {"ok": True, "sid": sms.sid, "error": None}
+        kwargs = {
+            "body": message,
+            "from_": TWILIO_FROM_NUMBER,
+            "to": to_phone,
+        }
+        callback_url = twilio_status_callback_url()
+        if callback_url:
+            kwargs["status_callback"] = callback_url
+        sms = client.messages.create(**kwargs)
+        return {"ok": True, "sid": sms.sid, "status": getattr(sms, "status", None) or "queued", "error": None}
     except Exception as e:
         return {"ok": False, "sid": None, "error": str(e)}
 
@@ -5324,8 +5894,11 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
         kwargs = {"body": message, "from_": wa_from, "to": f"whatsapp:{to_phone}"}
         if media_url:
             kwargs["media_url"] = [media_url]
+        callback_url = twilio_status_callback_url()
+        if callback_url:
+            kwargs["status_callback"] = callback_url
         msg = client.messages.create(**kwargs)
-        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "error": None, "media_url": media_url or None}
+        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "status": getattr(msg, "status", None) or "queued", "error": None, "media_url": media_url or None}
     except Exception as e:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e), "media_url": media_url or None}
 
@@ -6151,6 +6724,9 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
                 recipient_sms_attempts=attempts,
                 recipient_sms_error=None,
                 recipient_sms_sid=sms_sid,
+                recipient_sms_status=(result.get("status") or "queued"),
+                recipient_sms_status_updated_at=sent_at,
+                recipient_sms_status_raw=json.dumps(result, ensure_ascii=False)[:2000],
                 recipient_sms_sent_at=sent_at,
                 delivery_sent=1,
                 delivery_sent_at=sent_at,
@@ -6178,6 +6754,9 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             order_id,
             recipient_sms_attempts=attempts,
             recipient_sms_error=final_error,
+            recipient_sms_status="failed",
+            recipient_sms_status_updated_at=now_iso(),
+            recipient_sms_status_raw=json.dumps(result, ensure_ascii=False)[:2000],
         )
 
         updated = get_order_by_id(order_id)
@@ -7146,6 +7725,7 @@ async def create_order_and_redirect(
     delivery_date: str,
     delivery_time: str,
     gift_amount: float,
+    butterfly_discount_code: str,
     photo1: Optional[UploadFile],
     photo2: Optional[UploadFile],
     photo3: Optional[UploadFile],
@@ -7310,6 +7890,18 @@ async def create_order_and_redirect(
     sender_token = new_token()
 
     fees = calculate_fees(gift_amount, delivery_mode)
+
+    # RC120 — Club Mariposa descuento opcional.
+    # Validación suave: si el código no existe/no vale, el pedido no se rompe; simplemente no se aplica.
+    butterfly_discount_code = rc120_normalize_discount_code(butterfly_discount_code)
+    butterfly_discount = rc120_validate_discount_for_order(butterfly_discount_code) if butterfly_discount_code else {"ok": False, "reason": "empty", "code": "", "percent": 0, "amount": 0.0}
+    if butterfly_discount_code and not butterfly_discount.get("ok"):
+        # RC125 — error humano/conversión: un código Mariposa mal escrito no debe romper la creación.
+        # Se continúa sin descuento y queda registrado en butterfly_discount_status más abajo.
+        print(f"🦋 RC125 código Mariposa no aplicado sin romper pedido: {butterfly_discount_code} reason={butterfly_discount.get('reason')}")
+        butterfly_discount = {"ok": False, "reason": butterfly_discount.get("reason") or "invalid", "code": butterfly_discount_code, "percent": 0, "amount": 0.0}
+    fees = rc120_apply_discount_to_fees(fees, butterfly_discount)
+
     created_at = now_iso()
 
     conn = db_conn()
@@ -7397,6 +7989,29 @@ async def create_order_and_redirect(
             insert_order_event(order_id, "rc108_language_saved", "ok", "Idioma del pedido guardado", {"language": language})
         except Exception as e:
             print("[WARN] RC108 language no guardado:", e)
+
+        # RC120 — guarda descuento aplicado, sin marcarlo usado hasta pago confirmado.
+        try:
+            if butterfly_discount.get("ok"):
+                update_order(
+                    order_id,
+                    butterfly_discount_code=butterfly_discount.get("code"),
+                    butterfly_discount_percent=int(butterfly_discount.get("percent") or 0),
+                    butterfly_discount_amount=float(butterfly_discount.get("amount") or 0),
+                    butterfly_discount_status="reserved_until_payment",
+                )
+                insert_order_event(
+                    order_id,
+                    "rc120_butterfly_discount_reserved",
+                    "ok",
+                    "Código Club Mariposa reservado hasta pago confirmado",
+                    {"code": butterfly_discount.get("code"), "discount_amount": butterfly_discount.get("amount")},
+                )
+            elif butterfly_discount_code:
+                update_order(order_id, butterfly_discount_code=butterfly_discount_code, butterfly_discount_status=f"not_applied_{butterfly_discount.get('reason')}")
+                insert_order_event(order_id, "rc120_butterfly_discount_not_applied", "warning", butterfly_discount.get("reason") or "invalid", {"code": butterfly_discount_code})
+        except Exception as e:
+            print("[WARN] RC120 descuento Mariposa no guardado:", e)
 
         # =========================================================
         # MEMORY ENGINE V1 — SILENT SAFE
@@ -7616,6 +8231,14 @@ async def create_order_and_redirect(
         )
 
         try:
+            if butterfly_discount.get("ok"):
+                used_result = rc120_mark_discount_code_used(butterfly_discount.get("code"), order_id)
+                update_order(order_id, butterfly_discount_status="used_test_no_stripe" if used_result.get("ok") else "used_mark_failed_test_no_stripe")
+                insert_order_event(order_id, "rc120_butterfly_discount_used_test", "ok" if used_result.get("ok") else "warning", used_result.get("reason"), used_result)
+        except Exception as e:
+            print("[WARN] RC120 no pudo marcar descuento usado en test_no_stripe:", e)
+
+        try:
             email_result = send_order_received_emails(order_id)
             print("📧 RC95 emails pedido test_no_stripe:", email_result)
         except Exception as e:
@@ -7652,6 +8275,7 @@ async def create_order_and_redirect(
                                 f"regalo {money(fees['gift_amount'])}€ + "
                                 f"gestión regalo {money(fees['total_fee'])}€ + "
                                 f"programación {money(fees['scheduled_delivery_fee'])}€"
+                                + (f" - descuento Club Mariposa {money(fees.get('discount_amount') or 0)}€" if fees.get("discount_amount") else "")
                             ),
                         },
                         "unit_amount": int(round(fees["total_amount"] * 100)),
@@ -11734,6 +12358,190 @@ def crear_formulario_get():
     return RedirectResponse(url="/crear", status_code=303)
 
 
+
+# =========================================================
+# RC120 — CLUB MARIPOSA SAFE ISLAND ROUTES
+# Landing independiente. Comunidad, no red social. No toca ETERNA core.
+# =========================================================
+@app.get("/mariposa", response_class=HTMLResponse)
+def club_mariposa_get(lang: str = "es"):
+    """RC121 — Club Mariposa bilingüe ES/EN, isla separada de ETERNA."""
+    if not CLUB_MARIPOSA_ENABLED:
+        raise HTTPException(status_code=404, detail="Club Mariposa no disponible")
+    ui_lang = normalize_order_language(lang or "es")
+    is_en = ui_lang == "en"
+    T = {
+        "html_lang": "en" if is_en else "es",
+        "eyebrow": "ETERNA",
+        "title": "Club Mariposa",
+        "lead": "It is not a social network. It is not an app. It is a community for people who believe some emotions deserve to return." if is_en else "No es una red social. No es una app. Es una comunidad de personas que creen que algunas emociones merecen volver.",
+        "photo": "Photo showing a person + a butterfly" if is_en else "Foto donde aparezca persona + mariposa",
+        "email": "Email" if is_en else "Email",
+        "instagram": "Instagram (optional)" if is_en else "Instagram opcional",
+        "instagram_ph": "@username" if is_en else "@usuario",
+        "instagram_note": "Only if you want us to tag you if your story is shared." if is_en else "Solo si quieres que podamos etiquetarte si compartimos tu historia.",
+        "tag": "I authorize ETERNA to tag my Instagram if my story is published." if is_en else "Autorizo que ETERNA pueda etiquetar mi Instagram si publica mi historia.",
+        "city": "City (optional)" if is_en else "Ciudad opcional",
+        "city_ph": "Madrid, London..." if is_en else "Madrid",
+        "story": "Short story" if is_en else "Historia corta",
+        "story_ph": "I carry it for my mother..." if is_en else "La llevo por mi madre...",
+        "join": "Join Club Mariposa." if is_en else "Unirme al Club Mariposa.",
+        "publish": "I authorize my photo/story to appear in a future gallery or map, never with exact location." if is_en else "Autorizo que mi foto/historia puedan aparecer en una futura galería o mapa, nunca con ubicación exacta.",
+        "button": "Join Club Mariposa 🦋" if is_en else "Unirme al Club Mariposa 🦋",
+        "note": f"You will receive a unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% code for your first ETERNA." if is_en else f"Recibirás un código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% para tu primera ETERNA.",
+        "switch": "Español" if is_en else "English",
+        "switch_url": "/mariposa?lang=es" if is_en else "/mariposa?lang=en",
+    }
+    return f"""
+<!DOCTYPE html>
+<html lang="{safe_attr(T['html_lang'])}">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Club Mariposa · ETERNA</title>
+<style>
+*{{box-sizing:border-box}}body{{margin:0;background:radial-gradient(circle at top,#102044 0,#03060c 48%,#000 100%);color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;padding:24px}}.wrap{{max-width:760px;margin:0 auto}}.hero{{padding:34px 0 22px;text-align:center}}.eyebrow{{color:#f5d28b;letter-spacing:.22em;text-transform:uppercase;font-size:12px;font-weight:800}}h1{{font-size:44px;line-height:.95;margin:14px 0 14px}}p{{color:rgba(255,255,255,.76);line-height:1.6}}.card{{border:1px solid rgba(245,210,139,.22);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));border-radius:28px;padding:22px;box-shadow:0 24px 90px rgba(0,0,0,.45)}}label{{display:block;margin:16px 0 8px;color:#f5d28b;font-weight:800;font-size:13px;letter-spacing:.04em}}input,textarea{{width:100%;border:1px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(0,0,0,.28);color:#fff;padding:15px 16px;font-size:16px;outline:none}}textarea{{min-height:120px;resize:vertical}}.check{{display:flex;gap:10px;align-items:flex-start;margin:16px 0;color:rgba(255,255,255,.8)}}.check input{{width:auto;margin-top:3px}}button{{width:100%;border:0;border-radius:999px;background:#f5d28b;color:#06111d;padding:17px 20px;font-weight:900;font-size:16px;margin-top:16px}}.note{{font-size:13px;color:rgba(255,255,255,.6);text-align:center;margin-top:16px}}a{{color:#f5d28b}}.lang{{display:flex;justify-content:center;margin-top:14px}}.lang a{{border:1px solid rgba(245,210,139,.28);border-radius:999px;padding:9px 14px;text-decoration:none;background:rgba(255,255,255,.045)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="eyebrow">{safe_text(T['eyebrow'])}</div>
+    <h1>{safe_text(T['title'])}</h1>
+    <p>{safe_text(T['lead'])}</p>
+    <div class="lang"><a href="{safe_attr(T['switch_url'])}">{safe_text(T['switch'])}</a></div>
+  </section>
+  <form class="card" method="post" action="/mariposa" enctype="multipart/form-data">
+    <input type="hidden" name="language" value="{safe_attr(ui_lang)}">
+    <label>{safe_text(T['photo'])}</label>
+    <input type="file" name="photo" accept="image/*" required>
+    <label>{safe_text(T['email'])}</label>
+    <input type="email" name="email" placeholder="you@email.com" required>
+    <label>{safe_text(T['instagram'])}</label>
+    <input name="instagram_handle" placeholder="{safe_attr(T['instagram_ph'])}" inputmode="text" autocomplete="off">
+    <p class="note" style="margin-top:8px;text-align:left">{safe_text(T['instagram_note'])}</p>
+    <label>{safe_text(T['city'])}</label>
+    <input name="city" placeholder="{safe_attr(T['city_ph'])}">
+    <label>{safe_text(T['story'])}</label>
+    <textarea name="story" maxlength="700" placeholder="{safe_attr(T['story_ph'])}"></textarea>
+    <label class="check"><input type="checkbox" name="join_club" value="1" required><span>{safe_text(T['join'])}</span></label>
+    <label class="check"><input type="checkbox" name="publication_authorized" value="1"><span>{safe_text(T['publish'])}</span></label>
+    <label class="check"><input type="checkbox" name="instagram_tag_authorized" value="1"><span>{safe_text(T['tag'])}</span></label>
+    <button type="submit">{safe_text(T['button'])}</button>
+    <p class="note">{safe_text(T['note'])}</p>
+  </form>
+</div>
+</body>
+</html>
+"""
+
+@app.post("/mariposa", response_class=HTMLResponse)
+async def club_mariposa_post(
+    email: str = Form(...),
+    language: str = Form("es"),
+    city: str = Form(""),
+    story: str = Form(""),
+    instagram_handle: str = Form(""),
+    join_club: str = Form(""),
+    publication_authorized: str = Form(""),
+    instagram_tag_authorized: str = Form(""),
+    photo: UploadFile = File(...),
+):
+    if not CLUB_MARIPOSA_ENABLED:
+        raise HTTPException(status_code=404, detail="Club Mariposa no disponible")
+
+    ui_lang = normalize_order_language(language or "es")
+    clean_email = rc120_clean_email(email)
+    if not clean_email:
+        raise HTTPException(status_code=400, detail="Invalid email" if ui_lang == "en" else "Email no válido")
+    if not rc120_truthy(join_club):
+        raise HTTPException(status_code=400, detail="You must confirm that you want to join Club Mariposa" if ui_lang == "en" else "Debes confirmar que quieres unirte al Club Mariposa")
+
+    clean_city = rc120_clean_city(city)
+    clean_story = rc120_clean_story(story)
+    clean_instagram = rc126_clean_instagram_handle(instagram_handle)
+    publication_ok = 1 if rc120_truthy(publication_authorized) else 0
+    tag_ok = 1 if (clean_instagram and rc120_truthy(instagram_tag_authorized)) else 0
+    created_at = now_iso()
+
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        member_number = rc120_next_member_number(cur)
+        member_code = rc120_member_code(member_number)
+        discount_code = rc120_generate_discount_code()
+        while rc120_get_discount_by_code(discount_code):
+            discount_code = rc120_generate_discount_code()
+
+        photo_paths = await rc120_save_butterfly_photo(photo, member_number)
+
+        cur.execute(
+            """
+            INSERT INTO butterfly_club (
+                member_number, member_code, email, instagram_handle, instagram_tag_authorized, city, story,
+                joined_club, publication_authorized,
+                photo_original_local, photo_public_local, thumbnail_local,
+                discount_code, created_at, updated_at, meta_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                member_number, member_code, clean_email, clean_instagram, tag_ok, clean_city, clean_story,
+                1, publication_ok,
+                photo_paths.get("original"), photo_paths.get("public"), photo_paths.get("thumbnail"),
+                discount_code, created_at, created_at,
+                json.dumps({"source": "club_mariposa_v1", "publication_authorized": bool(publication_ok), "instagram_handle": clean_instagram, "instagram_tag_authorized": bool(tag_ok)}, ensure_ascii=False),
+            ),
+        )
+        member_id = cur.lastrowid
+        cur.execute(
+            """
+            INSERT INTO butterfly_discount_codes (email, code, discount_percent, used, member_id, created_at, updated_at)
+            VALUES (?, ?, ?, 0, ?, ?, ?)
+            """,
+            (clean_email, discount_code, CLUB_MARIPOSA_DISCOUNT_PERCENT, member_id, created_at, created_at),
+        )
+        conn.commit()
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"No se pudo crear el miembro Club Mariposa: {e}")
+    finally:
+        conn.close()
+        try:
+            await photo.close()
+        except Exception:
+            pass
+
+    email_result = {"ok": False, "error": "not_sent"}
+    try:
+        email_result = rc120_send_butterfly_welcome_email(clean_email, member_code, discount_code, ui_lang)
+        print("🦋 RC120 email bienvenida Club Mariposa:", email_result)
+    except Exception as e:
+        print("[WARN] RC120 email bienvenida Club Mariposa falló:", e)
+
+    if ui_lang == "en":
+        title = "Welcome to Club Mariposa 🦋"
+        code_text = f"Your unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% code for your first ETERNA:"
+        email_text = "We have sent it to you by email." if email_result.get("ok") else "Save it now. Email is not configured or could not be sent."
+        tag_text = "If we share your story, we may tag your Instagram." if tag_ok else "Your Instagram will not be tagged unless you authorized it."
+        cta = "Create my ETERNA"
+        html_lang = "en"
+    else:
+        title = "Bienvenido/a al Club Mariposa 🦋"
+        code_text = f"Tu código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% para tu primera ETERNA:"
+        email_text = "Te lo hemos enviado por email." if email_result.get("ok") else "Guárdalo ahora. El email no está configurado o no pudo enviarse."
+        tag_text = "Si compartimos tu historia, podremos etiquetar tu Instagram." if tag_ok else "No etiquetaremos tu Instagram si no lo has autorizado."
+        cta = "Crear mi ETERNA"
+        html_lang = "es"
+
+    return f"""
+<!DOCTYPE html>
+<html lang="{safe_attr(html_lang)}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Club Mariposa</title>
+<style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:520px;border:1px solid rgba(245,210,139,.24);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b}}.code{{font-size:28px;font-weight:900;letter-spacing:.04em;background:rgba(245,210,139,.12);border:1px dashed rgba(245,210,139,.45);border-radius:18px;padding:16px;margin:18px 0}}p{{color:rgba(255,255,255,.78);line-height:1.55}}a{{display:block;margin-top:18px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}</style></head>
+<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}">{safe_text(cta)}</a></div></body></html>
+"""
+
 # =========================================================
 # CREAR PEDIDO
 # =========================================================
@@ -11761,6 +12569,7 @@ async def crear_post(
     delivery_date: str = Form(""),
     delivery_time: str = Form(""),
     gift_amount: float = Form(0),
+    butterfly_discount_code: str = Form(""),
     photo1: Optional[UploadFile] = File(None),
     photo2: Optional[UploadFile] = File(None),
     photo3: Optional[UploadFile] = File(None),
@@ -11797,6 +12606,7 @@ async def crear_post(
             delivery_date,
             delivery_time,
             gift_amount,
+            butterfly_discount_code,
             photo1,
             photo2,
             photo3,
@@ -13082,6 +13892,18 @@ def process_paid_checkout_session(session, stripe_event_id: str = "", source: st
     )
 
     order = get_order_by_id(order_id)
+
+    # RC120 — código Club Mariposa: marcar como usado solo tras pago confirmado.
+    try:
+        code = (order.get("butterfly_discount_code") or "").strip()
+        status = (order.get("butterfly_discount_status") or "").strip()
+        if code and status == "reserved_until_payment":
+            used_result = rc120_mark_discount_code_used(code, order_id)
+            update_order(order_id, butterfly_discount_status="used" if used_result.get("ok") else "used_mark_failed")
+            insert_order_event(order_id, "rc120_butterfly_discount_used", "ok" if used_result.get("ok") else "warning", used_result.get("reason"), used_result)
+            order = get_order_by_id(order_id)
+    except Exception as e:
+        log_error("rc120_butterfly_discount_mark_used", e)
 
     # Email operativo: no bloquea render ni SMS.
     try:
@@ -18165,6 +18987,152 @@ def admin_rc74a_production_validator(token: str = ""):
 
 
 
+
+# =========================================================
+# RC121 — LAUNCH FINAL LOCK SOBRE CLUB MARIPOSA
+# Recuperación absoluta, SMS status callback y error humano bonito.
+# Mantiene Club Mariposa y no toca video engine, reacción ni Sender Pack.
+# =========================================================
+
+@app.exception_handler(Exception)
+async def rc121_human_exception_handler(request: Request, exc: Exception):
+    """Error humano bonito: no afirma que todo esté bien si no puede comprobarlo, pero baja ansiedad."""
+    try:
+        path = request.url.path or ""
+        print("🛟 RC121 error humano bonito:", path, repr(exc))
+    except Exception:
+        pass
+    accept = (request.headers.get("accept") or "").lower()
+    if "text/html" not in accept:
+        return JSONResponse({"ok": False, "detail": "Estamos recuperando tu ETERNA. No hemos perdido nada."}, status_code=500)
+    return HTMLResponse("""
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>ETERNA</title>
+<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 70% 20%,rgba(62,190,255,.22),transparent 30%),#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}.card{max-width:460px;border:1px solid rgba(245,210,139,.28);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}h1{color:#f5d28b;margin:0 0 10px;font-size:26px}p{color:rgba(255,255,255,.78);line-height:1.55}.btn{display:block;margin-top:14px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}.ghost{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(245,210,139,.22)}</style></head>
+<body><div class="card"><h1>Estamos recuperando tu ETERNA.</h1><p>No hemos perdido nada. Puede haber sido un corte temporal del móvil, navegador o conexión.</p><a class="btn" href="javascript:location.reload()">Volver a intentarlo</a><a class="btn ghost" href="/recuperar">Recuperar mi ETERNA</a></div></body></html>
+""", status_code=500)
+
+
+
+def rc125_human_recovery_page(lang: str = "es", status_code: int = 404, reason: str = "not_found") -> HTMLResponse:
+    """RC125 — respuesta humana para recuperación fallida. Evita JSON frío en tokens malos."""
+    ui_lang = normalize_order_language(lang or "es")
+    is_en = ui_lang == "en"
+    title = "We are recovering your ETERNA." if is_en else "Estamos recuperando tu ETERNA."
+    text = "We have not lost anything. The link may be incomplete, expired, or copied incorrectly. Try again with the full sender or recipient token." if is_en else "No hemos perdido nada. Puede que el enlace esté incompleto, caducado o copiado con algún carácter de menos. Vuelve a intentarlo con el token completo del remitente o del destinatario."
+    btn = "Recover my ETERNA" if is_en else "Recuperar mi ETERNA"
+    home = "Back to home" if is_en else "Volver al inicio"
+    recuperar_url = "/recuperar?lang=en" if is_en else "/recuperar?lang=es"
+    home_url = "/?lang=en" if is_en else "/"
+    return HTMLResponse(f"""
+<!DOCTYPE html><html lang="{safe_attr('en' if is_en else 'es')}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>ETERNA</title>
+<style>*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;background:radial-gradient(circle at 70% 20%,rgba(62,190,255,.22),transparent 30%),#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:460px;border:1px solid rgba(245,210,139,.28);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b;margin:0 0 10px;font-size:26px}}p{{color:rgba(255,255,255,.78);line-height:1.55}}.btn{{display:block;margin-top:14px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}.ghost{{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(245,210,139,.22)}}</style></head>
+<body><div class="card"><h1>{safe_text(title)}</h1><p>{safe_text(text)}</p><a class="btn" href="{safe_attr(recuperar_url)}">{safe_text(btn)}</a><a class="btn ghost" href="{safe_attr(home_url)}">{safe_text(home)}</a></div></body></html>
+""", status_code=status_code)
+
+def rc121_find_order_by_any_token(token: str) -> dict:
+    clean = str(token or "").strip()
+    if not clean:
+        raise HTTPException(status_code=404, detail="token_missing")
+    try:
+        return get_order_by_recipient_token_or_404(clean)
+    except Exception:
+        pass
+    try:
+        return get_order_by_sender_token_or_404(clean)
+    except Exception:
+        pass
+    raise HTTPException(status_code=404, detail="order_not_found")
+
+
+def rc121_recovery_redirect_for_token(token: str):
+    order = rc121_find_order_by_any_token(token)
+    clean = str(token or "").strip()
+    if clean == (order.get("sender_token") or ""):
+        return RedirectResponse(url=f"/sender/{clean}", status_code=303)
+    return RedirectResponse(url=f"/pedido/{clean}", status_code=303)
+
+
+@app.get("/r/{token}")
+def rc121_short_recover_token(token: str, lang: str = "es"):
+    try:
+        return rc121_recovery_redirect_for_token(token)
+    except Exception as e:
+        print(f"🛟 RC125 recuperación corta fallida sin JSON: token={str(token or '')[:8]}… error={repr(e)}")
+        return rc125_human_recovery_page(lang=lang, status_code=404, reason="token_not_found")
+
+
+@app.get("/recuperar", response_class=HTMLResponse)
+def rc121_recovery_form(token: str = "", lang: str = "es"):
+    if token:
+        try:
+            return rc121_recovery_redirect_for_token(token)
+        except Exception as e:
+            print(f"🛟 RC125 recuperación GET fallida sin JSON: token={str(token or '')[:8]}… error={repr(e)}")
+            return rc125_human_recovery_page(lang=lang, status_code=404, reason="token_not_found")
+    ui_lang = normalize_order_language(lang or "es")
+    is_en = ui_lang == "en"
+    title = "Recover your ETERNA" if is_en else "Recuperar tu ETERNA"
+    text = "Paste your sender or recipient token. If the SMS was lost, the experience can return from here." if is_en else "Pega tu sender_token o recipient_token. Si el SMS se perdió, la experiencia puede volver desde aquí."
+    ph = "sender_token or recipient_token" if is_en else "sender_token o recipient_token"
+    btn = "RECOVER ETERNA" if is_en else "RECUPERAR ETERNA"
+    sw = "Español" if is_en else "English"
+    sw_url = "/recuperar?lang=es" if is_en else "/recuperar?lang=en"
+    return HTMLResponse(f"""
+<!DOCTYPE html><html lang="{safe_attr('en' if is_en else 'es')}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>ETERNA</title>
+<style>*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{width:min(100%,460px);border:1px solid rgba(245,210,139,.28);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45)}}h1{{color:#f5d28b;margin:0 0 10px}}p{{color:rgba(255,255,255,.78);line-height:1.55}}input{{width:100%;border:1px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(0,0,0,.28);color:#fff;padding:15px 16px;font-size:16px}}button,a{{display:block;width:100%;text-align:center;margin-top:14px;text-decoration:none;border:0;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}a{{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(245,210,139,.22)}} </style></head>
+<body><form class="card" method="post" action="/recuperar"><h1>{safe_text(title)}</h1><p>{safe_text(text)}</p><input type="hidden" name="lang" value="{safe_attr(ui_lang)}"><input name="token" placeholder="{safe_attr(ph)}" required><button>{safe_text(btn)}</button><a href="{safe_attr(sw_url)}">{safe_text(sw)}</a></form></body></html>
+""")
+
+
+@app.post("/recuperar")
+def rc121_recovery_submit(token: str = Form(...), lang: str = Form("es")):
+    try:
+        return rc121_recovery_redirect_for_token(token)
+    except Exception as e:
+        print(f"🛟 RC125 recuperación POST fallida sin JSON: token={str(token or '')[:8]}… error={repr(e)}")
+        return rc125_human_recovery_page(lang=lang, status_code=404, reason="token_not_found")
+
+
+@app.post("/twilio/status-callback")
+async def rc121_twilio_status_callback(request: Request):
+    """Guarda estados reales de Twilio por MessageSid: queued/sent/delivered/undelivered/failed."""
+    try:
+        form = await request.form()
+        data = {str(k): str(v) for k, v in form.items()}
+        sid = (data.get("MessageSid") or data.get("SmsSid") or data.get("MessageSid[]") or "").strip()
+        status = (data.get("MessageStatus") or data.get("SmsStatus") or data.get("message_status") or "").strip().lower()
+        if not sid:
+            return {"ok": False, "reason": "missing_sid"}
+        if status not in {"queued", "accepted", "sending", "sent", "delivered", "undelivered", "failed", "receiving", "received", "read"}:
+            status = status or "unknown"
+        now = now_iso()
+        raw = json.dumps(data, ensure_ascii=False)[:2000]
+        conn = db_conn()
+        cur = conn.cursor()
+        changed = 0
+        cur.execute("""
+            UPDATE orders
+            SET recipient_sms_status=?, recipient_sms_status_updated_at=?, recipient_sms_status_raw=?,
+                recipient_sms_error=CASE WHEN ? IN ('failed','undelivered') THEN ? ELSE recipient_sms_error END
+            WHERE recipient_sms_sid=?
+        """, (status, now, raw, status, status, sid))
+        changed += cur.rowcount
+        cur.execute("""
+            UPDATE orders
+            SET sender_sms_status=?, sender_sms_status_updated_at=?, sender_sms_status_raw=?,
+                sender_sms_error=CASE WHEN ? IN ('failed','undelivered') THEN ? ELSE sender_sms_error END
+            WHERE sender_sms_sid=?
+        """, (status, now, raw, status, status, sid))
+        changed += cur.rowcount
+        conn.commit()
+        conn.close()
+        if changed:
+            print(f"📡 RC121 Twilio status {sid}: {status} changed={changed}")
+        return {"ok": True, "sid": sid, "status": status, "changed": changed}
+    except Exception as e:
+        print("[WARN] RC121 Twilio status callback failed:", e)
+        return {"ok": False, "error": str(e)[:300]}
+
 # =========================================================
 # MAIN
 # =========================================================
@@ -18235,6 +19203,8 @@ def admin_dashboard_simple(token: str = ""):
         "completed": 0,
         "pending_reaction": 0,
         "sms_errors": 0,
+        "sms_delivered": 0,
+        "sms_failed": 0,
         "today": 0,
     }
     recent = []
@@ -18250,6 +19220,10 @@ def admin_dashboard_simple(token: str = ""):
         stats["pending_reaction"] = int(row["c"] or 0)
         row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(recipient_sms_error,'')!='' OR COALESCE(sender_sms_error,'')!=''").fetchone()
         stats["sms_errors"] = int(row["c"] or 0)
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(recipient_sms_status,'')='delivered' OR COALESCE(sender_sms_status,'')='delivered'").fetchone()
+        stats["sms_delivered"] = int(row["c"] or 0)
+        row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(recipient_sms_status,'') IN ('failed','undelivered') OR COALESCE(sender_sms_status,'') IN ('failed','undelivered')").fetchone()
+        stats["sms_failed"] = int(row["c"] or 0)
         today_prefix = now_iso()[:10]
         row = conn.execute("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(created_at,'') LIKE ?", (today_prefix + "%",)).fetchone()
         stats["today"] = int(row["c"] or 0)
@@ -18302,6 +19276,8 @@ table{{width:100%;border-collapse:collapse;margin-top:18px;background:rgba(255,2
 <div class='card'><div class='num'>{stats['completed']}</div><div>Completados</div></div>
 <div class='card'><div class='num'>{stats['pending_reaction']}</div><div>Pendientes reacción</div></div>
 <div class='card'><div class='num'>{stats['sms_errors']}</div><div>Con error SMS</div></div>
+<div class='card'><div class='num'>{stats['sms_delivered']}</div><div>SMS Delivered</div></div>
+<div class='card'><div class='num'>{stats['sms_failed']}</div><div>SMS Failed</div></div>
 </div>
 <h2>Últimos pedidos</h2>
 <table><thead><tr><th>Pedido</th><th>Fecha</th><th>Regalante</th><th>Destinatario</th><th>Pago</th><th>Reacción</th><th>Completa</th><th>Error</th></tr></thead><tbody>{rows}</tbody></table>
@@ -18404,6 +19380,20 @@ def rc104_founder_metrics() -> dict:
         "pending_render": 0,
         "pending_reaction": 0,
         "sms_errors": 0,
+        "sms_delivered_total": 0,
+        "sms_failed_total": 0,
+        "sms_delivered_today": 0,
+        "sms_failed_today": 0,
+        "recipient_sms_delivered_total": 0,
+        "sender_sms_delivered_total": 0,
+        "recipient_sms_failed_total": 0,
+        "sender_sms_failed_total": 0,
+        "recipient_sms_delivered_today": 0,
+        "sender_sms_delivered_today": 0,
+        "recipient_sms_failed_today": 0,
+        "sender_sms_failed_today": 0,
+        "videos_ready_total": 0,
+        "sender_packs_ready_total": 0,
         "recent_errors": [],
         "top_occasions": [],
     }
@@ -18422,6 +19412,22 @@ def rc104_founder_metrics() -> dict:
         metrics["pending_render"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE paid=1 AND COALESCE(video_render_requested,0)=1 AND COALESCE(experience_video_url,'')='' ")
         metrics["pending_reaction"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE paid=1 AND COALESCE(reaction_uploaded,0)=0")
         metrics["sms_errors"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(recipient_sms_error,'')!='' OR COALESCE(sender_sms_error,'')!=''")
+        # RC123 — Founder Report SMS separado por canal de experiencia.
+        # Antes el OR contaba pedidos; ahora contamos destinatario + remitente por separado y total real.
+        metrics["recipient_sms_delivered_total"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(recipient_sms_status,'')='delivered'")
+        metrics["sender_sms_delivered_total"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(sender_sms_status,'')='delivered'")
+        metrics["recipient_sms_failed_total"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(recipient_sms_status,'') IN ('failed','undelivered')")
+        metrics["sender_sms_failed_total"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(sender_sms_status,'') IN ('failed','undelivered')")
+        metrics["sms_delivered_total"] = int(metrics["recipient_sms_delivered_total"] or 0) + int(metrics["sender_sms_delivered_total"] or 0)
+        metrics["sms_failed_total"] = int(metrics["recipient_sms_failed_total"] or 0) + int(metrics["sender_sms_failed_total"] or 0)
+        metrics["recipient_sms_delivered_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(recipient_sms_status,'')='delivered' AND COALESCE(recipient_sms_status_updated_at,'') LIKE ?", (today + "%",))
+        metrics["sender_sms_delivered_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(sender_sms_status,'')='delivered' AND COALESCE(sender_sms_status_updated_at,'') LIKE ?", (today + "%",))
+        metrics["recipient_sms_failed_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(recipient_sms_status,'') IN ('failed','undelivered') AND COALESCE(recipient_sms_status_updated_at,'') LIKE ?", (today + "%",))
+        metrics["sender_sms_failed_today"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(sender_sms_status,'') IN ('failed','undelivered') AND COALESCE(sender_sms_status_updated_at,'') LIKE ?", (today + "%",))
+        metrics["sms_delivered_today"] = int(metrics["recipient_sms_delivered_today"] or 0) + int(metrics["sender_sms_delivered_today"] or 0)
+        metrics["sms_failed_today"] = int(metrics["recipient_sms_failed_today"] or 0) + int(metrics["sender_sms_failed_today"] or 0)
+        metrics["videos_ready_total"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(experience_video_url,'')!=''")
+        metrics["sender_packs_ready_total"] = rc104_db_count("SELECT COUNT(*) FROM orders WHERE COALESCE(reaction_uploaded,0)=1 AND COALESCE(sender_sms_sent_at,'')!=''")
 
         conn = db_conn()
         try:
@@ -18501,7 +19507,7 @@ def rc104_build_founder_report_text(metrics: dict, health: dict) -> str:
         return f"{rc104_safe_float(v):.2f} €"
 
     lines = []
-    lines.append("🦋 ETERNA FOUNDER REPORT — RC119")
+    lines.append("🦋 ETERNA FOUNDER REPORT — RC124")
     lines.append("")
     lines.append(f"Fecha: {metrics.get('date')}")
     lines.append(f"Estado sistema: {str(health.get('overall') or '').upper()}")
@@ -18515,9 +19521,25 @@ def rc104_build_founder_report_text(metrics: dict, health: dict) -> str:
     lines.append("")
     lines.append("EXPERIENCIAS")
     lines.append(f"- Completadas hoy: {metrics.get('completed_today', 0)}")
+    lines.append(f"- Vídeos generados total: {metrics.get('videos_ready_total', 0)}")
     lines.append(f"- Reacciones recibidas hoy: {metrics.get('reactions_today', 0)}")
+    lines.append(f"- Sender Packs listos total: {metrics.get('sender_packs_ready_total', 0)}")
     lines.append(f"- Pendientes de reacción: {metrics.get('pending_reaction', 0)}")
     lines.append(f"- Pendientes de render: {metrics.get('pending_render', 0)}")
+    lines.append("")
+    lines.append("SMS")
+    lines.append(f"- Recipient SMS Delivered hoy: {metrics.get('recipient_sms_delivered_today', 0)}")
+    lines.append(f"- Sender SMS Delivered hoy: {metrics.get('sender_sms_delivered_today', 0)}")
+    lines.append(f"- Total SMS Delivered hoy: {metrics.get('sms_delivered_today', 0)}")
+    lines.append(f"- Recipient SMS Failed/Undelivered hoy: {metrics.get('recipient_sms_failed_today', 0)}")
+    lines.append(f"- Sender SMS Failed/Undelivered hoy: {metrics.get('sender_sms_failed_today', 0)}")
+    lines.append(f"- Total SMS Failed/Undelivered hoy: {metrics.get('sms_failed_today', 0)}")
+    lines.append(f"- Recipient SMS Delivered total: {metrics.get('recipient_sms_delivered_total', 0)}")
+    lines.append(f"- Sender SMS Delivered total: {metrics.get('sender_sms_delivered_total', 0)}")
+    lines.append(f"- Total SMS Delivered total: {metrics.get('sms_delivered_total', 0)}")
+    lines.append(f"- Recipient SMS Failed/Undelivered total: {metrics.get('recipient_sms_failed_total', 0)}")
+    lines.append(f"- Sender SMS Failed/Undelivered total: {metrics.get('sender_sms_failed_total', 0)}")
+    lines.append(f"- Total SMS Failed/Undelivered total: {metrics.get('sms_failed_total', 0)}")
     lines.append("")
     lines.append("ERRORES")
     lines.append(f"- Pedidos con errores SMS: {metrics.get('sms_errors', 0)}")
@@ -19234,7 +20256,7 @@ def render_create_form(initial_language: str = "es") -> str:
             "phrase_1":"Lo que nunca quieres que olvide", "phrase_2":"Eso que sientes y a veces no dices", "phrase_3":"La frase que quieres dejarle para siempre", "suggestions_title":"¿Necesitas inspiración?", "suggestions_button":"Ver frases sugeridas",
             "yul_title":"YUL — detalle opcional", "yul_place":"Un lugar que recuerdes con esa persona", "yul_detail":"Un pequeño detalle que solo vosotros entendáis", "yul_tone":"Tono emocional que quieres provocar", "yul_hint":"Algo que ETERNA debería tener en cuenta",
             "delivery_title":"EL MOMENTO EXACTO", "delivery_copy":"Puedes dejar que llegue en cuanto esté lista... o programar ese momento íntimo en el que sabes que podrá vivirla de verdad.", "delivery_instant":"Enviarlo en cuanto esté listo", "delivery_instant_sub":"Sin coste extra.", "delivery_scheduled":"Guardarlo y entregarlo en un momento exacto", "delivery_scheduled_sub":"+{fee} para guardarlo y hacer que llegue exactamente cuando tú elijas.", "delivery_date":"Fecha de entrega", "delivery_time":"Hora de entrega", "delivery_hint":"Lo ideal es que pueda vivirlo con calma. Con unos cascos. En silencio. Sin que nadie le moleste.",
-            "gift_title":"DINERO A REGALAR", "gift_placeholder":"Dinero a regalar (€)", "price_base":"Precio base ETERNA", "gift_fee":"Si añades regalo económico: gestión segura del importe regalado.", "scheduled_fee":"Entrega programada: solo si eliges guardarlo y entregarlo en un momento exacto.",
+            "gift_title":"DINERO A REGALAR", "gift_placeholder":"Dinero a regalar (€)", "discount_code":"Código descuento Club Mariposa (opcional)", "price_base":"Precio base ETERNA", "gift_fee":"Si añades regalo económico: gestión segura del importe regalado.", "scheduled_fee":"Entrega programada: solo si eliges guardarlo y entregarlo en un momento exacto.",
             "trust_title":"Privado y seguro", "trust_1":"Tus fotos son privadas.", "trust_2":"El pago se realiza de forma segura con Stripe.", "trust_3":"La reacción solo vuelve a quien crea esta ETERNA.", "trust_4":"Si añades dinero, lo recibirá la persona destinataria.", "trust_5":"Soporte:",
             "responsible":"Acepto crear esta ETERNA de forma responsable. Entiendo que, si la persona destinataria vive la experiencia, podré recibir un recuerdo privado de ese momento. Me comprometo a tratar ese contenido con respeto, a no utilizarlo de forma ofensiva, invasiva o pública, y a compartirlo solo de manera responsable.",
             "legal_before":"Al continuar, aceptas las", "terms":"condiciones", "legal_middle":"y la", "privacy":"política de privacidad", "submit_disabled":"Completa los datos y sube 4 fotos", "submit_ready":"Crear y continuar al pago seguro", "opening_checkout":"Abriendo pago seguro ETERNA...",
@@ -19253,7 +20275,7 @@ def render_create_form(initial_language: str = "es") -> str:
             "phrase_1":"What you never want them to forget", "phrase_2":"What you feel and sometimes do not say", "phrase_3":"The sentence you want to leave them forever", "suggestions_title":"Need inspiration?", "suggestions_button":"See suggested phrases",
             "yul_title":"YUL — optional detail", "yul_place":"A place you remember with this person", "yul_detail":"A small detail only you both understand", "yul_tone":"The emotional tone you want", "yul_hint":"Something ETERNA should keep in mind",
             "delivery_title":"THE EXACT MOMENT", "delivery_copy":"You can let it arrive as soon as it is ready... or schedule the intimate moment when you know they can truly live it.", "delivery_instant":"Send it as soon as it is ready", "delivery_instant_sub":"No extra cost.", "delivery_scheduled":"Save it and deliver it at an exact moment", "delivery_scheduled_sub":"+{fee} to save it and make it arrive exactly when you choose.", "delivery_date":"Delivery date", "delivery_time":"Delivery time", "delivery_hint":"Ideally, they should be able to live it calmly. With headphones. In silence. Without being disturbed.",
-            "gift_title":"GIFT AMOUNT", "gift_placeholder":"Gift amount (€)", "price_base":"Base ETERNA price", "gift_fee":"If you add a money gift: secure handling of the gifted amount.", "scheduled_fee":"Scheduled delivery: only if you choose to save it and deliver it at an exact moment.",
+            "gift_title":"GIFT AMOUNT", "gift_placeholder":"Gift amount (€)", "discount_code":"Club Mariposa discount code (optional)", "price_base":"Base ETERNA price", "gift_fee":"If you add a money gift: secure handling of the gifted amount.", "scheduled_fee":"Scheduled delivery: only if you choose to save it and deliver it at an exact moment.",
             "trust_title":"Private and secure", "trust_1":"Your photos are private.", "trust_2":"Payment is processed securely with Stripe.", "trust_3":"The reaction only returns to the person who creates this ETERNA.", "trust_4":"If you add money, the recipient will receive it.", "trust_5":"Support:",
             "responsible":"I accept creating this ETERNA responsibly. I understand that, if the recipient lives the experience, I may receive a private memory of that moment. I commit to treating that content with respect, not using it in an offensive, invasive or public way, and sharing it only responsibly.",
             "legal_before":"By continuing, you accept the", "terms":"terms", "legal_middle":"and the", "privacy":"privacy policy", "submit_disabled":"Complete the details and upload 4 photos", "submit_ready":"Create and continue to secure payment", "opening_checkout":"Opening secure ETERNA checkout...",
@@ -19289,8 +20311,8 @@ def render_create_form(initial_language: str = "es") -> str:
 <section class="section"><div class="section-title">$words_title</div><label class="radio-row"><input type="radio" name="phrase_mode" value="auto" checked> <span>$phrase_auto</span></label><label class="radio-row"><input type="radio" name="phrase_mode" value="manual"> <span>$phrase_manual</span></label><div id="manualPhrases" class="hidden"><textarea name="phrase_1" id="phrase_1" maxlength="220" placeholder="$phrase_1"></textarea><textarea name="phrase_2" id="phrase_2" maxlength="220" placeholder="$phrase_2"></textarea><textarea name="phrase_3" id="phrase_3" maxlength="220" placeholder="$phrase_3"></textarea><div class="section-title" style="margin-top:12px">$suggestions_title</div><button type="button" class="gallery-button" id="suggestionsToggle">$suggestions_button</button><div class="suggestions hidden" id="suggestionsBox">$suggestions</div></div></section>
 <section class="section"><div class="section-title">$yul_title</div><div class="grid"><input name="yul_memory_place" placeholder="$yul_place"><input name="yul_memory_detail" placeholder="$yul_detail"><input name="yul_emotion_tone" placeholder="$yul_tone"><input name="yul_magic_hint" placeholder="$yul_hint"></div></section>
 <section class="section"><div class="section-title">$delivery_title</div><div class="soft-copy">$delivery_copy</div><label class="radio-row"><input type="radio" name="delivery_mode" value="instant" checked> <span><strong>$delivery_instant</strong><br><small>$delivery_instant_sub</small></span></label><label class="radio-row"><input type="radio" name="delivery_mode" value="scheduled"> <span><strong>$delivery_scheduled</strong><br><small>$delivery_scheduled_sub</small></span></label><div id="scheduledFields" class="grid hidden"><input type="date" name="delivery_date" id="delivery_date" aria-label="$delivery_date"><input type="time" name="delivery_time" id="delivery_time" aria-label="$delivery_time"></div><div class="hint">$delivery_hint</div></section>
-<section class="section"><div class="section-title">$gift_title</div><input name="gift_amount" id="gift_amount" type="number" min="0" step="0.01" value="0" placeholder="$gift_placeholder" required><div class="price-line"><span>$price_base</span><strong>$base_price</strong></div><div class="price-line"><span>$gift_fee</span><strong>5%</strong></div><div class="price-line"><span>$scheduled_fee</span><strong>$scheduled_fee_value</strong></div></section>
+<section class="section"><div class="section-title">$gift_title</div><input name="gift_amount" id="gift_amount" type="number" min="0" step="0.01" value="0" placeholder="$gift_placeholder" required><input style="margin-top:12px;text-transform:uppercase" name="butterfly_discount_code" id="butterfly_discount_code" placeholder="$discount_code" autocomplete="off"><div class="price-line"><span>$price_base</span><strong>$base_price</strong></div><div class="price-line"><span>$gift_fee</span><strong>5%</strong></div><div class="price-line"><span>$scheduled_fee</span><strong>$scheduled_fee_value</strong></div></section>
 <section class="section trust"><div class="section-title">$trust_title</div><ul><li>$trust_1</li><li>$trust_2</li><li>$trust_3</li><li>$trust_4</li><li>$trust_5 $support_email · $support_phone</li></ul><label class="responsible"><input type="checkbox" name="responsible_use_accepted" value="accepted" id="responsible_use_accepted"> <span>$responsible</span></label><p class="legal">$legal_before <a href="/condiciones" target="_blank">$terms</a> $legal_middle <a href="/privacidad" target="_blank">$privacy</a>.</p></section><button class="submit" id="submitBtn" type="submit" disabled>$submit_disabled</button></form></main></div>
 <script>(function(){'use strict';const T=$js_texts;const IDS=['photo1','photo2','photo3','photo4','photo5','photo6'];const REQ=['photo1','photo2','photo3','photo4'];const form=document.getElementById('createForm'),btn=document.getElementById('submitBtn'),err=document.getElementById('formError'),multi=document.getElementById('allPhotosInput'),session=document.getElementById('photo_upload_session'),hint=document.getElementById('photoHint');const nativeFiles={},preuploaded={};if(session&&!session.value){session.value='rc114_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}function show(m){if(err){err.textContent=m||T.error_generic;err.classList.add('show');err.scrollIntoView({behavior:'smooth',block:'center'});}}function clear(){if(err){err.textContent='';err.classList.remove('show');}}function ready(id){const i=document.getElementById(id);return !!(nativeFiles[id]||preuploaded[id]||(i&&i.files&&i.files.length));}function miss(){return REQ.filter(id=>!ready(id));}function count(){return IDS.filter(ready).length;}function setFile(input,file){if(!input||!file)return false;nativeFiles[input.id]=file;try{if(typeof DataTransfer==='undefined')throw new Error('no DataTransfer');const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;return !!(input.files&&input.files.length);}catch(e){console.warn('RC114 keeps file in memory',input.id,e);return false;}}function preview(id,file){const box=document.getElementById(id)?.closest('.photo-box'),prev=document.getElementById('preview_'+id),st=document.getElementById('status_'+id);if(box)box.classList.add('ready');if(prev){prev.classList.add('has-image');try{prev.style.backgroundImage='url('+URL.createObjectURL(file)+')';}catch(e){}}if(st){st.textContent=T.photo_ready;st.classList.remove('loading');st.classList.add('ready');}}function status(id,msg,cls){const st=document.getElementById('status_'+id);if(!st)return;st.textContent=msg;st.classList.remove('ready','loading');if(cls)st.classList.add(cls);}function preupload(id,file){if(!file||!session)return;status(id,T.photo_uploading,'loading');const fd=new FormData();fd.append('photo_upload_session',session.value);fd.append('slot',id);fd.append('photo',file,file.name||id+'.jpg');fetch('/preupload-photo',{method:'POST',body:fd}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{if(j&&j.ok){preuploaded[id]=true;status(id,T.photo_uploaded,'ready');}}).catch(e=>{console.warn('RC114 preupload failed, native multipart fallback',id,e);status(id,T.photo_ready,'ready');}).finally(update);}function place(id,file){const input=document.getElementById(id);if(!input||!file)return;setFile(input,file);preview(id,file);preupload(id,file);update();}function update(){const c=count(),m=miss();if(hint){if(c>=6)hint.textContent=T.photos_hint_ready6;else if(!m.length)hint.textContent=T.photos_hint_ready4.replace('{count}',String(c));else if(c>0)hint.textContent=T.photos_hint_partial.replace('{count}',String(c)).replace('{missing}',String(m.length));else hint.textContent=T.photos_hint_initial;}const ok=basic(false)&&!m.length;if(btn){btn.disabled=!ok;btn.textContent=ok?T.submit_ready:T.submit_disabled;}}function basic(showErr){for(const id of ['customer_name','customer_email','customer_phone','recipient_name','recipient_phone']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_main);return false;}}if(!document.querySelector('input[name="message_type"]:checked')){if(showErr)show(T.error_emotion);return false;}const manual=document.querySelector('input[name="phrase_mode"][value="manual"]');if(manual&&manual.checked){for(const id of ['phrase_1','phrase_2','phrase_3']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_manual);return false;}}}const scheduled=document.querySelector('input[name="delivery_mode"][value="scheduled"]');if(scheduled&&scheduled.checked){const d=document.getElementById('delivery_date')?.value||'',tm=document.getElementById('delivery_time')?.value||'';const dt=new Date(d+'T'+tm);if(!d||!tm||isNaN(dt.getTime())||dt.getTime()<=Date.now()){if(showErr)show(T.error_delivery);return false;}}const amount=parseFloat(document.getElementById('gift_amount')?.value||'0');if(Number.isNaN(amount)||amount<0){if(showErr)show(T.error_amount);return false;}if(!document.getElementById('responsible_use_accepted')?.checked){if(showErr)show(T.error_responsible);return false;}return true;}if(multi){multi.addEventListener('change',()=>{clear();Array.from(multi.files||[]).slice(0,6).forEach((f,idx)=>place(IDS[idx],f));multi.value='';update();});}IDS.forEach(id=>{const input=document.getElementById(id);if(input)input.addEventListener('change',()=>{const f=input.files&&input.files[0];if(f){nativeFiles[id]=f;preview(id,f);preupload(id,f);}update();});});document.querySelectorAll('input,textarea,select').forEach(el=>{el.addEventListener('input',update);el.addEventListener('change',update);});document.querySelectorAll('input[name="phrase_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('manualPhrases')?.classList.toggle('hidden',!(el.value==='manual'&&el.checked));update();}));document.querySelectorAll('input[name="delivery_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('scheduledFields')?.classList.toggle('hidden',!document.querySelector('input[name="delivery_mode"][value="scheduled"]')?.checked);update();}));document.getElementById('suggestionsToggle')?.addEventListener('click',()=>document.getElementById('suggestionsBox')?.classList.toggle('hidden'));document.querySelectorAll('.suggestion-chip').forEach(b=>b.addEventListener('click',()=>{const t=['phrase_1','phrase_2','phrase_3'].map(id=>document.getElementById(id)).find(el=>el&&!String(el.value||'').trim());if(t){t.value=b.getAttribute('data-text')||b.textContent||'';t.dispatchEvent(new Event('input',{bubbles:true}));}}));if(form)form.addEventListener('submit',e=>{clear();if(!basic(true)){e.preventDefault();return false;}if(miss().length){e.preventDefault();show(T.error_photos);return false;}btn.disabled=true;btn.textContent=T.opening_checkout;return true;});update();})();</script></body></html>
 ''').safe_substitute(
-        html_lang=esc(T["html_lang"]), meta_title=esc(T["meta_title"]), subtitle=esc(T["subtitle"]), es_active="active" if lang=="es" else "", en_active="active" if lang=="en" else "", lang_es=esc(T["lang_es"]), lang_en=esc(T["lang_en"]), intro1=esc(T["intro1"]), intro2=esc(T["intro2"]), intro3=esc(T["intro3"]), intro4=esc(T["intro4"]), lang=esc(lang), creator_title=esc(T["creator_title"]), customer_name=esc(T["customer_name"]), customer_email=esc(T["customer_email"]), customer_phone=esc(T["customer_phone"]), recipient_title=esc(T["recipient_title"]), recipient_name=esc(T["recipient_name"]), recipient_phone=esc(T["recipient_phone"]), recipient_email=esc(T["recipient_email"]), country_options=country_options, photos_title=esc(T["photos_title"]), photos_copy=esc(T["photos_copy"]), open_gallery=esc(T["open_gallery"]), photos_hint_initial=esc(T["photos_hint_initial"]), photo_slots=photo_slots, occasion_title=esc(T["occasion_title"]), occasion_cards=occasion_cards, occasion_date=esc(T["occasion_date"]), emotion_title=esc(T["emotion_title"]), emotion_cards=emotion_cards, words_title=esc(T["words_title"]), phrase_auto=esc(T["phrase_auto"]), phrase_manual=esc(T["phrase_manual"]), phrase_1=esc(T["phrase_1"]), phrase_2=esc(T["phrase_2"]), phrase_3=esc(T["phrase_3"]), suggestions_title=esc(T["suggestions_title"]), suggestions_button=esc(T["suggestions_button"]), suggestions=suggestions, yul_title=esc(T["yul_title"]), yul_place=esc(T["yul_place"]), yul_detail=esc(T["yul_detail"]), yul_tone=esc(T["yul_tone"]), yul_hint=esc(T["yul_hint"]), delivery_title=esc(T["delivery_title"]), delivery_copy=esc(T["delivery_copy"]), delivery_instant=esc(T["delivery_instant"]), delivery_instant_sub=esc(T["delivery_instant_sub"]), delivery_scheduled=esc(T["delivery_scheduled"]), delivery_scheduled_sub=esc(T["delivery_scheduled_sub"].format(fee=money(SCHEDULED_DELIVERY_FEE))), delivery_date=esc(T["delivery_date"]), delivery_time=esc(T["delivery_time"]), delivery_hint=esc(T["delivery_hint"]), gift_title=esc(T["gift_title"]), gift_placeholder=esc(T["gift_placeholder"]), price_base=esc(T["price_base"]), gift_fee=esc(T["gift_fee"]), scheduled_fee=esc(T["scheduled_fee"]), base_price=esc(money(BASE_PRICE)), scheduled_fee_value=esc(money(SCHEDULED_DELIVERY_FEE)), trust_title=esc(T["trust_title"]), trust_1=esc(T["trust_1"]), trust_2=esc(T["trust_2"]), trust_3=esc(T["trust_3"]), trust_4=esc(T["trust_4"]), trust_5=esc(T["trust_5"]), support_email=esc(ETERNA_SUPPORT_EMAIL), support_phone=esc(ETERNA_SUPPORT_PHONE), responsible=esc(T["responsible"]), legal_before=esc(T["legal_before"]), terms=esc(T["terms"]), legal_middle=esc(T["legal_middle"]), privacy=esc(T["privacy"]), submit_disabled=esc(T["submit_disabled"]), js_texts=js_texts)
+        html_lang=esc(T["html_lang"]), meta_title=esc(T["meta_title"]), subtitle=esc(T["subtitle"]), es_active="active" if lang=="es" else "", en_active="active" if lang=="en" else "", lang_es=esc(T["lang_es"]), lang_en=esc(T["lang_en"]), intro1=esc(T["intro1"]), intro2=esc(T["intro2"]), intro3=esc(T["intro3"]), intro4=esc(T["intro4"]), lang=esc(lang), creator_title=esc(T["creator_title"]), customer_name=esc(T["customer_name"]), customer_email=esc(T["customer_email"]), customer_phone=esc(T["customer_phone"]), recipient_title=esc(T["recipient_title"]), recipient_name=esc(T["recipient_name"]), recipient_phone=esc(T["recipient_phone"]), recipient_email=esc(T["recipient_email"]), country_options=country_options, photos_title=esc(T["photos_title"]), photos_copy=esc(T["photos_copy"]), open_gallery=esc(T["open_gallery"]), photos_hint_initial=esc(T["photos_hint_initial"]), photo_slots=photo_slots, occasion_title=esc(T["occasion_title"]), occasion_cards=occasion_cards, occasion_date=esc(T["occasion_date"]), emotion_title=esc(T["emotion_title"]), emotion_cards=emotion_cards, words_title=esc(T["words_title"]), phrase_auto=esc(T["phrase_auto"]), phrase_manual=esc(T["phrase_manual"]), phrase_1=esc(T["phrase_1"]), phrase_2=esc(T["phrase_2"]), phrase_3=esc(T["phrase_3"]), suggestions_title=esc(T["suggestions_title"]), suggestions_button=esc(T["suggestions_button"]), suggestions=suggestions, yul_title=esc(T["yul_title"]), yul_place=esc(T["yul_place"]), yul_detail=esc(T["yul_detail"]), yul_tone=esc(T["yul_tone"]), yul_hint=esc(T["yul_hint"]), delivery_title=esc(T["delivery_title"]), delivery_copy=esc(T["delivery_copy"]), delivery_instant=esc(T["delivery_instant"]), delivery_instant_sub=esc(T["delivery_instant_sub"]), delivery_scheduled=esc(T["delivery_scheduled"]), delivery_scheduled_sub=esc(T["delivery_scheduled_sub"].format(fee=money(SCHEDULED_DELIVERY_FEE))), delivery_date=esc(T["delivery_date"]), delivery_time=esc(T["delivery_time"]), delivery_hint=esc(T["delivery_hint"]), gift_title=esc(T["gift_title"]), gift_placeholder=esc(T["gift_placeholder"]), discount_code=esc(T["discount_code"]), price_base=esc(T["price_base"]), gift_fee=esc(T["gift_fee"]), scheduled_fee=esc(T["scheduled_fee"]), base_price=esc(money(BASE_PRICE)), scheduled_fee_value=esc(money(SCHEDULED_DELIVERY_FEE)), trust_title=esc(T["trust_title"]), trust_1=esc(T["trust_1"]), trust_2=esc(T["trust_2"]), trust_3=esc(T["trust_3"]), trust_4=esc(T["trust_4"]), trust_5=esc(T["trust_5"]), support_email=esc(ETERNA_SUPPORT_EMAIL), support_phone=esc(ETERNA_SUPPORT_PHONE), responsible=esc(T["responsible"]), legal_before=esc(T["legal_before"]), terms=esc(T["terms"]), legal_middle=esc(T["legal_middle"]), privacy=esc(T["privacy"]), submit_disabled=esc(T["submit_disabled"]), js_texts=js_texts)
