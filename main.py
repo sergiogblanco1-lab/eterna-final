@@ -94,6 +94,7 @@ print("🧊 RC134 FINAL FREEZE PRICE COMMENT CLEAN LOCK — NO TEST PRICE TEXT �
 print("🛟 RC136 REQUIRED FIELDS CLUB FILE LOCK — RED ERRORS + FILE LABEL CLEAN 🛟")
 print("✅ RC137 REQUIRED FIELDS ONLY AFTER SUBMIT LOCK — NO RED ON LOAD ✅")
 print("🧭 RC138 CLICK TO SHOW MISSING FIELDS LOCK — BUTTON ALWAYS CLICKABLE 🧭")
+print("🦋 RC139 CLUB PERSISTENT TRACE LOCK — MEMBER COUNTER + RECORDS + TRACE 🦋")
 print("🌍 RC135 LANGUAGE CLUB HEADER LOCK — ES/EN HARD + BUTTERFLY BODY HEADER 🦋")
 print("🧭 RC136 REQUIRED FIELDS + CLUB FILE LABEL LOCK — RED FIELD FINDER + CLEAN CLUB FILE PICKER 🧭")
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
@@ -103,6 +104,7 @@ import json
 import mimetypes
 import os
 import re
+import unicodedata
 import secrets
 import sqlite3
 import traceback
@@ -779,6 +781,8 @@ REACTION_CHUNKS_FOLDER = ensure_runtime_folder(os.getenv("REACTION_CHUNKS_FOLDER
 PREUPLOAD_FOLDER = ensure_runtime_folder(os.getenv("PREUPLOAD_FOLDER", str(DATA_FOLDER / "preuploads")), "preuploads")
 CLUB_MARIPOSA_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_FOLDER", str(DATA_FOLDER / "club_mariposa")), "club_mariposa")
 CLUB_MARIPOSA_THUMB_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_THUMB_FOLDER", str(DATA_FOLDER / "club_mariposa_thumbs")), "club_mariposa_thumbs")
+CLUB_MARIPOSA_RECORDS_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_RECORDS_FOLDER", str(DATA_FOLDER / "club_mariposa_records")), "club_mariposa_records")
+ETERNA_TRACES_FOLDER = ensure_runtime_folder(os.getenv("ETERNA_TRACES_FOLDER", str(DATA_FOLDER / "eterna_traces")), "eterna_traces")
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -796,7 +800,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC138_CLICK_TO_SHOW_MISSING_FIELDS_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC139_CLUB_PERSISTENT_TRACE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2638,6 +2642,46 @@ def init_db():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_butterfly_discount_codes_code ON butterfly_discount_codes(code)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_butterfly_discount_codes_email ON butterfly_discount_codes(email)")
 
+    # RC139 — contador persistente y trazabilidad básica del Club Mariposa.
+    # No toca Stripe/Twilio/video/reacción/Sender Pack.
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS butterfly_member_counter (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        last_member_number INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+    )
+    """)
+    cur.execute("""
+    INSERT OR IGNORE INTO butterfly_member_counter (id, last_member_number, updated_at)
+    VALUES (1, (SELECT COALESCE(MAX(member_number), 0) FROM butterfly_club), ?)
+    """, (now_iso(),))
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS eterna_trace_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trace_id TEXT UNIQUE,
+        source_type TEXT,
+        source_member_id INTEGER,
+        source_member_number INTEGER,
+        source_discount_code TEXT,
+        order_id TEXT,
+        sender_name TEXT,
+        sender_email TEXT,
+        sender_phone TEXT,
+        recipient_name TEXT,
+        recipient_email TEXT,
+        recipient_phone TEXT,
+        city TEXT,
+        instagram_handle TEXT,
+        event_type TEXT,
+        record_json_local TEXT,
+        created_at TEXT NOT NULL,
+        meta_json TEXT
+    )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_eterna_trace_order_id ON eterna_trace_events(order_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_eterna_trace_discount_code ON eterna_trace_events(source_discount_code)")
+
     conn.commit()
     conn.close()
 
@@ -2783,6 +2827,9 @@ def init_db():
     # No es obligatorio y no toca ETERNA core.
     add_column_if_missing("butterfly_club", "instagram_handle", "ALTER TABLE butterfly_club ADD COLUMN instagram_handle TEXT")
     add_column_if_missing("butterfly_club", "instagram_tag_authorized", "ALTER TABLE butterfly_club ADD COLUMN instagram_tag_authorized INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("butterfly_club", "full_name", "ALTER TABLE butterfly_club ADD COLUMN full_name TEXT")
+    add_column_if_missing("butterfly_club", "file_identity", "ALTER TABLE butterfly_club ADD COLUMN file_identity TEXT")
+    add_column_if_missing("butterfly_club", "record_json_local", "ALTER TABLE butterfly_club ADD COLUMN record_json_local TEXT")
 def init_memory_engine():
     """
     MEMORY ENGINE V1 — SILENT SAFE.
@@ -2919,13 +2966,68 @@ def rc120_generate_discount_code() -> str:
 
 
 def rc120_next_member_number(cur) -> int:
-    cur.execute("SELECT COALESCE(MAX(member_number), 0) + 1 AS next_number FROM butterfly_club")
+    # RC139: contador persistente real. Se sincroniza con el máximo histórico
+    # por si la tabla ya tenía miembros antes de activar el contador.
+    now = now_iso()
+    cur.execute("""
+        INSERT OR IGNORE INTO butterfly_member_counter (id, last_member_number, updated_at)
+        VALUES (1, (SELECT COALESCE(MAX(member_number), 0) FROM butterfly_club), ?)
+    """, (now,))
+    cur.execute("""
+        UPDATE butterfly_member_counter
+        SET last_member_number = MAX(last_member_number, (SELECT COALESCE(MAX(member_number), 0) FROM butterfly_club)) + 1,
+            updated_at = ?
+        WHERE id = 1
+    """, (now,))
+    cur.execute("SELECT last_member_number FROM butterfly_member_counter WHERE id = 1")
     row = cur.fetchone()
-    return int((row["next_number"] if row else 1) or 1)
+    return int((row["last_member_number"] if row else 1) or 1)
 
 
 def rc120_member_code(member_number: int) -> str:
     return f"Miembro #{int(member_number):04d}"
+
+
+def rc139_safe_slug(value: str, max_len: int = 52) -> str:
+    raw = str(value or "").strip().lower()
+    raw = unicodedata.normalize("NFKD", raw)
+    raw = "".join(ch for ch in raw if not unicodedata.combining(ch))
+    raw = raw.replace("@", " at ").replace(".", " ").replace("+", " ")
+    safe = []
+    last_us = False
+    for ch in raw:
+        if ch.isalnum():
+            safe.append(ch)
+            last_us = False
+        else:
+            if not last_us:
+                safe.append("_")
+                last_us = True
+    slug = "".join(safe).strip("_")
+    return (slug[:max_len].strip("_") or "sin_dato")
+
+
+def rc139_file_identity(member_number: int, full_name: str, email: str, instagram_handle: str, city: str, discount_code: str) -> str:
+    date_part = datetime.now().strftime("%Y-%m-%d")
+    code_tail = rc120_normalize_discount_code(discount_code).replace("-", "_").lower()[-8:] or secrets.token_hex(3)
+    parts = [
+        "mariposa",
+        f"{int(member_number):04d}",
+        date_part,
+        rc139_safe_slug(full_name, 34),
+        rc139_safe_slug(email, 46),
+        rc139_safe_slug(instagram_handle, 32),
+        rc139_safe_slug(city, 34),
+        code_tail,
+    ]
+    return "_".join(parts)[:190].strip("_")
+
+
+def rc139_write_json_file(folder: Path, filename_stem: str, payload: dict) -> str:
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{filename_stem}.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return str(path)
 
 
 def rc120_validate_butterfly_image_upload(upload: UploadFile) -> None:
@@ -2939,7 +3041,7 @@ def rc120_validate_butterfly_image_upload(upload: UploadFile) -> None:
             raise HTTPException(status_code=400, detail="La foto del Club Mariposa debe ser una imagen")
 
 
-async def rc120_save_butterfly_photo(upload: UploadFile, member_number: int) -> dict:
+async def rc120_save_butterfly_photo(upload: UploadFile, member_number: int, full_name: str = "", email: str = "", instagram_handle: str = "", city: str = "", discount_code: str = "") -> dict:
     """
     Reduce foto, elimina metadatos y crea miniatura.
     Devuelve rutas locales. Si PIL no soporta HEIC en el entorno, falla de forma controlada.
@@ -2955,7 +3057,8 @@ async def rc120_save_butterfly_photo(upload: UploadFile, member_number: int) -> 
     CLUB_MARIPOSA_FOLDER.mkdir(parents=True, exist_ok=True)
     CLUB_MARIPOSA_THUMB_FOLDER.mkdir(parents=True, exist_ok=True)
 
-    token = secrets.token_hex(6)
+    token = secrets.token_hex(4)
+    file_identity = rc139_file_identity(member_number, full_name, email, instagram_handle, city, discount_code)
 
     # RC123 PRIVACY CLEAN LOCK:
     # No conservamos el archivo original con metadatos.
@@ -2971,18 +3074,19 @@ async def rc120_save_butterfly_photo(upload: UploadFile, member_number: int) -> 
 
         public_img = img.copy()
         public_img.thumbnail((1400, 1400), Image.LANCZOS)
-        public_path = CLUB_MARIPOSA_FOLDER / f"member_{member_number:04d}_{token}.jpg"
+        public_path = CLUB_MARIPOSA_FOLDER / f"{file_identity}_{token}.jpg"
         public_img.save(public_path, format="JPEG", quality=86, optimize=True)
 
         thumb_img = img.copy()
         thumb_img.thumbnail((420, 420), Image.LANCZOS)
-        thumb_path = CLUB_MARIPOSA_THUMB_FOLDER / f"member_{member_number:04d}_{token}_thumb.jpg"
+        thumb_path = CLUB_MARIPOSA_THUMB_FOLDER / f"{file_identity}_{token}_thumb.jpg"
         thumb_img.save(thumb_path, format="JPEG", quality=82, optimize=True)
 
         return {
             "original": "",
             "public": str(public_path),
             "thumbnail": str(thumb_path),
+            "file_identity": file_identity,
         }
     except HTTPException:
         raise
@@ -3053,10 +3157,112 @@ def rc120_mark_discount_code_used(code: str, order_id: str) -> dict:
         changed = cur.rowcount
         conn.commit()
         if changed:
-            return {"ok": True, "reason": "marked_used", "code": clean}
+            trace_result = rc139_create_order_trace(clean, order_id)
+            return {"ok": True, "reason": "marked_used", "code": clean, "trace": trace_result}
         cur.execute("SELECT used_order_id FROM butterfly_discount_codes WHERE code = ?", (clean,))
         row = cur.fetchone()
         return {"ok": False, "reason": "not_marked_or_already_used", "code": clean, "used_order_id": row["used_order_id"] if row else None}
+    finally:
+        conn.close()
+
+
+def rc139_create_member_record(member_id: int, member_number: int, member_code: str, full_name: str, email: str, instagram_handle: str, city: str, story: str, discount_code: str, photo_paths: dict, publication_ok: int, tag_ok: int, created_at: str) -> str:
+    file_identity = photo_paths.get("file_identity") or rc139_file_identity(member_number, full_name, email, instagram_handle, city, discount_code)
+    payload = {
+        "record_type": "club_mariposa_member",
+        "member_id": member_id,
+        "member_number": f"{int(member_number):04d}",
+        "member_label": member_code,
+        "name": full_name,
+        "email": email,
+        "instagram": instagram_handle,
+        "city": city,
+        "story": story,
+        "discount_code": discount_code,
+        "photo_path": photo_paths.get("public") or "",
+        "thumb_path": photo_paths.get("thumbnail") or "",
+        "publication_consent": bool(publication_ok),
+        "instagram_tag_consent": bool(tag_ok),
+        "created_at": created_at,
+        "note": "Registro privado interno de ETERNA. No publicar datos personales sin autorización."
+    }
+    return rc139_write_json_file(CLUB_MARIPOSA_RECORDS_FOLDER, file_identity, payload)
+
+
+def rc139_create_order_trace(discount_code: str, order_id: str) -> dict:
+    clean_code = rc120_normalize_discount_code(discount_code)
+    if not clean_code or not order_id:
+        return {"ok": False, "reason": "missing_code_or_order"}
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT bdc.member_id, bc.member_number, bc.member_code, bc.full_name, bc.email, bc.instagram_handle, bc.city, bc.story, bc.record_json_local
+            FROM butterfly_discount_codes bdc
+            LEFT JOIN butterfly_club bc ON bc.id = bdc.member_id
+            WHERE bdc.code = ?
+            LIMIT 1
+        """, (clean_code,))
+        member = cur.fetchone()
+        cur.execute("""
+            SELECT
+                o.*,
+                s.name AS sender_name,
+                s.email AS sender_email,
+                s.phone AS sender_phone,
+                r.name AS recipient_name,
+                r.email AS recipient_email,
+                r.phone AS recipient_phone
+            FROM orders o
+            JOIN senders s ON s.id = o.sender_id
+            JOIN recipients r ON r.id = o.recipient_id
+            WHERE o.id = ?
+            LIMIT 1
+        """, (order_id,))
+        order = cur.fetchone()
+        now = now_iso()
+        trace_id = f"trace_{rc139_safe_slug(clean_code, 32)}_{rc139_safe_slug(order_id, 32)}"
+        payload = {
+            "record_type": "eterna_trace",
+            "trace_id": trace_id,
+            "source_type": "club_mariposa_discount_code",
+            "source_discount_code": clean_code,
+            "source_member": dict(member) if member else {},
+            "order": dict(order) if order else {"order_id": order_id},
+            "created_at": now,
+            "note": "Trazabilidad privada interna: mariposa/código → pedido ETERNA."
+        }
+        record_path = rc139_write_json_file(ETERNA_TRACES_FOLDER, trace_id, payload)
+        cur.execute("""
+            INSERT OR IGNORE INTO eterna_trace_events (
+                trace_id, source_type, source_member_id, source_member_number, source_discount_code, order_id,
+                sender_name, sender_email, sender_phone, recipient_name, recipient_email, recipient_phone,
+                city, instagram_handle, event_type, record_json_local, created_at, meta_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            trace_id, "club_mariposa_discount_code",
+            member["member_id"] if member else None,
+            member["member_number"] if member else None,
+            clean_code, order_id,
+            order["sender_name"] if order else "",
+            order["sender_email"] if order else "",
+            order["sender_phone"] if order else "",
+            order["recipient_name"] if order else "",
+            order["recipient_email"] if order else "",
+            order["recipient_phone"] if order else "",
+            member["city"] if member else "",
+            member["instagram_handle"] if member else "",
+            "discount_used_for_order", record_path, now,
+            json.dumps({"source": "rc139", "discount_code": clean_code}, ensure_ascii=False),
+        ))
+        conn.commit()
+        return {"ok": True, "trace_id": trace_id, "record_json_local": record_path}
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return {"ok": False, "reason": str(e)[:180], "code": clean_code, "order_id": order_id}
     finally:
         conn.close()
 
@@ -12385,7 +12591,7 @@ def club_mariposa_get(lang: str = "es"):
         "button": "Join Club Mariposa" if is_en else "Unirme al Club Mariposa 🦋",
         "note": f"Joining gives you a unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% discount code for your first ETERNA." if is_en else f"Hacerte socio/a te da un código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% de descuento para tu primera ETERNA.",
         "switch": "Español" if is_en else "English",
-        "switch_url": "/mariposa?lang=es&rc=138" if is_en else "/mariposa?lang=en&rc=138",
+        "switch_url": "/mariposa?lang=es&rc=139" if is_en else "/mariposa?lang=en&rc=139",
     }
     return f"""
 <!DOCTYPE html>
@@ -12407,6 +12613,8 @@ def club_mariposa_get(lang: str = "es"):
   </section>
   <form class="card" method="post" action="/mariposa" enctype="multipart/form-data">
     <input type="hidden" name="language" value="{safe_attr(ui_lang)}">
+    <label>{safe_text("Name" if is_en else "Nombre")}</label>
+    <input name="full_name" placeholder="{safe_attr('Your name' if is_en else 'Tu nombre')}" autocomplete="name">
     <label>{safe_text(T['photo'])}</label>
     <p class="note" style="margin-top:-2px;text-align:left">{safe_text("Ideally, a butterfly on your body: tattooed, painted, drawn, temporary or created for your story." if is_en else "Preferiblemente una mariposa en tu cuerpo: tatuada, pintada, dibujada, temporal o creada con IA para tu historia.")}</p>
     <input id="mariposaPhotoInput" class="native-file-hidden" type="file" name="photo" accept="image/*" required>
@@ -12451,6 +12659,7 @@ def club_mariposa_get(lang: str = "es"):
 @app.post("/mariposa", response_class=HTMLResponse)
 async def club_mariposa_post(
     email: str = Form(...),
+    full_name: str = Form(""),
     language: str = Form("es"),
     city: str = Form(""),
     story: str = Form(""),
@@ -12465,6 +12674,7 @@ async def club_mariposa_post(
 
     ui_lang = normalize_order_language(language or "es")
     clean_email = rc120_clean_email(email)
+    clean_full_name = rc120_clean_text(full_name, 90)
     if not clean_email:
         raise HTTPException(status_code=400, detail="Invalid email" if ui_lang == "en" else "Email no válido")
     if not rc120_truthy(join_club):
@@ -12486,26 +12696,35 @@ async def club_mariposa_post(
         while rc120_get_discount_by_code(discount_code):
             discount_code = rc120_generate_discount_code()
 
-        photo_paths = await rc120_save_butterfly_photo(photo, member_number)
+        photo_paths = await rc120_save_butterfly_photo(photo, member_number, clean_full_name, clean_email, clean_instagram, clean_city, discount_code)
 
         cur.execute(
             """
             INSERT INTO butterfly_club (
-                member_number, member_code, email, instagram_handle, instagram_tag_authorized, city, story,
+                member_number, member_code, full_name, email, instagram_handle, instagram_tag_authorized, city, story,
                 joined_club, publication_authorized,
-                photo_original_local, photo_public_local, thumbnail_local,
+                photo_original_local, photo_public_local, thumbnail_local, file_identity, record_json_local,
                 discount_code, created_at, updated_at, meta_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                member_number, member_code, clean_email, clean_instagram, tag_ok, clean_city, clean_story,
+                member_number, member_code, clean_full_name, clean_email, clean_instagram, tag_ok, clean_city, clean_story,
                 1, publication_ok,
-                photo_paths.get("original"), photo_paths.get("public"), photo_paths.get("thumbnail"),
+                photo_paths.get("original"), photo_paths.get("public"), photo_paths.get("thumbnail"), photo_paths.get("file_identity"), "",
                 discount_code, created_at, created_at,
                 json.dumps({"source": "club_mariposa_v1", "publication_authorized": bool(publication_ok), "instagram_handle": clean_instagram, "instagram_tag_authorized": bool(tag_ok)}, ensure_ascii=False),
             ),
         )
         member_id = cur.lastrowid
+        record_json_local = ""
+        try:
+            record_json_local = rc139_create_member_record(
+                member_id, member_number, member_code, clean_full_name, clean_email, clean_instagram, clean_city, clean_story,
+                discount_code, photo_paths, publication_ok, tag_ok, created_at
+            )
+            cur.execute("UPDATE butterfly_club SET record_json_local = ? WHERE id = ?", (record_json_local, member_id))
+        except Exception as record_error:
+            print("[WARN] RC139 no pudo escribir ficha JSON Club Mariposa:", record_error)
         cur.execute(
             """
             INSERT INTO butterfly_discount_codes (email, code, discount_percent, used, member_id, created_at, updated_at)
@@ -12553,9 +12772,9 @@ async def club_mariposa_post(
 <!DOCTYPE html>
 <html lang="{safe_attr(html_lang)}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Club Mariposa</title>
 <style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:520px;border:1px solid rgba(245,210,139,.24);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b}}.code{{font-size:28px;font-weight:900;letter-spacing:.04em;background:rgba(245,210,139,.12);border:1px dashed rgba(245,210,139,.45);border-radius:18px;padding:16px;margin:18px 0}}p{{color:rgba(255,255,255,.78);line-height:1.55}}a{{display:block;margin-top:18px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}</style></head>
-<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}&rc=138">{safe_text(cta)}</a>
-<button type="button" onclick="shareMariposa()" style="width:100%;border:1px solid rgba(98,211,255,.35);background:rgba(98,211,255,.08);color:#9fe7ff;border-radius:999px;padding:15px 20px;font-weight:900;margin-top:14px">{safe_text('INVITE ANOTHER BUTTERFLY' if ui_lang == 'en' else 'INVITAR A OTRA MARIPOSA')}</button>
-<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}&rc=138';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
+<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}&rc=139">{safe_text(cta)}</a>
+<button type="button" onclick="shareMariposa()" style="width:100%;border:1px solid rgba(98,211,255,.35);background:rgba(98,211,255,.08);color:#9fe7ff;border-radius:999px;padding:15px 20px;font-weight:900;margin-top:14px;cursor:pointer">{safe_text('INVITE ANOTHER BUTTERFLY' if ui_lang == 'en' else 'INVITAR A OTRA MARIPOSA')}</button>
+<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}&rc=139';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
 </div></body></html>
 """
 
@@ -20500,10 +20719,10 @@ def render_create_form(initial_language: str = "es") -> str:
     lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
     html = _ORIGINAL_RENDER_CREATE_FORM_RC135(lang)
     try:
-        html = html.replace('href="/crear?lang=es"', 'href="/crear?lang=es&rc=138"')
-        html = html.replace('href="/crear?lang=en"', 'href="/crear?lang=en&rc=138"')
-        html = html.replace('href="/mariposa?lang=es"', 'href="/mariposa?lang=es&rc=138"')
-        html = html.replace('href="/mariposa?lang=en"', 'href="/mariposa?lang=en&rc=138"')
+        html = html.replace('href="/crear?lang=es"', 'href="/crear?lang=es&rc=139"')
+        html = html.replace('href="/crear?lang=en"', 'href="/crear?lang=en&rc=139"')
+        html = html.replace('href="/mariposa?lang=es"', 'href="/mariposa?lang=es&rc=139"')
+        html = html.replace('href="/mariposa?lang=en"', 'href="/mariposa?lang=en&rc=139"')
         html = re.sub(r'name="language" id="language" value="(?:es|en)"', f'name="language" id="language" value="{lang}"', html, count=1)
         html = re.sub(r'<html lang="(?:es|en)">', f'<html lang="{lang}">', html, count=1)
         if lang == "en":
@@ -20533,7 +20752,7 @@ def render_create_form(initial_language: str = "es") -> str:
     lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
     html = _ORIGINAL_RENDER_CREATE_FORM_RC136(lang)
     try:
-        html = html.replace('&rc=138', '&rc=138')
+        html = html.replace('&rc=139', '&rc=139')
         html = html.replace('Club Mariposa 🦋', 'Club Mariposa')
         html = html.replace('Butterfly Club 🦋', 'Butterfly Club')
     except Exception as e:
