@@ -22,6 +22,8 @@
 # - bloque de confianza reforzado con soporte
 # - RC101B: submit nativo multipart para evitar POST vacío en móvil/Instagram
 # - RC126: Instagram opcional en Club Mariposa + consentimiento separado para etiqueta
+# - RC131: formulario limpio final sin fecha importante extra + entrega programada intacta
+# - RC128: elimina del formulario principal el bloque YUL de detalle opcional para mejorar conversión móvil
 # - RC127: entrada visible al Club Mariposa desde /crear junto al código descuento
 #
 # Mantiene intacto:
@@ -79,6 +81,8 @@ print("🧼 RC123 MINI CLEAN LOCK — VERSION + SMS REPORT + PHOTO PRIVACY 🧼"
 print("🚀 RC124 LAUNCH AUDIT FIX — EN FORM DISCOUNT KEY LOCK 🚀")
 print("🛟 RC125 HUMAN ERROR LOCK — INVALID CODE + TOKEN NICE ERROR + IP PRIVACY 🛟")
 print("📲 RC126 MARIPOSA INSTAGRAM TAG LOCK — OPTIONAL @ + SEPARATE TAG CONSENT 📲")
+print("🦋 RC132 YUL INTRO LOCK — YUL EXPLAINED AT FORM START 📅")
+print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
 print("🦋 RC127 MARIPOSA VISIBLE ENTRY LOCK — CLUB ENTRY FROM /CREAR 🦋")
 import html
 import json
@@ -777,7 +781,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC127_MARIPOSA_VISIBLE_ENTRY_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC132_YUL_INTRO_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -9721,33 +9725,7 @@ def render_create_form(initial_language: str = "es") -> str:
                         <input type="hidden" name="occasion_type" id="occasionType" value="pareja">
                     </div>
 
-                    <div class="section s-yul">
-                        <div class="section-title">El alma de Yul</div>
-                        <div class="soft-copy">
-                            Una sola pista. Un lugar. Yul no necesita saber más para encontrar una puerta.
-                        </div>
-
-                        <div class="yul-emotional-grid">
-                            <label class="field-label">
-                                ¿Hay algún lugar que forme parte de vuestra historia?
-                                <input
-                                    type="text"
-                                    name="yul_memory_place"
-                                    id="yul_memory_place"
-                                    class="text-input"
-                                    maxlength="140"
-                                    placeholder="Ej: Cádiz, la montaña, la casa de la abuela, un banco, París..."
-                                    autocomplete="off"
-                                >
-                            </label>
-
-                            <div class="soft-copy yul-one-place-note">
-                                No expliques el recuerdo. Solo escribe el lugar. Yul hará el resto.
-                            </div>
-                        </div>
-                    </div>
-
-<div class="section s3">
+                    <div class="section s3">
                         <div class="section-title">Los recuerdos</div>
                         <div class="soft-copy">
                             Elige 6 fotos directamente desde tu galería. Se cargan de forma nativa para que el proceso sea rápido.
@@ -20309,12 +20287,51 @@ def render_create_form(initial_language: str = "es") -> str:
 <section class="section"><div class="section-title">$creator_title</div><div class="grid"><input name="customer_name" id="customer_name" placeholder="$customer_name" required><input name="customer_email" id="customer_email" type="email" placeholder="$customer_email" required></div><div class="phone-row" style="margin-top:12px"><select name="customer_country_code">$country_options</select><input name="customer_phone" id="customer_phone" inputmode="tel" placeholder="$customer_phone" required></div></section>
 <section class="section"><div class="section-title">$recipient_title</div><input name="recipient_name" id="recipient_name" placeholder="$recipient_name" required><div class="phone-row" style="margin-top:12px"><select name="recipient_country_code">$country_options</select><input name="recipient_phone" id="recipient_phone" inputmode="tel" placeholder="$recipient_phone" required></div><input style="margin-top:12px" name="recipient_email" id="recipient_email" type="email" placeholder="$recipient_email"></section>
 <section class="section"><div class="section-title">$photos_title</div><div class="soft-copy">$photos_copy</div><div class="photo-actions"><label class="gallery-button" for="allPhotosInput">$open_gallery</label><input id="allPhotosInput" type="file" accept="image/*" multiple style="display:none"><span class="hint" id="photoHint">$photos_hint_initial</span></div><div class="photo-grid">$photo_slots</div></section>
-<section class="section"><div class="section-title">$occasion_title</div><div class="choice-grid">$occasion_cards</div><input style="margin-top:12px" type="date" name="occasion_date" aria-label="$occasion_date"></section><section class="section"><div class="section-title">$emotion_title</div><div class="emotion-grid">$emotion_cards</div></section>
+<section class="section"><div class="section-title">$occasion_title</div><div class="choice-grid">$occasion_cards</div></section><section class="section"><div class="section-title">$emotion_title</div><div class="emotion-grid">$emotion_cards</div></section>
 <section class="section"><div class="section-title">$words_title</div><label class="radio-row"><input type="radio" name="phrase_mode" value="auto" checked> <span>$phrase_auto</span></label><label class="radio-row"><input type="radio" name="phrase_mode" value="manual"> <span>$phrase_manual</span></label><div id="manualPhrases" class="hidden"><textarea name="phrase_1" id="phrase_1" maxlength="220" placeholder="$phrase_1"></textarea><textarea name="phrase_2" id="phrase_2" maxlength="220" placeholder="$phrase_2"></textarea><textarea name="phrase_3" id="phrase_3" maxlength="220" placeholder="$phrase_3"></textarea><div class="section-title" style="margin-top:12px">$suggestions_title</div><button type="button" class="gallery-button" id="suggestionsToggle">$suggestions_button</button><div class="suggestions hidden" id="suggestionsBox">$suggestions</div></div></section>
-<section class="section"><div class="section-title">$yul_title</div><div class="grid"><input name="yul_memory_place" placeholder="$yul_place"><input name="yul_memory_detail" placeholder="$yul_detail"><input name="yul_emotion_tone" placeholder="$yul_tone"><input name="yul_magic_hint" placeholder="$yul_hint"></div></section>
+<!-- RC128: bloque YUL de detalle opcional eliminado del formulario principal para reducir fricción y mejorar conversión móvil. Backend conserva campos opcionales vacíos para no romper compatibilidad. -->
 <section class="section"><div class="section-title">$delivery_title</div><div class="soft-copy">$delivery_copy</div><label class="radio-row"><input type="radio" name="delivery_mode" value="instant" checked> <span><strong>$delivery_instant</strong><br><small>$delivery_instant_sub</small></span></label><label class="radio-row"><input type="radio" name="delivery_mode" value="scheduled"> <span><strong>$delivery_scheduled</strong><br><small>$delivery_scheduled_sub</small></span></label><div id="scheduledFields" class="grid hidden"><input type="date" name="delivery_date" id="delivery_date" aria-label="$delivery_date"><input type="time" name="delivery_time" id="delivery_time" aria-label="$delivery_time"></div><div class="hint">$delivery_hint</div></section>
 <section class="section"><div class="section-title">$gift_title</div><input name="gift_amount" id="gift_amount" type="number" min="0" step="0.01" value="0" placeholder="$gift_placeholder" required><input style="margin-top:12px;text-transform:uppercase" name="butterfly_discount_code" id="butterfly_discount_code" placeholder="$discount_code" autocomplete="off"><div class="mariposa-entry"><div class="mariposa-kicker">$mariposa_title</div><div class="mariposa-copy">$mariposa_intro</div><a class="mariposa-button" href="/mariposa?lang=$lang">$mariposa_cta</a><div class="mariposa-note">$mariposa_note</div></div><div class="price-line"><span>$price_base</span><strong>$base_price</strong></div><div class="price-line"><span>$gift_fee</span><strong>5%</strong></div><div class="price-line"><span>$scheduled_fee</span><strong>$scheduled_fee_value</strong></div></section>
 <section class="section trust"><div class="section-title">$trust_title</div><ul><li>$trust_1</li><li>$trust_2</li><li>$trust_3</li><li>$trust_4</li><li>$trust_5 $support_email · $support_phone</li></ul><label class="responsible"><input type="checkbox" name="responsible_use_accepted" value="accepted" id="responsible_use_accepted"> <span>$responsible</span></label><p class="legal">$legal_before <a href="/condiciones" target="_blank">$terms</a> $legal_middle <a href="/privacidad" target="_blank">$privacy</a>.</p></section><button class="submit" id="submitBtn" type="submit" disabled>$submit_disabled</button></form></main></div>
 <script>(function(){'use strict';const T=$js_texts;const IDS=['photo1','photo2','photo3','photo4','photo5','photo6'];const REQ=['photo1','photo2','photo3','photo4'];const form=document.getElementById('createForm'),btn=document.getElementById('submitBtn'),err=document.getElementById('formError'),multi=document.getElementById('allPhotosInput'),session=document.getElementById('photo_upload_session'),hint=document.getElementById('photoHint');const nativeFiles={},preuploaded={};if(session&&!session.value){session.value='rc114_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}function show(m){if(err){err.textContent=m||T.error_generic;err.classList.add('show');err.scrollIntoView({behavior:'smooth',block:'center'});}}function clear(){if(err){err.textContent='';err.classList.remove('show');}}function ready(id){const i=document.getElementById(id);return !!(nativeFiles[id]||preuploaded[id]||(i&&i.files&&i.files.length));}function miss(){return REQ.filter(id=>!ready(id));}function count(){return IDS.filter(ready).length;}function setFile(input,file){if(!input||!file)return false;nativeFiles[input.id]=file;try{if(typeof DataTransfer==='undefined')throw new Error('no DataTransfer');const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;return !!(input.files&&input.files.length);}catch(e){console.warn('RC114 keeps file in memory',input.id,e);return false;}}function preview(id,file){const box=document.getElementById(id)?.closest('.photo-box'),prev=document.getElementById('preview_'+id),st=document.getElementById('status_'+id);if(box)box.classList.add('ready');if(prev){prev.classList.add('has-image');try{prev.style.backgroundImage='url('+URL.createObjectURL(file)+')';}catch(e){}}if(st){st.textContent=T.photo_ready;st.classList.remove('loading');st.classList.add('ready');}}function status(id,msg,cls){const st=document.getElementById('status_'+id);if(!st)return;st.textContent=msg;st.classList.remove('ready','loading');if(cls)st.classList.add(cls);}function preupload(id,file){if(!file||!session)return;status(id,T.photo_uploading,'loading');const fd=new FormData();fd.append('photo_upload_session',session.value);fd.append('slot',id);fd.append('photo',file,file.name||id+'.jpg');fetch('/preupload-photo',{method:'POST',body:fd}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{if(j&&j.ok){preuploaded[id]=true;status(id,T.photo_uploaded,'ready');}}).catch(e=>{console.warn('RC114 preupload failed, native multipart fallback',id,e);status(id,T.photo_ready,'ready');}).finally(update);}function place(id,file){const input=document.getElementById(id);if(!input||!file)return;setFile(input,file);preview(id,file);preupload(id,file);update();}function update(){const c=count(),m=miss();if(hint){if(c>=6)hint.textContent=T.photos_hint_ready6;else if(!m.length)hint.textContent=T.photos_hint_ready4.replace('{count}',String(c));else if(c>0)hint.textContent=T.photos_hint_partial.replace('{count}',String(c)).replace('{missing}',String(m.length));else hint.textContent=T.photos_hint_initial;}const ok=basic(false)&&!m.length;if(btn){btn.disabled=!ok;btn.textContent=ok?T.submit_ready:T.submit_disabled;}}function basic(showErr){for(const id of ['customer_name','customer_email','customer_phone','recipient_name','recipient_phone']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_main);return false;}}if(!document.querySelector('input[name="message_type"]:checked')){if(showErr)show(T.error_emotion);return false;}const manual=document.querySelector('input[name="phrase_mode"][value="manual"]');if(manual&&manual.checked){for(const id of ['phrase_1','phrase_2','phrase_3']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_manual);return false;}}}const scheduled=document.querySelector('input[name="delivery_mode"][value="scheduled"]');if(scheduled&&scheduled.checked){const d=document.getElementById('delivery_date')?.value||'',tm=document.getElementById('delivery_time')?.value||'';const dt=new Date(d+'T'+tm);if(!d||!tm||isNaN(dt.getTime())||dt.getTime()<=Date.now()){if(showErr)show(T.error_delivery);return false;}}const amount=parseFloat(document.getElementById('gift_amount')?.value||'0');if(Number.isNaN(amount)||amount<0){if(showErr)show(T.error_amount);return false;}if(!document.getElementById('responsible_use_accepted')?.checked){if(showErr)show(T.error_responsible);return false;}return true;}if(multi){multi.addEventListener('change',()=>{clear();Array.from(multi.files||[]).slice(0,6).forEach((f,idx)=>place(IDS[idx],f));multi.value='';update();});}IDS.forEach(id=>{const input=document.getElementById(id);if(input)input.addEventListener('change',()=>{const f=input.files&&input.files[0];if(f){nativeFiles[id]=f;preview(id,f);preupload(id,f);}update();});});document.querySelectorAll('input,textarea,select').forEach(el=>{el.addEventListener('input',update);el.addEventListener('change',update);});document.querySelectorAll('input[name="phrase_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('manualPhrases')?.classList.toggle('hidden',!(el.value==='manual'&&el.checked));update();}));document.querySelectorAll('input[name="delivery_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('scheduledFields')?.classList.toggle('hidden',!document.querySelector('input[name="delivery_mode"][value="scheduled"]')?.checked);update();}));document.getElementById('suggestionsToggle')?.addEventListener('click',()=>document.getElementById('suggestionsBox')?.classList.toggle('hidden'));document.querySelectorAll('.suggestion-chip').forEach(b=>b.addEventListener('click',()=>{const t=['phrase_1','phrase_2','phrase_3'].map(id=>document.getElementById(id)).find(el=>el&&!String(el.value||'').trim());if(t){t.value=b.getAttribute('data-text')||b.textContent||'';t.dispatchEvent(new Event('input',{bubbles:true}));}}));if(form)form.addEventListener('submit',e=>{clear();if(!basic(true)){e.preventDefault();return false;}if(miss().length){e.preventDefault();show(T.error_photos);return false;}btn.disabled=true;btn.textContent=T.opening_checkout;return true;});update();})();</script></body></html>
 ''').safe_substitute(
         html_lang=esc(T["html_lang"]), meta_title=esc(T["meta_title"]), subtitle=esc(T["subtitle"]), es_active="active" if lang=="es" else "", en_active="active" if lang=="en" else "", lang_es=esc(T["lang_es"]), lang_en=esc(T["lang_en"]), intro1=esc(T["intro1"]), intro2=esc(T["intro2"]), intro3=esc(T["intro3"]), intro4=esc(T["intro4"]), lang=esc(lang), creator_title=esc(T["creator_title"]), customer_name=esc(T["customer_name"]), customer_email=esc(T["customer_email"]), customer_phone=esc(T["customer_phone"]), recipient_title=esc(T["recipient_title"]), recipient_name=esc(T["recipient_name"]), recipient_phone=esc(T["recipient_phone"]), recipient_email=esc(T["recipient_email"]), country_options=country_options, photos_title=esc(T["photos_title"]), photos_copy=esc(T["photos_copy"]), open_gallery=esc(T["open_gallery"]), photos_hint_initial=esc(T["photos_hint_initial"]), photo_slots=photo_slots, occasion_title=esc(T["occasion_title"]), occasion_cards=occasion_cards, occasion_date=esc(T["occasion_date"]), emotion_title=esc(T["emotion_title"]), emotion_cards=emotion_cards, words_title=esc(T["words_title"]), phrase_auto=esc(T["phrase_auto"]), phrase_manual=esc(T["phrase_manual"]), phrase_1=esc(T["phrase_1"]), phrase_2=esc(T["phrase_2"]), phrase_3=esc(T["phrase_3"]), suggestions_title=esc(T["suggestions_title"]), suggestions_button=esc(T["suggestions_button"]), suggestions=suggestions, yul_title=esc(T["yul_title"]), yul_place=esc(T["yul_place"]), yul_detail=esc(T["yul_detail"]), yul_tone=esc(T["yul_tone"]), yul_hint=esc(T["yul_hint"]), delivery_title=esc(T["delivery_title"]), delivery_copy=esc(T["delivery_copy"]), delivery_instant=esc(T["delivery_instant"]), delivery_instant_sub=esc(T["delivery_instant_sub"]), delivery_scheduled=esc(T["delivery_scheduled"]), delivery_scheduled_sub=esc(T["delivery_scheduled_sub"].format(fee=money(SCHEDULED_DELIVERY_FEE))), delivery_date=esc(T["delivery_date"]), delivery_time=esc(T["delivery_time"]), delivery_hint=esc(T["delivery_hint"]), gift_title=esc(T["gift_title"]), gift_placeholder=esc(T["gift_placeholder"]), discount_code=esc(T["discount_code"]), mariposa_title=esc(T["mariposa_title"]), mariposa_intro=esc(T["mariposa_intro"]), mariposa_cta=esc(T["mariposa_cta"]), mariposa_note=esc(T["mariposa_note"]), price_base=esc(T["price_base"]), gift_fee=esc(T["gift_fee"]), scheduled_fee=esc(T["scheduled_fee"]), base_price=esc(money(BASE_PRICE)), scheduled_fee_value=esc(money(SCHEDULED_DELIVERY_FEE)), trust_title=esc(T["trust_title"]), trust_1=esc(T["trust_1"]), trust_2=esc(T["trust_2"]), trust_3=esc(T["trust_3"]), trust_4=esc(T["trust_4"]), trust_5=esc(T["trust_5"]), support_email=esc(ETERNA_SUPPORT_EMAIL), support_phone=esc(ETERNA_SUPPORT_PHONE), responsible=esc(T["responsible"]), legal_before=esc(T["legal_before"]), terms=esc(T["terms"]), legal_middle=esc(T["legal_middle"]), privacy=esc(T["privacy"]), submit_disabled=esc(T["submit_disabled"]), js_texts=js_texts)
+
+
+# =========================================================
+# RC132 — YUL INTRO LOCK
+# Añade una explicación breve de Yul al principio de /crear.
+# No toca Stripe, webhook, Twilio, WhatsApp, video engine, reacción,
+# Sender Pack, R2, pagos, workers, descuento ni Club Mariposa.
+# =========================================================
+
+_ORIGINAL_RENDER_CREATE_FORM_RC132 = render_create_form
+
+def _rc132_yul_intro_html(lang: str = "es") -> str:
+    clean_lang = "en" if str(lang or "").lower().strip() == "en" else "es"
+    if clean_lang == "en":
+        title = "Meet Yul, our butterfly."
+        body = "She will be the invisible thread of your ETERNA: she will carry your emotion to that person and bring back the moment they receive it."
+    else:
+        title = "Conoce a Yul, nuestra mariposa."
+        body = "Ella será el hilo invisible de tu ETERNA: llevará tu emoción hasta esa persona y traerá de vuelta el momento en que la reciba."
+    return """
+<section class=\"section yul-intro-card\" id=\"yulIntroCard\" style=\"border-color:rgba(54,183,255,.22);background:linear-gradient(135deg,rgba(54,183,255,.09),rgba(245,210,139,.07));\">
+  <div style=\"font-size:15px;letter-spacing:.04em;color:#f5d28b;font-weight:950;margin-bottom:8px;\">🦋 {title}</div>
+  <p class=\"soft-copy\" style=\"margin:0;color:rgba(255,255,255,.78);font-size:14.5px;line-height:1.55;\">{body}</p>
+</section>
+""".format(title=safe_text(title), body=safe_text(body))
+
+def render_create_form(initial_language: str = "es") -> str:
+    lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
+    html = _ORIGINAL_RENDER_CREATE_FORM_RC132(lang)
+    if 'id="yulIntroCard"' in html:
+        return html
+    block = _rc132_yul_intro_html(lang)
+    marker = '<form id="createForm"'
+    if marker in html:
+        return html.replace(marker, block + marker, 1)
+    fallback_marker = '<div id="formError" class="error"></div>'
+    if fallback_marker in html:
+        return html.replace(fallback_marker, block + fallback_marker, 1)
+    return html
