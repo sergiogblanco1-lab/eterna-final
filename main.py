@@ -27,6 +27,7 @@
 # - RC127: entrada visible al Club Mariposa desde /crear junto al código descuento
 # - RC133: Club Mariposa primero + compartir correcto + precio visible 29,99€
 # - RC134: limpieza final congelado, sin referencia interna a precio de test
+# - RC135: idioma ES/EN blindado + encabezado Club Mariposa con tatuaje/pintada/IA
 #
 # Mantiene intacto:
 # Stripe Checkout, webhook de pago, SMS, WhatsApp, video engine,
@@ -86,6 +87,7 @@ print("📲 RC126 MARIPOSA INSTAGRAM TAG LOCK — OPTIONAL @ + SEPARATE TAG CONS
 print("🦋 RC132 YUL INTRO LOCK — YUL EXPLAINED AT FORM START 📅")
 print("🦋 RC133 CLUB FIRST SHARE PRICE LOCK — MARIPOSA FIRST + SHARE SAFE + 29,99€ DISPLAY 🦋")
 print("🧊 RC134 FINAL FREEZE PRICE COMMENT CLEAN LOCK — NO TEST PRICE TEXT 🧊")
+print("🌍 RC135 LANGUAGE CLUB HEADER LOCK — ES/EN HARD + BUTTERFLY BODY HEADER 🦋")
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
 print("🦋 RC127 MARIPOSA VISIBLE ENTRY LOCK — CLUB ENTRY FROM /CREAR 🦋")
 import html
@@ -786,7 +788,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC134_FINAL_FREEZE_PRICE_COMMENT_CLEAN_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC135_LANGUAGE_CLUB_HEADER_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -12360,7 +12362,7 @@ def club_mariposa_get(lang: str = "es"):
         "eyebrow": "ETERNA",
         "title": "Club Mariposa",
         "lead": "It is not a social network. It is not an app. It is a community for people who believe some emotions deserve to return." if is_en else "No es una red social. No es una app. Es una comunidad de personas que creen que algunas emociones merecen volver.",
-        "photo": "Photo with a butterfly on you" if is_en else "Foto con una mariposa en ti",
+        "photo": "Photo with a butterfly on you: tattooed, painted, drawn, temporary or created with AI" if is_en else "Foto con una mariposa en ti: tatuada, pintada, dibujada, temporal o creada con IA",
         "email": "Email" if is_en else "Email",
         "instagram": "Instagram (optional)" if is_en else "Instagram opcional",
         "instagram_ph": "@username" if is_en else "@usuario",
@@ -12375,7 +12377,7 @@ def club_mariposa_get(lang: str = "es"):
         "button": "Join Club Mariposa 🦋" if is_en else "Unirme al Club Mariposa 🦋",
         "note": f"Joining gives you a unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% discount code for your first ETERNA." if is_en else f"Hacerte socio/a te da un código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% de descuento para tu primera ETERNA.",
         "switch": "Español" if is_en else "English",
-        "switch_url": "/mariposa?lang=es" if is_en else "/mariposa?lang=en",
+        "switch_url": "/mariposa?lang=es&rc=135" if is_en else "/mariposa?lang=en&rc=135",
     }
     return f"""
 <!DOCTYPE html>
@@ -12398,7 +12400,7 @@ def club_mariposa_get(lang: str = "es"):
   <form class="card" method="post" action="/mariposa" enctype="multipart/form-data">
     <input type="hidden" name="language" value="{safe_attr(ui_lang)}">
     <label>{safe_text(T['photo'])}</label>
-    <p class="note" style="margin-top:-2px;text-align:left">{safe_text("Ideally, a butterfly on your body: tattooed, painted, drawn, temporary or created for your story." if is_en else "Preferiblemente una mariposa en tu cuerpo: tatuada, pintada, dibujada, temporal o creada para tu historia.")}</p>
+    <p class="note" style="margin-top:-2px;text-align:left">{safe_text("Ideally, a butterfly on your body: tattooed, painted, drawn, temporary or created for your story." if is_en else "Preferiblemente una mariposa en tu cuerpo: tatuada, pintada, dibujada, temporal o creada con IA para tu historia.")}</p>
     <input type="file" name="photo" accept="image/*" required>
     <label>{safe_text(T['email'])}</label>
     <input type="email" name="email" placeholder="you@email.com" required>
@@ -12525,9 +12527,9 @@ async def club_mariposa_post(
 <!DOCTYPE html>
 <html lang="{safe_attr(html_lang)}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Club Mariposa</title>
 <style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:520px;border:1px solid rgba(245,210,139,.24);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b}}.code{{font-size:28px;font-weight:900;letter-spacing:.04em;background:rgba(245,210,139,.12);border:1px dashed rgba(245,210,139,.45);border-radius:18px;padding:16px;margin:18px 0}}p{{color:rgba(255,255,255,.78);line-height:1.55}}a{{display:block;margin-top:18px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}</style></head>
-<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}">{safe_text(cta)}</a>
+<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}&rc=135">{safe_text(cta)}</a>
 <button type="button" onclick="shareMariposa()" style="width:100%;border:1px solid rgba(98,211,255,.35);background:rgba(98,211,255,.08);color:#9fe7ff;border-radius:999px;padding:15px 20px;font-weight:900;margin-top:14px">{safe_text('INVITE ANOTHER BUTTERFLY' if ui_lang == 'en' else 'INVITAR A OTRA MARIPOSA')}</button>
-<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
+<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}&rc=135';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
 </div></body></html>
 """
 
@@ -20365,13 +20367,13 @@ def _rc133_club_first_html(lang: str = "es") -> str:
     clean_lang = "en" if str(lang or "").lower().strip() == "en" else "es"
     if clean_lang == "en":
         title = "Butterfly Club 🦋"
-        body = "Before you start: join the Butterfly Club, upload a photo with a butterfly on you, and receive a unique 15% discount code for your first ETERNA."
+        body = "Before you start: join the Butterfly Club. Upload a photo with a butterfly on you — tattooed, painted, drawn, temporary, or created with AI for your story — and receive a unique 15% discount code for your first ETERNA."
         cta = "GET MY 15% BEFORE STARTING"
         note = "Recommended before uploading photos, so you do not lose anything already prepared."
         url = "/mariposa?lang=en"
     else:
         title = "Club Mariposa 🦋"
-        body = "Antes de empezar: hazte socio/a del Club Mariposa, sube una foto con una mariposa en ti y recibe un código único del 15% para tu primera ETERNA."
+        body = "Antes de empezar: hazte socio/a del Club Mariposa. Sube una foto con una mariposa en ti — tatuada, pintada, dibujada, temporal o creada con IA para tu historia — y recibe un código único del 15% para tu primera ETERNA."
         cta = "CONSEGUIR MI 15% ANTES DE EMPEZAR"
         note = "Hazlo antes de subir tus fotos, así no pierdes nada de lo que prepares después."
         url = "/mariposa?lang=es"
@@ -20413,4 +20415,37 @@ def render_create_form(initial_language: str = "es") -> str:
             form_marker = '<form id="createForm"'
             if form_marker in html:
                 html = html.replace(form_marker, block + form_marker, 1)
+    return html
+
+
+# =========================================================
+# RC135 — LANGUAGE CLUB HEADER LOCK
+# Blindaje final ES/EN para /crear y Club Mariposa.
+# - Mantiene los botones de idioma como enlaces reales con cache-buster.
+# - Fuerza hidden language, <html lang>, textos Club y precio visible según idioma.
+# - Refuerza encabezado Club Mariposa con tatuaje / pintada / dibujada / temporal / IA.
+# No toca Stripe, webhook, Twilio, WhatsApp, video engine, reacción,
+# Sender Pack, R2, pagos, workers ni entrega programada.
+# =========================================================
+
+_ORIGINAL_RENDER_CREATE_FORM_RC135 = render_create_form
+
+def render_create_form(initial_language: str = "es") -> str:
+    lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
+    html = _ORIGINAL_RENDER_CREATE_FORM_RC135(lang)
+    try:
+        html = html.replace('href="/crear?lang=es"', 'href="/crear?lang=es&rc=135"')
+        html = html.replace('href="/crear?lang=en"', 'href="/crear?lang=en&rc=135"')
+        html = html.replace('href="/mariposa?lang=es"', 'href="/mariposa?lang=es&rc=135"')
+        html = html.replace('href="/mariposa?lang=en"', 'href="/mariposa?lang=en&rc=135"')
+        html = re.sub(r'name="language" id="language" value="(?:es|en)"', f'name="language" id="language" value="{lang}"', html, count=1)
+        html = re.sub(r'<html lang="(?:es|en)">', f'<html lang="{lang}">', html, count=1)
+        if lang == "en":
+            html = html.replace('class="language-option active" data-lang="es"', 'class="language-option " data-lang="es"')
+            html = html.replace('class="language-option " data-lang="en"', 'class="language-option active" data-lang="en"')
+        else:
+            html = html.replace('class="language-option active" data-lang="en"', 'class="language-option " data-lang="en"')
+            html = html.replace('class="language-option " data-lang="es"', 'class="language-option active" data-lang="es"')
+    except Exception as e:
+        print('[WARN] RC135 language hard lock fallback:', e)
     return html
