@@ -27,6 +27,9 @@
 # - RC127: entrada visible al Club Mariposa desde /crear junto al código descuento
 # - RC133: Club Mariposa primero + compartir correcto + precio visible 29,99€
 # - RC134: limpieza final congelado, sin referencia interna a precio de test
+# - RC136: campos obligatorios visibles + selector Club limpio
+# - RC137: los errores rojos solo aparecen tras intentar enviar
+# - RC138: botón siempre pulsable; al click muestra campos obligatorios que faltan
 # - RC135: idioma ES/EN blindado + encabezado Club Mariposa con tatuaje/pintada/IA
 # - RC136: campos obligatorios marcados en rojo + selector archivo Club traducido
 #
@@ -88,6 +91,9 @@ print("📲 RC126 MARIPOSA INSTAGRAM TAG LOCK — OPTIONAL @ + SEPARATE TAG CONS
 print("🦋 RC132 YUL INTRO LOCK — YUL EXPLAINED AT FORM START 📅")
 print("🦋 RC133 CLUB FIRST SHARE PRICE LOCK — MARIPOSA FIRST + SHARE SAFE + 29,99€ DISPLAY 🦋")
 print("🧊 RC134 FINAL FREEZE PRICE COMMENT CLEAN LOCK — NO TEST PRICE TEXT 🧊")
+print("🛟 RC136 REQUIRED FIELDS CLUB FILE LOCK — RED ERRORS + FILE LABEL CLEAN 🛟")
+print("✅ RC137 REQUIRED FIELDS ONLY AFTER SUBMIT LOCK — NO RED ON LOAD ✅")
+print("🧭 RC138 CLICK TO SHOW MISSING FIELDS LOCK — BUTTON ALWAYS CLICKABLE 🧭")
 print("🌍 RC135 LANGUAGE CLUB HEADER LOCK — ES/EN HARD + BUTTERFLY BODY HEADER 🦋")
 print("🧭 RC136 REQUIRED FIELDS + CLUB FILE LABEL LOCK — RED FIELD FINDER + CLEAN CLUB FILE PICKER 🧭")
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
@@ -790,7 +796,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC136_REQUIRED_FIELDS_CLUB_FILE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC138_CLICK_TO_SHOW_MISSING_FIELDS_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -12379,7 +12385,7 @@ def club_mariposa_get(lang: str = "es"):
         "button": "Join Club Mariposa" if is_en else "Unirme al Club Mariposa 🦋",
         "note": f"Joining gives you a unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% discount code for your first ETERNA." if is_en else f"Hacerte socio/a te da un código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% de descuento para tu primera ETERNA.",
         "switch": "Español" if is_en else "English",
-        "switch_url": "/mariposa?lang=es&rc=136" if is_en else "/mariposa?lang=en&rc=136",
+        "switch_url": "/mariposa?lang=es&rc=138" if is_en else "/mariposa?lang=en&rc=138",
     }
     return f"""
 <!DOCTYPE html>
@@ -12547,9 +12553,9 @@ async def club_mariposa_post(
 <!DOCTYPE html>
 <html lang="{safe_attr(html_lang)}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Club Mariposa</title>
 <style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:520px;border:1px solid rgba(245,210,139,.24);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b}}.code{{font-size:28px;font-weight:900;letter-spacing:.04em;background:rgba(245,210,139,.12);border:1px dashed rgba(245,210,139,.45);border-radius:18px;padding:16px;margin:18px 0}}p{{color:rgba(255,255,255,.78);line-height:1.55}}a{{display:block;margin-top:18px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}</style></head>
-<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}&rc=136">{safe_text(cta)}</a>
+<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}&rc=138">{safe_text(cta)}</a>
 <button type="button" onclick="shareMariposa()" style="width:100%;border:1px solid rgba(98,211,255,.35);background:rgba(98,211,255,.08);color:#9fe7ff;border-radius:999px;padding:15px 20px;font-weight:900;margin-top:14px">{safe_text('INVITE ANOTHER BUTTERFLY' if ui_lang == 'en' else 'INVITAR A OTRA MARIPOSA')}</button>
-<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}&rc=136';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
+<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}&rc=138';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
 </div></body></html>
 """
 
@@ -20323,14 +20329,14 @@ def render_create_form(initial_language: str = "es") -> str:
 <!-- RC128: bloque YUL de detalle opcional eliminado del formulario principal para reducir fricción y mejorar conversión móvil. Backend conserva campos opcionales vacíos para no romper compatibilidad. -->
 <section class="section"><div class="section-title">$delivery_title</div><div class="soft-copy">$delivery_copy</div><label class="radio-row"><input type="radio" name="delivery_mode" value="instant" checked> <span><strong>$delivery_instant</strong><br><small>$delivery_instant_sub</small></span></label><label class="radio-row"><input type="radio" name="delivery_mode" value="scheduled"> <span><strong>$delivery_scheduled</strong><br><small>$delivery_scheduled_sub</small></span></label><div id="scheduledFields" class="grid hidden"><input type="date" name="delivery_date" id="delivery_date" aria-label="$delivery_date"><input type="time" name="delivery_time" id="delivery_time" aria-label="$delivery_time"></div><div class="hint">$delivery_hint</div></section>
 <section class="section"><div class="section-title">$gift_title</div><input name="gift_amount" id="gift_amount" type="number" min="0" step="0.01" value="0" placeholder="$gift_placeholder" required><input style="margin-top:12px;text-transform:uppercase" name="butterfly_discount_code" id="butterfly_discount_code" placeholder="$discount_code" autocomplete="off"><div class="mariposa-entry"><div class="mariposa-kicker">$mariposa_title</div><div class="mariposa-copy">$mariposa_intro</div><a class="mariposa-button" href="/mariposa?lang=$lang">$mariposa_cta</a><div class="mariposa-note">$mariposa_note</div></div><div class="price-line"><span>$price_base</span><strong>$base_price</strong></div><div class="price-line"><span>$gift_fee</span><strong>5%</strong></div><div class="price-line"><span>$scheduled_fee</span><strong>$scheduled_fee_value</strong></div></section>
-<section class="section trust"><div class="section-title">$trust_title</div><ul><li>$trust_1</li><li>$trust_2</li><li>$trust_3</li><li>$trust_4</li><li>$trust_5 $support_email · $support_phone</li></ul><label class="responsible"><input type="checkbox" name="responsible_use_accepted" value="accepted" id="responsible_use_accepted"> <span>$responsible</span></label><p class="legal">$legal_before <a href="/condiciones" target="_blank">$terms</a> $legal_middle <a href="/privacidad" target="_blank">$privacy</a>.</p></section><button class="submit" id="submitBtn" type="submit" disabled>$submit_disabled</button></form></main></div>
+<section class="section trust"><div class="section-title">$trust_title</div><ul><li>$trust_1</li><li>$trust_2</li><li>$trust_3</li><li>$trust_4</li><li>$trust_5 $support_email · $support_phone</li></ul><label class="responsible"><input type="checkbox" name="responsible_use_accepted" value="accepted" id="responsible_use_accepted"> <span>$responsible</span></label><p class="legal">$legal_before <a href="/condiciones" target="_blank">$terms</a> $legal_middle <a href="/privacidad" target="_blank">$privacy</a>.</p></section><button class="submit" id="submitBtn" type="submit">$submit_disabled</button></form></main></div>
 <script>(function(){'use strict';
 const T=$js_texts;
 const IDS=['photo1','photo2','photo3','photo4','photo5','photo6'];
 const REQ=['photo1','photo2','photo3','photo4'];
 const form=document.getElementById('createForm'),btn=document.getElementById('submitBtn'),err=document.getElementById('formError'),multi=document.getElementById('allPhotosInput'),session=document.getElementById('photo_upload_session'),hint=document.getElementById('photoHint');
 const nativeFiles={},preuploaded={};
-if(session&&!session.value){session.value='rc136_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
+if(session&&!session.value){session.value='rc137_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
 function show(m){if(err){err.textContent=m||T.error_generic;err.classList.add('show');err.scrollIntoView({behavior:'smooth',block:'center'});}}
 function clear(){if(err){err.textContent='';err.classList.remove('show');}clearMissingMarks();}
 function labelFor(el){if(!el)return'';const id=el.id||'';const placeholders={customer_name:T.customer_name,customer_email:T.customer_email,customer_phone:T.customer_phone,recipient_name:T.recipient_name,recipient_phone:T.recipient_phone,recipient_email:T.recipient_email,phrase_1:T.phrase_1,phrase_2:T.phrase_2,phrase_3:T.phrase_3,gift_amount:T.gift_placeholder,delivery_date:T.delivery_date,delivery_time:T.delivery_time};return placeholders[id]||el.getAttribute('placeholder')||el.getAttribute('aria-label')||el.name||'';}
@@ -20341,16 +20347,16 @@ function markPhotoMissing(ids){clearMissingMarks();let first=null;ids.forEach(id
 function ready(id){const i=document.getElementById(id);return !!(nativeFiles[id]||preuploaded[id]||(i&&i.files&&i.files.length));}
 function miss(){return REQ.filter(id=>!ready(id));}
 function count(){return IDS.filter(ready).length;}
-function setFile(input,file){if(!input||!file)return false;nativeFiles[input.id]=file;try{if(typeof DataTransfer==='undefined')throw new Error('no DataTransfer');const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;return !!(input.files&&input.files.length);}catch(e){console.warn('RC136 keeps file in memory',input.id,e);return false;}}
+function setFile(input,file){if(!input||!file)return false;nativeFiles[input.id]=file;try{if(typeof DataTransfer==='undefined')throw new Error('no DataTransfer');const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;return !!(input.files&&input.files.length);}catch(e){console.warn('RC138 keeps file in memory',input.id,e);return false;}}
 function preview(id,file){const box=document.getElementById(id)?.closest('.photo-box'),prev=document.getElementById('preview_'+id),st=document.getElementById('status_'+id);if(box){box.classList.add('ready');box.classList.remove('field-missing');}if(prev){prev.classList.add('has-image');try{prev.style.backgroundImage='url('+URL.createObjectURL(file)+')';}catch(e){}}if(st){st.textContent=T.photo_ready;st.classList.remove('loading');st.classList.add('ready');}}
 function status(id,msg,cls){const st=document.getElementById('status_'+id);if(!st)return;st.textContent=msg;st.classList.remove('ready','loading');if(cls)st.classList.add(cls);}
-function preupload(id,file){if(!file||!session)return;status(id,T.photo_uploading,'loading');const fd=new FormData();fd.append('photo_upload_session',session.value);fd.append('slot',id);fd.append('photo',file,file.name||id+'.jpg');fetch('/preupload-photo',{method:'POST',body:fd}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{if(j&&j.ok){preuploaded[id]=true;status(id,T.photo_uploaded,'ready');}}).catch(e=>{console.warn('RC136 preupload failed, native multipart fallback',id,e);status(id,T.photo_ready,'ready');}).finally(update);}
+function preupload(id,file){if(!file||!session)return;status(id,T.photo_uploading,'loading');const fd=new FormData();fd.append('photo_upload_session',session.value);fd.append('slot',id);fd.append('photo',file,file.name||id+'.jpg');fetch('/preupload-photo',{method:'POST',body:fd}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{if(j&&j.ok){preuploaded[id]=true;status(id,T.photo_uploaded,'ready');}}).catch(e=>{console.warn('RC138 preupload failed, native multipart fallback',id,e);status(id,T.photo_ready,'ready');}).finally(update);}
 function place(id,file){const input=document.getElementById(id);if(!input||!file)return;setFile(input,file);preview(id,file);preupload(id,file);update();}
-function validateRequiredElement(id){const el=document.getElementById(id);if(!el)return true;if(el.type==='email'&&String(el.value||'').trim()&&typeof el.checkValidity==='function'&&!el.checkValidity()){markMissing(el,(T.error_missing_named||T.error_generic).replace('{field}',labelFor(el)));return false;}if(!String(el.value||'').trim()){markMissing(el,(T.error_missing_named||T.error_generic).replace('{field}',labelFor(el)));return false;}el.classList.remove('field-missing');return true;}
-function update(){const c=count(),m=miss();if(hint){if(c>=6)hint.textContent=T.photos_hint_ready6;else if(!m.length)hint.textContent=T.photos_hint_ready4.replace('{count}',String(c));else if(c>0)hint.textContent=T.photos_hint_partial.replace('{count}',String(c)).replace('{missing}',String(m.length));else hint.textContent=T.photos_hint_initial;}const ok=basic(false)&&!m.length;if(btn){btn.disabled=!ok;btn.textContent=ok?T.submit_ready:T.submit_disabled;}}
-function basic(showErr){for(const id of ['customer_name','customer_email','customer_phone','recipient_name','recipient_phone']){if(!validateRequiredElement(id)){if(!showErr)clearMissingMarks();return false;}}
+function validateRequiredElement(id,showErr){const el=document.getElementById(id);if(!el)return true;const value=String(el.value||'').trim();if(el.type==='email'&&value&&typeof el.checkValidity==='function'&&!el.checkValidity()){if(showErr)markMissing(el,(T.error_missing_named||T.error_generic).replace('{field}',labelFor(el)));return false;}if(!value){if(showErr)markMissing(el,(T.error_missing_named||T.error_generic).replace('{field}',labelFor(el)));return false;}if(showErr)el.classList.remove('field-missing');return true;}
+function update(){const c=count(),m=miss();if(hint){if(c>=6)hint.textContent=T.photos_hint_ready6;else if(!m.length)hint.textContent=T.photos_hint_ready4.replace('{count}',String(c));else if(c>0)hint.textContent=T.photos_hint_partial.replace('{count}',String(c)).replace('{missing}',String(m.length));else hint.textContent=T.photos_hint_initial;}const ok=basic(false)&&!m.length;if(btn){btn.disabled=false;btn.textContent=ok?T.submit_ready:T.submit_disabled;}}
+function basic(showErr){for(const id of ['customer_name','customer_email','customer_phone','recipient_name','recipient_phone']){if(!validateRequiredElement(id,showErr)){return false;}}
 const emotion=document.querySelector('input[name="message_type"]:checked');if(!emotion){if(showErr){const grid=document.querySelector('.emotion-grid');if(grid){clearMissingMarks();grid.classList.add('field-missing');addMissingNote(grid);try{grid.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}}show(T.error_emotion);}return false;}
-const manual=document.querySelector('input[name="phrase_mode"][value="manual"]');if(manual&&manual.checked){for(const id of ['phrase_1','phrase_2','phrase_3']){if(!validateRequiredElement(id)){if(!showErr)clearMissingMarks();return false;}}}
+const manual=document.querySelector('input[name="phrase_mode"][value="manual"]');if(manual&&manual.checked){for(const id of ['phrase_1','phrase_2','phrase_3']){if(!validateRequiredElement(id,showErr)){return false;}}}
 const scheduled=document.querySelector('input[name="delivery_mode"][value="scheduled"]');if(scheduled&&scheduled.checked){const dEl=document.getElementById('delivery_date'),tEl=document.getElementById('delivery_time');const d=dEl?.value||'',tm=tEl?.value||'';const dt=new Date(d+'T'+tm);if(!d){if(showErr)markMissing(dEl,T.error_delivery);return false;}if(!tm){if(showErr)markMissing(tEl,T.error_delivery);return false;}if(isNaN(dt.getTime())||dt.getTime()<=Date.now()){if(showErr)markMissing(dEl,T.error_delivery);return false;}}
 const amountEl=document.getElementById('gift_amount');const amount=parseFloat(amountEl?.value||'0');if(Number.isNaN(amount)||amount<0){if(showErr)markMissing(amountEl,T.error_amount);return false;}
 const resp=document.getElementById('responsible_use_accepted');if(!resp?.checked){if(showErr)markMissing(resp,T.error_responsible);return false;}
@@ -20362,7 +20368,7 @@ document.querySelectorAll('input[name="phrase_mode"]').forEach(el=>el.addEventLi
 document.querySelectorAll('input[name="delivery_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('scheduledFields')?.classList.toggle('hidden',!document.querySelector('input[name="delivery_mode"][value="scheduled"]')?.checked);update();}));
 document.getElementById('suggestionsToggle')?.addEventListener('click',()=>document.getElementById('suggestionsBox')?.classList.toggle('hidden'));
 document.querySelectorAll('.suggestion-chip').forEach(b=>b.addEventListener('click',()=>{const t=['phrase_1','phrase_2','phrase_3'].map(id=>document.getElementById(id)).find(el=>el&&!String(el.value||'').trim());if(t){t.value=b.getAttribute('data-text')||b.textContent||'';t.dispatchEvent(new Event('input',{bubbles:true}));}}));
-if(form)form.addEventListener('submit',e=>{clear();if(!basic(true)){e.preventDefault();return false;}const missing=miss();if(missing.length){e.preventDefault();markPhotoMissing(missing);return false;}btn.disabled=true;btn.textContent=T.opening_checkout;return true;});
+if(form)form.addEventListener('submit',e=>{clear();if(!basic(true)){e.preventDefault();if(btn)btn.disabled=false;return false;}const missing=miss();if(missing.length){e.preventDefault();markPhotoMissing(missing);if(btn)btn.disabled=false;return false;}if(btn){btn.disabled=true;btn.textContent=T.opening_checkout;}return true;});
 update();
 })();</script></body></html>
 ''').safe_substitute(
@@ -20494,10 +20500,10 @@ def render_create_form(initial_language: str = "es") -> str:
     lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
     html = _ORIGINAL_RENDER_CREATE_FORM_RC135(lang)
     try:
-        html = html.replace('href="/crear?lang=es"', 'href="/crear?lang=es&rc=136"')
-        html = html.replace('href="/crear?lang=en"', 'href="/crear?lang=en&rc=136"')
-        html = html.replace('href="/mariposa?lang=es"', 'href="/mariposa?lang=es&rc=136"')
-        html = html.replace('href="/mariposa?lang=en"', 'href="/mariposa?lang=en&rc=136"')
+        html = html.replace('href="/crear?lang=es"', 'href="/crear?lang=es&rc=138"')
+        html = html.replace('href="/crear?lang=en"', 'href="/crear?lang=en&rc=138"')
+        html = html.replace('href="/mariposa?lang=es"', 'href="/mariposa?lang=es&rc=138"')
+        html = html.replace('href="/mariposa?lang=en"', 'href="/mariposa?lang=en&rc=138"')
         html = re.sub(r'name="language" id="language" value="(?:es|en)"', f'name="language" id="language" value="{lang}"', html, count=1)
         html = re.sub(r'<html lang="(?:es|en)">', f'<html lang="{lang}">', html, count=1)
         if lang == "en":
@@ -20527,7 +20533,7 @@ def render_create_form(initial_language: str = "es") -> str:
     lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
     html = _ORIGINAL_RENDER_CREATE_FORM_RC136(lang)
     try:
-        html = html.replace('&rc=135', '&rc=136')
+        html = html.replace('&rc=138', '&rc=138')
         html = html.replace('Club Mariposa 🦋', 'Club Mariposa')
         html = html.replace('Butterfly Club 🦋', 'Butterfly Club')
     except Exception as e:
