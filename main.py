@@ -29,6 +29,9 @@
 # - RC134: limpieza final congelado, sin referencia interna a precio de test
 # - RC136: campos obligatorios visibles + selector Club limpio
 # - RC137: los errores rojos solo aparecen tras intentar enviar
+# - RC138: botón siempre pulsable y errores solo tras click
+# - RC139: Club persistente + registros + trazabilidad
+# - RC140: now_iso disponible antes de init_db para que Render arranque
 # - RC138: botón siempre pulsable; al click muestra campos obligatorios que faltan
 # - RC135: idioma ES/EN blindado + encabezado Club Mariposa con tatuaje/pintada/IA
 # - RC136: campos obligatorios marcados en rojo + selector archivo Club traducido
@@ -95,6 +98,7 @@ print("🛟 RC136 REQUIRED FIELDS CLUB FILE LOCK — RED ERRORS + FILE LABEL CLE
 print("✅ RC137 REQUIRED FIELDS ONLY AFTER SUBMIT LOCK — NO RED ON LOAD ✅")
 print("🧭 RC138 CLICK TO SHOW MISSING FIELDS LOCK — BUTTON ALWAYS CLICKABLE 🧭")
 print("🦋 RC139 CLUB PERSISTENT TRACE LOCK — MEMBER COUNTER + RECORDS + TRACE 🦋")
+print("🛟 RC140 CLUB TRACE STARTUP FIX LOCK — NOW_ISO SAFE + TRACE 🛟")
 print("🌍 RC135 LANGUAGE CLUB HEADER LOCK — ES/EN HARD + BUTTERFLY BODY HEADER 🦋")
 print("🧭 RC136 REQUIRED FIELDS + CLUB FILE LABEL LOCK — RED FIELD FINDER + CLEAN CLUB FILE PICKER 🧭")
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
@@ -800,7 +804,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC139_CLUB_PERSISTENT_TRACE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC140_CLUB_TRACE_STARTUP_FIX_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2455,6 +2459,20 @@ def add_column_if_missing(table_name: str, column_name: str, sql: str):
         cur.execute(sql)
         conn.commit()
         conn.close()
+
+
+
+# =========================================================
+# RC140 — TIME HELPERS EARLY SAFE
+# init_db se ejecuta durante el arranque. Estas funciones deben existir
+# antes de init_db para que Render no caiga con NameError.
+# =========================================================
+def now_dt() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def now_iso() -> str:
+    return now_dt().isoformat()
 
 
 def init_db():
@@ -12591,7 +12609,7 @@ def club_mariposa_get(lang: str = "es"):
         "button": "Join Club Mariposa" if is_en else "Unirme al Club Mariposa 🦋",
         "note": f"Joining gives you a unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% discount code for your first ETERNA." if is_en else f"Hacerte socio/a te da un código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% de descuento para tu primera ETERNA.",
         "switch": "Español" if is_en else "English",
-        "switch_url": "/mariposa?lang=es&rc=139" if is_en else "/mariposa?lang=en&rc=139",
+        "switch_url": "/mariposa?lang=es&rc=140" if is_en else "/mariposa?lang=en&rc=140",
     }
     return f"""
 <!DOCTYPE html>
@@ -12772,9 +12790,9 @@ async def club_mariposa_post(
 <!DOCTYPE html>
 <html lang="{safe_attr(html_lang)}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Club Mariposa</title>
 <style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:520px;border:1px solid rgba(245,210,139,.24);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b}}.code{{font-size:28px;font-weight:900;letter-spacing:.04em;background:rgba(245,210,139,.12);border:1px dashed rgba(245,210,139,.45);border-radius:18px;padding:16px;margin:18px 0}}p{{color:rgba(255,255,255,.78);line-height:1.55}}a{{display:block;margin-top:18px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}</style></head>
-<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}&rc=139">{safe_text(cta)}</a>
+<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}&rc=140">{safe_text(cta)}</a>
 <button type="button" onclick="shareMariposa()" style="width:100%;border:1px solid rgba(98,211,255,.35);background:rgba(98,211,255,.08);color:#9fe7ff;border-radius:999px;padding:15px 20px;font-weight:900;margin-top:14px;cursor:pointer">{safe_text('INVITE ANOTHER BUTTERFLY' if ui_lang == 'en' else 'INVITAR A OTRA MARIPOSA')}</button>
-<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}&rc=139';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
+<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}&rc=140';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
 </div></body></html>
 """
 
@@ -20719,10 +20737,10 @@ def render_create_form(initial_language: str = "es") -> str:
     lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
     html = _ORIGINAL_RENDER_CREATE_FORM_RC135(lang)
     try:
-        html = html.replace('href="/crear?lang=es"', 'href="/crear?lang=es&rc=139"')
-        html = html.replace('href="/crear?lang=en"', 'href="/crear?lang=en&rc=139"')
-        html = html.replace('href="/mariposa?lang=es"', 'href="/mariposa?lang=es&rc=139"')
-        html = html.replace('href="/mariposa?lang=en"', 'href="/mariposa?lang=en&rc=139"')
+        html = html.replace('href="/crear?lang=es"', 'href="/crear?lang=es&rc=140"')
+        html = html.replace('href="/crear?lang=en"', 'href="/crear?lang=en&rc=140"')
+        html = html.replace('href="/mariposa?lang=es"', 'href="/mariposa?lang=es&rc=140"')
+        html = html.replace('href="/mariposa?lang=en"', 'href="/mariposa?lang=en&rc=140"')
         html = re.sub(r'name="language" id="language" value="(?:es|en)"', f'name="language" id="language" value="{lang}"', html, count=1)
         html = re.sub(r'<html lang="(?:es|en)">', f'<html lang="{lang}">', html, count=1)
         if lang == "en":
@@ -20752,7 +20770,7 @@ def render_create_form(initial_language: str = "es") -> str:
     lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
     html = _ORIGINAL_RENDER_CREATE_FORM_RC136(lang)
     try:
-        html = html.replace('&rc=139', '&rc=139')
+        html = html.replace('&rc=140', '&rc=140')
         html = html.replace('Club Mariposa 🦋', 'Club Mariposa')
         html = html.replace('Butterfly Club 🦋', 'Butterfly Club')
     except Exception as e:
