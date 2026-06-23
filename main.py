@@ -25,6 +25,8 @@
 # - RC131: formulario limpio final sin fecha importante extra + entrega programada intacta
 # - RC128: elimina del formulario principal el bloque YUL de detalle opcional para mejorar conversión móvil
 # - RC127: entrada visible al Club Mariposa desde /crear junto al código descuento
+# - RC133: Club Mariposa primero + compartir correcto + precio visible 29,99€
+# - RC134: limpieza final congelado, sin referencia interna a precio de test
 #
 # Mantiene intacto:
 # Stripe Checkout, webhook de pago, SMS, WhatsApp, video engine,
@@ -82,12 +84,15 @@ print("🚀 RC124 LAUNCH AUDIT FIX — EN FORM DISCOUNT KEY LOCK 🚀")
 print("🛟 RC125 HUMAN ERROR LOCK — INVALID CODE + TOKEN NICE ERROR + IP PRIVACY 🛟")
 print("📲 RC126 MARIPOSA INSTAGRAM TAG LOCK — OPTIONAL @ + SEPARATE TAG CONSENT 📲")
 print("🦋 RC132 YUL INTRO LOCK — YUL EXPLAINED AT FORM START 📅")
+print("🦋 RC133 CLUB FIRST SHARE PRICE LOCK — MARIPOSA FIRST + SHARE SAFE + 29,99€ DISPLAY 🦋")
+print("🧊 RC134 FINAL FREEZE PRICE COMMENT CLEAN LOCK — NO TEST PRICE TEXT 🧊")
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
 print("🦋 RC127 MARIPOSA VISIBLE ENTRY LOCK — CLUB ENTRY FROM /CREAR 🦋")
 import html
 import json
 import mimetypes
 import os
+import re
 import secrets
 import sqlite3
 import traceback
@@ -781,7 +786,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC132_YUL_INTRO_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC134_FINAL_FREEZE_PRICE_COMMENT_CLEAN_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -10313,7 +10318,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             "Sin coste extra.": "No extra cost.",
             "Guardarlo y entregarlo en un momento exacto": "Save it and deliver it at an exact moment",
             "Dinero a regalar": "Gift amount",
-            "Precio base ETERNA: 1.00€": "Base ETERNA price: €1.00",
+            "Precio base ETERNA: 29,99€": "Base ETERNA price: €29.99",
             "Privado y seguro": "Private and secure",
             "✓ Tus fotos son privadas.": "✓ Your photos are private.",
             "✓ El pago se realiza de forma segura con Stripe.": "✓ Payment is processed securely with Stripe.",
@@ -12355,7 +12360,7 @@ def club_mariposa_get(lang: str = "es"):
         "eyebrow": "ETERNA",
         "title": "Club Mariposa",
         "lead": "It is not a social network. It is not an app. It is a community for people who believe some emotions deserve to return." if is_en else "No es una red social. No es una app. Es una comunidad de personas que creen que algunas emociones merecen volver.",
-        "photo": "Photo showing a person + a butterfly" if is_en else "Foto donde aparezca persona + mariposa",
+        "photo": "Photo with a butterfly on you" if is_en else "Foto con una mariposa en ti",
         "email": "Email" if is_en else "Email",
         "instagram": "Instagram (optional)" if is_en else "Instagram opcional",
         "instagram_ph": "@username" if is_en else "@usuario",
@@ -12364,11 +12369,11 @@ def club_mariposa_get(lang: str = "es"):
         "city": "City (optional)" if is_en else "Ciudad opcional",
         "city_ph": "Madrid, London..." if is_en else "Madrid",
         "story": "Short story" if is_en else "Historia corta",
-        "story_ph": "I carry it for my mother..." if is_en else "La llevo por mi madre...",
+        "story_ph": "This butterfly means..." if is_en else "Esta mariposa significa...",
         "join": "Join Club Mariposa." if is_en else "Unirme al Club Mariposa.",
         "publish": "I authorize my photo/story to appear in a future gallery or map, never with exact location." if is_en else "Autorizo que mi foto/historia puedan aparecer en una futura galería o mapa, nunca con ubicación exacta.",
         "button": "Join Club Mariposa 🦋" if is_en else "Unirme al Club Mariposa 🦋",
-        "note": f"You will receive a unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% code for your first ETERNA." if is_en else f"Recibirás un código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% para tu primera ETERNA.",
+        "note": f"Joining gives you a unique {CLUB_MARIPOSA_DISCOUNT_PERCENT}% discount code for your first ETERNA." if is_en else f"Hacerte socio/a te da un código único del {CLUB_MARIPOSA_DISCOUNT_PERCENT}% de descuento para tu primera ETERNA.",
         "switch": "Español" if is_en else "English",
         "switch_url": "/mariposa?lang=es" if is_en else "/mariposa?lang=en",
     }
@@ -12393,6 +12398,7 @@ def club_mariposa_get(lang: str = "es"):
   <form class="card" method="post" action="/mariposa" enctype="multipart/form-data">
     <input type="hidden" name="language" value="{safe_attr(ui_lang)}">
     <label>{safe_text(T['photo'])}</label>
+    <p class="note" style="margin-top:-2px;text-align:left">{safe_text("Ideally, a butterfly on your body: tattooed, painted, drawn, temporary or created for your story." if is_en else "Preferiblemente una mariposa en tu cuerpo: tatuada, pintada, dibujada, temporal o creada para tu historia.")}</p>
     <input type="file" name="photo" accept="image/*" required>
     <label>{safe_text(T['email'])}</label>
     <input type="email" name="email" placeholder="you@email.com" required>
@@ -12519,7 +12525,10 @@ async def club_mariposa_post(
 <!DOCTYPE html>
 <html lang="{safe_attr(html_lang)}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Club Mariposa</title>
 <style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:520px;border:1px solid rgba(245,210,139,.24);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b}}.code{{font-size:28px;font-weight:900;letter-spacing:.04em;background:rgba(245,210,139,.12);border:1px dashed rgba(245,210,139,.45);border-radius:18px;padding:16px;margin:18px 0}}p{{color:rgba(255,255,255,.78);line-height:1.55}}a{{display:block;margin-top:18px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}</style></head>
-<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}">{safe_text(cta)}</a></div></body></html>
+<body><div class="card"><h1>{safe_text(title)}</h1><p>{html.escape(member_code)}</p><p>{safe_text(code_text)}</p><div class="code">{html.escape(discount_code)}</div><p>{safe_text(email_text)}</p><p>{safe_text(tag_text)}</p><a href="/crear?lang={safe_attr(ui_lang)}">{safe_text(cta)}</a>
+<button type="button" onclick="shareMariposa()" style="width:100%;border:1px solid rgba(98,211,255,.35);background:rgba(98,211,255,.08);color:#9fe7ff;border-radius:999px;padding:15px 20px;font-weight:900;margin-top:14px">{safe_text('INVITE ANOTHER BUTTERFLY' if ui_lang == 'en' else 'INVITAR A OTRA MARIPOSA')}</button>
+<script>function shareMariposa(){{const url=window.location.origin+'/mariposa?lang={safe_attr(ui_lang)}';const text={json.dumps('Join the ETERNA Butterfly Club 🦋 Upload a photo with a butterfly on you, share your story and receive 15% off your first ETERNA:' if ui_lang == 'en' else 'Únete al Club Mariposa de ETERNA 🦋 Sube una foto con una mariposa en ti, comparte tu historia y recibe un 15% para tu primera ETERNA:')};if(navigator.share){{navigator.share({{title:'Club Mariposa ETERNA',text:text,url:url}}).catch(()=>{{}});}}else{{window.location.href='https://wa.me/?text='+encodeURIComponent(text+' '+url);}}}}</script>
+</div></body></html>
 """
 
 # =========================================================
@@ -20295,7 +20304,7 @@ def render_create_form(initial_language: str = "es") -> str:
 <section class="section trust"><div class="section-title">$trust_title</div><ul><li>$trust_1</li><li>$trust_2</li><li>$trust_3</li><li>$trust_4</li><li>$trust_5 $support_email · $support_phone</li></ul><label class="responsible"><input type="checkbox" name="responsible_use_accepted" value="accepted" id="responsible_use_accepted"> <span>$responsible</span></label><p class="legal">$legal_before <a href="/condiciones" target="_blank">$terms</a> $legal_middle <a href="/privacidad" target="_blank">$privacy</a>.</p></section><button class="submit" id="submitBtn" type="submit" disabled>$submit_disabled</button></form></main></div>
 <script>(function(){'use strict';const T=$js_texts;const IDS=['photo1','photo2','photo3','photo4','photo5','photo6'];const REQ=['photo1','photo2','photo3','photo4'];const form=document.getElementById('createForm'),btn=document.getElementById('submitBtn'),err=document.getElementById('formError'),multi=document.getElementById('allPhotosInput'),session=document.getElementById('photo_upload_session'),hint=document.getElementById('photoHint');const nativeFiles={},preuploaded={};if(session&&!session.value){session.value='rc114_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}function show(m){if(err){err.textContent=m||T.error_generic;err.classList.add('show');err.scrollIntoView({behavior:'smooth',block:'center'});}}function clear(){if(err){err.textContent='';err.classList.remove('show');}}function ready(id){const i=document.getElementById(id);return !!(nativeFiles[id]||preuploaded[id]||(i&&i.files&&i.files.length));}function miss(){return REQ.filter(id=>!ready(id));}function count(){return IDS.filter(ready).length;}function setFile(input,file){if(!input||!file)return false;nativeFiles[input.id]=file;try{if(typeof DataTransfer==='undefined')throw new Error('no DataTransfer');const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;return !!(input.files&&input.files.length);}catch(e){console.warn('RC114 keeps file in memory',input.id,e);return false;}}function preview(id,file){const box=document.getElementById(id)?.closest('.photo-box'),prev=document.getElementById('preview_'+id),st=document.getElementById('status_'+id);if(box)box.classList.add('ready');if(prev){prev.classList.add('has-image');try{prev.style.backgroundImage='url('+URL.createObjectURL(file)+')';}catch(e){}}if(st){st.textContent=T.photo_ready;st.classList.remove('loading');st.classList.add('ready');}}function status(id,msg,cls){const st=document.getElementById('status_'+id);if(!st)return;st.textContent=msg;st.classList.remove('ready','loading');if(cls)st.classList.add(cls);}function preupload(id,file){if(!file||!session)return;status(id,T.photo_uploading,'loading');const fd=new FormData();fd.append('photo_upload_session',session.value);fd.append('slot',id);fd.append('photo',file,file.name||id+'.jpg');fetch('/preupload-photo',{method:'POST',body:fd}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{if(j&&j.ok){preuploaded[id]=true;status(id,T.photo_uploaded,'ready');}}).catch(e=>{console.warn('RC114 preupload failed, native multipart fallback',id,e);status(id,T.photo_ready,'ready');}).finally(update);}function place(id,file){const input=document.getElementById(id);if(!input||!file)return;setFile(input,file);preview(id,file);preupload(id,file);update();}function update(){const c=count(),m=miss();if(hint){if(c>=6)hint.textContent=T.photos_hint_ready6;else if(!m.length)hint.textContent=T.photos_hint_ready4.replace('{count}',String(c));else if(c>0)hint.textContent=T.photos_hint_partial.replace('{count}',String(c)).replace('{missing}',String(m.length));else hint.textContent=T.photos_hint_initial;}const ok=basic(false)&&!m.length;if(btn){btn.disabled=!ok;btn.textContent=ok?T.submit_ready:T.submit_disabled;}}function basic(showErr){for(const id of ['customer_name','customer_email','customer_phone','recipient_name','recipient_phone']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_main);return false;}}if(!document.querySelector('input[name="message_type"]:checked')){if(showErr)show(T.error_emotion);return false;}const manual=document.querySelector('input[name="phrase_mode"][value="manual"]');if(manual&&manual.checked){for(const id of ['phrase_1','phrase_2','phrase_3']){const el=document.getElementById(id);if(!el||!String(el.value||'').trim()){if(showErr)show(T.error_manual);return false;}}}const scheduled=document.querySelector('input[name="delivery_mode"][value="scheduled"]');if(scheduled&&scheduled.checked){const d=document.getElementById('delivery_date')?.value||'',tm=document.getElementById('delivery_time')?.value||'';const dt=new Date(d+'T'+tm);if(!d||!tm||isNaN(dt.getTime())||dt.getTime()<=Date.now()){if(showErr)show(T.error_delivery);return false;}}const amount=parseFloat(document.getElementById('gift_amount')?.value||'0');if(Number.isNaN(amount)||amount<0){if(showErr)show(T.error_amount);return false;}if(!document.getElementById('responsible_use_accepted')?.checked){if(showErr)show(T.error_responsible);return false;}return true;}if(multi){multi.addEventListener('change',()=>{clear();Array.from(multi.files||[]).slice(0,6).forEach((f,idx)=>place(IDS[idx],f));multi.value='';update();});}IDS.forEach(id=>{const input=document.getElementById(id);if(input)input.addEventListener('change',()=>{const f=input.files&&input.files[0];if(f){nativeFiles[id]=f;preview(id,f);preupload(id,f);}update();});});document.querySelectorAll('input,textarea,select').forEach(el=>{el.addEventListener('input',update);el.addEventListener('change',update);});document.querySelectorAll('input[name="phrase_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('manualPhrases')?.classList.toggle('hidden',!(el.value==='manual'&&el.checked));update();}));document.querySelectorAll('input[name="delivery_mode"]').forEach(el=>el.addEventListener('change',()=>{document.getElementById('scheduledFields')?.classList.toggle('hidden',!document.querySelector('input[name="delivery_mode"][value="scheduled"]')?.checked);update();}));document.getElementById('suggestionsToggle')?.addEventListener('click',()=>document.getElementById('suggestionsBox')?.classList.toggle('hidden'));document.querySelectorAll('.suggestion-chip').forEach(b=>b.addEventListener('click',()=>{const t=['phrase_1','phrase_2','phrase_3'].map(id=>document.getElementById(id)).find(el=>el&&!String(el.value||'').trim());if(t){t.value=b.getAttribute('data-text')||b.textContent||'';t.dispatchEvent(new Event('input',{bubbles:true}));}}));if(form)form.addEventListener('submit',e=>{clear();if(!basic(true)){e.preventDefault();return false;}if(miss().length){e.preventDefault();show(T.error_photos);return false;}btn.disabled=true;btn.textContent=T.opening_checkout;return true;});update();})();</script></body></html>
 ''').safe_substitute(
-        html_lang=esc(T["html_lang"]), meta_title=esc(T["meta_title"]), subtitle=esc(T["subtitle"]), es_active="active" if lang=="es" else "", en_active="active" if lang=="en" else "", lang_es=esc(T["lang_es"]), lang_en=esc(T["lang_en"]), intro1=esc(T["intro1"]), intro2=esc(T["intro2"]), intro3=esc(T["intro3"]), intro4=esc(T["intro4"]), lang=esc(lang), creator_title=esc(T["creator_title"]), customer_name=esc(T["customer_name"]), customer_email=esc(T["customer_email"]), customer_phone=esc(T["customer_phone"]), recipient_title=esc(T["recipient_title"]), recipient_name=esc(T["recipient_name"]), recipient_phone=esc(T["recipient_phone"]), recipient_email=esc(T["recipient_email"]), country_options=country_options, photos_title=esc(T["photos_title"]), photos_copy=esc(T["photos_copy"]), open_gallery=esc(T["open_gallery"]), photos_hint_initial=esc(T["photos_hint_initial"]), photo_slots=photo_slots, occasion_title=esc(T["occasion_title"]), occasion_cards=occasion_cards, occasion_date=esc(T["occasion_date"]), emotion_title=esc(T["emotion_title"]), emotion_cards=emotion_cards, words_title=esc(T["words_title"]), phrase_auto=esc(T["phrase_auto"]), phrase_manual=esc(T["phrase_manual"]), phrase_1=esc(T["phrase_1"]), phrase_2=esc(T["phrase_2"]), phrase_3=esc(T["phrase_3"]), suggestions_title=esc(T["suggestions_title"]), suggestions_button=esc(T["suggestions_button"]), suggestions=suggestions, yul_title=esc(T["yul_title"]), yul_place=esc(T["yul_place"]), yul_detail=esc(T["yul_detail"]), yul_tone=esc(T["yul_tone"]), yul_hint=esc(T["yul_hint"]), delivery_title=esc(T["delivery_title"]), delivery_copy=esc(T["delivery_copy"]), delivery_instant=esc(T["delivery_instant"]), delivery_instant_sub=esc(T["delivery_instant_sub"]), delivery_scheduled=esc(T["delivery_scheduled"]), delivery_scheduled_sub=esc(T["delivery_scheduled_sub"].format(fee=money(SCHEDULED_DELIVERY_FEE))), delivery_date=esc(T["delivery_date"]), delivery_time=esc(T["delivery_time"]), delivery_hint=esc(T["delivery_hint"]), gift_title=esc(T["gift_title"]), gift_placeholder=esc(T["gift_placeholder"]), discount_code=esc(T["discount_code"]), mariposa_title=esc(T["mariposa_title"]), mariposa_intro=esc(T["mariposa_intro"]), mariposa_cta=esc(T["mariposa_cta"]), mariposa_note=esc(T["mariposa_note"]), price_base=esc(T["price_base"]), gift_fee=esc(T["gift_fee"]), scheduled_fee=esc(T["scheduled_fee"]), base_price=esc(money(BASE_PRICE)), scheduled_fee_value=esc(money(SCHEDULED_DELIVERY_FEE)), trust_title=esc(T["trust_title"]), trust_1=esc(T["trust_1"]), trust_2=esc(T["trust_2"]), trust_3=esc(T["trust_3"]), trust_4=esc(T["trust_4"]), trust_5=esc(T["trust_5"]), support_email=esc(ETERNA_SUPPORT_EMAIL), support_phone=esc(ETERNA_SUPPORT_PHONE), responsible=esc(T["responsible"]), legal_before=esc(T["legal_before"]), terms=esc(T["terms"]), legal_middle=esc(T["legal_middle"]), privacy=esc(T["privacy"]), submit_disabled=esc(T["submit_disabled"]), js_texts=js_texts)
+        html_lang=esc(T["html_lang"]), meta_title=esc(T["meta_title"]), subtitle=esc(T["subtitle"]), es_active="active" if lang=="es" else "", en_active="active" if lang=="en" else "", lang_es=esc(T["lang_es"]), lang_en=esc(T["lang_en"]), intro1=esc(T["intro1"]), intro2=esc(T["intro2"]), intro3=esc(T["intro3"]), intro4=esc(T["intro4"]), lang=esc(lang), creator_title=esc(T["creator_title"]), customer_name=esc(T["customer_name"]), customer_email=esc(T["customer_email"]), customer_phone=esc(T["customer_phone"]), recipient_title=esc(T["recipient_title"]), recipient_name=esc(T["recipient_name"]), recipient_phone=esc(T["recipient_phone"]), recipient_email=esc(T["recipient_email"]), country_options=country_options, photos_title=esc(T["photos_title"]), photos_copy=esc(T["photos_copy"]), open_gallery=esc(T["open_gallery"]), photos_hint_initial=esc(T["photos_hint_initial"]), photo_slots=photo_slots, occasion_title=esc(T["occasion_title"]), occasion_cards=occasion_cards, occasion_date=esc(T["occasion_date"]), emotion_title=esc(T["emotion_title"]), emotion_cards=emotion_cards, words_title=esc(T["words_title"]), phrase_auto=esc(T["phrase_auto"]), phrase_manual=esc(T["phrase_manual"]), phrase_1=esc(T["phrase_1"]), phrase_2=esc(T["phrase_2"]), phrase_3=esc(T["phrase_3"]), suggestions_title=esc(T["suggestions_title"]), suggestions_button=esc(T["suggestions_button"]), suggestions=suggestions, yul_title=esc(T["yul_title"]), yul_place=esc(T["yul_place"]), yul_detail=esc(T["yul_detail"]), yul_tone=esc(T["yul_tone"]), yul_hint=esc(T["yul_hint"]), delivery_title=esc(T["delivery_title"]), delivery_copy=esc(T["delivery_copy"]), delivery_instant=esc(T["delivery_instant"]), delivery_instant_sub=esc(T["delivery_instant_sub"]), delivery_scheduled=esc(T["delivery_scheduled"]), delivery_scheduled_sub=esc(T["delivery_scheduled_sub"].format(fee=money(SCHEDULED_DELIVERY_FEE))), delivery_date=esc(T["delivery_date"]), delivery_time=esc(T["delivery_time"]), delivery_hint=esc(T["delivery_hint"]), gift_title=esc(T["gift_title"]), gift_placeholder=esc(T["gift_placeholder"]), discount_code=esc(T["discount_code"]), mariposa_title=esc(T["mariposa_title"]), mariposa_intro=esc(T["mariposa_intro"]), mariposa_cta=esc(T["mariposa_cta"]), mariposa_note=esc(T["mariposa_note"]), price_base=esc(T["price_base"]), gift_fee=esc(T["gift_fee"]), scheduled_fee=esc(T["scheduled_fee"]), base_price=esc(ETERNA_DISPLAY_PRICE_TEXT_ES if lang == "es" else ETERNA_DISPLAY_PRICE_TEXT_EN), scheduled_fee_value=esc(money(SCHEDULED_DELIVERY_FEE)), trust_title=esc(T["trust_title"]), trust_1=esc(T["trust_1"]), trust_2=esc(T["trust_2"]), trust_3=esc(T["trust_3"]), trust_4=esc(T["trust_4"]), trust_5=esc(T["trust_5"]), support_email=esc(ETERNA_SUPPORT_EMAIL), support_phone=esc(ETERNA_SUPPORT_PHONE), responsible=esc(T["responsible"]), legal_before=esc(T["legal_before"]), terms=esc(T["terms"]), legal_middle=esc(T["legal_middle"]), privacy=esc(T["privacy"]), submit_disabled=esc(T["submit_disabled"]), js_texts=js_texts)
 
 
 # =========================================================
@@ -20334,4 +20343,74 @@ def render_create_form(initial_language: str = "es") -> str:
     fallback_marker = '<div id="formError" class="error"></div>'
     if fallback_marker in html:
         return html.replace(fallback_marker, block + fallback_marker, 1)
+    return html
+
+
+# =========================================================
+# RC133 — CLUB FIRST + SHARE SAFE + PRICE DISPLAY LOCK
+# - Club Mariposa aparece al principio del formulario, antes de cualquier campo.
+# - Explica que hacerse socio/a da 15% para la primera ETERNA.
+# - Elimina la invitación fuerte al Club junto al precio para no perder fotos ya cargadas.
+# - Fuerza precio visible 29,99€ en /crear sin mostrar importes de prueba internos.
+# No toca Stripe, webhook, Twilio, WhatsApp, video engine, reacción,
+# Sender Pack, R2, pagos, workers ni cálculo interno de pruebas.
+# =========================================================
+
+ETERNA_DISPLAY_PRICE_TEXT_ES = os.getenv("ETERNA_DISPLAY_PRICE_TEXT_ES", "29,99€").strip() or "29,99€"
+ETERNA_DISPLAY_PRICE_TEXT_EN = os.getenv("ETERNA_DISPLAY_PRICE_TEXT_EN", "€29.99").strip() or "€29.99"
+
+_ORIGINAL_RENDER_CREATE_FORM_RC133 = render_create_form
+
+def _rc133_club_first_html(lang: str = "es") -> str:
+    clean_lang = "en" if str(lang or "").lower().strip() == "en" else "es"
+    if clean_lang == "en":
+        title = "Butterfly Club 🦋"
+        body = "Before you start: join the Butterfly Club, upload a photo with a butterfly on you, and receive a unique 15% discount code for your first ETERNA."
+        cta = "GET MY 15% BEFORE STARTING"
+        note = "Recommended before uploading photos, so you do not lose anything already prepared."
+        url = "/mariposa?lang=en"
+    else:
+        title = "Club Mariposa 🦋"
+        body = "Antes de empezar: hazte socio/a del Club Mariposa, sube una foto con una mariposa en ti y recibe un código único del 15% para tu primera ETERNA."
+        cta = "CONSEGUIR MI 15% ANTES DE EMPEZAR"
+        note = "Hazlo antes de subir tus fotos, así no pierdes nada de lo que prepares después."
+        url = "/mariposa?lang=es"
+    return """
+<section class="section mariposa-entry-first" id="clubMariposaFirstEntry" style="border-color:rgba(245,210,139,.36);background:linear-gradient(135deg,rgba(245,210,139,.16),rgba(54,183,255,.08));box-shadow:0 20px 52px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.035);">
+  <div class="section-title" style="margin-bottom:8px;">{title}</div>
+  <div class="soft-copy" style="color:rgba(255,255,255,.84);line-height:1.55;">{body}</div>
+  <a class="mariposa-button" href="{url}" style="margin-top:14px;display:inline-flex;">{cta}</a>
+  <div class="hint" style="margin-top:10px;">{note}</div>
+</section>
+""".format(title=safe_text(title), body=safe_text(body), cta=safe_text(cta), note=safe_text(note), url=safe_attr(url))
+
+def _rc133_remove_late_mariposa_entry(html_value: str) -> str:
+    try:
+        return re.sub(r'<div class="mariposa-entry"><div class="mariposa-kicker">.*?</div><div class="mariposa-copy">.*?</div><a class="mariposa-button" href="/mariposa\?lang=(?:es|en)">.*?</a><div class="mariposa-note">.*?</div></div>', '', html_value, count=1, flags=re.S)
+    except Exception:
+        return html_value
+
+def _rc133_force_visible_price(html_value: str, lang: str = "es") -> str:
+    display_price = ETERNA_DISPLAY_PRICE_TEXT_EN if str(lang or "es") == "en" else ETERNA_DISPLAY_PRICE_TEXT_ES
+    try:
+        html_value = re.sub(r'(<span>Precio base ETERNA</span>\s*<strong>)(.*?)(</strong>)', r'\g<1>' + safe_text(display_price) + r'\g<3>', html_value, flags=re.S)
+        html_value = re.sub(r'(<span>Base ETERNA price</span>\s*<strong>)(.*?)(</strong>)', r'\g<1>' + safe_text(display_price) + r'\g<3>', html_value, flags=re.S)
+    except Exception as e:
+        print('[WARN] RC133 visible price fallback:', e)
+    return html_value
+
+def render_create_form(initial_language: str = "es") -> str:
+    lang = "en" if str(initial_language or "").lower().strip() == "en" else "es"
+    html = _ORIGINAL_RENDER_CREATE_FORM_RC133(lang)
+    html = _rc133_remove_late_mariposa_entry(html)
+    html = _rc133_force_visible_price(html, lang)
+    if 'id="clubMariposaFirstEntry"' not in html:
+        block = _rc133_club_first_html(lang)
+        yul_marker = '<section class="section yul-intro-card" id="yulIntroCard"'
+        if yul_marker in html:
+            html = html.replace(yul_marker, block + yul_marker, 1)
+        else:
+            form_marker = '<form id="createForm"'
+            if form_marker in html:
+                html = html.replace(form_marker, block + form_marker, 1)
     return html
