@@ -104,6 +104,7 @@ print("🧭 RC136 REQUIRED FIELDS + CLUB FILE LABEL LOCK — RED FIELD FINDER + 
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
 print("🦋 RC127 MARIPOSA VISIBLE ENTRY LOCK — CLUB ENTRY FROM /CREAR 🦋")
 print("🧠 RC142 MEMORY FORTRESS LOCK — PERSISTENCIA + PASAPORTE + CONSERVACIÓN FUTURA 🧠")
+print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
 import html
 import json
 import mimetypes
@@ -822,7 +823,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC140_CLUB_TRACE_STARTUP_FIX_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC143_EMAIL_SMTP_RESCUE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -3354,6 +3355,64 @@ def rc139_create_order_trace(discount_code: str, order_id: str) -> dict:
         conn.close()
 
 
+
+# =========================================================
+# RC143 — EMAIL SMTP RESCUE LOCK
+# Namecheap/SMTP puede cerrar conexiones desde Render con Errno 104.
+# Este helper no bloquea ETERNA: prueba el puerto configurado y, si falla,
+# prueba fallback 587/465 con reintentos suaves.
+# No toca Stripe, video engine, SMS, R2, reacción ni Sender Pack.
+# =========================================================
+def _smtp_ports_to_try() -> list[int]:
+    ports = []
+    try:
+        ports.append(int(SMTP_PORT))
+    except Exception:
+        pass
+    if os.getenv("EMAIL_SMTP_FALLBACK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}:
+        for p in (587, 465):
+            if p not in ports:
+                ports.append(p)
+    return ports or [587]
+
+
+def _send_email_message_with_rescue(msg: EmailMessage) -> dict:
+    if not email_enabled_and_configured():
+        return {"ok": False, "error": "email_not_configured"}
+
+    attempts = []
+    retries = max(1, int(os.getenv("EMAIL_SMTP_RETRIES", "2")))
+    timeout = max(8, int(os.getenv("EMAIL_SMTP_TIMEOUT_SECONDS", "25")))
+
+    for port in _smtp_ports_to_try():
+        for attempt in range(1, retries + 1):
+            try:
+                if port == 465:
+                    with smtplib.SMTP_SSL(SMTP_HOST, port, timeout=timeout) as smtp:
+                        smtp.ehlo()
+                        smtp.login(SMTP_USER, SMTP_PASSWORD)
+                        smtp.send_message(msg)
+                else:
+                    with smtplib.SMTP(SMTP_HOST, port, timeout=timeout) as smtp:
+                        smtp.ehlo()
+                        smtp.starttls()
+                        smtp.ehlo()
+                        smtp.login(SMTP_USER, SMTP_PASSWORD)
+                        smtp.send_message(msg)
+                return {"ok": True, "error": None, "smtp_port_used": port, "attempt": attempt}
+            except Exception as e:
+                err = str(e)[:220]
+                attempts.append(f"port {port} attempt {attempt}: {err}")
+                print(f"📧 RC143 SMTP intento fallido: port={port} attempt={attempt} error={err}")
+                if attempt < retries:
+                    try:
+                        time.sleep(1.2 * attempt)
+                    except Exception:
+                        pass
+
+    return {"ok": False, "error": " | ".join(attempts[-6:]) or "smtp_failed"}
+
+
 def send_eterna_email_html_safe(to_email: str, subject: str, plain_body: str, html_body: str, reply_to: str = "") -> dict:
     """
     RC122 — email HTML seguro para piezas especiales de ETERNA.
@@ -3376,18 +3435,7 @@ def send_eterna_email_html_safe(to_email: str, subject: str, plain_body: str, ht
         msg.set_content(str(plain_body or "").strip() or "ETERNA")
         msg.add_alternative(str(html_body or "").strip() or "<p>ETERNA</p>", subtype="html")
 
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
-                smtp.login(SMTP_USER, SMTP_PASSWORD)
-                smtp.send_message(msg)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
-                smtp.ehlo()
-                smtp.starttls()
-                smtp.ehlo()
-                smtp.login(SMTP_USER, SMTP_PASSWORD)
-                smtp.send_message(msg)
-        return {"ok": True, "error": None}
+        return _send_email_message_with_rescue(msg)
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -6506,18 +6554,7 @@ def send_eterna_email(to_email: str, subject: str, body: str, reply_to: str = ""
             msg["Reply-To"] = reply_to.strip()
         msg.set_content(str(body or "").strip() or "ETERNA")
 
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
-                smtp.login(SMTP_USER, SMTP_PASSWORD)
-                smtp.send_message(msg)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
-                smtp.ehlo()
-                smtp.starttls()
-                smtp.ehlo()
-                smtp.login(SMTP_USER, SMTP_PASSWORD)
-                smtp.send_message(msg)
-        return {"ok": True, "error": None}
+        return _send_email_message_with_rescue(msg)
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
