@@ -104,7 +104,9 @@ print("🧭 RC136 REQUIRED FIELDS + CLUB FILE LABEL LOCK — RED FIELD FINDER + 
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
 print("🦋 RC127 MARIPOSA VISIBLE ENTRY LOCK — CLUB ENTRY FROM /CREAR 🦋")
 print("🧠 RC142 MEMORY FORTRESS LOCK — PERSISTENCIA + PASAPORTE + CONSERVACIÓN FUTURA 🧠")
+print("🛟 RC144 SENDER PASSPORT RECOVERY LOCK — /SENDER NO MUERE SI LA DB FALLA 🛟")
 print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
+print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
 import html
 import json
 import mimetypes
@@ -823,7 +825,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC143_EMAIL_SMTP_RESCUE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145_AUDIT_FREEZE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -4804,10 +4806,34 @@ def rc142_write_order_passport(order_id: str, reason: str = "manual") -> dict:
         local_path = ETERNA_PASSPORTS_FOLDER / f"{order_id}_eterna_passport.json"
         local_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
 
+        # RC145 — índice directo por token para que /sender no tenga que escanear todos los pasaportes.
+        # No toca el flujo principal: solo duplica el mismo pasaporte como llave de rescate.
+        sender_token = (order.get("sender_token") or "").strip()
+        recipient_token = (order.get("recipient_token") or "").strip()
+        if sender_token:
+            try:
+                sender_index_local = ETERNA_PASSPORTS_FOLDER / f"sender_{sender_token}.json"
+                sender_index_local.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+            except Exception as e:
+                print("[WARN] RC145 sender passport local index failed:", e)
+        if recipient_token:
+            try:
+                recipient_index_local = ETERNA_PASSPORTS_FOLDER / f"recipient_{recipient_token}.json"
+                recipient_index_local.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+            except Exception as e:
+                print("[WARN] RC145 recipient passport local index failed:", e)
+
         public_url = None
         if r2_enabled():
             key = f"orders/{order_id}/metadata/eterna_passport.json"
             public_url = upload_json_to_r2(payload, key)
+            try:
+                if sender_token:
+                    upload_json_to_r2(payload, f"indexes/sender/{sender_token}.json")
+                if recipient_token:
+                    upload_json_to_r2(payload, f"indexes/recipient/{recipient_token}.json")
+            except Exception as e:
+                print("[WARN] RC145 passport R2 index failed:", e)
 
         update_order(
             order_id,
@@ -5692,6 +5718,153 @@ def get_order_by_recipient_token_or_404(token: str):
     return dict(row)
 
 
+def rc144_order_from_passport_payload(payload: dict, token: str = "") -> Optional[dict]:
+    """
+    RC144 — rescate silencioso del Sender Pack desde el pasaporte ETERNA.
+    No reconstruye la DB ni toca Stripe/SMS/vídeo. Solo evita que /sender muera en 404
+    si existe pasaporte local/R2 con URLs ya guardadas.
+    """
+    try:
+        payload = payload or {}
+        order_info = payload.get("order") or {}
+        tokens = payload.get("tokens") or {}
+        people = payload.get("people") or {}
+        files = payload.get("files") or {}
+        storage = payload.get("storage") or {}
+        sender_token = tokens.get("sender_token") or token
+        if token and sender_token != token:
+            return None
+        order_id = order_info.get("order_id")
+        if not order_id or not sender_token:
+            return None
+        return {
+            "id": order_id,
+            "created_at": order_info.get("created_at") or payload.get("generated_at") or now_iso(),
+            "updated_at": order_info.get("updated_at") or payload.get("generated_at") or now_iso(),
+            "paid": 1 if order_info.get("paid", True) else 0,
+            "eterna_completed": 1 if order_info.get("eterna_completed") else 0,
+            "language": order_info.get("language") or "es",
+            "recipient_token": tokens.get("recipient_token") or "",
+            "sender_token": sender_token,
+            "renewal_token": tokens.get("renewal_token") or "",
+            "sender_name": people.get("sender_name") or "",
+            "sender_email": people.get("sender_email") or "",
+            "sender_phone": people.get("sender_phone") or "",
+            "recipient_name": people.get("recipient_name") or "",
+            "recipient_email": people.get("recipient_email") or "",
+            "recipient_phone": people.get("recipient_phone") or "",
+            "experience_video_url": files.get("original_video_url") or "",
+            "reaction_video_public_url": files.get("reaction_video_public_url") or "",
+            "reaction_video_local": files.get("reaction_video_local") or "",
+            "share_video_url": files.get("share_video_url") or "",
+            "passport_json_url": files.get("passport_json_url") or "",
+            "storage_status": storage.get("storage_status") or "active",
+            "storage_expires_at": storage.get("storage_expires_at") or "",
+            "gift_amount": 0,
+            "total_amount": 0,
+            "platform_total_fee": 0,
+            "sender_notified": 0,
+            "reaction_uploaded": 1 if files.get("reaction_video_public_url") else 0,
+        }
+    except Exception as e:
+        print("[WARN] RC144 passport payload parse failed:", e)
+        return None
+
+
+def rc144_find_sender_passport_local(token: str) -> Optional[dict]:
+    try:
+        if not token or not ETERNA_PASSPORTS_FOLDER.exists():
+            return None
+
+        # RC145 — primero índice directo por sender_token. Mucho más rápido y fiable que escanear.
+        direct = ETERNA_PASSPORTS_FOLDER / f"sender_{token}.json"
+        if direct.exists():
+            try:
+                payload = json.loads(direct.read_text(encoding="utf-8"))
+                order = rc144_order_from_passport_payload(payload, token=token)
+                if order:
+                    print(f"🛟 RC145 sender recovered from local passport index: {direct}")
+                    return order
+            except Exception as e:
+                print("[WARN] RC145 local sender index read failed:", e)
+
+        for path in sorted(ETERNA_PASSPORTS_FOLDER.glob("*_eterna_passport.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                order = rc144_order_from_passport_payload(payload, token=token)
+                if order:
+                    print(f"🛟 RC144 sender recovered from local passport: {path}")
+                    return order
+            except Exception:
+                continue
+    except Exception as e:
+        print("[WARN] RC144 local passport search failed:", e)
+    return None
+
+
+def rc144_find_sender_passport_r2(token: str) -> Optional[dict]:
+    try:
+        if not token or not r2_enabled():
+            return None
+        client = get_r2_client()
+        if not client:
+            return None
+
+        # RC145 — primero índice directo en R2 por sender_token.
+        direct_key = f"indexes/sender/{token}.json"
+        try:
+            got = client.get_object(Bucket=R2_BUCKET, Key=direct_key)
+            raw = got["Body"].read().decode("utf-8")
+            payload = json.loads(raw)
+            order = rc144_order_from_passport_payload(payload, token=token)
+            if order:
+                print(f"🛟 RC145 sender recovered from R2 passport index: {direct_key}")
+                return order
+        except Exception:
+            pass
+
+        scanned = 0
+        paginator = client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=R2_BUCKET, Prefix="orders/"):
+            for obj in page.get("Contents", []) or []:
+                key = obj.get("Key") or ""
+                if not key.endswith("/metadata/eterna_passport.json"):
+                    continue
+                scanned += 1
+                if scanned > 500:
+                    print("⚠️ RC144 R2 passport scan limit reached")
+                    return None
+                try:
+                    got = client.get_object(Bucket=R2_BUCKET, Key=key)
+                    raw = got["Body"].read().decode("utf-8")
+                    payload = json.loads(raw)
+                    order = rc144_order_from_passport_payload(payload, token=token)
+                    if order:
+                        print(f"🛟 RC144 sender recovered from R2 passport: {key}")
+                        return order
+                except Exception as e:
+                    print(f"[WARN] RC144 R2 passport read skipped {key}: {e}")
+                    continue
+    except Exception as e:
+        print("[WARN] RC144 R2 passport search failed:", e)
+    return None
+
+
+def rc144_sender_not_found_debug(token: str) -> None:
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS c FROM orders")
+        total = cur.fetchone()["c"]
+        cur.execute("SELECT id, sender_token, recipient_token, created_at FROM orders ORDER BY created_at DESC LIMIT 3")
+        recent = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        print("🛟 RC144 sender token no encontrado en DB")
+        print(f"   token_prefix={str(token)[:8]}… total_orders={total} recent={recent}")
+    except Exception as e:
+        print("[WARN] RC144 sender debug failed:", e)
+
+
 def get_order_by_sender_token_or_404(token: str):
     conn = db_conn()
     cur = conn.cursor()
@@ -5711,9 +5884,20 @@ def get_order_by_sender_token_or_404(token: str):
     """, (token,))
     row = cur.fetchone()
     conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Sender pack no encontrado")
-    return dict(row)
+    if row:
+        return dict(row)
+
+    rc144_sender_not_found_debug(token)
+
+    recovered = rc144_find_sender_passport_local(token)
+    if recovered:
+        return recovered
+
+    recovered = rc144_find_sender_passport_r2(token)
+    if recovered:
+        return recovered
+
+    raise HTTPException(status_code=404, detail="Sender pack no encontrado")
 
 
 def update_order(order_id: str, **fields):
@@ -13353,7 +13537,9 @@ def list_pending_sender_notifications():
             AND COALESCE(sender_sms_sent_at, '') = ''
             AND COALESCE(sender_notified, 0) = 0
             AND COALESCE(sender_sms_attempts, 0) < 3
-            AND COALESCE(order_locked, 0) = 0
+            -- RC145: no filtramos order_locked aquí. Un pedido sin regalo puede quedar bloqueado
+            -- como finalizado antes de que el SMS del regalante salga si la reacción era demasiado reciente.
+            -- La seguridad real la dan reaction_uploaded/sender_notified/attempts.
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
