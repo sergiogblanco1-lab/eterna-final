@@ -103,6 +103,7 @@ print("🌍 RC135 LANGUAGE CLUB HEADER LOCK — ES/EN HARD + BUTTERFLY BODY HEAD
 print("🧭 RC136 REQUIRED FIELDS + CLUB FILE LABEL LOCK — RED FIELD FINDER + CLEAN CLUB FILE PICKER 🧭")
 print("🧼 RC128 FORM MINIMAL CONVERSION LOCK — YUL EXTRA FIELDS REMOVED FROM /CREAR 🧼")
 print("🦋 RC127 MARIPOSA VISIBLE ENTRY LOCK — CLUB ENTRY FROM /CREAR 🦋")
+print("🧠 RC142 MEMORY FORTRESS LOCK — PERSISTENCIA + PASAPORTE + CONSERVACIÓN FUTURA 🧠")
 import html
 import json
 import mimetypes
@@ -630,6 +631,21 @@ FIXED_PLATFORM_FEE = env_float("ETERNA_FIXED_FEE", "2")
 SCHEDULED_DELIVERY_FEE = env_float("SCHEDULED_DELIVERY_FEE", "2")
 GIFT_REFUND_DAYS = int(os.getenv("GIFT_REFUND_DAYS", "20"))
 
+# =========================================================
+# RC142 — MEMORY FORTRESS / CONSERVACIÓN FUTURA SILENCIOSA
+# No comunica nada al cliente ahora. No toca el flujo principal.
+# Deja cada ETERNA preparada para persistir, auditarse y renovarse en el futuro.
+# =========================================================
+ETERNA_MEMORY_FORTRESS_ENABLED = os.getenv("ETERNA_MEMORY_FORTRESS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_PASSPORT_ENABLED = os.getenv("ETERNA_PASSPORT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_DB_BACKUP_ENABLED = os.getenv("ETERNA_DB_BACKUP_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_STORAGE_DAYS = int(os.getenv("ETERNA_STORAGE_DAYS", "365"))
+ETERNA_RENEWAL_ENABLED = os.getenv("ETERNA_RENEWAL_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+ETERNA_RENEWAL_PRICE = env_float("ETERNA_RENEWAL_PRICE", "14.95")
+ETERNA_RENEWAL_CURRENCY = os.getenv("ETERNA_RENEWAL_CURRENCY", "eur").strip().lower()
+ETERNA_RENEWAL_EXTEND_DAYS = int(os.getenv("ETERNA_RENEWAL_EXTEND_DAYS", "365"))
+ETERNA_DELETE_AFTER_SECOND_NOTICE_DAYS = int(os.getenv("ETERNA_DELETE_AFTER_SECOND_NOTICE_DAYS", "5"))
+
 # RC60: controles seguros de estabilización.
 # Por defecto NO caducamos enlaces para no romper pruebas actuales.
 # Cuando lancemos público, poner ETERNA_LINK_EXPIRY_DAYS=30 y ETERNA_ENFORCE_LINK_EXPIRY=1.
@@ -787,6 +803,8 @@ CLUB_MARIPOSA_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_FOLDER", s
 CLUB_MARIPOSA_THUMB_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_THUMB_FOLDER", str(DATA_FOLDER / "club_mariposa_thumbs")), "club_mariposa_thumbs")
 CLUB_MARIPOSA_RECORDS_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_RECORDS_FOLDER", str(DATA_FOLDER / "club_mariposa_records")), "club_mariposa_records")
 ETERNA_TRACES_FOLDER = ensure_runtime_folder(os.getenv("ETERNA_TRACES_FOLDER", str(DATA_FOLDER / "eterna_traces")), "eterna_traces")
+ETERNA_PASSPORTS_FOLDER = ensure_runtime_folder(os.getenv("ETERNA_PASSPORTS_FOLDER", str(DATA_FOLDER / "eterna_passports")), "eterna_passports")
+ETERNA_DB_BACKUPS_FOLDER = ensure_runtime_folder(os.getenv("ETERNA_DB_BACKUPS_FOLDER", str(DATA_FOLDER / "eterna_db_backups")), "eterna_db_backups")
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -2841,6 +2859,57 @@ def init_db():
     add_column_if_missing("orders", "butterfly_discount_amount", "ALTER TABLE orders ADD COLUMN butterfly_discount_amount REAL NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "butterfly_discount_status", "ALTER TABLE orders ADD COLUMN butterfly_discount_status TEXT")
 
+    # RC142 — Memory Fortress: conservación futura silenciosa.
+    # No comunica nada al cliente, no activa cobros, no toca el flujo principal.
+    add_column_if_missing("orders", "storage_status", "ALTER TABLE orders ADD COLUMN storage_status TEXT NOT NULL DEFAULT 'active'")
+    add_column_if_missing("orders", "storage_started_at", "ALTER TABLE orders ADD COLUMN storage_started_at TEXT")
+    add_column_if_missing("orders", "storage_expires_at", "ALTER TABLE orders ADD COLUMN storage_expires_at TEXT")
+    add_column_if_missing("orders", "storage_renewal_price", "ALTER TABLE orders ADD COLUMN storage_renewal_price REAL NOT NULL DEFAULT 14.95")
+    add_column_if_missing("orders", "storage_renewal_currency", "ALTER TABLE orders ADD COLUMN storage_renewal_currency TEXT NOT NULL DEFAULT 'eur'")
+    add_column_if_missing("orders", "renewal_token", "ALTER TABLE orders ADD COLUMN renewal_token TEXT")
+    add_column_if_missing("orders", "renewal_count", "ALTER TABLE orders ADD COLUMN renewal_count INTEGER NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "last_renewal_paid_at", "ALTER TABLE orders ADD COLUMN last_renewal_paid_at TEXT")
+    add_column_if_missing("orders", "storage_last_checked_at", "ALTER TABLE orders ADD COLUMN storage_last_checked_at TEXT")
+    add_column_if_missing("orders", "storage_files_verified_at", "ALTER TABLE orders ADD COLUMN storage_files_verified_at TEXT")
+    add_column_if_missing("orders", "passport_json_url", "ALTER TABLE orders ADD COLUMN passport_json_url TEXT")
+    add_column_if_missing("orders", "passport_json_local", "ALTER TABLE orders ADD COLUMN passport_json_local TEXT")
+    add_column_if_missing("orders", "passport_last_written_at", "ALTER TABLE orders ADD COLUMN passport_last_written_at TEXT")
+    add_column_if_missing("orders", "delete_after_at", "ALTER TABLE orders ADD COLUMN delete_after_at TEXT")
+    add_column_if_missing("orders", "deleted_at", "ALTER TABLE orders ADD COLUMN deleted_at TEXT")
+    add_column_if_missing("orders", "delete_reason", "ALTER TABLE orders ADD COLUMN delete_reason TEXT")
+
+    try:
+        conn2 = db_conn()
+        cur2 = conn2.cursor()
+        cur2.execute("""
+        CREATE TABLE IF NOT EXISTS storage_renewals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id TEXT NOT NULL,
+            renewal_token TEXT,
+            payer_type TEXT,
+            amount REAL NOT NULL DEFAULT 0,
+            currency TEXT NOT NULL DEFAULT 'eur',
+            stripe_session_id TEXT,
+            stripe_payment_intent_id TEXT,
+            status TEXT NOT NULL DEFAULT 'created',
+            paid_at TEXT,
+            extends_from TEXT,
+            extends_until TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            meta_json TEXT,
+            FOREIGN KEY(order_id) REFERENCES orders(id)
+        )
+        """)
+        cur2.execute("CREATE INDEX IF NOT EXISTS idx_storage_renewals_order_id ON storage_renewals(order_id)")
+        cur2.execute("CREATE INDEX IF NOT EXISTS idx_storage_renewals_token ON storage_renewals(renewal_token)")
+        cur2.execute("CREATE INDEX IF NOT EXISTS idx_orders_storage_expires ON orders(storage_expires_at)")
+        cur2.execute("CREATE INDEX IF NOT EXISTS idx_orders_renewal_token ON orders(renewal_token)")
+        conn2.commit()
+        conn2.close()
+    except Exception as e:
+        print("[WARN] RC142 storage tables skipped:", e)
+
     # RC126 — Club Mariposa: Instagram opcional + permiso separado de etiqueta.
     # No es obligatorio y no toca ETERNA core.
     add_column_if_missing("butterfly_club", "instagram_handle", "ALTER TABLE butterfly_club ADD COLUMN instagram_handle TEXT")
@@ -4551,6 +4620,237 @@ def upload_bytes_to_r2(data: bytes, remote_name: str, content_type: str = "appli
     return f"{R2_PUBLIC_URL}/{remote_name}"
 
 
+def upload_json_to_r2(payload: dict, remote_name: str) -> Optional[str]:
+    data = json.dumps(payload or {}, ensure_ascii=False, indent=2, default=str).encode("utf-8")
+    return upload_bytes_to_r2(data, remote_name, content_type="application/json; charset=utf-8")
+
+
+def rc142_add_days_iso(base_iso: str = "", days: int = 365) -> str:
+    try:
+        raw = str(base_iso or "").strip()
+        if raw:
+            base = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if base.tzinfo is None:
+                base = base.replace(tzinfo=timezone.utc)
+        else:
+            base = now_dt()
+    except Exception:
+        base = now_dt()
+    return (base + timedelta(days=int(days or 365))).isoformat()
+
+
+def rc142_new_renewal_token() -> str:
+    return "ren_" + secrets.token_urlsafe(32)
+
+
+def rc142_ensure_storage_metadata(order_id: str, created_at: str = "") -> bool:
+    """
+    RC142 — asigna metadatos internos de conservación.
+    No envía mensajes, no cobra, no toca vídeo, no toca reacción.
+    """
+    if not ETERNA_MEMORY_FORTRESS_ENABLED:
+        return False
+    try:
+        order = get_order_by_id(order_id)
+        started_at = order.get("storage_started_at") or created_at or order.get("created_at") or now_iso()
+        expires_at = order.get("storage_expires_at") or rc142_add_days_iso(started_at, ETERNA_STORAGE_DAYS)
+        renewal_token = order.get("renewal_token") or rc142_new_renewal_token()
+        update_order(
+            order_id,
+            storage_status=order.get("storage_status") or "active",
+            storage_started_at=started_at,
+            storage_expires_at=expires_at,
+            storage_renewal_price=float(ETERNA_RENEWAL_PRICE),
+            storage_renewal_currency=ETERNA_RENEWAL_CURRENCY,
+            renewal_token=renewal_token,
+            renewal_count=int(order.get("renewal_count") or 0),
+            storage_last_checked_at=now_iso(),
+        )
+        insert_order_event(
+            order_id,
+            "rc142_storage_metadata_ready",
+            "ok",
+            "Memory Fortress preparó conservación futura silenciosa",
+            {
+                "storage_expires_at": expires_at,
+                "renewal_price": ETERNA_RENEWAL_PRICE,
+                "renewal_currency": ETERNA_RENEWAL_CURRENCY,
+                "renewal_enabled_now": bool(ETERNA_RENEWAL_ENABLED),
+                "publicly_announced": False,
+            },
+        )
+        return True
+    except Exception as e:
+        print("[WARN] RC142 storage metadata failed:", e)
+        try:
+            insert_order_event(order_id, "rc142_storage_metadata_failed", "warning", str(e))
+        except Exception:
+            pass
+        return False
+
+
+def rc142_order_passport_payload(order: dict, reason: str = "manual") -> dict:
+    return {
+        "passport_version": "RC142_MEMORY_FORTRESS_LOCK",
+        "reason": reason,
+        "generated_at": now_iso(),
+        "app_version": ETERNA_APP_VERSION,
+        "order": {
+            "order_id": order.get("id"),
+            "created_at": order.get("created_at"),
+            "updated_at": order.get("updated_at"),
+            "eterna_completed": bool(order.get("eterna_completed")),
+            "paid": bool(order.get("paid")),
+            "order_state": order.get("order_state"),
+            "render_status": order.get("render_status"),
+            "language": order.get("language"),
+        },
+        "tokens": {
+            "recipient_token": order.get("recipient_token"),
+            "sender_token": order.get("sender_token"),
+            "renewal_token": order.get("renewal_token"),
+        },
+        "links": {
+            "recipient_url": recipient_experience_url_from_order(order),
+            "sender_url": sender_pack_url_from_order(order),
+            "renewal_url_future": f"{PUBLIC_BASE_URL}/renovar/{order.get('renewal_token')}" if order.get("renewal_token") else "",
+        },
+        "people": {
+            "sender_name": order.get("sender_name"),
+            "sender_email": order.get("sender_email"),
+            "sender_phone": order.get("sender_phone"),
+            "recipient_name": order.get("recipient_name"),
+            "recipient_email": order.get("recipient_email"),
+            "recipient_phone": order.get("recipient_phone"),
+        },
+        "storage": {
+            "storage_status": order.get("storage_status"),
+            "storage_started_at": order.get("storage_started_at"),
+            "storage_expires_at": order.get("storage_expires_at"),
+            "storage_renewal_price": order.get("storage_renewal_price"),
+            "storage_renewal_currency": order.get("storage_renewal_currency"),
+            "renewal_count": order.get("renewal_count"),
+            "last_renewal_paid_at": order.get("last_renewal_paid_at"),
+            "delete_after_at": order.get("delete_after_at"),
+            "deleted_at": order.get("deleted_at"),
+            "delete_reason": order.get("delete_reason"),
+        },
+        "files": {
+            "original_video_url": order.get("experience_video_url"),
+            "reaction_video_public_url": order.get("reaction_video_public_url"),
+            "reaction_video_local": order.get("reaction_video_local"),
+            "share_video_url": order.get("share_video_url"),
+            "passport_json_url": order.get("passport_json_url"),
+        },
+        "note": "Pasaporte interno de seguridad. No se muestra al cliente en lanzamiento.",
+    }
+
+
+def rc142_write_order_passport(order_id: str, reason: str = "manual") -> dict:
+    if not (ETERNA_MEMORY_FORTRESS_ENABLED and ETERNA_PASSPORT_ENABLED):
+        return {"ok": False, "reason": "disabled"}
+    try:
+        rc142_ensure_storage_metadata(order_id)
+        order = get_order_by_id(order_id)
+        payload = rc142_order_passport_payload(order, reason=reason)
+        local_path = ETERNA_PASSPORTS_FOLDER / f"{order_id}_eterna_passport.json"
+        local_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+
+        public_url = None
+        if r2_enabled():
+            key = f"orders/{order_id}/metadata/eterna_passport.json"
+            public_url = upload_json_to_r2(payload, key)
+
+        update_order(
+            order_id,
+            passport_json_local=str(local_path),
+            passport_json_url=public_url or order.get("passport_json_url"),
+            passport_last_written_at=now_iso(),
+            storage_files_verified_at=now_iso() if (order.get("experience_video_url") or order.get("reaction_video_public_url")) else order.get("storage_files_verified_at"),
+        )
+        insert_order_event(
+            order_id,
+            "rc142_passport_written",
+            "ok",
+            "Pasaporte ETERNA guardado para reconstrucción futura",
+            {"local": str(local_path), "r2_url": public_url, "reason": reason},
+        )
+        return {"ok": True, "local": str(local_path), "r2_url": public_url}
+    except Exception as e:
+        print("[WARN] RC142 passport failed:", e)
+        try:
+            insert_order_event(order_id, "rc142_passport_failed", "warning", str(e), {"reason": reason})
+        except Exception:
+            pass
+        return {"ok": False, "error": str(e)}
+
+
+def rc142_backup_db_to_r2(label: str = "manual") -> dict:
+    if not ETERNA_DB_BACKUP_ENABLED:
+        return {"ok": False, "reason": "disabled"}
+    try:
+        db_path = Path(DB_PATH)
+        if not db_path.exists():
+            return {"ok": False, "reason": "db_missing", "path": str(db_path)}
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        local_copy = ETERNA_DB_BACKUPS_FOLDER / f"eterna_{label}_{stamp}.db"
+        shutil.copy2(db_path, local_copy)
+        public_url = None
+        if r2_enabled():
+            data = local_copy.read_bytes()
+            public_url = upload_bytes_to_r2(data, f"backups/db/eterna_{label}_{stamp}.db", content_type="application/octet-stream")
+            try:
+                upload_bytes_to_r2(data, "backups/db/eterna_latest.db", content_type="application/octet-stream")
+            except Exception:
+                pass
+        return {"ok": True, "local": str(local_copy), "r2_url": public_url, "bytes": local_copy.stat().st_size}
+    except Exception as e:
+        print("[WARN] RC142 DB backup failed:", e)
+        return {"ok": False, "error": str(e)}
+
+
+def rc142_memory_startup_report() -> dict:
+    summary = {
+        "db_path": str(DB_PATH),
+        "data_folder": str(DATA_FOLDER),
+        "db_exists": Path(DB_PATH).exists(),
+        "db_size": Path(DB_PATH).stat().st_size if Path(DB_PATH).exists() else 0,
+        "orders_total": 0,
+        "orders_completed": 0,
+        "last_order_id": None,
+        "last_order_created_at": None,
+        "r2_configured": r2_enabled(),
+        "storage_days": ETERNA_STORAGE_DAYS,
+        "renewal_price": ETERNA_RENEWAL_PRICE,
+    }
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS c FROM orders")
+        summary["orders_total"] = int(cur.fetchone()["c"] or 0)
+        cur.execute("SELECT COUNT(*) AS c FROM orders WHERE eterna_completed = 1")
+        summary["orders_completed"] = int(cur.fetchone()["c"] or 0)
+        cur.execute("SELECT id, created_at FROM orders ORDER BY created_at DESC LIMIT 1")
+        row = cur.fetchone()
+        if row:
+            summary["last_order_id"] = row["id"]
+            summary["last_order_created_at"] = row["created_at"]
+        conn.close()
+    except Exception as e:
+        summary["error"] = str(e)
+
+    print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("🧠 RC142 MEMORY FORTRESS STARTUP")
+    print(f"🗄️ DB_PATH: {summary['db_path']}")
+    print(f"📁 DATA_FOLDER: {summary['data_folder']}")
+    print(f"✅ DB existe: {summary['db_exists']} · bytes={summary['db_size']}")
+    print(f"📦 Pedidos: {summary['orders_total']} · completadas={summary['orders_completed']}")
+    print(f"🕯️ Último pedido: {summary['last_order_id']} · {summary['last_order_created_at']}")
+    print(f"☁️ R2 configurado: {summary['r2_configured']}")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    return summary
+
+
 def r2_status_summary() -> dict:
     missing = r2_missing_config()
     return {
@@ -4853,6 +5153,10 @@ def complete_reaction_from_local_file(order: dict, local_path: str, extension: s
     )
 
     updated_order = maybe_mark_eterna_completed(order["id"])
+    try:
+        rc142_write_order_passport(order["id"], reason="reaction_completed")
+    except Exception as e:
+        print("[WARN] RC142 passport reaction_completed skipped:", e)
     insert_order_event(updated_order["id"], "eterna_completed", "ok", "ETERNA completada: reacción validada/segura y pack desbloqueado")
 
     try:
@@ -8281,6 +8585,16 @@ async def create_order_and_redirect(
             )
         except Exception as e:
             print("[WARN] Memory Engine V1 no bloquea pedido:", e)
+
+        # =========================================================
+        # RC142 — MEMORY FORTRESS SILENCIOSO
+        # Prepara conservación futura y pasaporte sin comunicar nada al cliente.
+        # =========================================================
+        try:
+            rc142_ensure_storage_metadata(order_id, created_at=created_at)
+            rc142_write_order_passport(order_id, reason="order_created")
+        except Exception as e:
+            print("[WARN] RC142 Memory Fortress no bloquea creación:", e)
 
         try:
             update_order(
@@ -13557,6 +13871,11 @@ def ensure_delivery_worker_started():
 
 @app.on_event("startup")
 def startup_event():
+    try:
+        rc142_memory_startup_report()
+    except Exception as e:
+        print("[WARN] RC142 startup report skipped:", e)
+
     # RC60 — recuperación tras reinicio/deploy de Render.
     try:
         recover_stale_processing_locks()
@@ -14328,6 +14647,10 @@ async def internal_video_ready(request: Request):
             )
 
         order = get_order_by_id(order_id)
+        try:
+            rc142_write_order_passport(order_id, reason="video_ready")
+        except Exception as e:
+            print("[WARN] RC142 passport video_ready skipped:", e)
 
         print("🔥 CALLBACK VIDEO READY 🔥")
         print("🎬 VIDEO GENERADO")
@@ -19959,6 +20282,55 @@ def rc104_startup_event():
         threading.Thread(target=rc104_worker_loop, daemon=True, name="eterna-rc104-founder-worker").start()
     except Exception as e:
         print("[WARN] No pude iniciar RC104 Founder Worker:", e)
+
+
+@app.get("/admin/memory-check")
+def admin_memory_check_rc142(token: str = ""):
+    rc74a_admin_guard(token)
+    summary = rc142_memory_startup_report()
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, created_at, updated_at, storage_status, storage_expires_at,
+                   passport_json_url, passport_last_written_at, eterna_completed,
+                   experience_video_url, reaction_video_public_url
+            FROM orders
+            ORDER BY created_at DESC
+            LIMIT 20
+        """)
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+    except Exception as e:
+        rows = []
+        summary["recent_orders_error"] = str(e)
+    return {
+        "ok": True,
+        "summary": summary,
+        "r2": r2_status_summary(),
+        "recent_orders": rows,
+        "memory_fortress": {
+            "enabled": ETERNA_MEMORY_FORTRESS_ENABLED,
+            "passport_enabled": ETERNA_PASSPORT_ENABLED,
+            "db_backup_enabled": ETERNA_DB_BACKUP_ENABLED,
+            "storage_days": ETERNA_STORAGE_DAYS,
+            "renewal_enabled_now": ETERNA_RENEWAL_ENABLED,
+            "renewal_price": ETERNA_RENEWAL_PRICE,
+            "renewal_currency": ETERNA_RENEWAL_CURRENCY,
+        },
+    }
+
+
+@app.post("/admin/memory-passport/{order_id}")
+def admin_memory_passport_rc142(order_id: str, token: str = ""):
+    rc74a_admin_guard(token)
+    return rc142_write_order_passport(order_id, reason="admin_manual")
+
+
+@app.post("/admin/memory-db-backup")
+def admin_memory_db_backup_rc142(token: str = ""):
+    rc74a_admin_guard(token)
+    return rc142_backup_db_to_r2(label="admin")
 
 
 @app.get("/admin/system")
