@@ -1,3 +1,7 @@
+# RC145G_EMAIL_FORTRESS_LOCK
+# Base: RC145F + cola persistente de emails de pedido.
+# Si SMTP falla, los emails customer/admin quedan en cola y se reintentan.
+
 # =========================================================
 # RC101B_FORM_POST_NATIVE_SAFE
 # Base: RC100 reacción congelada + soporte.
@@ -107,6 +111,7 @@ print("🧠 RC142 MEMORY FORTRESS LOCK — PERSISTENCIA + PASAPORTE + CONSERVACI
 print("🛟 RC144 SENDER PASSPORT RECOVERY LOCK — /SENDER NO MUERE SI LA DB FALLA 🛟")
 print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
 print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
+print("📧 RC145G EMAIL FORTRESS LOCK — EMAIL QUEUE + RETRY + NO LOST ORDER EMAILS 📧")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
@@ -580,6 +585,19 @@ ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "sergiog.blanco1@gmail.com").
 ETERNA_OPERATIONS_EMAIL = os.getenv("ETERNA_OPERATIONS_EMAIL", SMTP_FROM or "hola@tueterna.com").strip()
 
 # =========================================================
+# RC145G — EMAIL FORTRESS LOCK
+# Si SMTP falla, el email de pedido NO se pierde: queda en cola
+# y se reintenta por worker. No bloquea Stripe, vídeo, SMS ni Sender Pack.
+# =========================================================
+EMAIL_FORTRESS_ENABLED = os.getenv("EMAIL_FORTRESS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+EMAIL_QUEUE_WORKER_ENABLED = os.getenv("EMAIL_QUEUE_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+EMAIL_QUEUE_MAX_ATTEMPTS = int(os.getenv("EMAIL_QUEUE_MAX_ATTEMPTS", "12"))
+EMAIL_QUEUE_BATCH_SIZE = int(os.getenv("EMAIL_QUEUE_BATCH_SIZE", "10"))
+EMAIL_QUEUE_BASE_DELAY_SECONDS = int(os.getenv("EMAIL_QUEUE_BASE_DELAY_SECONDS", "300"))
+EMAIL_QUEUE_MAX_DELAY_SECONDS = int(os.getenv("EMAIL_QUEUE_MAX_DELAY_SECONDS", "21600"))
+EMAIL_QUEUE_R2_BACKUP_ENABLED = os.getenv("EMAIL_QUEUE_R2_BACKUP_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+# =========================================================
 # RC99 — SOPORTE / CONFIANZA / CONVERSIÓN
 # =========================================================
 ETERNA_SUPPORT_EMAIL = os.getenv("ETERNA_SUPPORT_EMAIL", "hola@tueterna.com").strip()
@@ -844,7 +862,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145F_CLUB_MARIPOSA_HEIC_SHIELD_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145G_EMAIL_FORTRESS_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2666,6 +2684,38 @@ def init_db():
         FOREIGN KEY(order_id) REFERENCES orders(id)
     )
     """)
+
+    # =========================================================
+    # RC145G — EMAIL FORTRESS QUEUE
+    # Los emails de pedido no se pierden si SMTP falla en el webhook.
+    # Quedan pendientes y el worker los reintenta.
+    # =========================================================
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS email_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email_key TEXT NOT NULL UNIQUE,
+        order_id TEXT,
+        email_kind TEXT NOT NULL,
+        to_email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        body TEXT NOT NULL,
+        reply_to TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        attempts INTEGER NOT NULL DEFAULT 0,
+        max_attempts INTEGER NOT NULL DEFAULT 12,
+        next_attempt_at TEXT,
+        last_attempt_at TEXT,
+        sent_at TEXT,
+        last_error TEXT,
+        r2_backup_url TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        meta_json TEXT,
+        FOREIGN KEY(order_id) REFERENCES orders(id)
+    )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_email_queue_status_next ON email_queue(status, next_attempt_at)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_email_queue_order_kind ON email_queue(order_id, email_kind)")
 
     # =========================================================
     # RC120 — CLUB MARIPOSA SAFE ISLAND
@@ -6982,6 +7032,219 @@ Teléfono/WhatsApp: {ETERNA_SUPPORT_PHONE}
 """.strip()
 
 
+# =========================================================
+# RC145G — EMAIL FORTRESS LOCK
+# Cola de emails de pedido. Si SMTP falla, se guarda y se reintenta.
+# No toca Stripe, webhook, video engine, SMS, reacción ni Sender Pack.
+# =========================================================
+
+def _email_queue_key(order_id: str, email_kind: str, to_email: str, subject: str) -> str:
+    raw = f"{order_id or ''}|{email_kind or ''}|{to_email or ''}|{subject or ''}"
+    return hashlib.sha256(raw.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def _email_queue_next_attempt_iso(attempts: int) -> str:
+    try:
+        base = max(60, int(EMAIL_QUEUE_BASE_DELAY_SECONDS))
+        max_delay = max(base, int(EMAIL_QUEUE_MAX_DELAY_SECONDS))
+        # Backoff suave: 5m, 10m, 20m, 40m... con techo.
+        delay = min(max_delay, base * (2 ** max(0, min(int(attempts or 0), 6))))
+        return (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
+    except Exception:
+        return (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+
+
+def rc145g_backup_email_queue_item_to_r2(payload: dict) -> str:
+    if not EMAIL_QUEUE_R2_BACKUP_ENABLED or not r2_enabled():
+        return ""
+    try:
+        order_id = str((payload or {}).get("order_id") or "no_order")
+        email_kind = str((payload or {}).get("email_kind") or "email")
+        email_key = str((payload or {}).get("email_key") or secrets.token_hex(8))[:64]
+        key = f"email_queue/{order_id}/{email_kind}_{email_key}.json"
+        return upload_json_to_r2(payload or {}, key) or ""
+    except Exception as e:
+        print(f"📧 RC145G email queue R2 backup skipped: {str(e)[:180]}")
+        return ""
+
+
+def queue_email_fortress(
+    *,
+    order_id: str,
+    email_kind: str,
+    to_email: str,
+    subject: str,
+    body: str,
+    reply_to: str = "",
+    last_error: str = "",
+    meta: Optional[dict] = None,
+) -> dict:
+    """Guarda un email pendiente para reintento. Idempotente por email_key."""
+    if not EMAIL_FORTRESS_ENABLED:
+        return {"ok": False, "queued": False, "error": "email_fortress_disabled"}
+
+    recipients = _email_recipients(to_email)
+    if not recipients:
+        return {"ok": False, "queued": False, "error": "missing_recipient"}
+
+    clean_to = ", ".join(recipients)
+    clean_subject = str(subject or "ETERNA").strip()[:180]
+    clean_body = str(body or "").strip() or "ETERNA"
+    kind = str(email_kind or "order_email").strip()[:80]
+    oid = str(order_id or "").strip() or None
+    email_key = _email_queue_key(oid or "", kind, clean_to, clean_subject)
+    now = now_iso()
+    payload = {
+        "email_key": email_key,
+        "order_id": oid,
+        "email_kind": kind,
+        "to_email": clean_to,
+        "subject": clean_subject,
+        "body": clean_body,
+        "reply_to": str(reply_to or "").strip(),
+        "status": "pending",
+        "last_error": str(last_error or "")[:500],
+        "created_at": now,
+        "updated_at": now,
+        "meta": meta or {},
+    }
+    r2_url = rc145g_backup_email_queue_item_to_r2(payload)
+
+    conn = None
+    try:
+        conn = db_conn()
+        conn.execute("""
+            INSERT INTO email_queue (
+                email_key, order_id, email_kind, to_email, subject, body, reply_to,
+                status, attempts, max_attempts, next_attempt_at, last_error,
+                r2_backup_url, created_at, updated_at, meta_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(email_key) DO UPDATE SET
+                status=CASE WHEN email_queue.status='sent' THEN 'sent' ELSE 'pending' END,
+                next_attempt_at=CASE WHEN email_queue.status='sent' THEN email_queue.next_attempt_at ELSE excluded.next_attempt_at END,
+                last_error=excluded.last_error,
+                updated_at=excluded.updated_at,
+                r2_backup_url=COALESCE(NULLIF(excluded.r2_backup_url,''), email_queue.r2_backup_url),
+                meta_json=excluded.meta_json
+        """, (
+            email_key, oid, kind, clean_to, clean_subject, clean_body, str(reply_to or "").strip(),
+            max(1, int(EMAIL_QUEUE_MAX_ATTEMPTS)), now, str(last_error or "")[:1000],
+            r2_url, now, now, json.dumps(meta or {}, ensure_ascii=False, default=str),
+        ))
+        conn.commit()
+        print(f"📧 RC145G email queued: order={oid} kind={kind} to={clean_to} key={email_key[:10]}")
+        return {"ok": True, "queued": True, "email_key": email_key, "r2_backup_url": r2_url}
+    except Exception as e:
+        try:
+            if conn:
+                conn.rollback()
+        except Exception:
+            pass
+        return {"ok": False, "queued": False, "error": str(e)[:300]}
+    finally:
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+
+def _mark_order_email_sent_from_queue(order_id: str, email_kind: str):
+    if not order_id:
+        return
+    try:
+        if email_kind == "customer_order_email":
+            update_order(order_id, order_email_customer_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "customer_order_email", "ok", "Email de pedido enviado desde Email Fortress")
+        elif email_kind == "admin_order_email":
+            update_order(order_id, order_email_admin_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_order_email", "ok", "Email admin enviado desde Email Fortress")
+    except Exception as e:
+        print(f"📧 RC145G email sent marker warning: {str(e)[:180]}")
+
+
+def process_due_email_queue(limit: Optional[int] = None) -> list[dict]:
+    """Reintenta emails pendientes. Seguro: si falla, no rompe ETERNA."""
+    if not EMAIL_QUEUE_WORKER_ENABLED or not EMAIL_FORTRESS_ENABLED:
+        return []
+    batch = max(1, int(limit or EMAIL_QUEUE_BATCH_SIZE or 10))
+    now = now_iso()
+    rows = []
+    conn = None
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT * FROM email_queue
+            WHERE status IN ('pending','failed')
+              AND attempts < max_attempts
+              AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+            ORDER BY created_at ASC
+            LIMIT ?
+        """, (now, batch))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        conn = None
+    except Exception as e:
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+        print(f"📧 RC145G email queue read error: {str(e)[:220]}")
+        return []
+
+    results = []
+    for row in rows:
+        qid = row.get("id")
+        attempts_before = int(row.get("attempts") or 0)
+        email_kind = row.get("email_kind") or "order_email"
+        order_id = row.get("order_id") or ""
+        try:
+            res = send_eterna_email(
+                row.get("to_email") or "",
+                row.get("subject") or "ETERNA",
+                row.get("body") or "ETERNA",
+                reply_to=row.get("reply_to") or "",
+            )
+            if res.get("ok"):
+                conn = db_conn()
+                conn.execute("""
+                    UPDATE email_queue
+                    SET status='sent', attempts=?, last_attempt_at=?, sent_at=?, last_error=NULL, updated_at=?
+                    WHERE id=?
+                """, (attempts_before + 1, now_iso(), now_iso(), now_iso(), qid))
+                conn.commit()
+                conn.close()
+                _mark_order_email_sent_from_queue(order_id, email_kind)
+                print(f"📧 RC145G email queue sent: order={order_id} kind={email_kind} id={qid}")
+                results.append({"id": qid, "ok": True, "status": "sent"})
+            else:
+                err = str(res.get("error") or "email_send_failed")[:1000]
+                attempts_after = attempts_before + 1
+                final_failed = attempts_after >= int(row.get("max_attempts") or EMAIL_QUEUE_MAX_ATTEMPTS)
+                next_attempt = None if final_failed else _email_queue_next_attempt_iso(attempts_after)
+                conn = db_conn()
+                conn.execute("""
+                    UPDATE email_queue
+                    SET status=?, attempts=?, last_attempt_at=?, next_attempt_at=?, last_error=?, updated_at=?
+                    WHERE id=?
+                """, ("failed" if final_failed else "pending", attempts_after, now_iso(), next_attempt, err, now_iso(), qid))
+                conn.commit()
+                conn.close()
+                if order_id:
+                    try:
+                        update_order(order_id, order_email_last_error=err)
+                    except Exception:
+                        pass
+                print(f"📧 RC145G email queue retry pending: order={order_id} kind={email_kind} id={qid} attempts={attempts_after} error={err[:160]}")
+                results.append({"id": qid, "ok": False, "status": "failed" if final_failed else "pending", "error": err})
+        except Exception as e:
+            print(f"📧 RC145G email queue processing error id={qid}: {str(e)[:220]}")
+            results.append({"id": qid, "ok": False, "error": str(e)[:220]})
+    return results
+
+
 def send_order_received_emails(order_id: str) -> dict:
     """Envía confirmación simple al comprador y correo operativo a ETERNA. Idempotente."""
     result = {"customer": "skipped", "admin": "skipped"}
@@ -7005,10 +7268,23 @@ def send_order_received_emails(order_id: str) -> dict:
             result["customer"] = "sent"
         else:
             err = customer_res.get("error") or "customer_email_error"
-            errors.append(f"customer: {err}")
+            queue_res = queue_email_fortress(
+                order_id=order_id,
+                email_kind="customer_order_email",
+                to_email=sender_email,
+                subject="Hemos recibido tu ETERNA",
+                body=build_customer_order_email_body(order),
+                last_error=err,
+                meta={"source": "send_order_received_emails", "first_send_error": err},
+            )
             update_order(order_id, order_email_last_error=err)
-            insert_order_event(order_id, "customer_order_email", "error", err)
-            result["customer"] = "error"
+            if queue_res.get("queued"):
+                insert_order_event(order_id, "customer_order_email", "pending", "Email de pedido en cola Email Fortress", {"first_error": err, "queue": queue_res})
+                result["customer"] = "queued"
+            else:
+                errors.append(f"customer: {err}")
+                insert_order_event(order_id, "customer_order_email", "error", err, {"queue": queue_res})
+                result["customer"] = "error"
 
     admin_targets = ",".join([x for x in [ETERNA_OPERATIONS_EMAIL, ADMIN_ALERT_EMAIL] if x])
     if admin_targets and not order.get("order_email_admin_sent_at"):
@@ -7024,10 +7300,24 @@ def send_order_received_emails(order_id: str) -> dict:
             result["admin"] = "sent"
         else:
             err = admin_res.get("error") or "admin_email_error"
-            errors.append(f"admin: {err}")
+            queue_res = queue_email_fortress(
+                order_id=order_id,
+                email_kind="admin_order_email",
+                to_email=admin_targets,
+                subject=f"🦋 Nuevo pedido ETERNA {order_public_code(order)}",
+                body=build_admin_order_email_body(order),
+                reply_to=sender_email,
+                last_error=err,
+                meta={"source": "send_order_received_emails", "first_send_error": err},
+            )
             update_order(order_id, order_email_last_error=err)
-            insert_order_event(order_id, "admin_order_email", "error", err)
-            result["admin"] = "error"
+            if queue_res.get("queued"):
+                insert_order_event(order_id, "admin_order_email", "pending", "Email admin en cola Email Fortress", {"first_error": err, "queue": queue_res})
+                result["admin"] = "queued"
+            else:
+                errors.append(f"admin: {err}")
+                insert_order_event(order_id, "admin_order_email", "error", err, {"queue": queue_res})
+                result["admin"] = "error"
 
     if errors:
         result["error"] = " | ".join(errors)
@@ -14330,6 +14620,7 @@ def delivery_worker_loop():
                 print("🛟 ETERNA_SAFE_MODE activo: no se procesan entregas, SMS, sender packs ni payouts automáticos.")
             else:
                 rc74_recovery_cycle()
+                process_due_email_queue()
                 process_all_due_scheduled_deliveries()
                 process_all_pending_reaction_recoveries()
                 process_all_due_sender_notifications()
@@ -14384,12 +14675,14 @@ def startup_event():
             try:
                 time.sleep(3)
                 log_human("RC60 SWEEP ARRANQUE", "Buscando entregas y avisos pendientes tras deploy/reinicio")
+                email_results = process_due_email_queue()
                 delivery_results = process_all_due_scheduled_deliveries()
                 sender_results = process_all_due_sender_notifications()
                 recipient_rescue_results = process_all_due_recipient_rescues()
                 payout_results = process_all_due_payouts()
                 log_human(
                     "RC60 SWEEP COMPLETADO",
+                    f"📧 Emails pendientes revisados: {len(email_results)}",
                     f"📦 Entregas revisadas: {len(delivery_results)}",
                     f"📩 Avisos regalante revisados: {len(sender_results)}",
                     f"🛟 Rescates destinatario revisados: {len(recipient_rescue_results)}",
@@ -20203,6 +20496,31 @@ async def rc121_twilio_status_callback(request: Request):
         print("[WARN] RC121 Twilio status callback failed:", e)
         return {"ok": False, "error": str(e)[:300]}
 
+
+@app.get("/admin/email-queue")
+def admin_email_queue_rc145g(token: str = "", process: int = 0):
+    rc74a_admin_guard(token)
+    processed = []
+    if int(process or 0) == 1:
+        processed = process_due_email_queue(limit=EMAIL_QUEUE_BATCH_SIZE)
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, order_id, email_kind, to_email, status, attempts, max_attempts,
+               next_attempt_at, last_attempt_at, sent_at, last_error, created_at, updated_at
+        FROM email_queue
+        ORDER BY id DESC
+        LIMIT 50
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return {
+        "ok": True,
+        "processed_now": processed,
+        "pending_count": len([r for r in rows if r.get("status") in {"pending", "failed"}]),
+        "rows": rows,
+    }
+
 # =========================================================
 # MAIN
 # =========================================================
@@ -20224,6 +20542,8 @@ def health_full():
         "video_engine_ok": False,
         "messaging": messaging_config_status(),
         "smtp_configured": bool(EMAIL_ENABLED and SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD and SMTP_FROM),
+        "email_fortress_enabled": bool(EMAIL_FORTRESS_ENABLED),
+        "email_queue_worker_enabled": bool(EMAIL_QUEUE_WORKER_ENABLED),
         "security_headers_enabled": bool(SECURITY_HEADERS_ENABLED),
         "rate_limit_enabled": bool(RATE_LIMIT_ENABLED),
         "max_photo_size_mb": MAX_PHOTO_SIZE_MB,
