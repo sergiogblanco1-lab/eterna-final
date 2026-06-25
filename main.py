@@ -107,6 +107,10 @@ print("🧠 RC142 MEMORY FORTRESS LOCK — PERSISTENCIA + PASAPORTE + CONSERVACI
 print("🛟 RC144 SENDER PASSPORT RECOVERY LOCK — /SENDER NO MUERE SI LA DB FALLA 🛟")
 print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
 print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
+print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
+print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
+print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
+print("🦋 RC145C CLUB MEMORY COPY LOCK — FOTO OK TEXT + R2 MEMBER COUNTER 🦋")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS 200 + SYSTEM BACKUP EVENT SAFE 🧼")
 import html
 import json
@@ -193,6 +197,20 @@ a{display:block;margin-top:18px;text-align:center;text-decoration:none;color:#06
                 """,
                 status_code=422,
             )
+
+        if request.url.path == "/mariposa":
+            print("⚠️ RC145F /mariposa recibió formulario incompleto o vacío:", exc.errors())
+            return HTMLResponse(
+                """
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Club Mariposa · ETERNA</title>
+<style>body{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}.card{max-width:440px;border:1px solid rgba(245,210,139,.24);border-radius:24px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));box-shadow:0 20px 80px rgba(0,0,0,.45)}h1{font-size:22px;margin:0 0 12px;color:#f5d28b}p{line-height:1.55;color:rgba(255,255,255,.78)}a{display:block;margin-top:18px;text-align:center;text-decoration:none;color:#06111d;background:#f5d28b;border-radius:999px;padding:14px 18px;font-weight:800}</style></head>
+<body><div class="card"><h1>Falta algún dato / Missing information</h1><p>Revisa la foto, el email y la casilla para unirte al Club Mariposa. / Please check the photo, email and join checkbox.</p><a href="/mariposa">Volver / Back</a></div></body></html>
+                """,
+                status_code=422,
+            )
+
     except Exception as e:
         print("⚠️ RC101B validation handler fallback:", e)
     return JSONResponse({"detail": exc.errors()}, status_code=422)
@@ -826,7 +844,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145B_LOG_CLEAN_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145F_CLUB_MARIPOSA_HEIC_SHIELD_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -3070,22 +3088,38 @@ def rc120_generate_discount_code() -> str:
 
 
 def rc120_next_member_number(cur) -> int:
-    # RC139: contador persistente real. Se sincroniza con el máximo histórico
-    # por si la tabla ya tenía miembros antes de activar el contador.
+    # RC145C: contador persistente reforzado.
+    # Se sincroniza con: tabla local + counter local + counter R2.
+    # Así, aunque Render reinicie o la DB venga limpia, el Club Mariposa no vuelve a #0001/#0002 si R2 conserva el contador.
     now = now_iso()
+    cur.execute("SELECT COALESCE(MAX(member_number), 0) AS max_member FROM butterfly_club")
+    row_max = cur.fetchone()
+    db_max = int((row_max["max_member"] if row_max else 0) or 0)
+
+    cur.execute("SELECT COALESCE(MAX(last_member_number), 0) AS max_counter FROM butterfly_member_counter")
+    row_counter = cur.fetchone()
+    local_counter = int((row_counter["max_counter"] if row_counter else 0) or 0)
+
+    r2_counter = 0
+    try:
+        r2_counter = int(rc145c_read_club_member_counter_from_r2() or 0)
+    except Exception as e:
+        print("[WARN] RC145C no pudo leer contador Club Mariposa en R2:", e)
+        r2_counter = 0
+
+    next_number = max(db_max, local_counter, r2_counter) + 1
+
     cur.execute("""
-        INSERT OR IGNORE INTO butterfly_member_counter (id, last_member_number, updated_at)
-        VALUES (1, (SELECT COALESCE(MAX(member_number), 0) FROM butterfly_club), ?)
-    """, (now,))
-    cur.execute("""
-        UPDATE butterfly_member_counter
-        SET last_member_number = MAX(last_member_number, (SELECT COALESCE(MAX(member_number), 0) FROM butterfly_club)) + 1,
-            updated_at = ?
-        WHERE id = 1
-    """, (now,))
-    cur.execute("SELECT last_member_number FROM butterfly_member_counter WHERE id = 1")
-    row = cur.fetchone()
-    return int((row["last_member_number"] if row else 1) or 1)
+        INSERT OR REPLACE INTO butterfly_member_counter (id, last_member_number, updated_at)
+        VALUES (1, ?, ?)
+    """, (next_number, now))
+
+    try:
+        rc145c_write_club_member_counter_to_r2(next_number)
+    except Exception as e:
+        print("[WARN] RC145C no pudo escribir contador Club Mariposa en R2:", e)
+
+    return int(next_number)
 
 
 def rc120_member_code(member_number: int) -> str:
@@ -3568,7 +3602,7 @@ ETERNA 🦋
 """.strip()
         title = "Ya eres parte del Club Mariposa ETERNA"
         eyebrow = "BIENVENIDO/A AL VUELO"
-        intro = "No has subido solo una foto. Has dejado una señal bonita en el mundo."
+        intro = "Tu foto se ha subido correctamente. Has dejado una señal bonita en el mundo."
         belief_1 = "En ETERNA creemos que hay momentos que no deberían perderse."
         belief_2 = "Personas que merecen ser recordadas."
         belief_3 = "Historias que empiezan en alguien… y un día vuelven."
@@ -4687,6 +4721,117 @@ def upload_bytes_to_r2(data: bytes, remote_name: str, content_type: str = "appli
 def upload_json_to_r2(payload: dict, remote_name: str) -> Optional[str]:
     data = json.dumps(payload or {}, ensure_ascii=False, indent=2, default=str).encode("utf-8")
     return upload_bytes_to_r2(data, remote_name, content_type="application/json; charset=utf-8")
+
+
+# =========================================================
+# RC145C — CLUB MARIPOSA MEMBER COUNTER EN R2
+# Mantiene la numeración del Club aunque la DB local venga limpia tras deploy.
+# No toca Stripe, vídeo, SMS, reacción ni Sender Pack.
+# =========================================================
+def rc145c_read_json_from_r2(remote_name: str) -> dict:
+    client = get_r2_client()
+    if not client:
+        return {}
+    try:
+        obj = client.get_object(Bucket=R2_BUCKET, Key=str(remote_name or "").lstrip("/"))
+        body = obj.get("Body").read()
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", errors="replace")
+        return json.loads(body or "{}")
+    except Exception as e:
+        msg = str(e)
+        if "NoSuchKey" not in msg and "404" not in msg and "Not Found" not in msg:
+            print("[WARN] RC145C R2 read json falló:", remote_name, e)
+        return {}
+
+
+def rc145c_read_club_member_counter_from_r2() -> int:
+    data = rc145c_read_json_from_r2("club_mariposa/member_counter.json")
+    return int((data.get("last_member_number") or data.get("last") or 0) or 0)
+
+
+def rc145c_write_club_member_counter_to_r2(member_number: int) -> Optional[str]:
+    payload = {
+        "type": "club_mariposa_member_counter",
+        "last_member_number": int(member_number or 0),
+        "updated_at": now_iso(),
+        "version": "RC145F_CLUB_MARIPOSA_HEIC_SHIELD_LOCK",
+    }
+    return upload_json_to_r2(payload, "club_mariposa/member_counter.json")
+
+
+# =========================================================
+# RC145F — CLUB MARIPOSA HEIC SHIELD
+# Blinda el Club sin tocar ETERNA principal:
+# - ficha completa miembro en R2
+# - foto limpia y miniatura en R2
+# - errores humanos
+# - estado de envío/doble click protegido en frontend
+# =========================================================
+def rc145e_r2_key_safe(value: str, default: str = "item") -> str:
+    raw = rc139_safe_slug(value or default, 90)
+    return raw or default
+
+
+def rc145e_upload_local_file_to_r2(local_path: str, remote_name: str, content_type: str = "application/octet-stream") -> str:
+    try:
+        path = Path(str(local_path or ""))
+        if not path.exists() or not path.is_file():
+            return ""
+        url = upload_video_to_r2(str(path), str(remote_name).lstrip("/"), content_type=content_type)
+        return url or ""
+    except Exception as e:
+        print("[WARN] RC145F no pudo subir archivo Club Mariposa a R2:", remote_name, e)
+        return ""
+
+
+def rc145e_backup_club_member_to_r2(member_payload: dict, photo_paths: dict) -> dict:
+    result = {"ok": False, "record_url": "", "photo_url": "", "thumbnail_url": "", "errors": []}
+    try:
+        member_number = int(member_payload.get("member_number") or 0)
+        discount_code = rc120_normalize_discount_code(member_payload.get("discount_code") or "")
+        identity = rc145e_r2_key_safe(member_payload.get("file_identity") or f"member_{member_number:04d}")
+        base = f"club_mariposa/members/{member_number:04d}_{identity}"
+
+        public_path = photo_paths.get("public") or ""
+        thumb_path = photo_paths.get("thumbnail") or ""
+        photo_url = rc145e_upload_local_file_to_r2(public_path, f"{base}/photo.jpg", "image/jpeg")
+        thumb_url = rc145e_upload_local_file_to_r2(thumb_path, f"{base}/thumb.jpg", "image/jpeg")
+
+        payload = dict(member_payload or {})
+        payload.update({
+            "type": "club_mariposa_member",
+            "version": "RC145F_CLUB_MARIPOSA_HEIC_SHIELD_LOCK",
+            "r2_photo_url": photo_url,
+            "r2_thumbnail_url": thumb_url,
+            "r2_base": base,
+            "updated_at": now_iso(),
+        })
+        record_url = upload_json_to_r2(payload, f"{base}/member.json") or ""
+        if discount_code:
+            upload_json_to_r2({"member_number": member_number, "discount_code": discount_code, "member_record": f"{base}/member.json", "updated_at": now_iso()}, f"club_mariposa/indexes/discount/{discount_code}.json")
+        upload_json_to_r2({"member_number": member_number, "member_record": f"{base}/member.json", "updated_at": now_iso()}, f"club_mariposa/indexes/member/{member_number:04d}.json")
+
+        result.update({"ok": bool(record_url or photo_url or thumb_url), "record_url": record_url, "photo_url": photo_url, "thumbnail_url": thumb_url})
+        print("🦋 RC145F Club member R2 backup:", {"member_number": member_number, "ok": result.get("ok"), "photo": bool(photo_url), "thumb": bool(thumb_url), "record": bool(record_url)})
+        return result
+    except Exception as e:
+        result["errors"].append(str(e)[:300])
+        print("[WARN] RC145F backup Club Mariposa falló:", e)
+        return result
+
+
+def rc145e_mariposa_error_page(message: str, lang: str = "es", status_code: int = 400) -> HTMLResponse:
+    ui_lang = normalize_order_language(lang or "es")
+    title = "We could not create your Butterfly Club membership" if ui_lang == "en" else "No hemos podido crear tu entrada al Club Mariposa"
+    back = "Try again" if ui_lang == "en" else "Volver a intentarlo"
+    safe_message = safe_text(message or ("Please check the form and try again." if ui_lang == "en" else "Revisa el formulario y vuelve a intentarlo."))
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang=\"{safe_attr(ui_lang)}\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Club Mariposa · ETERNA</title>
+<style>body{{margin:0;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}.card{{max-width:520px;border:1px solid rgba(245,210,139,.24);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));box-shadow:0 24px 90px rgba(0,0,0,.45);text-align:center}}h1{{color:#f5d28b;font-size:25px}}p{{color:rgba(255,255,255,.78);line-height:1.6}}a{{display:block;margin-top:18px;text-decoration:none;background:#f5d28b;color:#06111d;border-radius:999px;padding:15px 20px;font-weight:900}}</style></head>
+<body><div class=\"card\"><h1>{safe_text(title)}</h1><p>{safe_message}</p><a href=\"/mariposa?lang={safe_attr(ui_lang)}\">{safe_text(back)}</a></div></body></html>
+""", status_code=int(status_code or 400))
 
 
 def rc142_add_days_iso(base_iso: str = "", days: int = 365) -> str:
@@ -13167,7 +13312,7 @@ def club_mariposa_get(lang: str = "es"):
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Club Mariposa · ETERNA</title>
 <style>
-*{{box-sizing:border-box}}body{{margin:0;background:radial-gradient(circle at top,#102044 0,#03060c 48%,#000 100%);color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;padding:24px}}.wrap{{max-width:760px;margin:0 auto}}.hero{{padding:34px 0 22px;text-align:center}}.eyebrow{{color:#f5d28b;letter-spacing:.22em;text-transform:uppercase;font-size:12px;font-weight:800}}h1{{font-size:44px;line-height:.95;margin:14px 0 14px}}p{{color:rgba(255,255,255,.76);line-height:1.6}}.card{{border:1px solid rgba(245,210,139,.22);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));border-radius:28px;padding:22px;box-shadow:0 24px 90px rgba(0,0,0,.45)}}label{{display:block;margin:16px 0 8px;color:#f5d28b;font-weight:800;font-size:13px;letter-spacing:.04em}}input,textarea{{width:100%;border:1px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(0,0,0,.28);color:#fff;padding:15px 16px;font-size:16px;outline:none}}textarea{{min-height:120px;resize:vertical}}.check{{display:flex;gap:10px;align-items:flex-start;margin:16px 0;color:rgba(255,255,255,.8)}}.check input{{width:auto;margin-top:3px}}button{{width:100%;border:0;border-radius:999px;background:#f5d28b;color:#06111d;padding:17px 20px;font-weight:900;font-size:16px;margin-top:16px}}.native-file-hidden{{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}}.file-picker{{display:flex;align-items:center;justify-content:center;width:100%;border:1px solid rgba(245,210,139,.32);border-radius:18px;background:rgba(245,210,139,.10);color:#f5d28b;padding:15px 16px;font-size:16px;font-weight:900;cursor:pointer;text-align:center}}.file-name{{font-size:13px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45}}.note{{font-size:13px;color:rgba(255,255,255,.6);text-align:center;margin-top:16px}}a{{color:#f5d28b}}.lang{{display:flex;justify-content:center;margin-top:14px}}.lang a{{border:1px solid rgba(245,210,139,.28);border-radius:999px;padding:9px 14px;text-decoration:none;background:rgba(255,255,255,.045)}}
+*{{box-sizing:border-box}}body{{margin:0;background:radial-gradient(circle at top,#102044 0,#03060c 48%,#000 100%);color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;min-height:100vh;padding:24px}}.wrap{{max-width:760px;margin:0 auto}}.hero{{padding:34px 0 22px;text-align:center}}.eyebrow{{color:#f5d28b;letter-spacing:.22em;text-transform:uppercase;font-size:12px;font-weight:800}}h1{{font-size:44px;line-height:.95;margin:14px 0 14px}}p{{color:rgba(255,255,255,.76);line-height:1.6}}.card{{border:1px solid rgba(245,210,139,.22);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));border-radius:28px;padding:22px;box-shadow:0 24px 90px rgba(0,0,0,.45)}}label{{display:block;margin:16px 0 8px;color:#f5d28b;font-weight:800;font-size:13px;letter-spacing:.04em}}input,textarea{{width:100%;border:1px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(0,0,0,.28);color:#fff;padding:15px 16px;font-size:16px;outline:none}}textarea{{min-height:120px;resize:vertical}}.check{{display:flex;gap:10px;align-items:flex-start;margin:16px 0;color:rgba(255,255,255,.8)}}.check input{{width:auto;margin-top:3px}}button{{width:100%;border:0;border-radius:999px;background:#f5d28b;color:#06111d;padding:17px 20px;font-weight:900;font-size:16px;margin-top:16px}}.native-file-hidden{{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}}.file-picker{{display:flex;align-items:center;justify-content:center;width:100%;border:1px solid rgba(245,210,139,.32);border-radius:18px;background:rgba(245,210,139,.10);color:#f5d28b;padding:15px 16px;font-size:16px;font-weight:900;cursor:pointer;text-align:center}}.file-name{{font-size:13px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45}}.mariposa-photo-preview{{margin-top:12px;min-height:220px;border:1px solid rgba(245,210,139,.28);border-radius:22px;background:radial-gradient(circle at 50% 30%,rgba(245,210,139,.13),rgba(0,0,0,.30));display:flex;align-items:center;justify-content:center;text-align:center;color:rgba(255,255,255,.58);font-size:14px;line-height:1.35;background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 18px 42px rgba(0,0,0,.24);overflow:hidden}}.mariposa-photo-preview.has-image{{color:transparent;box-shadow:inset 0 0 0 1px rgba(245,210,139,.22),inset 0 -58px 80px rgba(0,0,0,.25),0 18px 42px rgba(0,0,0,.30)}}.mariposa-photo-preview.has-file{{color:rgba(245,210,139,.86);border-color:rgba(245,210,139,.42);background:radial-gradient(circle at 50% 30%,rgba(245,210,139,.18),rgba(0,0,0,.32));font-weight:800}}.mariposa-photo-preview.has-image::after{{content:"Foto seleccionada";position:absolute;opacity:0}}.error-box{{display:none;border:1px solid rgba(255,80,80,.42);background:rgba(255,80,80,.12);color:#ffd7d7;border-radius:18px;padding:14px;margin:16px 0;line-height:1.45;font-weight:800}}.error-box.show{{display:block}}.field-missing{{border-color:rgba(255,80,80,.85)!important;box-shadow:0 0 0 3px rgba(255,80,80,.16),0 0 24px rgba(255,80,80,.22)!important}}button.is-loading{{opacity:.72;pointer-events:none}}button.is-loading::after{{content:"…"}}.note{{font-size:13px;color:rgba(255,255,255,.6);text-align:center;margin-top:16px}}a{{color:#f5d28b}}.lang{{display:flex;justify-content:center;margin-top:14px}}.lang a{{border:1px solid rgba(245,210,139,.28);border-radius:999px;padding:9px 14px;text-decoration:none;background:rgba(255,255,255,.045)}}
 </style>
 </head>
 <body>
@@ -13178,17 +13323,19 @@ def club_mariposa_get(lang: str = "es"):
     <p>{safe_text(T['lead'])}</p>
     <div class="lang"><a href="{safe_attr(T['switch_url'])}">{safe_text(T['switch'])}</a></div>
   </section>
-  <form class="card" method="post" action="/mariposa" enctype="multipart/form-data">
+  <form class="card" id="mariposaForm" method="post" action="/mariposa" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="language" value="{safe_attr(ui_lang)}">
+    <div id="mariposaErrorBox" class="error-box"></div>
     <label>{safe_text("Name" if is_en else "Nombre")}</label>
     <input name="full_name" placeholder="{safe_attr('Your name' if is_en else 'Tu nombre')}" autocomplete="name">
     <label>{safe_text(T['photo'])}</label>
     <p class="note" style="margin-top:-2px;text-align:left">{safe_text("Ideally, a butterfly on your body: tattooed, painted, drawn, temporary or created for your story." if is_en else "Preferiblemente una mariposa en tu cuerpo: tatuada, pintada, dibujada, temporal o creada con IA para tu historia.")}</p>
-    <input id="mariposaPhotoInput" class="native-file-hidden" type="file" name="photo" accept="image/*" required>
+    <input id="mariposaPhotoInput" class="native-file-hidden" type="file" name="photo" accept="image/*,.heic,.heif" required>
     <label for="mariposaPhotoInput" class="file-picker">{safe_text("Choose photo" if is_en else "Elegir foto")}</label>
     <div id="mariposaFileName" class="file-name">{safe_text("No photo selected yet." if is_en else "Todavía no has seleccionado ninguna foto.")}</div>
+    <div id="mariposaPhotoPreview" class="mariposa-photo-preview">{safe_text("Your selected photo will appear here." if is_en else "Aquí verás la foto seleccionada.")}</div>
     <label>{safe_text(T['email'])}</label>
-    <input type="email" name="email" placeholder="you@email.com" required>
+    <input id="mariposaEmail" type="email" name="email" placeholder="you@email.com" required>
     <label>{safe_text(T['instagram'])}</label>
     <input name="instagram_handle" placeholder="{safe_attr(T['instagram_ph'])}" inputmode="text" autocomplete="off">
     <p class="note" style="margin-top:8px;text-align:left">{safe_text(T['instagram_note'])}</p>
@@ -13196,27 +13343,104 @@ def club_mariposa_get(lang: str = "es"):
     <input name="city" placeholder="{safe_attr(T['city_ph'])}">
     <label>{safe_text(T['story'])}</label>
     <textarea name="story" maxlength="700" placeholder="{safe_attr(T['story_ph'])}"></textarea>
-    <label class="check"><input type="checkbox" name="join_club" value="1" required><span>{safe_text(T['join'])}</span></label>
+    <label class="check" id="mariposaJoinWrap"><input id="mariposaJoin" type="checkbox" name="join_club" value="1" required><span>{safe_text(T['join'])}</span></label>
     <label class="check"><input type="checkbox" name="publication_authorized" value="1"><span>{safe_text(T['publish'])}</span></label>
     <label class="check"><input type="checkbox" name="instagram_tag_authorized" value="1"><span>{safe_text(T['tag'])}</span></label>
-    <button type="submit">{safe_text(T['button'])}</button>
+    <button id="mariposaSubmitButton" type="submit">{safe_text(T['button'])}</button>
     <p class="note">{safe_text(T['note'])}</p>
   </form>
 </div>
 <script>
 (function(){{
+  const form=document.getElementById('mariposaForm');
   const input=document.getElementById('mariposaPhotoInput');
   const label=document.querySelector('.file-picker');
   const name=document.getElementById('mariposaFileName');
+  const preview=document.getElementById('mariposaPhotoPreview');
+  const email=document.getElementById('mariposaEmail');
+  const join=document.getElementById('mariposaJoin');
+  const joinWrap=document.getElementById('mariposaJoinWrap');
+  const errorBox=document.getElementById('mariposaErrorBox');
+  const submit=document.getElementById('mariposaSubmitButton');
   const chooseText={json.dumps('Choose photo' if is_en else 'Elegir foto')};
   const selectedText={json.dumps('Photo selected' if is_en else 'Foto seleccionada')};
   const emptyText={json.dumps('No photo selected yet.' if is_en else 'Todavía no has seleccionado ninguna foto.')};
-  if(!input||!name)return;
-  input.addEventListener('change',function(){{
-    const file=input.files&&input.files[0];
-    if(file){{name.textContent=file.name; if(label) label.textContent=selectedText;}}
-    else{{name.textContent=emptyText; if(label) label.textContent=chooseText;}}
-  }});
+  const previewText={json.dumps('Your selected photo will appear here.' if is_en else 'Aquí verás la foto seleccionada.')};
+  const genericError={json.dumps('Please check the photo, email and join checkbox.' if is_en else 'Revisa la foto, el email y la casilla para unirte al Club.')};
+  const imageError={json.dumps('Please choose a valid image file.' if is_en else 'Elige una imagen válida.')};
+  const sizeError={json.dumps('The image is too large. Please choose a lighter image.' if is_en else 'La imagen pesa demasiado. Elige una foto más ligera.')};
+  const loadingText={json.dumps('Creating your membership...' if is_en else 'Creando tu entrada...')};
+  const normalText={json.dumps(T['button'])};
+  let currentPreviewUrl='';
+  let alreadySubmitting=false;
+  const maxBytes={int(CLUB_MARIPOSA_MAX_PHOTO_MB) * 1024 * 1024};
+  function showError(msg){{ if(errorBox){{ errorBox.textContent=msg||genericError; errorBox.classList.add('show'); errorBox.scrollIntoView({{behavior:'smooth',block:'center'}}); }} }}
+  function clearError(){{ if(errorBox){{ errorBox.classList.remove('show'); errorBox.textContent=''; }} }}
+  function mark(el,on){{ if(el){{ el.classList.toggle('field-missing', !!on); }} }}
+  if(input&&name){{
+    input.addEventListener('change',function(){{
+      clearError(); mark(label,false); mark(preview,false);
+      const file=input.files&&input.files[0];
+      if(currentPreviewUrl){{URL.revokeObjectURL(currentPreviewUrl); currentPreviewUrl='';}}
+      if(file){{
+        const fileNameLower=String(file.name||'').toLowerCase();
+        const fileTypeLower=String(file.type||'').toLowerCase();
+        const isImageFile=(fileTypeLower && fileTypeLower.startsWith('image/')) || /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(fileNameLower);
+        if(!isImageFile){{ input.value=''; name.textContent=emptyText; if(label) label.textContent=chooseText; if(preview){{ preview.style.backgroundImage=''; preview.textContent=previewText; preview.classList.remove('has-image'); preview.classList.remove('has-file'); }} showError(imageError); mark(label,true); return; }}
+        if(file.size && file.size > maxBytes){{ input.value=''; name.textContent=emptyText; if(label) label.textContent=chooseText; if(preview){{ preview.style.backgroundImage=''; preview.textContent=previewText; preview.classList.remove('has-image'); preview.classList.remove('has-file'); }} showError(sizeError); mark(label,true); return; }}
+        name.textContent=file.name;
+        if(label) label.textContent=selectedText;
+        if(preview){{
+          currentPreviewUrl=URL.createObjectURL(file);
+          const previewUrl=currentPreviewUrl;
+          const fallbackPreviewText={json.dumps('Photo selected. If your browser cannot preview HEIC, it will still be uploaded.' if is_en else 'Foto seleccionada. Si tu navegador no previsualiza HEIC, aun así se subirá.')};
+          preview.style.backgroundImage='';
+          preview.textContent=fallbackPreviewText;
+          preview.classList.remove('has-image');
+          preview.classList.add('has-file');
+          const probeImg=new Image();
+          probeImg.onload=function(){{
+            if(currentPreviewUrl!==previewUrl) return;
+            preview.style.backgroundImage='url('+previewUrl+')';
+            preview.textContent='';
+            preview.classList.add('has-image');
+            preview.classList.remove('has-file');
+          }};
+          probeImg.onerror=function(){{
+            if(currentPreviewUrl!==previewUrl) return;
+            preview.style.backgroundImage='';
+            preview.textContent=fallbackPreviewText;
+            preview.classList.remove('has-image');
+            preview.classList.add('has-file');
+          }};
+          probeImg.src=previewUrl;
+        }}
+      }} else {{
+        name.textContent=emptyText;
+        if(label) label.textContent=chooseText;
+        if(preview){{ preview.style.backgroundImage=''; preview.textContent=previewText; preview.classList.remove('has-image'); preview.classList.remove('has-file'); }}
+      }}
+    }});
+  }}
+  if(form){{
+    form.addEventListener('submit',function(e){{
+      clearError();
+      const file=input&&input.files&&input.files[0];
+      const emailOk=email&&email.value&&email.checkValidity();
+      const joinOk=join&&join.checked;
+      let fileOk=!!file;
+      if(file){{
+        const submitNameLower=String(file.name||'').toLowerCase();
+        const submitTypeLower=String(file.type||'').toLowerCase();
+        fileOk=((submitTypeLower && submitTypeLower.startsWith('image/')) || /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(submitNameLower)) && !(file.size && file.size > maxBytes);
+      }}
+      mark(label,!fileOk); mark(preview,!fileOk); mark(email,!emailOk); mark(joinWrap,!joinOk);
+      if(!fileOk || !emailOk || !joinOk){{ e.preventDefault(); alreadySubmitting=false; if(submit){{ submit.classList.remove('is-loading'); submit.textContent=normalText; }} showError(!fileOk ? imageError : genericError); return; }}
+      if(alreadySubmitting){{ e.preventDefault(); return; }}
+      alreadySubmitting=true;
+      if(submit){{ submit.classList.add('is-loading'); submit.textContent=loadingText; }}
+    }});
+  }}
 }})();
 </script>
 </body>
@@ -13243,9 +13467,9 @@ async def club_mariposa_post(
     clean_email = rc120_clean_email(email)
     clean_full_name = rc120_clean_text(full_name, 90)
     if not clean_email:
-        raise HTTPException(status_code=400, detail="Invalid email" if ui_lang == "en" else "Email no válido")
+        return rc145e_mariposa_error_page("Invalid email" if ui_lang == "en" else "Email no válido", ui_lang, 400)
     if not rc120_truthy(join_club):
-        raise HTTPException(status_code=400, detail="You must confirm that you want to join Club Mariposa" if ui_lang == "en" else "Debes confirmar que quieres unirte al Club Mariposa")
+        return rc145e_mariposa_error_page("You must confirm that you want to join Club Mariposa" if ui_lang == "en" else "Debes confirmar que quieres unirte al Club Mariposa", ui_lang, 400)
 
     clean_city = rc120_clean_city(city)
     clean_story = rc120_clean_story(story)
@@ -13292,6 +13516,38 @@ async def club_mariposa_post(
             cur.execute("UPDATE butterfly_club SET record_json_local = ? WHERE id = ?", (record_json_local, member_id))
         except Exception as record_error:
             print("[WARN] RC139 no pudo escribir ficha JSON Club Mariposa:", record_error)
+
+        # RC145F: copia reconstruible del miembro en R2. No bloquea el alta si R2 falla.
+        r2_backup = {"ok": False}
+        try:
+            member_payload = {
+                "member_id": member_id,
+                "member_number": member_number,
+                "member_code": member_code,
+                "full_name": clean_full_name,
+                "email": clean_email,
+                "instagram_handle": clean_instagram,
+                "instagram_tag_authorized": bool(tag_ok),
+                "city": clean_city,
+                "story": clean_story,
+                "publication_authorized": bool(publication_ok),
+                "discount_code": discount_code,
+                "discount_percent": CLUB_MARIPOSA_DISCOUNT_PERCENT,
+                "file_identity": photo_paths.get("file_identity") or "",
+                "record_json_local": record_json_local,
+                "created_at": created_at,
+            }
+            r2_backup = rc145e_backup_club_member_to_r2(member_payload, photo_paths)
+            meta_payload = {
+                "source": "club_mariposa_v1",
+                "publication_authorized": bool(publication_ok),
+                "instagram_handle": clean_instagram,
+                "instagram_tag_authorized": bool(tag_ok),
+                "r2_backup": r2_backup,
+            }
+            cur.execute("UPDATE butterfly_club SET meta_json = ? WHERE id = ?", (json.dumps(meta_payload, ensure_ascii=False), member_id))
+        except Exception as r2_member_error:
+            print("[WARN] RC145F no pudo crear backup R2 del miembro Club Mariposa:", r2_member_error)
         cur.execute(
             """
             INSERT INTO butterfly_discount_codes (email, code, discount_percent, used, member_id, created_at, updated_at)
@@ -13300,12 +13556,12 @@ async def club_mariposa_post(
             (clean_email, discount_code, CLUB_MARIPOSA_DISCOUNT_PERCENT, member_id, created_at, created_at),
         )
         conn.commit()
-    except HTTPException:
+    except HTTPException as e:
         conn.rollback()
-        raise
+        return rc145e_mariposa_error_page(str(e.detail or e), ui_lang, int(getattr(e, "status_code", 400) or 400))
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"No se pudo crear el miembro Club Mariposa: {e}")
+        return rc145e_mariposa_error_page(f"No se pudo crear el miembro Club Mariposa: {str(e)[:180]}", ui_lang, 500)
     finally:
         conn.close()
         try:
