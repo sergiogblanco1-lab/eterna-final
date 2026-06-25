@@ -112,7 +112,7 @@ print("🛟 RC144 SENDER PASSPORT RECOVERY LOCK — /SENDER NO MUERE SI LA DB FA
 print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
 print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
 print("🛡️ RC145K MONEY TRUST + RESCUE CODE LOCK — DINERO TRAZADO + CÓDIGO COMPENSACIÓN 100% 🛡️")
-print("📧 RC146 RECIPIENT PAYOUT EMAIL LOCK — EMAIL OBLIGATORIO ANTES DE STRIPE CONNECT 📧")
+print("📧 RC146B RECIPIENT EMAIL → STRIPE LOCK — EMAIL OBLIGATORIO Y SALTO DIRECTO A STRIPE CONNECT 📧")
 print("📧 RC145G EMAIL FORTRESS LOCK — EMAIL QUEUE + RETRY + NO LOST ORDER EMAILS 📧")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
@@ -888,7 +888,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC146_RECIPIENT_PAYOUT_EMAIL_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC146B_RECIPIENT_EMAIL_TO_STRIPE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -19698,20 +19698,20 @@ def render_recipient_payout_email_capture(order: dict, recipient_token: str, ui_
 
     if ui_lang == "en":
         title = "Where should we update you about your gift?"
-        intro = f"Your ETERNA includes a {amount} gift. We need your email to send you the banking confirmation and keep you updated about the payout process."
+        intro = f"Your ETERNA includes a {amount} gift. Before taking you to Stripe, we need your email to send you the banking confirmation and keep you updated about the payout process."
         no_marketing = "This is not marketing. It is only used to inform you about this ETERNA."
         placeholder = "Your email address"
-        button = "CONTINUE TO RECEIVE MY GIFT"
-        small = "The payout is securely handled through Stripe. Timing may depend on Stripe, your bank and your country."
+        button = "CONTINUE SECURELY WITH STRIPE"
+        small = "After this step, you will continue through Stripe, our secure payment operator. Timing may depend on Stripe, your bank and your country."
         error_text = "Please enter a valid email address."
         order_label = "Order"
     else:
         title = "¿Dónde te avisamos sobre tu regalo?"
-        intro = f"Tu ETERNA incluye un regalo de {amount}. Necesitamos tu correo para enviarte la confirmación del proceso bancario y mantenerte informado sobre el cobro."
+        intro = f"Tu ETERNA incluye un regalo de {amount}. Antes de llevarte a Stripe, necesitamos tu correo para enviarte la confirmación del proceso bancario y mantenerte informado sobre el cobro."
         no_marketing = "No es publicidad. Es solo para esta ETERNA."
         placeholder = "Tu correo electrónico"
-        button = "CONTINUAR PARA RECIBIR MI REGALO"
-        small = "El ingreso se gestiona de forma segura con Stripe. Los tiempos pueden depender de Stripe, tu banco y tu país."
+        button = "CONTINUAR DE FORMA SEGURA CON STRIPE"
+        small = "Después de este paso continuarás en Stripe, nuestro operador seguro de pagos. Los tiempos pueden depender de Stripe, tu banco y tu país."
         error_text = "Escribe un correo válido para poder avisarte."
         order_label = "Pedido"
 
@@ -19796,15 +19796,29 @@ def cobrar_email_submit(request: Request, recipient_token: str, recipient_email:
 
     refreshed = get_order_by_recipient_token_or_404(recipient_token)
 
-    # Si el usuario ya había completado Stripe Connect en una versión anterior sin email,
-    # enviamos ahora mismo la confirmación de datos bancarios usando la maquinaria RC145H.
+    # RC146B — apilado definitivo:
+    # 1) Si Stripe Connect ya estaba completado/en proceso, no volvemos a Stripe:
+    #    enviamos ahora la confirmación y volvemos a la pantalla de estado.
+    # 2) Si todavía no ha completado Stripe Connect, saltamos directamente a Stripe
+    #    tras guardar el email. Así evitamos una pantalla/click intermedio.
     try:
         cashout_status = compute_cashout_status(refreshed)
-        if bool(refreshed.get("connect_onboarding_completed")) or cashout_status in {"registered", "processing", "pending_balance", "completed"}:
+        if bool(refreshed.get("connect_onboarding_completed")) or cashout_status in {"registered", "processing", "pending_balance", "completed", "manual_review"}:
             email_result = send_payout_details_confirmed_emails(refreshed["id"], source="recipient_payout_email_capture")
-            print("💶 RC146 payout details emails after capture:", email_result)
+            print("💶 RC146B payout details emails after capture:", email_result)
+            return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
     except Exception as email_error:
-        log_error("rc146_payout_details_email_after_capture", email_error)
+        log_error("rc146b_payout_details_email_after_capture", email_error)
+
+    try:
+        connect_url = create_connect_onboarding_link(refreshed)
+        if connect_url:
+            insert_order_event(refreshed["id"], "recipient_payout_email_to_stripe", "ok", "Email guardado y redirección directa a Stripe Connect", {"to": mask_email(clean_email)})
+            print("📧➡️ Stripe RC146B recipient email saved; redirecting to Stripe Connect:", refreshed.get("id"), mask_email(clean_email))
+            return RedirectResponse(url=connect_url, status_code=303)
+    except Exception as e:
+        log_error("rc146b_create_connect_after_email", e)
+        insert_order_event(refreshed["id"], "recipient_payout_email_to_stripe", "warning", "Email guardado pero Stripe Connect no pudo abrirse automáticamente", {"to": mask_email(clean_email), "error": str(e)[:240]})
 
     return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
@@ -19842,7 +19856,7 @@ def cobrar(request: Request, recipient_token: str):
     # RC146 — si hay regalo económico, antes de Stripe Connect necesitamos el email
     # del destinatario para poder confirmarle y seguir informándole sobre el cobro.
     recipient_payout_email = clean_recipient_payout_email(order.get("recipient_email") or "")
-    if gift_amount > 0 and not recipient_payout_email and cashout_status in {"pending", "registered", "processing", "pending_balance"}:
+    if gift_amount > 0 and not recipient_payout_email and cashout_status in {"pending", "registered", "processing", "pending_balance", "manual_review"}:
         return render_recipient_payout_email_capture(order, recipient_token, ui_lang)
 
     if gift_amount <= 0:
