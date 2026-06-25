@@ -107,6 +107,7 @@ print("🧠 RC142 MEMORY FORTRESS LOCK — PERSISTENCIA + PASAPORTE + CONSERVACI
 print("🛟 RC144 SENDER PASSPORT RECOVERY LOCK — /SENDER NO MUERE SI LA DB FALLA 🛟")
 print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
 print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
+print("🧼 RC145B LOG CLEAN LOCK — ROBOTS 200 + SYSTEM BACKUP EVENT SAFE 🧼")
 import html
 import json
 import mimetypes
@@ -136,7 +137,7 @@ import stripe
 from botocore.client import Config
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -825,7 +826,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145_AUDIT_FREEZE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145B_LOG_CLEAN_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -983,6 +984,19 @@ def eterna_asset_file(asset_name: str):
         raise HTTPException(status_code=404, detail=f"Asset no encontrado: {asset_name}")
     return FileResponse(str(path), media_type=guess_media_type_from_path(str(path)))
 
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots_txt():
+    # RC145B — evita 404 innecesario de bots/crawlers.
+    # Limpio y permisivo: no bloquea ETERNA ni afecta SEO técnico básico.
+    return "User-agent: *\nAllow: /\n"
+
+
+@app.head("/")
+def home_head():
+    # RC145B — Render/monitores pueden hacer HEAD /. Evita 405 feo en logs.
+    return PlainTextResponse("", status_code=200)
 
 
 @app.get("/favicon.ico")
@@ -20386,7 +20400,16 @@ def rc104_backup_db(reason: str = "manual") -> dict:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         target = AUTO_DB_BACKUP_FOLDER / f"eterna_backup_{stamp}.db"
         shutil.copy2(DB_PATH, target)
-        insert_order_event("SYSTEM", "rc104_db_backup", "ok", f"Backup DB creado: {target.name}", {"reason": reason, "path": str(target)})
+        # RC145B — evento de sistema seguro.
+        # Antes usaba insert_order_event("SYSTEM", ...), pero order_events tiene FK a orders
+        # y SYSTEM no es un pedido real. El backup se creaba, pero ensuciaba logs con
+        # FOREIGN KEY constraint failed. No tocamos DB de pedidos ni flujo principal.
+        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("✅ PASO ETERNA: Rc104 db backup")
+        print("🖥️ Sistema: backup automático")
+        print("📍 Estado: correcto")
+        print(f"📝 Detalle: Backup DB creado: {target.name}")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
         return {"ok": True, "backup_path": str(target), "backup_name": target.name, "bytes": target.stat().st_size}
     except Exception as e:
         print("[WARN] RC104 backup DB error:", e)
