@@ -112,6 +112,7 @@ print("🛟 RC144 SENDER PASSPORT RECOVERY LOCK — /SENDER NO MUERE SI LA DB FA
 print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
 print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
 print("🛡️ RC145K MONEY TRUST + RESCUE CODE LOCK — DINERO TRAZADO + CÓDIGO COMPENSACIÓN 100% 🛡️")
+print("📧 RC146 RECIPIENT PAYOUT EMAIL LOCK — EMAIL OBLIGATORIO ANTES DE STRIPE CONNECT 📧")
 print("📧 RC145G EMAIL FORTRESS LOCK — EMAIL QUEUE + RETRY + NO LOST ORDER EMAILS 📧")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
@@ -887,7 +888,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145K_MONEY_TRUST_RESCUE_CODE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC146_RECIPIENT_PAYOUT_EMAIL_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -19661,6 +19662,153 @@ video{{width:100%;height:100%;display:block;object-fit:contain;background:#000}}
 # COBRAR / CONNECT / PAYOUT (UNA SOLA PANTALLA)
 # =========================================================
 
+
+# =========================================================
+# RC146 — RECIPIENT PAYOUT EMAIL LOCK
+# Puerta mínima antes de Stripe Connect.
+# Si hay regalo económico, ETERNA necesita el email del destinatario
+# para confirmar datos bancarios y mantenerle informado del estado del regalo.
+# No toca Stripe Checkout, vídeo, SMS, reacción, Sender Pack ni Club Mariposa.
+# =========================================================
+
+def clean_recipient_payout_email(value: str) -> str:
+    """Email operativo del destinatario para comunicaciones de cobro/payout."""
+    raw = str(value or "").strip().lower()
+    raw = raw.replace(" ", "")
+    if not raw or len(raw) > 180:
+        return ""
+    if raw.count("@") != 1:
+        return ""
+    local, domain = raw.split("@", 1)
+    if not local or not domain or "." not in domain:
+        return ""
+    if domain.startswith(".") or domain.endswith("."):
+        return ""
+    if not re.match(r"^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$", raw):
+        return ""
+    return raw
+
+
+def render_recipient_payout_email_capture(order: dict, recipient_token: str, ui_lang: str = "es", error: str = "") -> HTMLResponse:
+    """Pantalla mínima: pedir email antes de Stripe Connect."""
+    ui_lang = normalize_order_language(ui_lang or order.get("language") or "es")
+    html_lang = "en" if ui_lang == "en" else "es"
+    amount = format_amount_display(float(order.get("gift_amount") or 0))
+    public_code = order_public_code(order)
+
+    if ui_lang == "en":
+        title = "Where should we update you about your gift?"
+        intro = f"Your ETERNA includes a {amount} gift. We need your email to send you the banking confirmation and keep you updated about the payout process."
+        no_marketing = "This is not marketing. It is only used to inform you about this ETERNA."
+        placeholder = "Your email address"
+        button = "CONTINUE TO RECEIVE MY GIFT"
+        small = "The payout is securely handled through Stripe. Timing may depend on Stripe, your bank and your country."
+        error_text = "Please enter a valid email address."
+        order_label = "Order"
+    else:
+        title = "¿Dónde te avisamos sobre tu regalo?"
+        intro = f"Tu ETERNA incluye un regalo de {amount}. Necesitamos tu correo para enviarte la confirmación del proceso bancario y mantenerte informado sobre el cobro."
+        no_marketing = "No es publicidad. Es solo para esta ETERNA."
+        placeholder = "Tu correo electrónico"
+        button = "CONTINUAR PARA RECIBIR MI REGALO"
+        small = "El ingreso se gestiona de forma segura con Stripe. Los tiempos pueden depender de Stripe, tu banco y tu país."
+        error_text = "Escribe un correo válido para poder avisarte."
+        order_label = "Pedido"
+
+    error_html = f'<div class="error">{safe_text(error_text)}</div>' if error else ""
+    current_email = clean_recipient_payout_email(order.get("recipient_email") or "")
+
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="{safe_attr(html_lang)}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETERNA</title>
+<meta name="theme-color" content="#02050a">
+<style>
+*{{box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+html,body{{margin:0;min-height:100%;background:#02050a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}}
+body{{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(circle at 50% 0%,rgba(42,151,255,.16),transparent 34%),radial-gradient(circle at 50% 100%,rgba(245,210,139,.12),transparent 38%),#02050a}}
+.card{{width:min(100%,448px);border:1px solid rgba(245,210,139,.30);border-radius:28px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035));box-shadow:0 28px 95px rgba(0,0,0,.54);position:relative;overflow:hidden}}
+.card:before{{content:'';position:absolute;inset:-1px;background:linear-gradient(135deg,rgba(245,210,139,.16),transparent 32%,rgba(74,190,255,.10));pointer-events:none}}
+.inner{{position:relative;z-index:1}}
+.logo{{font-size:12px;letter-spacing:.34em;font-weight:900;color:rgba(245,210,139,.92);margin-bottom:18px;text-align:center}}
+h1{{margin:0 0 14px;color:#f5d28b;font-size:26px;line-height:1.08;letter-spacing:-.02em}}
+p{{margin:0 0 14px;line-height:1.58;color:rgba(255,255,255,.78);font-size:15.5px}}
+.notice{{border:1px solid rgba(245,210,139,.20);border-radius:18px;padding:13px 14px;margin:14px 0 16px;background:rgba(0,0,0,.22);color:rgba(255,255,255,.74);font-size:14px;line-height:1.45}}
+input{{width:100%;padding:16px 16px;border-radius:17px;border:1px solid rgba(245,210,139,.36);background:rgba(0,0,0,.38);color:#fff;font-size:16px;outline:none;margin:4px 0 14px}}
+input:focus{{border-color:rgba(245,210,139,.78);box-shadow:0 0 0 3px rgba(245,210,139,.12)}}
+button{{width:100%;min-height:54px;border:0;border-radius:999px;background:linear-gradient(135deg,#fff1bb,#e7a73d 58%,#a96610);color:#120903;font-weight:950;font-size:14px;letter-spacing:.055em;box-shadow:0 14px 36px rgba(226,165,61,.25);cursor:pointer}}
+small{{display:block;margin-top:14px;color:rgba(255,255,255,.52);line-height:1.45;font-size:12.5px}}
+.error{{border:1px solid rgba(255,92,92,.45);background:rgba(255,0,0,.10);color:#ffd5d5;border-radius:14px;padding:11px 12px;margin:10px 0 14px;font-size:14px;line-height:1.35}}
+.code{{color:rgba(245,210,139,.70)}}
+</style>
+</head>
+<body>
+<div class="card"><div class="inner">
+  <div class="logo">ETERNA</div>
+  <h1>{safe_text(title)}</h1>
+  <p>{safe_text(intro)}</p>
+  <div class="notice">{safe_text(no_marketing)}</div>
+  {error_html}
+  <form method="post" action="/cobrar-email/{safe_attr(recipient_token)}" autocomplete="on">
+    <input required type="email" inputmode="email" autocomplete="email" name="recipient_email" value="{safe_attr(current_email)}" placeholder="{safe_attr(placeholder)}">
+    <button type="submit">{safe_text(button)}</button>
+  </form>
+  <small>{safe_text(small)}<br><span class="code">{safe_text(order_label)} {safe_text(public_code)}</span></small>
+</div></div>
+</body>
+</html>
+""")
+
+
+@app.post("/cobrar-email/{recipient_token}", response_class=HTMLResponse)
+def cobrar_email_submit(request: Request, recipient_token: str, recipient_email: str = Form(...)):
+    """RC146 — guarda email del destinatario antes de Stripe Connect y vuelve al cobro."""
+    order = get_order_by_recipient_token_or_404(recipient_token)
+    ui_lang = normalize_order_language(order.get("language") or "es")
+
+    if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
+        return render_viral_block_page(ui_lang)
+    if not bool(order.get("paid")):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+    if not original_video_ready(order):
+        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
+    if not reaction_is_safe(order):
+        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+
+    gift_amount = float(order.get("gift_amount") or 0)
+    if gift_amount <= 0:
+        return RedirectResponse(url=f"/mi-video/{recipient_token}", status_code=303)
+
+    clean_email = clean_recipient_payout_email(recipient_email)
+    if not clean_email:
+        return render_recipient_payout_email_capture(order, recipient_token, ui_lang, error="invalid_email")
+
+    try:
+        update_recipient_email_for_order(order, clean_email)
+        insert_order_event(order["id"], "recipient_payout_email_saved", "ok", "Email destinatario guardado antes de Stripe Connect", {"to": mask_email(clean_email)})
+        print("📧 RC146 recipient payout email saved:", order.get("id"), mask_email(clean_email))
+    except Exception as e:
+        log_error("rc146_save_recipient_payout_email", e)
+        return render_recipient_payout_email_capture(order, recipient_token, ui_lang, error="save_error")
+
+    refreshed = get_order_by_recipient_token_or_404(recipient_token)
+
+    # Si el usuario ya había completado Stripe Connect en una versión anterior sin email,
+    # enviamos ahora mismo la confirmación de datos bancarios usando la maquinaria RC145H.
+    try:
+        cashout_status = compute_cashout_status(refreshed)
+        if bool(refreshed.get("connect_onboarding_completed")) or cashout_status in {"registered", "processing", "pending_balance", "completed"}:
+            email_result = send_payout_details_confirmed_emails(refreshed["id"], source="recipient_payout_email_capture")
+            print("💶 RC146 payout details emails after capture:", email_result)
+    except Exception as email_error:
+        log_error("rc146_payout_details_email_after_capture", email_error)
+
+    return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
+
+
 @app.get("/cobrar/{recipient_token}", response_class=HTMLResponse)
 def cobrar(request: Request, recipient_token: str):
     """COBRAR RC48 — pantalla de regalo por código, sin PNG ni overlays."""
@@ -19690,6 +19838,13 @@ def cobrar(request: Request, recipient_token: str):
     cashout_status = compute_cashout_status(order)
 
     ui_lang = normalize_order_language(order.get("language") or "es")
+
+    # RC146 — si hay regalo económico, antes de Stripe Connect necesitamos el email
+    # del destinatario para poder confirmarle y seguir informándole sobre el cobro.
+    recipient_payout_email = clean_recipient_payout_email(order.get("recipient_email") or "")
+    if gift_amount > 0 and not recipient_payout_email and cashout_status in {"pending", "registered", "processing", "pending_balance"}:
+        return render_recipient_payout_email_capture(order, recipient_token, ui_lang)
+
     if gift_amount <= 0:
         amount_text = eterna_ui_text(ui_lang, "gift_no_money")
         cta_html = f'<a href="/mi-video/{safe_attr(recipient_token)}" class="btn primary">{safe_text(eterna_ui_text(ui_lang, "view_again"))}</a>'
