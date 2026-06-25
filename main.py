@@ -111,6 +111,7 @@ print("🧠 RC142 MEMORY FORTRESS LOCK — PERSISTENCIA + PASAPORTE + CONSERVACI
 print("🛟 RC144 SENDER PASSPORT RECOVERY LOCK — /SENDER NO MUERE SI LA DB FALLA 🛟")
 print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧")
 print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
+print("🛡️ RC145K MONEY TRUST + RESCUE CODE LOCK — DINERO TRAZADO + CÓDIGO COMPENSACIÓN 100% 🛡️")
 print("📧 RC145G EMAIL FORTRESS LOCK — EMAIL QUEUE + RETRY + NO LOST ORDER EMAILS 📧")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
@@ -598,6 +599,18 @@ EMAIL_QUEUE_MAX_DELAY_SECONDS = int(os.getenv("EMAIL_QUEUE_MAX_DELAY_SECONDS", "
 EMAIL_QUEUE_R2_BACKUP_ENABLED = os.getenv("EMAIL_QUEUE_R2_BACKUP_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 # =========================================================
+# RC145H — PAYOUT TRUTH LOCK
+# Emails y trazabilidad real del regalo económico.
+# No prometemos que el banco lo haya abonado hasta que Stripe marque payout.paid.
+# =========================================================
+PAYOUT_TRUTH_EMAILS_ENABLED = os.getenv("PAYOUT_TRUTH_EMAILS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+PAYOUT_TRUTH_ADMIN_COPY_ENABLED = os.getenv("PAYOUT_TRUTH_ADMIN_COPY_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+PAYOUT_TRUTH_SENDER_DETAILS_EMAIL_ENABLED = os.getenv("PAYOUT_TRUTH_SENDER_DETAILS_EMAIL_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+PAYOUT_TRUTH_SENDER_PAID_EMAIL_ENABLED = os.getenv("PAYOUT_TRUTH_SENDER_PAID_EMAIL_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+PAYOUT_TRUTH_RECIPIENT_PAID_EMAIL_ENABLED = os.getenv("PAYOUT_TRUTH_RECIPIENT_PAID_EMAIL_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+PAYOUT_TRUTH_FAILED_EMAILS_ENABLED = os.getenv("PAYOUT_TRUTH_FAILED_EMAILS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+# =========================================================
 # RC99 — SOPORTE / CONFIANZA / CONVERSIÓN
 # =========================================================
 ETERNA_SUPPORT_EMAIL = os.getenv("ETERNA_SUPPORT_EMAIL", "hola@tueterna.com").strip()
@@ -613,6 +626,18 @@ CLUB_MARIPOSA_ENABLED = os.getenv("CLUB_MARIPOSA_ENABLED", "1").strip().lower() 
 CLUB_MARIPOSA_DISCOUNT_PERCENT = int(os.getenv("CLUB_MARIPOSA_DISCOUNT_PERCENT", "15"))
 CLUB_MARIPOSA_CODE_PREFIX = os.getenv("CLUB_MARIPOSA_CODE_PREFIX", "MARIPOSA").strip().upper() or "MARIPOSA"
 CLUB_MARIPOSA_MAX_PHOTO_MB = int(os.getenv("CLUB_MARIPOSA_MAX_PHOTO_MB", "10"))
+
+# =========================================================
+# RC145K — CÓDIGOS COMPENSACIÓN 100% SAFE
+# Uso interno para resolver incidencias reales sin crear un código público peligroso.
+# Regla de dinero: solo cubre el servicio ETERNA cuando NO hay regalo económico.
+# Nunca cubre dinero regalado ni transferencias.
+# =========================================================
+RESCUE_COMPENSATION_CODES_ENABLED = os.getenv("RESCUE_COMPENSATION_CODES_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+RESCUE_COMPENSATION_CODE_PREFIX = os.getenv("RESCUE_COMPENSATION_CODE_PREFIX", "ETERNA-RESCUE").strip().upper() or "ETERNA-RESCUE"
+RESCUE_COMPENSATION_VALID_DAYS = int(os.getenv("RESCUE_COMPENSATION_VALID_DAYS", "365"))
+RESCUE_COMPENSATION_ADMIN_ROUTE_ENABLED = os.getenv("RESCUE_COMPENSATION_ADMIN_ROUTE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+RESCUE_COMPENSATION_SEND_EMAIL_DEFAULT = os.getenv("RESCUE_COMPENSATION_SEND_EMAIL_DEFAULT", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 # =========================================================
 # MEMORY ENGINE V1 — MODO SILENCIOSO
@@ -862,7 +887,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145G_EMAIL_FORTRESS_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC145K_MONEY_TRUST_RESCUE_CODE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -2763,6 +2788,31 @@ def init_db():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_butterfly_discount_codes_code ON butterfly_discount_codes(code)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_butterfly_discount_codes_email ON butterfly_discount_codes(email)")
 
+    # =========================================================
+    # RC145K — códigos compensación 100% internos, únicos y ligados a email.
+    # No son Club Mariposa. No son públicos. No cubren regalo económico.
+    # =========================================================
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS rescue_compensation_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        discount_percent INTEGER NOT NULL DEFAULT 100,
+        used INTEGER NOT NULL DEFAULT 0,
+        used_at TEXT,
+        used_order_id TEXT,
+        created_by TEXT,
+        note TEXT,
+        expires_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        meta_json TEXT
+    )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_rescue_compensation_codes_code ON rescue_compensation_codes(code)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_rescue_compensation_codes_email ON rescue_compensation_codes(email)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_rescue_compensation_codes_used ON rescue_compensation_codes(used)")
+
     # RC139 — contador persistente y trazabilidad básica del Club Mariposa.
     # No toca Stripe/Twilio/video/reacción/Sender Pack.
     cur.execute("""
@@ -2848,6 +2898,26 @@ def init_db():
     add_column_if_missing("orders", "payout_completed_at", "ALTER TABLE orders ADD COLUMN payout_completed_at TEXT")
     add_column_if_missing("orders", "payout_manual_review", "ALTER TABLE orders ADD COLUMN payout_manual_review INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "payout_alert_sent", "ALTER TABLE orders ADD COLUMN payout_alert_sent INTEGER NOT NULL DEFAULT 0")
+    # RC145H — trazabilidad financiera Stripe/Connect/payouts.
+    add_column_if_missing("orders", "recipient_payout_details_submitted_at", "ALTER TABLE orders ADD COLUMN recipient_payout_details_submitted_at TEXT")
+    add_column_if_missing("orders", "recipient_payout_confirmation_email_sent_at", "ALTER TABLE orders ADD COLUMN recipient_payout_confirmation_email_sent_at TEXT")
+    add_column_if_missing("orders", "sender_payout_details_email_sent_at", "ALTER TABLE orders ADD COLUMN sender_payout_details_email_sent_at TEXT")
+    add_column_if_missing("orders", "admin_payout_confirmation_email_sent_at", "ALTER TABLE orders ADD COLUMN admin_payout_confirmation_email_sent_at TEXT")
+    add_column_if_missing("orders", "sender_gift_payout_paid_email_sent_at", "ALTER TABLE orders ADD COLUMN sender_gift_payout_paid_email_sent_at TEXT")
+    add_column_if_missing("orders", "recipient_gift_payout_paid_email_sent_at", "ALTER TABLE orders ADD COLUMN recipient_gift_payout_paid_email_sent_at TEXT")
+    add_column_if_missing("orders", "admin_gift_payout_paid_email_sent_at", "ALTER TABLE orders ADD COLUMN admin_gift_payout_paid_email_sent_at TEXT")
+    add_column_if_missing("orders", "sender_gift_payout_failed_email_sent_at", "ALTER TABLE orders ADD COLUMN sender_gift_payout_failed_email_sent_at TEXT")
+    add_column_if_missing("orders", "recipient_gift_payout_failed_email_sent_at", "ALTER TABLE orders ADD COLUMN recipient_gift_payout_failed_email_sent_at TEXT")
+    add_column_if_missing("orders", "admin_gift_payout_failed_email_sent_at", "ALTER TABLE orders ADD COLUMN admin_gift_payout_failed_email_sent_at TEXT")
+    add_column_if_missing("orders", "gift_bank_status", "ALTER TABLE orders ADD COLUMN gift_bank_status TEXT")
+    add_column_if_missing("orders", "stripe_payout_id", "ALTER TABLE orders ADD COLUMN stripe_payout_id TEXT")
+    add_column_if_missing("orders", "stripe_payout_status", "ALTER TABLE orders ADD COLUMN stripe_payout_status TEXT")
+    add_column_if_missing("orders", "stripe_payout_arrival_date", "ALTER TABLE orders ADD COLUMN stripe_payout_arrival_date TEXT")
+    add_column_if_missing("orders", "stripe_payout_paid_at", "ALTER TABLE orders ADD COLUMN stripe_payout_paid_at TEXT")
+    add_column_if_missing("orders", "stripe_payout_last_event_id", "ALTER TABLE orders ADD COLUMN stripe_payout_last_event_id TEXT")
+    add_column_if_missing("orders", "stripe_payout_last_error", "ALTER TABLE orders ADD COLUMN stripe_payout_last_error TEXT")
+    add_column_if_missing("orders", "stripe_payout_amount", "ALTER TABLE orders ADD COLUMN stripe_payout_amount INTEGER")
+    add_column_if_missing("orders", "stripe_payout_currency", "ALTER TABLE orders ADD COLUMN stripe_payout_currency TEXT")
 
     # RC118 — lanzamiento autosuficiente: bloqueo final, dinero registrado y rescue/email operativo.
     add_column_if_missing("orders", "order_locked", "ALTER TABLE orders ADD COLUMN order_locked INTEGER NOT NULL DEFAULT 0")
@@ -2943,6 +3013,13 @@ def init_db():
     add_column_if_missing("orders", "butterfly_discount_percent", "ALTER TABLE orders ADD COLUMN butterfly_discount_percent INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "butterfly_discount_amount", "ALTER TABLE orders ADD COLUMN butterfly_discount_amount REAL NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "butterfly_discount_status", "ALTER TABLE orders ADD COLUMN butterfly_discount_status TEXT")
+
+    # RC145K — código compensación 100% interno. Separado para auditoría.
+    add_column_if_missing("orders", "rescue_compensation_code", "ALTER TABLE orders ADD COLUMN rescue_compensation_code TEXT")
+    add_column_if_missing("orders", "rescue_compensation_email", "ALTER TABLE orders ADD COLUMN rescue_compensation_email TEXT")
+    add_column_if_missing("orders", "rescue_compensation_amount", "ALTER TABLE orders ADD COLUMN rescue_compensation_amount REAL NOT NULL DEFAULT 0")
+    add_column_if_missing("orders", "rescue_compensation_status", "ALTER TABLE orders ADD COLUMN rescue_compensation_status TEXT")
+    add_column_if_missing("orders", "rescue_compensation_used_at", "ALTER TABLE orders ADD COLUMN rescue_compensation_used_at TEXT")
 
     # RC142 — Memory Fortress: conservación futura silenciosa.
     # No comunica nada al cliente, no activa cobros, no toca el flujo principal.
@@ -3294,21 +3371,99 @@ def rc120_get_discount_by_code(code: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
-def rc120_validate_discount_for_order(code: str) -> dict:
+def rc145k_normalize_email(value: str) -> str:
+    return (value or "").strip().lower()
+
+
+def rc145k_generate_rescue_code() -> str:
+    suffix = secrets.token_urlsafe(8).replace("_", "").replace("-", "").upper()[:10]
+    return f"{RESCUE_COMPENSATION_CODE_PREFIX}-{suffix}"
+
+
+def rc145k_get_rescue_code(code: str) -> Optional[dict]:
     clean = rc120_normalize_discount_code(code)
     if not clean:
-        return {"ok": False, "reason": "empty", "code": "", "percent": 0, "amount": 0.0}
+        return None
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM rescue_compensation_codes WHERE code = ?", (clean,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def rc145k_validate_rescue_code_for_order(code: str, customer_email: str, fees: Optional[dict] = None) -> dict:
+    """
+    Código compensación 100% seguro:
+    - debe existir en tabla privada rescue_compensation_codes
+    - debe coincidir con el email del regalante
+    - debe estar sin usar y no caducado
+    - solo válido si gift_amount == 0, para no cubrir dinero real regalado
+    - puede dejar total_amount a 0 y saltar Stripe de forma controlada
+    """
+    clean = rc120_normalize_discount_code(code)
+    email = rc145k_normalize_email(customer_email)
+    if not RESCUE_COMPENSATION_CODES_ENABLED:
+        return {"ok": False, "reason": "rescue_disabled", "source": "rescue_compensation", "code": clean, "percent": 0, "amount": 0.0}
+    if not clean:
+        return {"ok": False, "reason": "empty", "source": "rescue_compensation", "code": "", "percent": 0, "amount": 0.0}
+    row = rc145k_get_rescue_code(clean)
+    if not row:
+        return {"ok": False, "reason": "not_found", "source": "rescue_compensation", "code": clean, "percent": 0, "amount": 0.0}
+    if int(row.get("used") or 0) == 1:
+        return {"ok": False, "reason": "already_used", "source": "rescue_compensation", "code": clean, "percent": 0, "amount": 0.0}
+    allowed_email = rc145k_normalize_email(row.get("email") or "")
+    if not email or not allowed_email or email != allowed_email:
+        return {"ok": False, "reason": "email_mismatch", "source": "rescue_compensation", "code": clean, "percent": 0, "amount": 0.0, "allowed_email": allowed_email}
+    expires_at = (row.get("expires_at") or "").strip()
+    if expires_at:
+        try:
+            exp = parse_iso_dt(expires_at)
+            if exp and exp < now_dt():
+                return {"ok": False, "reason": "expired", "source": "rescue_compensation", "code": clean, "percent": 0, "amount": 0.0}
+        except Exception:
+            pass
+    fees = fees or {}
+    gift_amount = round(float(fees.get("gift_amount") or 0), 2)
+    if gift_amount > 0:
+        return {"ok": False, "reason": "gift_amount_not_allowed", "source": "rescue_compensation", "code": clean, "percent": 100, "amount": 0.0}
+    amount = round(max(0.0, float(fees.get("total_amount") or BASE_PRICE or 0)), 2)
+    return {
+        "ok": True,
+        "reason": "ok",
+        "source": "rescue_compensation",
+        "code": clean,
+        "percent": 100,
+        "amount": amount,
+        "allowed_email": allowed_email,
+        "allow_zero_checkout": True,
+        "note": row.get("note") or "",
+    }
+
+
+def rc120_validate_discount_for_order(code: str, customer_email: str = "", fees: Optional[dict] = None) -> dict:
+    clean = rc120_normalize_discount_code(code)
+    if not clean:
+        return {"ok": False, "reason": "empty", "source": "none", "code": "", "percent": 0, "amount": 0.0}
+
+    # RC145K — primero intentamos código compensación privado 100%.
+    # Si existe pero no coincide email/no es válido, devolvemos el motivo real y NO lo tratamos como Club.
+    rescue_row = rc145k_get_rescue_code(clean)
+    if rescue_row:
+        return rc145k_validate_rescue_code_for_order(clean, customer_email, fees)
+
+    # RC120 — Club Mariposa 15% tradicional.
     row = rc120_get_discount_by_code(clean)
     if not row:
-        return {"ok": False, "reason": "not_found", "code": clean, "percent": 0, "amount": 0.0}
+        return {"ok": False, "reason": "not_found", "source": "unknown", "code": clean, "percent": 0, "amount": 0.0}
     if int(row.get("used") or 0) == 1:
-        return {"ok": False, "reason": "already_used", "code": clean, "percent": 0, "amount": 0.0}
+        return {"ok": False, "reason": "already_used", "source": "club_mariposa", "code": clean, "percent": 0, "amount": 0.0}
     percent = int(row.get("discount_percent") or CLUB_MARIPOSA_DISCOUNT_PERCENT or 15)
     if percent != CLUB_MARIPOSA_DISCOUNT_PERCENT:
-        return {"ok": False, "reason": "invalid_percent", "code": clean, "percent": percent, "amount": 0.0}
+        return {"ok": False, "reason": "invalid_percent", "source": "club_mariposa", "code": clean, "percent": percent, "amount": 0.0}
     # SAFE MONEY RULE: descuento solo sobre BASE_PRICE. Nunca reduce dinero regalado ni comisiones de regalo.
     amount = round(max(0.0, BASE_PRICE * (percent / 100.0)), 2)
-    return {"ok": True, "reason": "ok", "code": clean, "percent": percent, "amount": amount}
+    return {"ok": True, "reason": "ok", "source": "club_mariposa", "code": clean, "percent": percent, "amount": amount, "allow_zero_checkout": False}
 
 
 def rc120_apply_discount_to_fees(fees: dict, discount: dict) -> dict:
@@ -3317,13 +3472,73 @@ def rc120_apply_discount_to_fees(fees: dict, discount: dict) -> dict:
         updated["discount_amount"] = 0.0
         updated["discount_code"] = ""
         updated["discount_percent"] = 0
+        updated["discount_source"] = ""
+        updated["free_compensation_checkout"] = False
         return updated
     amount = round(float(discount.get("amount") or 0), 2)
-    updated["total_amount"] = round(max(0.50, float(updated.get("total_amount") or 0) - amount), 2)
+    current_total = round(float(updated.get("total_amount") or 0), 2)
+    if discount.get("source") == "rescue_compensation" and discount.get("allow_zero_checkout"):
+        updated["total_amount"] = round(max(0.0, current_total - amount), 2)
+        updated["free_compensation_checkout"] = updated["total_amount"] <= 0.0
+    else:
+        updated["total_amount"] = round(max(0.50, current_total - amount), 2)
+        updated["free_compensation_checkout"] = False
     updated["discount_amount"] = amount
     updated["discount_code"] = discount.get("code") or ""
     updated["discount_percent"] = int(discount.get("percent") or 0)
+    updated["discount_source"] = discount.get("source") or ""
     return updated
+
+
+def rc145k_mark_rescue_code_used(code: str, order_id: str) -> dict:
+    clean = rc120_normalize_discount_code(code)
+    if not clean:
+        return {"ok": False, "reason": "empty"}
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        now = now_iso()
+        cur.execute(
+            """
+            UPDATE rescue_compensation_codes
+            SET used = 1, used_at = ?, used_order_id = ?, updated_at = ?
+            WHERE code = ? AND used = 0
+            """,
+            (now, order_id, now, clean),
+        )
+        changed = cur.rowcount
+        conn.commit()
+        if changed:
+            return {"ok": True, "reason": "marked_used", "code": clean, "used_at": now}
+        cur.execute("SELECT used_order_id FROM rescue_compensation_codes WHERE code = ?", (clean,))
+        row = cur.fetchone()
+        return {"ok": False, "reason": "not_marked_or_already_used", "code": clean, "used_order_id": row["used_order_id"] if row else None}
+    finally:
+        conn.close()
+
+
+def rc145k_mark_any_discount_code_used(discount: dict, order_id: str) -> dict:
+    if not discount or not discount.get("ok"):
+        return {"ok": False, "reason": "no_discount"}
+    source = discount.get("source") or "club_mariposa"
+    code = discount.get("code") or ""
+    if source == "rescue_compensation":
+        return rc145k_mark_rescue_code_used(code, order_id)
+    return rc120_mark_discount_code_used(code, order_id)
+
+
+def rc145k_is_free_rescue_order(fees: dict, discount: dict) -> bool:
+    try:
+        return bool(
+            discount
+            and discount.get("ok")
+            and discount.get("source") == "rescue_compensation"
+            and discount.get("allow_zero_checkout")
+            and float(fees.get("gift_amount") or 0) <= 0
+            and float(fees.get("total_amount") or 0) <= 0
+        )
+    except Exception:
+        return False
 
 
 def rc120_mark_discount_code_used(code: str, order_id: str) -> dict:
@@ -5903,6 +6118,35 @@ def get_order_by_stripe_session_id(session_id: str):
     return dict(row)
 
 
+
+def get_order_by_connected_account_id(account_id: str):
+    clean = str(account_id or "").strip()
+    if not clean:
+        raise HTTPException(status_code=404, detail="Cuenta Stripe no indicada")
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            o.*,
+            s.name AS sender_name,
+            s.email AS sender_email,
+            s.phone AS sender_phone,
+            r.name AS recipient_name,
+            r.phone AS recipient_phone,
+            r.email AS recipient_email
+        FROM orders o
+        JOIN senders s ON s.id = o.sender_id
+        JOIN recipients r ON r.id = o.recipient_id
+        WHERE o.stripe_connected_account_id = ?
+        ORDER BY o.created_at DESC
+        LIMIT 1
+    """, (clean,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado por cuenta Stripe Connect")
+    return dict(row)
+
 def get_order_by_recipient_token_or_404(token: str):
     conn = db_conn()
     cur = conn.cursor()
@@ -7159,6 +7403,33 @@ def _mark_order_email_sent_from_queue(order_id: str, email_kind: str):
         elif email_kind == "admin_order_email":
             update_order(order_id, order_email_admin_sent_at=now_iso(), order_email_last_error=None)
             insert_order_event(order_id, "admin_order_email", "ok", "Email admin enviado desde Email Fortress")
+        elif email_kind == "recipient_payout_details_email":
+            update_order(order_id, recipient_payout_confirmation_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "recipient_payout_details_email", "ok", "Email cobro destinatario enviado desde Email Fortress")
+        elif email_kind == "sender_payout_details_email":
+            update_order(order_id, sender_payout_details_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "sender_payout_details_email", "ok", "Email cobro regalante enviado desde Email Fortress")
+        elif email_kind == "admin_payout_details_email":
+            update_order(order_id, admin_payout_confirmation_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_payout_details_email", "ok", "Email admin cobro enviado desde Email Fortress")
+        elif email_kind == "sender_gift_payout_paid_email":
+            update_order(order_id, sender_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "sender_gift_payout_paid_email", "ok", "Email regalante payout.paid enviado desde Email Fortress")
+        elif email_kind == "recipient_gift_payout_paid_email":
+            update_order(order_id, recipient_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "recipient_gift_payout_paid_email", "ok", "Email destinatario payout.paid enviado desde Email Fortress")
+        elif email_kind == "admin_gift_payout_paid_email":
+            update_order(order_id, admin_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_gift_payout_paid_email", "ok", "Email admin payout.paid enviado desde Email Fortress")
+        elif email_kind == "sender_gift_payout_failed_email":
+            update_order(order_id, sender_gift_payout_failed_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "sender_gift_payout_failed_email", "ok", "Email regalante payout.failed enviado desde Email Fortress")
+        elif email_kind == "recipient_gift_payout_failed_email":
+            update_order(order_id, recipient_gift_payout_failed_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "recipient_gift_payout_failed_email", "ok", "Email destinatario payout.failed enviado desde Email Fortress")
+        elif email_kind == "admin_gift_payout_failed_email":
+            update_order(order_id, admin_gift_payout_failed_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_gift_payout_failed_email", "ok", "Email admin payout.failed enviado desde Email Fortress")
     except Exception as e:
         print(f"📧 RC145G email sent marker warning: {str(e)[:180]}")
 
@@ -7323,6 +7594,808 @@ def send_order_received_emails(order_id: str) -> dict:
         result["error"] = " | ".join(errors)
     return result
 
+
+
+# =========================================================
+# RC145H — PAYOUT TRUTH EMAILS / STRIPE CONNECT TRACE
+# Veracidad financiera: no decimos "recibido en banco" hasta payout.paid.
+# Usa la misma arquitectura de email + Email Fortress de RC145G.
+# =========================================================
+
+def rc145h_epoch_to_iso(value) -> str:
+    try:
+        if value in (None, "", 0):
+            return ""
+        return datetime.fromtimestamp(int(value), tz=timezone.utc).isoformat()
+    except Exception:
+        return ""
+
+
+def rc145h_epoch_to_human_date(value, language: str = "es") -> str:
+    try:
+        if value in (None, "", 0):
+            return ""
+        dt = datetime.fromtimestamp(int(value), tz=timezone.utc)
+        if language == "en":
+            return dt.strftime("%Y-%m-%d")
+        return dt.strftime("%d/%m/%Y")
+    except Exception:
+        return ""
+
+
+def rc145h_money_from_cents(amount_cents, currency: str = "eur") -> str:
+    try:
+        return f"{(int(amount_cents or 0) / 100):.2f} {str(currency or 'eur').upper()}"
+    except Exception:
+        return f"{amount_cents} {str(currency or '').upper()}".strip()
+
+
+def rc145h_payout_eta_line(order: dict, language: str = "es") -> str:
+    arrival = order.get("stripe_payout_arrival_date") or ""
+    status = (order.get("stripe_payout_status") or order.get("payout_status") or "").strip()
+    if arrival:
+        # arrival_date se guarda en ISO si viene de Stripe. Presentamos fecha humana.
+        try:
+            dt = datetime.fromisoformat(str(arrival).replace("Z", "+00:00"))
+            human = dt.strftime("%Y-%m-%d") if language == "en" else dt.strftime("%d/%m/%Y")
+        except Exception:
+            human = str(arrival)
+        if language == "en":
+            return f"Estimated bank arrival date from Stripe: {human}."
+        return f"Fecha estimada de llegada según Stripe: {human}."
+    if language == "en":
+        return "Stripe has not provided a final bank arrival date yet. We will update the status when Stripe creates or updates the payout."
+    return "Stripe todavía no ha facilitado una fecha bancaria definitiva. Actualizaremos el estado cuando Stripe cree o actualice el envío bancario."
+
+
+def build_recipient_payout_details_email_body(order: dict) -> str:
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    amount = format_amount_display(float(order.get("gift_amount") or 0))
+    ref = order_public_code(order)
+    eta = rc145h_payout_eta_line(order, ui_lang)
+    if ui_lang == "en":
+        name = (order.get("recipient_name") or "").strip()
+        greeting = f"Hi {name}," if name else "Hi,"
+        return f"""{greeting}
+
+We have received your details to receive your ETERNA gift.
+
+Order reference: {ref}
+Gift amount: {amount}
+
+The money is now being processed through Stripe, our payment operator. Bank timing may depend on Stripe, the destination bank, the country and possible verification checks.
+
+{eta}
+
+Important: this email confirms that your payout details have been received and the process is underway. It does not mean the money has already appeared in your bank account.
+
+If you need help, contact ETERNA:
+{ETERNA_SUPPORT_EMAIL}
+{ETERNA_SUPPORT_PHONE}
+
+Thank you for being part of ETERNA.
+""".strip()
+    name = (order.get("recipient_name") or "").strip()
+    greeting = f"Hola {name}," if name else "Hola,"
+    return f"""{greeting}
+
+Hemos recibido tus datos para recibir tu regalo ETERNA.
+
+Referencia del pedido: {ref}
+Importe del regalo: {amount}
+
+El dinero queda ahora en proceso a través de Stripe, nuestro operador de pagos. Los tiempos bancarios pueden depender de Stripe, del banco de destino, del país y de posibles verificaciones.
+
+{eta}
+
+Importante: este email confirma que hemos recibido tus datos de cobro y que el proceso está en marcha. No significa que el dinero ya aparezca en tu cuenta bancaria.
+
+Si necesitas ayuda, contacta con ETERNA:
+{ETERNA_SUPPORT_EMAIL}
+{ETERNA_SUPPORT_PHONE}
+
+Gracias por formar parte de ETERNA.
+""".strip()
+
+
+def build_sender_payout_details_email_body(order: dict) -> str:
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    amount = format_amount_display(float(order.get("gift_amount") or 0))
+    recipient = (order.get("recipient_name") or "la persona destinataria").strip()
+    ref = order_public_code(order)
+    eta = rc145h_payout_eta_line(order, ui_lang)
+    if ui_lang == "en":
+        sender = (order.get("sender_name") or "").strip()
+        greeting = f"Hi {sender}," if sender else "Hi,"
+        return f"""{greeting}
+
+The recipient of your ETERNA has completed the payout details needed to receive the gift.
+
+Order reference: {ref}
+Recipient: {recipient}
+Gift amount: {amount}
+Current status: payout details received
+
+Stripe, our payment operator, is now responsible for the bank payout process. Bank timing may depend on Stripe, the destination bank, the country and possible verification checks.
+
+{eta}
+
+We will notify you again when Stripe confirms the bank payout status.
+
+Important: this email confirms that the recipient has completed their payout details. It does not mean the money is already visible in their bank account.
+
+Thank you for trusting ETERNA.
+""".strip()
+    sender = (order.get("sender_name") or "").strip()
+    greeting = f"Hola {sender}," if sender else "Hola,"
+    return f"""{greeting}
+
+La persona destinataria de tu ETERNA ya ha completado los datos necesarios para recibir el regalo.
+
+Referencia del pedido: {ref}
+Destinatario: {recipient}
+Importe del regalo: {amount}
+Estado actual: datos de cobro recibidos
+
+Stripe, nuestro operador de pagos, pasa ahora a gestionar el proceso de envío bancario. Los tiempos pueden depender de Stripe, del banco de destino, del país y de posibles verificaciones.
+
+{eta}
+
+Te avisaremos de nuevo cuando Stripe confirme el estado del envío bancario.
+
+Importante: este email confirma que el destinatario ha completado sus datos de cobro. No significa que el dinero ya aparezca en su cuenta bancaria.
+
+Gracias por confiar en ETERNA.
+""".strip()
+
+
+def build_admin_payout_details_email_body(order: dict, source: str = "connect_return") -> str:
+    recipient_url = recipient_experience_url_from_order(order) if order else ""
+    sender_url = sender_pack_url_from_order(order) if order else ""
+    return f"""💶 ETERNA · DESTINATARIO COMPLETÓ DATOS DE COBRO
+
+Referencia: {order_public_code(order)}
+Order ID interno: {order.get('id')}
+Origen: {source}
+Fecha registro dinero: {order.get('money_registered_at') or order.get('recipient_payout_details_submitted_at') or 'pendiente'}
+Estado interno payout: {order.get('payout_status') or 'sin estado'}
+Estado banco/regalo: {order.get('gift_bank_status') or 'pendiente'}
+
+REGALANTE
+Nombre: {order.get('sender_name') or 'sin nombre'}
+Email: {order.get('sender_email') or 'sin email'}
+Teléfono: {order.get('sender_phone') or 'sin teléfono'}
+
+REGALADO / DESTINATARIO
+Nombre: {order.get('recipient_name') or 'sin nombre'}
+Email: {order.get('recipient_email') or 'sin email'}
+Teléfono: {order.get('recipient_phone') or 'sin teléfono'}
+
+DINERO
+Importe regalo: {money(order.get('gift_amount') or 0)} €
+Total pagado por regalante: {money(order.get('total_amount') or 0)} €
+Moneda: {CURRENCY.upper()}
+
+STRIPE
+Connected account ID: {order.get('stripe_connected_account_id') or 'no disponible'}
+Transfer ID: {order.get('stripe_transfer_id') or 'todavía no creado'}
+Payout ID: {order.get('stripe_payout_id') or 'todavía no informado'}
+Payout status: {order.get('stripe_payout_status') or 'todavía no informado'}
+Payout arrival_date: {order.get('stripe_payout_arrival_date') or 'todavía no informado'}
+Payout paid_at: {order.get('stripe_payout_paid_at') or 'todavía no informado'}
+Último error payout: {order.get('payout_last_error') or order.get('stripe_payout_last_error') or 'sin error'}
+
+TWILIO / ENTREGA
+SMS destinatario SID: {order.get('recipient_sms_sid') or 'no disponible'}
+SMS destinatario status: {order.get('recipient_sms_status') or 'no disponible'}
+SMS destinatario actualizado: {order.get('recipient_sms_status_updated_at') or 'no disponible'}
+SMS destinatario error: {order.get('recipient_sms_error') or 'sin error'}
+SMS regalante SID: {order.get('sender_sms_sid') or 'no disponible'}
+SMS regalante status: {order.get('sender_sms_status') or 'no disponible'}
+SMS regalante error: {order.get('sender_sms_error') or 'sin error'}
+
+ENLACES DE CONTROL
+Link regalado: {recipient_url}
+Link regalante: {sender_url}
+
+LECTURA OPERATIVA
+✅ El destinatario ha completado datos de cobro en Stripe/Connect.
+⏳ Esto NO significa necesariamente que el dinero ya esté en su banco.
+🔎 Para decir “recibido/enviado al banco”, esperar payout.paid o revisar Stripe Dashboard.
+""".strip()
+
+
+def build_sender_gift_payout_paid_email_body(order: dict) -> str:
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    amount = format_amount_display(float(order.get("gift_amount") or 0))
+    recipient = (order.get("recipient_name") or "la persona destinataria").strip()
+    ref = order_public_code(order)
+    paid_at = order.get("stripe_payout_paid_at") or now_iso()
+    if ui_lang == "en":
+        sender = (order.get("sender_name") or "").strip()
+        greeting = f"Hi {sender}," if sender else "Hi,"
+        return f"""{greeting}
+
+Stripe has confirmed the bank payout for your ETERNA gift.
+
+Order reference: {ref}
+Recipient: {recipient}
+Gift amount: {amount}
+Stripe payout status: paid
+Confirmed at: {paid_at}
+
+This means Stripe has marked the bank payout as paid. Final visibility in the recipient's bank account can still depend on their bank's own processing times.
+
+Thank you for trusting ETERNA.
+""".strip()
+    sender = (order.get("sender_name") or "").strip()
+    greeting = f"Hola {sender}," if sender else "Hola,"
+    return f"""{greeting}
+
+Stripe ha confirmado el envío bancario del regalo de tu ETERNA.
+
+Referencia del pedido: {ref}
+Destinatario: {recipient}
+Importe del regalo: {amount}
+Estado Stripe payout: paid
+Confirmado en: {paid_at}
+
+Esto significa que Stripe ha marcado el envío bancario como pagado. La visibilidad final en la cuenta bancaria del destinatario puede depender todavía de los tiempos internos de su banco.
+
+Gracias por confiar en ETERNA.
+""".strip()
+
+
+def build_admin_gift_payout_paid_email_body(order: dict, payout_payload: Optional[dict] = None) -> str:
+    payout_payload = payout_payload or {}
+    return f"""✅ ETERNA · STRIPE MARCÓ EL REGALO COMO PAGADO AL BANCO
+
+Referencia: {order_public_code(order)}
+Order ID interno: {order.get('id')}
+
+REGALANTE
+Nombre: {order.get('sender_name') or 'sin nombre'}
+Email: {order.get('sender_email') or 'sin email'}
+Teléfono: {order.get('sender_phone') or 'sin teléfono'}
+
+REGALADO
+Nombre: {order.get('recipient_name') or 'sin nombre'}
+Email: {order.get('recipient_email') or 'sin email'}
+Teléfono: {order.get('recipient_phone') or 'sin teléfono'}
+
+DINERO
+Importe regalo: {money(order.get('gift_amount') or 0)} €
+Estado banco/regalo: {order.get('gift_bank_status') or 'PAYOUT_PAID'}
+
+STRIPE
+Connected account ID: {order.get('stripe_connected_account_id') or 'no disponible'}
+Transfer ID: {order.get('stripe_transfer_id') or 'no disponible'}
+Payout ID: {order.get('stripe_payout_id') or payout_payload.get('id') or 'no disponible'}
+Payout status: {order.get('stripe_payout_status') or payout_payload.get('status') or 'paid'}
+Payout arrival_date: {order.get('stripe_payout_arrival_date') or 'no informado'}
+Payout paid_at: {order.get('stripe_payout_paid_at') or now_iso()}
+Stripe amount: {rc145h_money_from_cents(payout_payload.get('amount'), payout_payload.get('currency') or CURRENCY)}
+
+NOTA DE VERACIDAD
+Este email se envía cuando Stripe comunica payout.paid. No vemos la app bancaria del destinatario; usamos la confirmación oficial del estado payout de Stripe.
+""".strip()
+
+
+def build_recipient_gift_payout_paid_email_body(order: dict) -> str:
+    """Email prudente al regalado cuando Stripe marca payout.paid."""
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    amount = format_amount_display(float(order.get("gift_amount") or 0))
+    ref = order_public_code(order)
+    paid_at = order.get("stripe_payout_paid_at") or now_iso()
+    arrival = rc145h_payout_eta_line(order, ui_lang)
+    if ui_lang == "en":
+        name = (order.get("recipient_name") or "").strip()
+        greeting = f"Hi {name}," if name else "Hi,"
+        return f"""{greeting}
+
+Stripe has confirmed the bank payout for your ETERNA gift.
+
+Order reference: {ref}
+Gift amount: {amount}
+Stripe payout status: paid
+Confirmed at: {paid_at}
+
+This means Stripe has marked the bank payout as paid. Final visibility in your bank account can still depend on your bank's own processing times.
+
+{arrival}
+
+You do not need to send us any bank details by email. ETERNA will never ask you for your full card number, password, or banking login details.
+
+Thank you for being part of ETERNA.
+""".strip()
+    name = (order.get("recipient_name") or "").strip()
+    greeting = f"Hola {name}," if name else "Hola,"
+    return f"""{greeting}
+
+Stripe ha confirmado el envío bancario de tu regalo ETERNA.
+
+Referencia del pedido: {ref}
+Importe del regalo: {amount}
+Estado Stripe payout: paid
+Confirmado en: {paid_at}
+
+Esto significa que Stripe ha marcado el envío bancario como pagado. La visibilidad final en tu cuenta bancaria puede depender todavía de los tiempos internos de tu banco.
+
+{arrival}
+
+No tienes que enviarnos datos bancarios por email. ETERNA nunca te pedirá el número completo de tu tarjeta, tu contraseña ni tus claves bancarias.
+
+Gracias por formar parte de ETERNA.
+""".strip()
+
+
+def build_sender_gift_payout_failed_email_body(order: dict, payout_payload: Optional[dict] = None) -> str:
+    """Email prudente al regalante cuando Stripe informa payout.failed. No exponemos datos bancarios del regalado."""
+    payout_payload = payout_payload or {}
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    amount = format_amount_display(float(order.get("gift_amount") or 0))
+    recipient = (order.get("recipient_name") or "la persona destinataria").strip()
+    ref = order_public_code(order)
+    failure = (order.get("stripe_payout_last_error") or payout_payload.get("failure_message") or payout_payload.get("failure_code") or "incidencia bancaria pendiente de revisión")
+    if ui_lang == "en":
+        sender = (order.get("sender_name") or "").strip()
+        greeting = f"Hi {sender}," if sender else "Hi,"
+        return f"""{greeting}
+
+We are reviewing a banking issue with the payout of your ETERNA gift.
+
+Order reference: {ref}
+Recipient: {recipient}
+Gift amount: {amount}
+Current status: banking payout requires review
+
+Stripe has informed us that the bank payout could not be completed automatically at this stage. This can happen because of bank details, verification requirements, banking processing rules, or the receiving bank.
+
+For privacy and security reasons, we will not share the recipient's banking details by email. ETERNA will review the Stripe status and, if needed, ask the recipient to update their payout details securely through Stripe.
+
+Your gift is not forgotten. We are tracking this order and will update you when the payout can continue or if another action is needed.
+
+Thank you for trusting ETERNA.
+""".strip()
+    sender = (order.get("sender_name") or "").strip()
+    greeting = f"Hola {sender}," if sender else "Hola,"
+    return f"""{greeting}
+
+Estamos revisando una incidencia bancaria en el envío del regalo de tu ETERNA.
+
+Referencia del pedido: {ref}
+Destinatario: {recipient}
+Importe del regalo: {amount}
+Estado actual: el envío bancario necesita revisión
+
+Stripe nos ha informado de que el envío bancario no se ha podido completar automáticamente en este momento. Esto puede ocurrir por datos bancarios, verificaciones pendientes, reglas del banco o tiempos internos de la entidad receptora.
+
+Por privacidad y seguridad, no compartiremos datos bancarios del destinatario por email. ETERNA revisará el estado en Stripe y, si hace falta, pedirá al destinatario que actualice sus datos de cobro de forma segura a través de Stripe.
+
+Tu regalo no queda olvidado. Este pedido queda trazado y te avisaremos cuando el envío pueda continuar o si necesitamos una acción adicional.
+
+Gracias por confiar en ETERNA.
+""".strip()
+
+
+def build_recipient_gift_payout_failed_email_body(order: dict, payout_payload: Optional[dict] = None) -> str:
+    """Email al regalado cuando Stripe informa payout.failed, con acción segura y sin alarmismo."""
+    payout_payload = payout_payload or {}
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    amount = format_amount_display(float(order.get("gift_amount") or 0))
+    ref = order_public_code(order)
+    failure = (order.get("stripe_payout_last_error") or payout_payload.get("failure_message") or payout_payload.get("failure_code") or "Stripe necesita revisar o actualizar los datos de cobro")
+    cobrar_url = cobrador_url_from_order(order) if 'cobrador_url_from_order' in globals() else f"{PUBLIC_BASE_URL}/cobrar/{order.get('recipient_token') or ''}"
+    if ui_lang == "en":
+        name = (order.get("recipient_name") or "").strip()
+        greeting = f"Hi {name}," if name else "Hi,"
+        return f"""{greeting}
+
+Stripe could not complete the bank payout of your ETERNA gift automatically.
+
+Order reference: {ref}
+Gift amount: {amount}
+Current status: payout details require review
+
+This can happen if the bank details do not match the account holder, if Stripe needs extra verification, if the bank rejects the payout, or because of banking rules in the destination country.
+
+Please do not send us bank details by email. Use the secure Stripe flow if ETERNA asks you to update your payout details:
+{cobrar_url}
+
+Your gift has not been lost. ETERNA keeps the order reference and Stripe payout status so we can continue tracking it.
+
+Support:
+{ETERNA_SUPPORT_EMAIL}
+{ETERNA_SUPPORT_PHONE}
+""".strip()
+    name = (order.get("recipient_name") or "").strip()
+    greeting = f"Hola {name}," if name else "Hola,"
+    return f"""{greeting}
+
+Stripe no ha podido completar automáticamente el envío bancario de tu regalo ETERNA.
+
+Referencia del pedido: {ref}
+Importe del regalo: {amount}
+Estado actual: los datos de cobro necesitan revisión
+
+Esto puede ocurrir si los datos bancarios no coinciden con el titular, si Stripe necesita alguna verificación adicional, si el banco rechaza el envío o por reglas bancarias del país de destino.
+
+No nos envíes datos bancarios por email. Usa el flujo seguro de Stripe si ETERNA te pide actualizar tus datos de cobro:
+{cobrar_url}
+
+Tu regalo no se ha perdido. ETERNA conserva la referencia del pedido y el estado de Stripe para seguir trazándolo.
+
+Soporte:
+{ETERNA_SUPPORT_EMAIL}
+{ETERNA_SUPPORT_PHONE}
+""".strip()
+
+
+def build_admin_gift_payout_failed_email_body(order: dict, payout_payload: Optional[dict] = None) -> str:
+    """Email admin urgente con expediente completo si Stripe comunica payout.failed."""
+    payout_payload = payout_payload or {}
+    failure_code = payout_payload.get("failure_code") or ""
+    failure_message = payout_payload.get("failure_message") or order.get("stripe_payout_last_error") or ""
+    return f"""🚨 ETERNA · STRIPE HA INFORMADO PAYOUT.FAILED
+
+Referencia: {order_public_code(order)}
+Order ID interno: {order.get('id')}
+
+REGALANTE
+Nombre: {order.get('sender_name') or 'sin nombre'}
+Email: {order.get('sender_email') or 'sin email'}
+Teléfono: {order.get('sender_phone') or 'sin teléfono'}
+
+REGALADO
+Nombre: {order.get('recipient_name') or 'sin nombre'}
+Email: {order.get('recipient_email') or 'sin email'}
+Teléfono: {order.get('recipient_phone') or 'sin teléfono'}
+
+DINERO
+Importe regalo: {money(order.get('gift_amount') or 0)} €
+Estado banco/regalo: {order.get('gift_bank_status') or 'PAYOUT_FAILED'}
+
+STRIPE
+Connected account ID: {order.get('stripe_connected_account_id') or 'no disponible'}
+Transfer ID: {order.get('stripe_transfer_id') or 'no disponible'}
+Payout ID: {order.get('stripe_payout_id') or payout_payload.get('id') or 'no disponible'}
+Payout status: {order.get('stripe_payout_status') or payout_payload.get('status') or 'failed'}
+Payout arrival_date: {order.get('stripe_payout_arrival_date') or 'no informado'}
+Failure code: {failure_code or 'no informado'}
+Failure message: {failure_message or 'no informado'}
+Stripe amount: {rc145h_money_from_cents(payout_payload.get('amount'), payout_payload.get('currency') or CURRENCY)}
+
+MENSAJERÍA
+SMS destinatario SID: {order.get('recipient_sms_sid') or 'no disponible'}
+SMS destinatario status: {order.get('recipient_sms_status') or 'no disponible'}
+SMS destinatario error: {order.get('recipient_sms_error') or 'sin error'}
+SMS regalante SID: {order.get('sender_sms_sid') or 'no disponible'}
+SMS regalante status: {order.get('sender_sms_status') or 'no disponible'}
+SMS regalante error: {order.get('sender_sms_error') or 'sin error'}
+
+ACCIÓN RECOMENDADA
+1. Revisar el connected account en Stripe.
+2. Revisar requirements / payouts_enabled / external_account status.
+3. Si el banco rechazó datos, pedir al destinatario actualizar datos por Stripe, nunca por email.
+4. No decir al regalante “dinero recibido”; decir que ETERNA está revisando una incidencia bancaria.
+5. Si no se puede completar, estudiar devolución/manual según Stripe.
+
+NOTA DE VERACIDAD
+Este email sale solo ante payout.failed. Es una incidencia financiera real y debe gestionarse con prioridad.
+""".strip()
+
+
+def send_gift_payout_paid_emails(order_id: str, payout_payload: Optional[dict] = None, source: str = "stripe_payout_paid") -> dict:
+    """Emails a regalante, regalado y admin cuando Stripe comunica payout.paid. Idempotente + Email Fortress."""
+    result = {"sender": "skipped", "recipient": "skipped", "admin": "skipped"}
+    if not PAYOUT_TRUTH_SENDER_PAID_EMAIL_ENABLED:
+        return {"sender": "disabled", "recipient": "disabled", "admin": "disabled"}
+    try:
+        order = get_order_by_id(order_id)
+    except Exception as e:
+        return {"sender": "error", "recipient": "error", "admin": "error", "error": str(e)}
+    if float(order.get("gift_amount") or 0) <= 0:
+        return {"sender": "skipped_no_gift", "recipient": "skipped_no_gift", "admin": "skipped_no_gift"}
+
+    ui_lang = normalize_order_language(order.get("language") or "es")
+    sender_email = (order.get("sender_email") or "").strip()
+    subject_sender = "Stripe ha confirmado el envío bancario de tu regalo ETERNA" if ui_lang == "es" else "Stripe has confirmed your ETERNA gift bank payout"
+    body_sender = build_sender_gift_payout_paid_email_body(order)
+    if sender_email and not order.get("sender_gift_payout_paid_email_sent_at"):
+        res = send_eterna_email(sender_email, subject_sender, body_sender)
+        if res.get("ok"):
+            update_order(order_id, sender_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "sender_gift_payout_paid_email", "ok", "Email al regalante por payout.paid enviado", {"source": source})
+            result["sender"] = "sent"
+        else:
+            err = res.get("error") or "sender_payout_paid_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="sender_gift_payout_paid_email", to_email=sender_email, subject=subject_sender, body=body_sender, last_error=err, meta={"source": source, "first_send_error": err})
+            result["sender"] = "queued" if queue_res.get("queued") else "error"
+            insert_order_event(order_id, "sender_gift_payout_paid_email", "pending" if queue_res.get("queued") else "error", "Email regalante payout.paid en cola" if queue_res.get("queued") else err, {"queue": queue_res})
+
+    recipient_email = (order.get("recipient_email") or "").strip()
+    subject_recipient = "Stripe ha confirmado el envío bancario de tu regalo ETERNA" if ui_lang == "es" else "Stripe has confirmed your ETERNA gift bank payout"
+    body_recipient = build_recipient_gift_payout_paid_email_body(order)
+    if recipient_email and not order.get("recipient_gift_payout_paid_email_sent_at"):
+        res = send_eterna_email(recipient_email, subject_recipient, body_recipient)
+        if res.get("ok"):
+            update_order(order_id, recipient_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "recipient_gift_payout_paid_email", "ok", "Email al destinatario por payout.paid enviado", {"source": source})
+            result["recipient"] = "sent"
+        else:
+            err = res.get("error") or "recipient_payout_paid_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="recipient_gift_payout_paid_email", to_email=recipient_email, subject=subject_recipient, body=body_recipient, last_error=err, meta={"source": source, "first_send_error": err})
+            result["recipient"] = "queued" if queue_res.get("queued") else "error"
+            insert_order_event(order_id, "recipient_gift_payout_paid_email", "pending" if queue_res.get("queued") else "error", "Email destinatario payout.paid en cola" if queue_res.get("queued") else err, {"queue": queue_res})
+
+    admin_targets = ",".join([x for x in [ETERNA_OPERATIONS_EMAIL, ADMIN_ALERT_EMAIL] if x])
+    if PAYOUT_TRUTH_ADMIN_COPY_ENABLED and admin_targets and not order.get("admin_gift_payout_paid_email_sent_at"):
+        subject_admin = f"✅ ETERNA · Stripe confirmó envío bancario · {order_public_code(order)}"
+        body_admin = build_admin_gift_payout_paid_email_body(order, payout_payload=payout_payload)
+        res = send_eterna_email(admin_targets, subject_admin, body_admin, reply_to=sender_email or recipient_email)
+        if res.get("ok"):
+            update_order(order_id, admin_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_gift_payout_paid_email", "ok", "Email admin payout.paid enviado", {"source": source})
+            result["admin"] = "sent"
+        else:
+            err = res.get("error") or "admin_payout_paid_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="admin_gift_payout_paid_email", to_email=admin_targets, subject=subject_admin, body=body_admin, reply_to=sender_email or recipient_email, last_error=err, meta={"source": source, "first_send_error": err})
+            result["admin"] = "queued" if queue_res.get("queued") else "error"
+            insert_order_event(order_id, "admin_gift_payout_paid_email", "pending" if queue_res.get("queued") else "error", "Email admin payout.paid en cola" if queue_res.get("queued") else err, {"queue": queue_res})
+    return result
+
+
+def send_gift_payout_failed_emails(order_id: str, payout_payload: Optional[dict] = None, source: str = "stripe_payout_failed") -> dict:
+    """Emails de crisis controlada cuando Stripe comunica payout.failed. Idempotente + Email Fortress."""
+    result = {"sender": "skipped", "recipient": "skipped", "admin": "skipped"}
+    try:
+        order = get_order_by_id(order_id)
+    except Exception as e:
+        return {"sender": "error", "recipient": "error", "admin": "error", "error": str(e)}
+    if float(order.get("gift_amount") or 0) <= 0:
+        return {"sender": "skipped_no_gift", "recipient": "skipped_no_gift", "admin": "skipped_no_gift"}
+    ui_lang = normalize_order_language(order.get("language") or "es")
+
+    sender_email = (order.get("sender_email") or "").strip()
+    if sender_email and not order.get("sender_gift_payout_failed_email_sent_at"):
+        subject_sender = "Estamos revisando el envío bancario de tu regalo ETERNA" if ui_lang == "es" else "We are reviewing your ETERNA gift bank payout"
+        body_sender = build_sender_gift_payout_failed_email_body(order, payout_payload=payout_payload)
+        res = send_eterna_email(sender_email, subject_sender, body_sender)
+        if res.get("ok"):
+            update_order(order_id, sender_gift_payout_failed_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "sender_gift_payout_failed_email", "ok", "Email al regalante por payout.failed enviado", {"source": source})
+            result["sender"] = "sent"
+        else:
+            err = res.get("error") or "sender_payout_failed_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="sender_gift_payout_failed_email", to_email=sender_email, subject=subject_sender, body=body_sender, last_error=err, meta={"source": source, "first_send_error": err})
+            result["sender"] = "queued" if queue_res.get("queued") else "error"
+            insert_order_event(order_id, "sender_gift_payout_failed_email", "pending" if queue_res.get("queued") else "error", "Email regalante payout.failed en cola" if queue_res.get("queued") else err, {"queue": queue_res})
+
+    recipient_email = (order.get("recipient_email") or "").strip()
+    if recipient_email and not order.get("recipient_gift_payout_failed_email_sent_at"):
+        subject_recipient = "Necesitamos revisar el cobro de tu regalo ETERNA" if ui_lang == "es" else "We need to review your ETERNA gift payout"
+        body_recipient = build_recipient_gift_payout_failed_email_body(order, payout_payload=payout_payload)
+        res = send_eterna_email(recipient_email, subject_recipient, body_recipient)
+        if res.get("ok"):
+            update_order(order_id, recipient_gift_payout_failed_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "recipient_gift_payout_failed_email", "ok", "Email al destinatario por payout.failed enviado", {"source": source})
+            result["recipient"] = "sent"
+        else:
+            err = res.get("error") or "recipient_payout_failed_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="recipient_gift_payout_failed_email", to_email=recipient_email, subject=subject_recipient, body=body_recipient, last_error=err, meta={"source": source, "first_send_error": err})
+            result["recipient"] = "queued" if queue_res.get("queued") else "error"
+            insert_order_event(order_id, "recipient_gift_payout_failed_email", "pending" if queue_res.get("queued") else "error", "Email destinatario payout.failed en cola" if queue_res.get("queued") else err, {"queue": queue_res})
+
+    admin_targets = ",".join([x for x in [ETERNA_OPERATIONS_EMAIL, ADMIN_ALERT_EMAIL] if x])
+    if PAYOUT_TRUTH_ADMIN_COPY_ENABLED and admin_targets and not order.get("admin_gift_payout_failed_email_sent_at"):
+        subject_admin = f"🚨 ETERNA · Payout failed · {order_public_code(order)}"
+        body_admin = build_admin_gift_payout_failed_email_body(order, payout_payload=payout_payload)
+        res = send_eterna_email(admin_targets, subject_admin, body_admin, reply_to=(order.get("recipient_email") or order.get("sender_email") or ""))
+        if res.get("ok"):
+            update_order(order_id, admin_gift_payout_failed_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_gift_payout_failed_email", "ok", "Email admin payout.failed enviado", {"source": source})
+            result["admin"] = "sent"
+        else:
+            err = res.get("error") or "admin_payout_failed_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="admin_gift_payout_failed_email", to_email=admin_targets, subject=subject_admin, body=body_admin, reply_to=(order.get("recipient_email") or order.get("sender_email") or ""), last_error=err, meta={"source": source, "first_send_error": err})
+            result["admin"] = "queued" if queue_res.get("queued") else "error"
+            insert_order_event(order_id, "admin_gift_payout_failed_email", "pending" if queue_res.get("queued") else "error", "Email admin payout.failed en cola" if queue_res.get("queued") else err, {"queue": queue_res})
+    return result
+
+
+def send_payout_details_confirmed_emails(order_id: str, source: str = "connect_return") -> dict:
+    """Emails de tranquilidad cuando el destinatario completa datos de cobro. Idempotente."""
+    result = {"recipient": "skipped", "sender": "skipped", "admin": "skipped"}
+    if not PAYOUT_TRUTH_EMAILS_ENABLED:
+        return {"recipient": "disabled", "sender": "disabled", "admin": "disabled"}
+    try:
+        order = get_order_by_id(order_id)
+    except Exception as e:
+        return {"recipient": "error", "sender": "error", "admin": "error", "error": str(e)}
+    if float(order.get("gift_amount") or 0) <= 0:
+        return {"recipient": "skipped_no_gift", "sender": "skipped_no_gift", "admin": "skipped_no_gift"}
+
+    try:
+        if not order.get("recipient_payout_details_submitted_at"):
+            update_order(order_id, recipient_payout_details_submitted_at=now_iso(), gift_bank_status=order.get("gift_bank_status") or "DETAILS_SUBMITTED")
+            order = get_order_by_id(order_id)
+    except Exception as e:
+        print("[WARN] RC145J no pudo marcar recipient_payout_details_submitted_at:", e)
+
+    ui_lang = normalize_order_language(order.get("language") or "es")
+
+    recipient_email = (order.get("recipient_email") or "").strip()
+    subject_recipient = "Hemos recibido tus datos para recibir el regalo" if ui_lang == "es" else "We received your gift payout details"
+    body_recipient = build_recipient_payout_details_email_body(order)
+    if recipient_email and not order.get("recipient_payout_confirmation_email_sent_at"):
+        res = send_eterna_email(recipient_email, subject_recipient, body_recipient)
+        if res.get("ok"):
+            update_order(order_id, recipient_payout_confirmation_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "recipient_payout_details_email", "ok", "Email de cobro enviado al destinatario", {"source": source})
+            result["recipient"] = "sent"
+        else:
+            err = res.get("error") or "recipient_payout_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="recipient_payout_details_email", to_email=recipient_email, subject=subject_recipient, body=body_recipient, last_error=err, meta={"source": source, "first_send_error": err})
+            if queue_res.get("queued"):
+                insert_order_event(order_id, "recipient_payout_details_email", "pending", "Email de cobro destinatario en cola", {"first_error": err, "queue": queue_res})
+                result["recipient"] = "queued"
+            else:
+                insert_order_event(order_id, "recipient_payout_details_email", "error", err, {"queue": queue_res})
+                result["recipient"] = "error"
+                result["recipient_error"] = err
+
+    sender_email = (order.get("sender_email") or "").strip()
+    subject_sender = "Tu regalo ETERNA ya está en proceso bancario" if ui_lang == "es" else "Your ETERNA gift is now in the banking process"
+    body_sender = build_sender_payout_details_email_body(order)
+    if PAYOUT_TRUTH_SENDER_DETAILS_EMAIL_ENABLED and sender_email and not order.get("sender_payout_details_email_sent_at"):
+        res = send_eterna_email(sender_email, subject_sender, body_sender)
+        if res.get("ok"):
+            update_order(order_id, sender_payout_details_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "sender_payout_details_email", "ok", "Email al regalante: destinatario completó datos de cobro", {"source": source})
+            result["sender"] = "sent"
+        else:
+            err = res.get("error") or "sender_payout_details_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="sender_payout_details_email", to_email=sender_email, subject=subject_sender, body=body_sender, last_error=err, meta={"source": source, "first_send_error": err})
+            if queue_res.get("queued"):
+                insert_order_event(order_id, "sender_payout_details_email", "pending", "Email regalante cobro en cola", {"first_error": err, "queue": queue_res})
+                result["sender"] = "queued"
+            else:
+                insert_order_event(order_id, "sender_payout_details_email", "error", err, {"queue": queue_res})
+                result["sender"] = "error"
+                result["sender_error"] = err
+
+    admin_targets = ",".join([x for x in [ETERNA_OPERATIONS_EMAIL, ADMIN_ALERT_EMAIL] if x])
+    if PAYOUT_TRUTH_ADMIN_COPY_ENABLED and admin_targets and not order.get("admin_payout_confirmation_email_sent_at"):
+        subject_admin = f"💶 ETERNA · Destinatario completó cobro · {order_public_code(order)}"
+        body_admin = build_admin_payout_details_email_body(order, source=source)
+        res = send_eterna_email(admin_targets, subject_admin, body_admin, reply_to=(order.get("recipient_email") or order.get("sender_email") or ""))
+        if res.get("ok"):
+            update_order(order_id, admin_payout_confirmation_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_payout_details_email", "ok", "Email admin de cobro enviado", {"source": source})
+            result["admin"] = "sent"
+        else:
+            err = res.get("error") or "admin_payout_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="admin_payout_details_email", to_email=admin_targets, subject=subject_admin, body=body_admin, reply_to=(order.get("recipient_email") or order.get("sender_email") or ""), last_error=err, meta={"source": source, "first_send_error": err})
+            if queue_res.get("queued"):
+                insert_order_event(order_id, "admin_payout_details_email", "pending", "Email admin de cobro en cola", {"first_error": err, "queue": queue_res})
+                result["admin"] = "queued"
+            else:
+                insert_order_event(order_id, "admin_payout_details_email", "error", err, {"queue": queue_res})
+                result["admin"] = "error"
+                result["admin_error"] = err
+    return result
+
+
+def send_sender_gift_payout_paid_emails(order_id: str, payout_payload: Optional[dict] = None, source: str = "stripe_payout_paid") -> dict:
+    """Email al regalante y admin cuando Stripe manda payout.paid. Idempotente."""
+    result = {"sender": "skipped", "admin": "skipped"}
+    if not PAYOUT_TRUTH_SENDER_PAID_EMAIL_ENABLED:
+        return {"sender": "disabled", "admin": "disabled"}
+    try:
+        order = get_order_by_id(order_id)
+    except Exception as e:
+        return {"sender": "error", "admin": "error", "error": str(e)}
+    if float(order.get("gift_amount") or 0) <= 0:
+        return {"sender": "skipped_no_gift", "admin": "skipped_no_gift"}
+
+    sender_email = (order.get("sender_email") or "").strip()
+    subject_sender = "Tu regalo ETERNA ya ha sido enviado por Stripe" if normalize_order_language(order.get("language") or "es") == "es" else "Your ETERNA gift has been paid out by Stripe"
+    body_sender = build_sender_gift_payout_paid_email_body(order)
+    if sender_email and not order.get("sender_gift_payout_paid_email_sent_at"):
+        res = send_eterna_email(sender_email, subject_sender, body_sender)
+        if res.get("ok"):
+            update_order(order_id, sender_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "sender_gift_payout_paid_email", "ok", "Email al regalante por payout.paid enviado", {"source": source})
+            result["sender"] = "sent"
+        else:
+            err = res.get("error") or "sender_payout_paid_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="sender_gift_payout_paid_email", to_email=sender_email, subject=subject_sender, body=body_sender, last_error=err, meta={"source": source, "first_send_error": err})
+            if queue_res.get("queued"):
+                insert_order_event(order_id, "sender_gift_payout_paid_email", "pending", "Email regalante payout.paid en cola", {"first_error": err, "queue": queue_res})
+                result["sender"] = "queued"
+            else:
+                insert_order_event(order_id, "sender_gift_payout_paid_email", "error", err, {"queue": queue_res})
+                result["sender"] = "error"
+                result["sender_error"] = err
+
+    admin_targets = ",".join([x for x in [ETERNA_OPERATIONS_EMAIL, ADMIN_ALERT_EMAIL] if x])
+    if PAYOUT_TRUTH_ADMIN_COPY_ENABLED and admin_targets and not order.get("admin_gift_payout_paid_email_sent_at"):
+        subject_admin = f"✅ ETERNA · Regalo marcado como pagado por Stripe · {order_public_code(order)}"
+        body_admin = build_admin_gift_payout_paid_email_body(order, payout_payload=payout_payload)
+        res = send_eterna_email(admin_targets, subject_admin, body_admin, reply_to=sender_email)
+        if res.get("ok"):
+            update_order(order_id, admin_gift_payout_paid_email_sent_at=now_iso(), order_email_last_error=None)
+            insert_order_event(order_id, "admin_gift_payout_paid_email", "ok", "Email admin payout.paid enviado", {"source": source})
+            result["admin"] = "sent"
+        else:
+            err = res.get("error") or "admin_payout_paid_email_error"
+            queue_res = queue_email_fortress(order_id=order_id, email_kind="admin_gift_payout_paid_email", to_email=admin_targets, subject=subject_admin, body=body_admin, reply_to=sender_email, last_error=err, meta={"source": source, "first_send_error": err})
+            if queue_res.get("queued"):
+                insert_order_event(order_id, "admin_gift_payout_paid_email", "pending", "Email admin payout.paid en cola", {"first_error": err, "queue": queue_res})
+                result["admin"] = "queued"
+            else:
+                insert_order_event(order_id, "admin_gift_payout_paid_email", "error", err, {"queue": queue_res})
+                result["admin"] = "error"
+                result["admin_error"] = err
+    return result
+
+
+def process_stripe_connect_payout_event(event: dict) -> dict:
+    """Procesa eventos payout.* de Stripe Connect con veracidad absoluta."""
+    event_type = event.get("type") or ""
+    event_id = event.get("id") or ""
+    payout = (event.get("data") or {}).get("object") or {}
+    connected_account_id = (event.get("account") or payout.get("account") or "").strip()
+    if not connected_account_id:
+        print("💶 RC145J payout event sin connected account:", event_type, event_id)
+        return {"status": "ignored", "reason": "missing_connected_account", "event_type": event_type}
+    try:
+        order = get_order_by_connected_account_id(connected_account_id)
+    except Exception as e:
+        print("💶 RC145J payout event sin pedido asociado:", connected_account_id, str(e)[:180])
+        return {"status": "ignored", "reason": "order_not_found_for_connected_account", "account": connected_account_id, "event_type": event_type}
+
+    status = (payout.get("status") or "").strip() or event_type.replace("payout.", "")
+    arrival_iso = rc145h_epoch_to_iso(payout.get("arrival_date"))
+    paid_iso = now_iso() if event_type == "payout.paid" or status == "paid" else (order.get("stripe_payout_paid_at") or None)
+    gift_bank_status = "PAYOUT_PAID" if event_type == "payout.paid" or status == "paid" else f"PAYOUT_{status.upper()}"
+    try:
+        update_order(
+            order["id"],
+            stripe_payout_id=payout.get("id") or order.get("stripe_payout_id"),
+            stripe_payout_status=status,
+            stripe_payout_arrival_date=arrival_iso or order.get("stripe_payout_arrival_date"),
+            stripe_payout_paid_at=paid_iso,
+            stripe_payout_last_event_id=event_id,
+            stripe_payout_last_error=str(payout.get("failure_message") or payout.get("failure_code") or "")[:900],
+            stripe_payout_amount=payout.get("amount"),
+            stripe_payout_currency=(payout.get("currency") or CURRENCY),
+            gift_bank_status=gift_bank_status,
+            payout_status=gift_bank_status,
+            payout_completed_at=paid_iso if gift_bank_status == "PAYOUT_PAID" else order.get("payout_completed_at"),
+        )
+        insert_order_event(
+            order["id"],
+            f"stripe_{event_type}",
+            "ok" if gift_bank_status == "PAYOUT_PAID" else "info",
+            f"Stripe Connect payout event: {event_type} status={status}",
+            {"event_id": event_id, "payout_id": payout.get("id"), "status": status, "arrival_date": arrival_iso, "account": connected_account_id},
+        )
+    except Exception as e:
+        log_error("rc145j_process_payout_update", e)
+        return {"status": "error", "reason": str(e)[:300], "event_type": event_type}
+
+    if gift_bank_status == "PAYOUT_PAID":
+        email_result = send_gift_payout_paid_emails(order["id"], payout_payload=payout, source=event_type)
+        print("💶 RC145J payout.paid trust emails:", email_result)
+        return {"status": "ok", "reason": "payout_paid_processed", "order_id": order["id"], "emails": email_result}
+
+    if event_type == "payout.failed" or status in {"failed", "errored"}:
+        email_result = send_gift_payout_failed_emails(order["id"], payout_payload=payout, source=event_type)
+        print("💶 RC145J payout.failed trust emails:", email_result)
+        return {"status": "ok", "reason": "payout_failed_processed", "order_id": order["id"], "emails": email_result}
+
+    return {"status": "ok", "reason": "payout_event_recorded", "order_id": order["id"], "event_type": event_type, "payout_status": status}
 
 def send_admin_error_email(subject: str, body: str, order_id: str = "", reason: str = "") -> dict:
     targets = ",".join([x for x in [ADMIN_ALERT_EMAIL, ETERNA_OPERATIONS_EMAIL] if x])
@@ -9113,12 +10186,12 @@ async def create_order_and_redirect(
     # RC120 — Club Mariposa descuento opcional.
     # Validación suave: si el código no existe/no vale, el pedido no se rompe; simplemente no se aplica.
     butterfly_discount_code = rc120_normalize_discount_code(butterfly_discount_code)
-    butterfly_discount = rc120_validate_discount_for_order(butterfly_discount_code) if butterfly_discount_code else {"ok": False, "reason": "empty", "code": "", "percent": 0, "amount": 0.0}
+    butterfly_discount = rc120_validate_discount_for_order(butterfly_discount_code, customer_email, fees) if butterfly_discount_code else {"ok": False, "reason": "empty", "source": "none", "code": "", "percent": 0, "amount": 0.0}
     if butterfly_discount_code and not butterfly_discount.get("ok"):
         # RC125 — error humano/conversión: un código Mariposa mal escrito no debe romper la creación.
         # Se continúa sin descuento y queda registrado en butterfly_discount_status más abajo.
         print(f"🦋 RC125 código Mariposa no aplicado sin romper pedido: {butterfly_discount_code} reason={butterfly_discount.get('reason')}")
-        butterfly_discount = {"ok": False, "reason": butterfly_discount.get("reason") or "invalid", "code": butterfly_discount_code, "percent": 0, "amount": 0.0}
+        butterfly_discount = {"ok": False, "reason": butterfly_discount.get("reason") or "invalid", "source": butterfly_discount.get("source") or "unknown", "code": butterfly_discount_code, "percent": 0, "amount": 0.0}
     fees = rc120_apply_discount_to_fees(fees, butterfly_discount)
 
     created_at = now_iso()
@@ -9209,28 +10282,47 @@ async def create_order_and_redirect(
         except Exception as e:
             print("[WARN] RC108 language no guardado:", e)
 
-        # RC120 — guarda descuento aplicado, sin marcarlo usado hasta pago confirmado.
+        # RC120/RC145K — guarda descuento aplicado, sin marcarlo usado hasta pago confirmado
+        # salvo compensación gratuita, que se marca usada cuando el pedido queda pagado internamente.
         try:
+            discount_source = butterfly_discount.get("source") or "club_mariposa"
             if butterfly_discount.get("ok"):
-                update_order(
-                    order_id,
+                update_fields = dict(
                     butterfly_discount_code=butterfly_discount.get("code"),
                     butterfly_discount_percent=int(butterfly_discount.get("percent") or 0),
                     butterfly_discount_amount=float(butterfly_discount.get("amount") or 0),
                     butterfly_discount_status="reserved_until_payment",
                 )
+                if discount_source == "rescue_compensation":
+                    update_fields.update(
+                        rescue_compensation_code=butterfly_discount.get("code"),
+                        rescue_compensation_email=butterfly_discount.get("allowed_email") or customer_email,
+                        rescue_compensation_amount=float(butterfly_discount.get("amount") or 0),
+                        rescue_compensation_status="reserved_until_payment",
+                    )
+                update_order(order_id, **update_fields)
                 insert_order_event(
                     order_id,
-                    "rc120_butterfly_discount_reserved",
+                    "rc145k_discount_reserved" if discount_source == "rescue_compensation" else "rc120_butterfly_discount_reserved",
                     "ok",
-                    "Código Club Mariposa reservado hasta pago confirmado",
-                    {"code": butterfly_discount.get("code"), "discount_amount": butterfly_discount.get("amount")},
+                    "Código compensación reservado hasta confirmación" if discount_source == "rescue_compensation" else "Código Club Mariposa reservado hasta pago confirmado",
+                    {"source": discount_source, "code": butterfly_discount.get("code"), "discount_amount": butterfly_discount.get("amount")},
                 )
             elif butterfly_discount_code:
-                update_order(order_id, butterfly_discount_code=butterfly_discount_code, butterfly_discount_status=f"not_applied_{butterfly_discount.get('reason')}")
-                insert_order_event(order_id, "rc120_butterfly_discount_not_applied", "warning", butterfly_discount.get("reason") or "invalid", {"code": butterfly_discount_code})
+                update_fields = dict(
+                    butterfly_discount_code=butterfly_discount_code,
+                    butterfly_discount_status=f"not_applied_{butterfly_discount.get('reason')}",
+                )
+                if butterfly_discount.get("source") == "rescue_compensation":
+                    update_fields.update(
+                        rescue_compensation_code=butterfly_discount_code,
+                        rescue_compensation_email=customer_email,
+                        rescue_compensation_status=f"not_applied_{butterfly_discount.get('reason')}",
+                    )
+                update_order(order_id, **update_fields)
+                insert_order_event(order_id, "rc145k_discount_not_applied", "warning", butterfly_discount.get("reason") or "invalid", {"source": butterfly_discount.get("source"), "code": butterfly_discount_code})
         except Exception as e:
-            print("[WARN] RC120 descuento Mariposa no guardado:", e)
+            print("[WARN] RC145K descuento/rescate no guardado:", e)
 
         # =========================================================
         # MEMORY ENGINE V1 — SILENT SAFE
@@ -9437,6 +10529,63 @@ async def create_order_and_redirect(
             except Exception:
                 pass
 
+    # RC145K — código compensación 100%: pedido gratuito real, sin pasar por Stripe.
+    # Solo permitido si NO hay regalo económico. No reduce dinero de terceros.
+    if rc145k_is_free_rescue_order(fees, butterfly_discount):
+        update_order(
+            order_id,
+            paid=1,
+            stripe_payment_status="compensated_no_stripe",
+            gift_refund_deadline_at=gift_refund_deadline_iso(),
+            delivery_locked=1 if delivery_mode == "scheduled" else 0,
+            rescue_compensation_status="used_compensated_no_stripe",
+            rescue_compensation_used_at=now_iso(),
+            butterfly_discount_status="used_compensated_no_stripe",
+            total_amount=0.0,
+        )
+
+        try:
+            used_result = rc145k_mark_any_discount_code_used(butterfly_discount, order_id)
+            insert_order_event(order_id, "rc145k_rescue_compensation_used", "ok" if used_result.get("ok") else "warning", used_result.get("reason"), used_result)
+        except Exception as e:
+            print("[WARN] RC145K no pudo marcar código compensación usado:", e)
+
+        try:
+            email_result = send_order_received_emails(order_id)
+            print("📧 RC145K emails pedido compensado:", email_result)
+        except Exception as e:
+            log_error("order_emails_rescue_compensation", e)
+
+        try:
+            send_admin_error_email(
+                f"🛡️ ETERNA compensada 100% {order_public_code(get_order_by_id(order_id))}",
+                f"""Pedido compensado internamente con código 100% único.
+
+Pedido: {order_public_code(get_order_by_id(order_id))}
+Email autorizado: {butterfly_discount.get('allowed_email') or customer_email}
+Código: {butterfly_discount.get('code')}
+Importe cobrado: 0€
+Regalo económico: 0€
+
+Motivo: compensación/soporte al cliente. No se ha tocado dinero regalado ni Stripe.""",
+                order_id=order_id,
+                reason="rescue_compensation_100_used",
+            )
+        except Exception as e:
+            log_error("admin_rescue_compensation_email", e)
+
+        try:
+            order = get_order_by_id(order_id)
+            if not render_request_already_marked(order) and not original_video_ready(order):
+                mark_video_render_requested(order_id)
+                trigger_video_engine(order_id, [phrase_1, phrase_2, phrase_3])
+                print("⏳ RC145K render aceptado por código compensación 100%.")
+        except Exception as e:
+            clear_video_render_requested(order_id)
+            log_error("video_engine_rescue_compensation", e)
+
+        return RedirectResponse(url=f"/post-pago/{order_id}", status_code=303)
+
     if not STRIPE_SECRET_KEY:
         if not ETERNA_ALLOW_NO_STRIPE_TEST:
             insert_order_event(
@@ -9461,9 +10610,13 @@ async def create_order_and_redirect(
 
         try:
             if butterfly_discount.get("ok"):
-                used_result = rc120_mark_discount_code_used(butterfly_discount.get("code"), order_id)
-                update_order(order_id, butterfly_discount_status="used_test_no_stripe" if used_result.get("ok") else "used_mark_failed_test_no_stripe")
-                insert_order_event(order_id, "rc120_butterfly_discount_used_test", "ok" if used_result.get("ok") else "warning", used_result.get("reason"), used_result)
+                used_result = rc145k_mark_any_discount_code_used(butterfly_discount, order_id)
+                status_value = "used_test_no_stripe" if used_result.get("ok") else "used_mark_failed_test_no_stripe"
+                update_fields = {"butterfly_discount_status": status_value}
+                if butterfly_discount.get("source") == "rescue_compensation":
+                    update_fields.update({"rescue_compensation_status": status_value, "rescue_compensation_used_at": now_iso() if used_result.get("ok") else None})
+                update_order(order_id, **update_fields)
+                insert_order_event(order_id, "rc145k_discount_used_test", "ok" if used_result.get("ok") else "warning", used_result.get("reason"), used_result)
         except Exception as e:
             print("[WARN] RC120 no pudo marcar descuento usado en test_no_stripe:", e)
 
@@ -13985,6 +15138,93 @@ async def crear_post(
         raise HTTPException(status_code=500, detail="Error creando el pedido")
 
 
+
+
+# =========================================================
+# RC145K — ADMIN CÓDIGO COMPENSACIÓN 100% POR EMAIL
+# Ruta privada. Crea un código único, ligado a un email y de un solo uso.
+# No cubre regalo económico. Si el cliente añade dinero, el código no se aplica.
+# =========================================================
+def rc145k_build_rescue_code_email_body(code: str, email: str, note: str = "") -> str:
+    return f"""Hola,
+
+Te enviamos un código de compensación único para crear una nueva ETERNA sin coste de servicio.
+
+Código: {code}
+
+Este código está vinculado a este email:
+{email}
+
+Importante:
+- Solo puede usarse una vez.
+- Solo funciona con este mismo email al crear la ETERNA.
+- Cubre el servicio ETERNA como compensación.
+- No cubre regalos económicos ni transferencias de dinero.
+
+Para usarlo, entra en ETERNA, crea tu experiencia y pega el código en el campo de descuento.
+
+{('Nota de ETERNA: ' + note) if note else ''}
+
+Gracias por tu paciencia y por confiar en ETERNA.
+""".strip()
+
+
+def rc145k_create_rescue_compensation_code(email: str, note: str = "", created_by: str = "admin") -> dict:
+    clean_email = rc145k_normalize_email(email)
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=400, detail="Email no válido para código compensación")
+    now = now_iso()
+    expires_at = (now_dt() + timedelta(days=max(1, int(RESCUE_COMPENSATION_VALID_DAYS)))).isoformat()
+    code = rc145k_generate_rescue_code()
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        # Evita colisiones improbables con 3 intentos.
+        for _ in range(3):
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO rescue_compensation_codes
+                    (email, code, discount_percent, used, created_by, note, expires_at, created_at, updated_at, meta_json)
+                    VALUES (?, ?, 100, 0, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (clean_email, code, created_by, note or "", expires_at, now, now, json.dumps({"version": ETERNA_APP_VERSION, "source": "admin_rescue_code"}, ensure_ascii=False)),
+                )
+                conn.commit()
+                return {"ok": True, "email": clean_email, "code": code, "expires_at": expires_at}
+            except sqlite3.IntegrityError:
+                code = rc145k_generate_rescue_code()
+        raise HTTPException(status_code=500, detail="No se pudo generar código único")
+    finally:
+        conn.close()
+
+
+@app.get("/admin/rescue-code")
+def admin_create_rescue_code(token: str = "", email: str = "", note: str = "", send_email: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if not RESCUE_COMPENSATION_ADMIN_ROUTE_ENABLED:
+        raise HTTPException(status_code=404, detail="Códigos compensación desactivados")
+
+    result = rc145k_create_rescue_compensation_code(email=email, note=note, created_by="admin")
+    should_send = RESCUE_COMPENSATION_SEND_EMAIL_DEFAULT if send_email == "" else str(send_email).strip().lower() in {"1", "true", "yes", "on"}
+    email_result = {"ok": False, "skipped": True}
+    if should_send:
+        subject = "Tu código de compensación ETERNA"
+        body = rc145k_build_rescue_code_email_body(result["code"], result["email"], note)
+        email_result = send_eterna_email(result["email"], subject, body)
+        if not email_result.get("ok"):
+            queue_email_fortress(
+                order_id="",
+                email_kind="rescue_compensation_code_email",
+                to_email=result["email"],
+                subject=subject,
+                body=body,
+                last_error=email_result.get("error") or "send_failed",
+                meta={"code": result["code"], "source": "admin_rescue_code"},
+            )
+    return {"ok": True, "code": result["code"], "email": result["email"], "expires_at": result["expires_at"], "email_result": email_result}
+
 # =========================================================
 # MEMORY ENGINE V1 — ADMIN SOLO LECTURA
 # =========================================================
@@ -15257,9 +16497,14 @@ def process_paid_checkout_session(session, stripe_event_id: str = "", source: st
         code = (order.get("butterfly_discount_code") or "").strip()
         status = (order.get("butterfly_discount_status") or "").strip()
         if code and status == "reserved_until_payment":
-            used_result = rc120_mark_discount_code_used(code, order_id)
-            update_order(order_id, butterfly_discount_status="used" if used_result.get("ok") else "used_mark_failed")
-            insert_order_event(order_id, "rc120_butterfly_discount_used", "ok" if used_result.get("ok") else "warning", used_result.get("reason"), used_result)
+            discount_source = "rescue_compensation" if (order.get("rescue_compensation_code") or "").strip() == code else "club_mariposa"
+            discount_payload = {"ok": True, "source": discount_source, "code": code}
+            used_result = rc145k_mark_any_discount_code_used(discount_payload, order_id)
+            update_fields = {"butterfly_discount_status": "used" if used_result.get("ok") else "used_mark_failed"}
+            if discount_source == "rescue_compensation":
+                update_fields.update({"rescue_compensation_status": "used" if used_result.get("ok") else "used_mark_failed", "rescue_compensation_used_at": now_iso() if used_result.get("ok") else None})
+            update_order(order_id, **update_fields)
+            insert_order_event(order_id, "rc145k_discount_used", "ok" if used_result.get("ok") else "warning", used_result.get("reason"), {"source": discount_source, **used_result})
             order = get_order_by_id(order_id)
     except Exception as e:
         log_error("rc120_butterfly_discount_mark_used", e)
@@ -15332,6 +16577,9 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Firma inválida")
 
     print("🔔 RC115 stripe event:", event.get("type"), event.get("id"))
+
+    if event["type"] in {"payout.created", "payout.updated", "payout.paid", "payout.failed", "payout.canceled"}:
+        return process_stripe_connect_payout_event(event)
 
     if event["type"] != "checkout.session.completed":
         return {"status": "ignored", "event_type": event.get("type")}
@@ -18558,7 +19806,12 @@ def connect_return(recipient_token: str):
                 money_registered_at=refreshed.get("money_registered_at") or now_iso(),
                 payout_status=refreshed.get("payout_status") or "MONEY_REGISTERED",
             )
-            process_gift_transfer_for_order(refreshed)
+            payout_result = process_gift_transfer_for_order(refreshed)
+            try:
+                email_result = send_payout_details_confirmed_emails(refreshed["id"], source="connect_return")
+                print("💶 RC145H payout details emails connect_return:", email_result, "payout:", payout_result)
+            except Exception as email_error:
+                log_error("rc145h_payout_details_email_connect_return", email_error)
     except Exception as e:
         log_error("connect_return_auto_payout_rc118", e)
 
@@ -18597,7 +19850,12 @@ def connect_payout(request: Request, recipient_token: str):
             money_registered_at=refreshed.get("money_registered_at") or now_iso(),
             payout_status=refreshed.get("payout_status") or "MONEY_REGISTERED",
         )
-        process_gift_transfer_for_order(refreshed)
+        payout_result = process_gift_transfer_for_order(refreshed)
+        try:
+            email_result = send_payout_details_confirmed_emails(refreshed["id"], source="connect_payout")
+            print("💶 RC145H payout details emails connect_payout:", email_result, "payout:", payout_result)
+        except Exception as email_error:
+            log_error("rc145h_payout_details_email_connect_payout", email_error)
     except Exception as e:
         log_error("process_gift_transfer_for_order", e)
 
