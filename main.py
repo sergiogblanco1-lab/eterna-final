@@ -113,6 +113,7 @@ print("📧 RC143 EMAIL SMTP RESCUE LOCK — FALLBACK 587/465 + RETRY SAFE 📧"
 print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION CLEAN 🧊")
 print("🛡️ RC145K MONEY TRUST + RESCUE CODE LOCK — DINERO TRAZADO + CÓDIGO COMPENSACIÓN 100% 🛡️")
 print("📧 RC146B RECIPIENT EMAIL → STRIPE LOCK — EMAIL OBLIGATORIO Y SALTO DIRECTO A STRIPE CONNECT 📧")
+print("🛟 RC147 RECIPIENT PASSPORT RECOVERY LOCK — /PEDIDO RECUPERA DESDE R2 🛟")
 print("📧 RC145G EMAIL FORTRESS LOCK — EMAIL QUEUE + RETRY + NO LOST ORDER EMAILS 📧")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
@@ -888,7 +889,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC146B_RECIPIENT_EMAIL_TO_STRIPE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC147_RECIPIENT_PASSPORT_RECOVERY_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -6148,28 +6149,270 @@ def get_order_by_connected_account_id(account_id: str):
         raise HTTPException(status_code=404, detail="Pedido no encontrado por cuenta Stripe Connect")
     return dict(row)
 
+
+
+# =========================================================
+# RC147 — RECIPIENT PASSPORT RECOVERY LOCK
+# /pedido debe recuperar igual que /sender si la DB no encuentra el token,
+# usando el pasaporte local/R2 creado en RC142/RC145.
+# No toca Stripe, SMS, vídeo, reacción, Sender Pack ni Club Mariposa.
+# =========================================================
+
+def rc147_order_from_recipient_passport_payload(payload: dict, token: str = "") -> Optional[dict]:
+    try:
+        payload = payload or {}
+        order_info = payload.get("order") or {}
+        tokens = payload.get("tokens") or {}
+        people = payload.get("people") or {}
+        files = payload.get("files") or {}
+        storage = payload.get("storage") or {}
+        recipient_token = (tokens.get("recipient_token") or token or "").strip()
+        if token and recipient_token != token:
+            return None
+        order_id = (order_info.get("order_id") or "").strip()
+        sender_token = (tokens.get("sender_token") or "").strip()
+        if not order_id or not recipient_token:
+            return None
+        if not sender_token:
+            sender_token = "recovered_sender_" + hashlib.sha256(recipient_token.encode("utf-8", errors="ignore")).hexdigest()[:24]
+        original_video_url = files.get("original_video_url") or ""
+        reaction_public_url = files.get("reaction_video_public_url") or ""
+        reaction_local = files.get("reaction_video_local") or ""
+        reaction_uploaded = bool(reaction_public_url or reaction_local)
+        eterna_completed = bool(order_info.get("eterna_completed"))
+        try:
+            gift_amount = float(order_info.get("gift_amount") or payload.get("gift_amount") or 0)
+        except Exception:
+            gift_amount = 0.0
+        return {
+            "id": order_id,
+            "created_at": order_info.get("created_at") or payload.get("generated_at") or now_iso(),
+            "updated_at": order_info.get("updated_at") or payload.get("generated_at") or now_iso(),
+            "paid": 1 if order_info.get("paid", True) else 0,
+            "delivered_to_recipient": 1,
+            "delivery_sent": 1,
+            "delivery_sent_at": order_info.get("delivery_sent_at") or payload.get("generated_at") or now_iso(),
+            "video_render_requested": 1 if original_video_url else 0,
+            "reaction_uploaded": 1 if reaction_uploaded else 0,
+            "experience_started": 1 if (eterna_completed or reaction_uploaded) else 0,
+            "experience_completed": 1 if (eterna_completed or reaction_uploaded) else 0,
+            "eterna_completed": 1 if eterna_completed else 0,
+            "language": order_info.get("language") or "es",
+            "recipient_token": recipient_token,
+            "sender_token": sender_token,
+            "renewal_token": tokens.get("renewal_token") or "",
+            "sender_name": people.get("sender_name") or "ETERNA",
+            "sender_email": people.get("sender_email") or "",
+            "sender_phone": people.get("sender_phone") or "recovered",
+            "recipient_name": people.get("recipient_name") or "Destinatario",
+            "recipient_email": people.get("recipient_email") or "",
+            "recipient_phone": people.get("recipient_phone") or "recovered",
+            "experience_video_url": original_video_url,
+            "reaction_video_public_url": reaction_public_url,
+            "reaction_video_local": reaction_local,
+            "share_video_url": files.get("share_video_url") or "",
+            "passport_json_url": files.get("passport_json_url") or "",
+            "storage_status": storage.get("storage_status") or "active",
+            "storage_started_at": storage.get("storage_started_at") or order_info.get("created_at") or payload.get("generated_at") or now_iso(),
+            "storage_expires_at": storage.get("storage_expires_at") or "",
+            "storage_renewal_price": storage.get("storage_renewal_price") or float(ETERNA_RENEWAL_PRICE),
+            "storage_renewal_currency": storage.get("storage_renewal_currency") or ETERNA_RENEWAL_CURRENCY,
+            "renewal_count": storage.get("renewal_count") or 0,
+            "gift_amount": gift_amount,
+            "total_amount": 0,
+            "platform_total_fee": 0,
+        }
+    except Exception as e:
+        print("[WARN] RC147 recipient passport payload parse failed:", e)
+        return None
+
+
+def rc147_table_columns(table_name: str) -> set:
+    try:
+        conn = db_conn(); cur = conn.cursor()
+        cur.execute(f"PRAGMA table_info({table_name})")
+        cols = {row["name"] for row in cur.fetchall()}
+        conn.close(); return cols
+    except Exception as e:
+        print(f"[WARN] RC147 no pudo leer columnas {table_name}:", e)
+        return set()
+
+
+def rc147_select_order_by_recipient_token(token: str) -> Optional[dict]:
+    try:
+        conn = db_conn(); cur = conn.cursor()
+        cur.execute("""
+            SELECT o.*, s.name AS sender_name, s.email AS sender_email, s.phone AS sender_phone,
+                   r.name AS recipient_name, r.phone AS recipient_phone, r.email AS recipient_email
+            FROM orders o
+            JOIN senders s ON s.id = o.sender_id
+            JOIN recipients r ON r.id = o.recipient_id
+            WHERE o.recipient_token = ?
+            LIMIT 1
+        """, (token,))
+        row = cur.fetchone(); conn.close()
+        return dict(row) if row else None
+    except Exception as e:
+        print("[WARN] RC147 select recipient order failed:", e)
+        return None
+
+
+def rc147_restore_recipient_passport_to_db(order: dict, source: str = "passport") -> Optional[dict]:
+    try:
+        if not order or not order.get("id") or not order.get("recipient_token"):
+            return None
+        existing = rc147_select_order_by_recipient_token(order["recipient_token"])
+        if existing:
+            return existing
+        now = now_iso()
+        recipient_cols = rc147_table_columns("recipients")
+        order_cols = rc147_table_columns("orders")
+        conn = db_conn(); cur = conn.cursor()
+        cur.execute("INSERT INTO senders (name, email, phone, created_at) VALUES (?, ?, ?, ?)", (
+            order.get("sender_name") or "ETERNA", order.get("sender_email") or "", order.get("sender_phone") or "recovered", order.get("created_at") or now))
+        sender_id = cur.lastrowid
+        if "email" in recipient_cols:
+            cur.execute("INSERT INTO recipients (name, phone, email, created_at) VALUES (?, ?, ?, ?)", (
+                order.get("recipient_name") or "Destinatario", order.get("recipient_phone") or "recovered", order.get("recipient_email") or "", order.get("created_at") or now))
+        else:
+            cur.execute("INSERT INTO recipients (name, phone, created_at) VALUES (?, ?, ?)", (
+                order.get("recipient_name") or "Destinatario", order.get("recipient_phone") or "recovered", order.get("created_at") or now))
+        recipient_id = cur.lastrowid
+        values = {
+            "id": order.get("id"), "sender_id": sender_id, "recipient_id": recipient_id,
+            "message_type": "recovered_passport", "phrase_mode": "auto",
+            "phrase_1": "Una ETERNA recuperada.", "phrase_2": "El recuerdo sigue aquí.", "phrase_3": "Lo importante permanece.",
+            "gift_amount": float(order.get("gift_amount") or 0), "platform_fixed_fee": 0, "platform_variable_fee": 0,
+            "platform_total_fee": float(order.get("platform_total_fee") or 0), "scheduled_delivery_fee": 0, "total_amount": float(order.get("total_amount") or 0),
+            "paid": int(order.get("paid") or 0), "delivered_to_recipient": int(order.get("delivered_to_recipient") or 1),
+            "reaction_uploaded": int(order.get("reaction_uploaded") or 0), "cashout_completed": 0, "transfer_completed": 0,
+            "transfer_in_progress": 0, "sender_notified": 0, "experience_started": int(order.get("experience_started") or 0),
+            "experience_completed": int(order.get("experience_completed") or 0), "connect_onboarding_completed": 0, "gift_refunded": 0,
+            "recipient_token": order.get("recipient_token"), "sender_token": order.get("sender_token"),
+            "reaction_video_local": order.get("reaction_video_local") or "", "reaction_video_public_url": order.get("reaction_video_public_url") or "",
+            "experience_video_url": order.get("experience_video_url") or "", "share_video_url": order.get("share_video_url") or "",
+            "recipient_sms_attempts": 0, "sender_sms_attempts": 0, "reaction_upload_pending": 0,
+            "eterna_completed": int(order.get("eterna_completed") or 0), "delivery_mode": "instant", "delivery_locked": 0,
+            "delivery_sent": int(order.get("delivery_sent") or 1), "delivery_sent_at": order.get("delivery_sent_at") or now,
+            "video_render_requested": int(order.get("video_render_requested") or 0), "video_render_requested_at": order.get("created_at") or now,
+            "created_at": order.get("created_at") or now, "updated_at": now, "language": order.get("language") or "es",
+            "order_state": "RECOVERED", "render_status": "recovered_from_passport", "renewal_token": order.get("renewal_token") or "",
+            "storage_status": order.get("storage_status") or "active", "storage_started_at": order.get("storage_started_at") or order.get("created_at") or now,
+            "storage_expires_at": order.get("storage_expires_at") or "", "storage_renewal_price": float(order.get("storage_renewal_price") or ETERNA_RENEWAL_PRICE),
+            "storage_renewal_currency": order.get("storage_renewal_currency") or ETERNA_RENEWAL_CURRENCY, "renewal_count": int(order.get("renewal_count") or 0),
+            "passport_json_url": order.get("passport_json_url") or "", "passport_last_written_at": now,
+            "storage_files_verified_at": now if (order.get("experience_video_url") or order.get("reaction_video_public_url")) else None,
+        }
+        insert_cols = [c for c in values if c in order_cols]
+        cur.execute(f"INSERT OR IGNORE INTO orders ({', '.join(insert_cols)}) VALUES ({', '.join(['?']*len(insert_cols))})", [values[c] for c in insert_cols])
+        conn.commit(); conn.close()
+        restored = rc147_select_order_by_recipient_token(order["recipient_token"])
+        if restored:
+            try:
+                insert_order_event(restored["id"], "rc147_recipient_passport_recovered", "ok", "Destinatario recuperado desde pasaporte ETERNA", {"source": source})
+            except Exception:
+                pass
+            print(f"🛟 RC147 recipient restored into DB from {source}: {restored.get('id')}")
+            return restored
+    except Exception as e:
+        print("[WARN] RC147 restore recipient passport to DB failed:", e)
+    return None
+
+
+def rc147_find_recipient_passport_local(token: str) -> Optional[dict]:
+    try:
+        if not token or not ETERNA_PASSPORTS_FOLDER.exists(): return None
+        direct = ETERNA_PASSPORTS_FOLDER / f"recipient_{token}.json"
+        if direct.exists():
+            try:
+                payload = json.loads(direct.read_text(encoding="utf-8"))
+                order = rc147_order_from_recipient_passport_payload(payload, token=token)
+                if order:
+                    print(f"🛟 RC147 recipient recovered from local passport index: {direct}")
+                    return rc147_restore_recipient_passport_to_db(order, source=str(direct)) or order
+            except Exception as e:
+                print("[WARN] RC147 local recipient index read failed:", e)
+        for path in sorted(ETERNA_PASSPORTS_FOLDER.glob("*_eterna_passport.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                order = rc147_order_from_recipient_passport_payload(payload, token=token)
+                if order:
+                    print(f"🛟 RC147 recipient recovered from local passport scan: {path}")
+                    return rc147_restore_recipient_passport_to_db(order, source=str(path)) or order
+            except Exception:
+                continue
+    except Exception as e:
+        print("[WARN] RC147 local recipient passport search failed:", e)
+    return None
+
+
+def rc147_find_recipient_passport_r2(token: str) -> Optional[dict]:
+    try:
+        if not token or not r2_enabled(): return None
+        client = get_r2_client()
+        if not client: return None
+        direct_key = f"indexes/recipient/{token}.json"
+        try:
+            got = client.get_object(Bucket=R2_BUCKET, Key=direct_key)
+            payload = json.loads(got["Body"].read().decode("utf-8"))
+            order = rc147_order_from_recipient_passport_payload(payload, token=token)
+            if order:
+                print(f"🛟 RC147 recipient recovered from R2 passport index: {direct_key}")
+                return rc147_restore_recipient_passport_to_db(order, source=direct_key) or order
+        except Exception:
+            pass
+        scanned = 0
+        paginator = client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=R2_BUCKET, Prefix="orders/"):
+            for obj in page.get("Contents", []) or []:
+                key = obj.get("Key") or ""
+                if not key.endswith("/metadata/eterna_passport.json"): continue
+                scanned += 1
+                if scanned > 500:
+                    print("⚠️ RC147 R2 recipient passport scan limit reached")
+                    return None
+                try:
+                    got = client.get_object(Bucket=R2_BUCKET, Key=key)
+                    payload = json.loads(got["Body"].read().decode("utf-8"))
+                    order = rc147_order_from_recipient_passport_payload(payload, token=token)
+                    if order:
+                        print(f"🛟 RC147 recipient recovered from R2 passport scan: {key}")
+                        return rc147_restore_recipient_passport_to_db(order, source=key) or order
+                except Exception as e:
+                    print(f"[WARN] RC147 R2 recipient passport read skipped {key}: {e}")
+    except Exception as e:
+        print("[WARN] RC147 R2 recipient passport search failed:", e)
+    return None
+
+
+def rc147_recipient_not_found_debug(token: str) -> None:
+    try:
+        conn = db_conn(); cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS c FROM orders"); total = cur.fetchone()["c"]
+        cur.execute("SELECT id, sender_token, recipient_token, created_at FROM orders ORDER BY created_at DESC LIMIT 3")
+        recent = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        print("🛟 RC147 recipient token no encontrado en DB")
+        print(f"   token_prefix={str(token)[:8]}… total_orders={total} recent={recent}")
+    except Exception as e:
+        print("[WARN] RC147 recipient debug failed:", e)
+
 def get_order_by_recipient_token_or_404(token: str):
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            o.*,
-            s.name AS sender_name,
-            s.email AS sender_email,
-            s.phone AS sender_phone,
-            r.name AS recipient_name,
-            r.phone AS recipient_phone,
-            r.email AS recipient_email
-        FROM orders o
-        JOIN senders s ON s.id = o.sender_id
-        JOIN recipients r ON r.id = o.recipient_id
-        WHERE o.recipient_token = ?
-    """, (token,))
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Experiencia no encontrada")
-    return dict(row)
+    order = rc147_select_order_by_recipient_token(token)
+    if order:
+        return order
+
+    rc147_recipient_not_found_debug(token)
+
+    recovered = rc147_find_recipient_passport_local(token)
+    if recovered:
+        return recovered
+
+    recovered = rc147_find_recipient_passport_r2(token)
+    if recovered:
+        return recovered
+
+    raise HTTPException(status_code=404, detail="Experiencia no encontrada")
 
 
 def rc144_order_from_passport_payload(payload: dict, token: str = "") -> Optional[dict]:
