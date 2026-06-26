@@ -120,7 +120,7 @@ print("🔒 RC149E SAFE RECIPIENT LINK LOCK — EL LINK /PEDIDO NUNCA VA AL REGA
 print("📧 RC146B RECIPIENT EMAIL → STRIPE LOCK — EMAIL OBLIGATORIO Y SALTO DIRECTO A STRIPE CONNECT 📧")
 print("🛟 RC147 RECIPIENT PASSPORT RECOVERY LOCK — /PEDIDO RECUPERA DESDE R2 🛟")
 print("🛡️ RC148 DELIVERY FORTRESS LOCK — SMS → EMAIL FORTRESS → WHATSAPP HUMANO 🛡️")
-print("📧 RC145G EMAIL FORTRESS LOCK — EMAIL QUEUE + RETRY + NO LOST ORDER EMAILS 📧")
+print("📧 RC149F EMAIL FORTRESS PLUS — FAST RETRY + NO DUPLICATE QUEUE + LAST RESORT SMS 📧")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
@@ -600,11 +600,45 @@ ETERNA_OPERATIONS_EMAIL = os.getenv("ETERNA_OPERATIONS_EMAIL", SMTP_FROM or "hol
 # =========================================================
 EMAIL_FORTRESS_ENABLED = os.getenv("EMAIL_FORTRESS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 EMAIL_QUEUE_WORKER_ENABLED = os.getenv("EMAIL_QUEUE_WORKER_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
-EMAIL_QUEUE_MAX_ATTEMPTS = int(os.getenv("EMAIL_QUEUE_MAX_ATTEMPTS", "12"))
+EMAIL_QUEUE_MAX_ATTEMPTS = int(os.getenv("EMAIL_QUEUE_MAX_ATTEMPTS", "30"))
 EMAIL_QUEUE_BATCH_SIZE = int(os.getenv("EMAIL_QUEUE_BATCH_SIZE", "10"))
 EMAIL_QUEUE_BASE_DELAY_SECONDS = int(os.getenv("EMAIL_QUEUE_BASE_DELAY_SECONDS", "300"))
 EMAIL_QUEUE_MAX_DELAY_SECONDS = int(os.getenv("EMAIL_QUEUE_MAX_DELAY_SECONDS", "21600"))
 EMAIL_QUEUE_R2_BACKUP_ENABLED = os.getenv("EMAIL_QUEUE_R2_BACKUP_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+# =========================================================
+# RC149F — EMAIL FORTRESS PLUS
+# El email sigue siendo el canal principal. Si SMTP corta conexión:
+# 1) queda en cola sin duplicarse,
+# 2) reintenta rápido,
+# 3) si un email crítico falla repetidamente, manda SMS interno a Sergio como ÚLTIMA alarma.
+# No toca Stripe, vídeo, experiencia, reacción, SMS destinatario ni Sender Pack.
+# =========================================================
+EMAIL_QUEUE_FAST_RETRY_SECONDS = int(os.getenv("EMAIL_QUEUE_FAST_RETRY_SECONDS", "60"))
+EMAIL_QUEUE_SECOND_RETRY_SECONDS = int(os.getenv("EMAIL_QUEUE_SECOND_RETRY_SECONDS", "180"))
+EMAIL_QUEUE_THIRD_RETRY_SECONDS = int(os.getenv("EMAIL_QUEUE_THIRD_RETRY_SECONDS", "600"))
+EMAIL_CRITICAL_SMS_ALERTS_ENABLED = os.getenv("EMAIL_CRITICAL_SMS_ALERTS_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+EMAIL_CRITICAL_SMS_ALERT_AFTER_ATTEMPTS = int(os.getenv("EMAIL_CRITICAL_SMS_ALERT_AFTER_ATTEMPTS", "3"))
+EMAIL_CRITICAL_SMS_ALERT_PHONE = os.getenv("EMAIL_CRITICAL_SMS_ALERT_PHONE", "").strip()
+EMAIL_BACKUP_PROVIDER_ENABLED = os.getenv("EMAIL_BACKUP_PROVIDER_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+EMAIL_CRITICAL_KINDS = {
+    "customer_order_email",
+    "admin_order_email",
+    "recipient_delivery_email",
+    "recipient_delivery_sender_request_email",
+    "sender_pack_rescue_email",
+    "recipient_manual_whatsapp_alert_email",
+    "sender_gift_payout_paid_email",
+    "recipient_gift_payout_paid_email",
+    "admin_gift_payout_paid_email",
+    "sender_gift_payout_failed_email",
+    "recipient_gift_payout_failed_email",
+    "admin_gift_payout_failed_email",
+    "recipient_payout_details_email",
+    "sender_payout_details_email",
+    "admin_payout_details_email",
+}
 
 # =========================================================
 # RC145H — PAYOUT TRUTH LOCK
@@ -2855,7 +2889,7 @@ def init_db():
         reply_to TEXT,
         status TEXT NOT NULL DEFAULT 'pending',
         attempts INTEGER NOT NULL DEFAULT 0,
-        max_attempts INTEGER NOT NULL DEFAULT 12,
+        max_attempts INTEGER NOT NULL DEFAULT 30,
         next_attempt_at TEXT,
         last_attempt_at TEXT,
         sent_at TEXT,
@@ -2869,6 +2903,10 @@ def init_db():
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_email_queue_status_next ON email_queue(status, next_attempt_at)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_email_queue_order_kind ON email_queue(order_id, email_kind)")
+    # RC149F — columnas de alarma SMS interna para emails críticos.
+    add_column_if_missing("email_queue", "critical_sms_alert_sent_at", "ALTER TABLE email_queue ADD COLUMN critical_sms_alert_sent_at TEXT")
+    add_column_if_missing("email_queue", "critical_sms_alert_last_error", "ALTER TABLE email_queue ADD COLUMN critical_sms_alert_last_error TEXT")
+
 
     # =========================================================
     # RC120 — CLUB MARIPOSA SAFE ISLAND
@@ -7726,15 +7764,26 @@ def _email_queue_key(order_id: str, email_kind: str, to_email: str, subject: str
 
 
 def _email_queue_next_attempt_iso(attempts: int) -> str:
+    """
+    RC149F — reintento rápido real.
+    attempts = intentos ya realizados antes de calcular el siguiente intento.
+    0/1 -> 60s, 2 -> 180s, 3 -> 600s, luego backoff suave.
+    """
     try:
-        base = max(60, int(EMAIL_QUEUE_BASE_DELAY_SECONDS))
-        max_delay = max(base, int(EMAIL_QUEUE_MAX_DELAY_SECONDS))
-        # Backoff suave: 5m, 10m, 20m, 40m... con techo.
-        delay = min(max_delay, base * (2 ** max(0, min(int(attempts or 0), 6))))
+        a = max(0, int(attempts or 0))
+        if a <= 1:
+            delay = max(15, int(EMAIL_QUEUE_FAST_RETRY_SECONDS))
+        elif a == 2:
+            delay = max(30, int(EMAIL_QUEUE_SECOND_RETRY_SECONDS))
+        elif a == 3:
+            delay = max(60, int(EMAIL_QUEUE_THIRD_RETRY_SECONDS))
+        else:
+            base = max(60, int(EMAIL_QUEUE_BASE_DELAY_SECONDS))
+            max_delay = max(base, int(EMAIL_QUEUE_MAX_DELAY_SECONDS))
+            delay = min(max_delay, base * (2 ** max(0, min(a - 3, 6))))
         return (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
     except Exception:
-        return (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-
+        return (datetime.now(timezone.utc) + timedelta(minutes=3)).isoformat()
 
 def rc145g_backup_email_queue_item_to_r2(payload: dict) -> str:
     if not EMAIL_QUEUE_R2_BACKUP_ENABLED or not r2_enabled():
@@ -7802,19 +7851,24 @@ def queue_email_fortress(
                 r2_backup_url, created_at, updated_at, meta_json
             ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(email_key) DO UPDATE SET
-                status=CASE WHEN email_queue.status='sent' THEN 'sent' ELSE 'pending' END,
-                next_attempt_at=CASE WHEN email_queue.status='sent' THEN email_queue.next_attempt_at ELSE excluded.next_attempt_at END,
-                last_error=excluded.last_error,
-                updated_at=excluded.updated_at,
-                r2_backup_url=COALESCE(NULLIF(excluded.r2_backup_url,''), email_queue.r2_backup_url),
-                meta_json=excluded.meta_json
+                status=CASE WHEN email_queue.status='sent' THEN 'sent' ELSE email_queue.status END,
+                next_attempt_at=CASE 
+                    WHEN email_queue.status='sent' THEN email_queue.next_attempt_at
+                    WHEN email_queue.next_attempt_at IS NULL OR email_queue.next_attempt_at='' THEN excluded.next_attempt_at
+                    ELSE email_queue.next_attempt_at
+                END,
+                last_error=CASE WHEN email_queue.status='sent' THEN email_queue.last_error ELSE COALESCE(NULLIF(email_queue.last_error,''), excluded.last_error) END,
+                max_attempts=CASE WHEN email_queue.status='sent' THEN email_queue.max_attempts ELSE MAX(email_queue.max_attempts, excluded.max_attempts) END,
+                updated_at=CASE WHEN email_queue.status='sent' THEN email_queue.updated_at ELSE email_queue.updated_at END,
+                r2_backup_url=COALESCE(NULLIF(email_queue.r2_backup_url,''), excluded.r2_backup_url),
+                meta_json=COALESCE(NULLIF(email_queue.meta_json,''), excluded.meta_json)
         """, (
             email_key, oid, kind, clean_to, clean_subject, clean_body, str(reply_to or "").strip(),
-            max(1, int(EMAIL_QUEUE_MAX_ATTEMPTS)), now, str(last_error or "")[:1000],
+            max(1, int(EMAIL_QUEUE_MAX_ATTEMPTS)), _email_queue_next_attempt_iso(0), str(last_error or "")[:1000],
             r2_url, now, now, json.dumps(meta or {}, ensure_ascii=False, default=str),
         ))
         conn.commit()
-        print(f"📧 RC145G email queued: order={oid} kind={kind} to={clean_to} key={email_key[:10]}")
+        print(f"📧 RC149F email queued/idempotent: order={oid} kind={kind} to={clean_to} key={email_key[:10]}")
         return {"ok": True, "queued": True, "email_key": email_key, "r2_backup_url": r2_url}
     except Exception as e:
         try:
@@ -7968,6 +8022,74 @@ def block_unsafe_queued_recipient_link_email(row: dict, reason: str = "blocked_s
     return {"id": qid, "ok": False, "status": "blocked", "error": reason}
 
 
+def _email_queue_critical_sms_phone() -> str:
+    return (EMAIL_CRITICAL_SMS_ALERT_PHONE or ADMIN_ALERT_PHONE or "").strip()
+
+
+def maybe_send_email_queue_critical_sms_alert(row: dict, attempts_after: int, err: str) -> dict:
+    """
+    RC149F — SMS interno solo como última alarma, no como canal normal.
+    No incluye /pedido ni Sender Pack ni datos sensibles. Se manda una sola vez por item de cola.
+    """
+    try:
+        if not EMAIL_CRITICAL_SMS_ALERTS_ENABLED:
+            return {"ok": False, "reason": "disabled"}
+        kind = str((row or {}).get("email_kind") or "").strip()
+        if kind not in EMAIL_CRITICAL_KINDS:
+            return {"ok": False, "reason": "not_critical"}
+        if int(attempts_after or 0) < max(1, int(EMAIL_CRITICAL_SMS_ALERT_AFTER_ATTEMPTS)):
+            return {"ok": False, "reason": "below_threshold"}
+        if (row or {}).get("critical_sms_alert_sent_at"):
+            return {"ok": True, "reason": "already_alerted"}
+        phone = _email_queue_critical_sms_phone()
+        if not phone:
+            return {"ok": False, "reason": "missing_alert_phone"}
+
+        order_id = str((row or {}).get("order_id") or "")
+        public_code = f"ET-{order_id}" if order_id else "ET-sin-id"
+        try:
+            if order_id:
+                public_code = order_public_code(get_order_by_id(order_id))
+        except Exception:
+            pass
+
+        msg = (
+            f"⚠️ ETERNA email crítico no enviado\n"
+            f"Pedido: {public_code}\n"
+            f"Tipo: {kind}\n"
+            f"Intentos: {attempts_after}\n"
+            f"Está en cola. Revisa /admin/email-queue"
+        )
+        sms_res = send_sms(phone, msg[:1500])
+
+        qid = (row or {}).get("id")
+        try:
+            conn = db_conn()
+            conn.execute(
+                """
+                UPDATE email_queue
+                SET critical_sms_alert_sent_at=?, critical_sms_alert_last_error=?, updated_at=?
+                WHERE id=?
+                """,
+                (now_iso(), str((sms_res or {}).get("error") or "")[:500], now_iso(), qid),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as db_e:
+            print(f"📧 RC149F SMS alert marker warning id={qid}: {str(db_e)[:160]}")
+
+        if order_id:
+            try:
+                insert_order_event(order_id, "email_queue_critical_sms_alert", "warning", f"SMS interno por email crítico pendiente: {kind}", {"queue_id": qid, "sms": sms_res})
+            except Exception:
+                pass
+        print(f"📧 RC149F critical SMS alert: order={order_id} kind={kind} attempts={attempts_after} sms_ok={bool((sms_res or {}).get('ok'))}")
+        return {"ok": bool((sms_res or {}).get("ok")), "reason": "sent" if (sms_res or {}).get("ok") else "sms_failed", "sms": sms_res}
+    except Exception as e:
+        print(f"📧 RC149F critical SMS alert error: {str(e)[:180]}")
+        return {"ok": False, "reason": "exception", "error": str(e)[:180]}
+
+
 def process_due_email_queue(limit: Optional[int] = None) -> list[dict]:
     """Reintenta emails pendientes. Seguro: si falla, no rompe ETERNA."""
     if not EMAIL_QUEUE_WORKER_ENABLED or not EMAIL_FORTRESS_ENABLED:
@@ -8026,7 +8148,7 @@ def process_due_email_queue(limit: Optional[int] = None) -> list[dict]:
                 conn.commit()
                 conn.close()
                 _mark_order_email_sent_from_queue(order_id, email_kind)
-                print(f"📧 RC145G email queue sent: order={order_id} kind={email_kind} id={qid}")
+                print(f"📧 RC149F email queue sent: order={order_id} kind={email_kind} id={qid}")
                 results.append({"id": qid, "ok": True, "status": "sent"})
             else:
                 err = str(res.get("error") or "email_send_failed")[:1000]
@@ -8046,8 +8168,9 @@ def process_due_email_queue(limit: Optional[int] = None) -> list[dict]:
                         update_order(order_id, order_email_last_error=err)
                     except Exception:
                         pass
-                print(f"📧 RC145G email queue retry pending: order={order_id} kind={email_kind} id={qid} attempts={attempts_after} error={err[:160]}")
-                results.append({"id": qid, "ok": False, "status": "failed" if final_failed else "pending", "error": err})
+                sms_alert = maybe_send_email_queue_critical_sms_alert(row, attempts_after, err)
+                print(f"📧 RC149F email queue retry pending: order={order_id} kind={email_kind} id={qid} attempts={attempts_after} next={next_attempt} sms_alert={sms_alert.get('reason')} error={err[:160]}")
+                results.append({"id": qid, "ok": False, "status": "failed" if final_failed else "pending", "error": err, "next_attempt_at": next_attempt, "sms_alert": sms_alert})
         except Exception as e:
             print(f"📧 RC145G email queue processing error id={qid}: {str(e)[:220]}")
             results.append({"id": qid, "ok": False, "error": str(e)[:220]})
@@ -23061,6 +23184,14 @@ def admin_process_delivery_fortress(request: Request):
     return {"ok": True, "email_fallbacks": emails, "manual_whatsapp_alerts": whatsapp_alerts, "timestamp": now_iso()}
 
 
+@app.post("/admin/process-email-queue")
+def admin_process_email_queue_rc149f(request: Request, limit: int = 10):
+    admin_token = (request.query_params.get("token") or request.headers.get("x-admin-token") or "").strip()
+    rc74a_admin_guard(admin_token)
+    processed = process_due_email_queue(limit=max(1, min(int(limit or EMAIL_QUEUE_BATCH_SIZE), 50)))
+    return {"ok": True, "processed_now": processed, "timestamp": now_iso()}
+
+
 @app.get("/admin/email-queue")
 def admin_email_queue_rc145g(token: str = "", process: int = 0):
     rc74a_admin_guard(token)
@@ -23071,7 +23202,7 @@ def admin_email_queue_rc145g(token: str = "", process: int = 0):
     cur = conn.cursor()
     cur.execute("""
         SELECT id, order_id, email_kind, to_email, status, attempts, max_attempts,
-               next_attempt_at, last_attempt_at, sent_at, last_error, created_at, updated_at
+               next_attempt_at, last_attempt_at, sent_at, critical_sms_alert_sent_at, last_error, created_at, updated_at
         FROM email_queue
         ORDER BY id DESC
         LIMIT 50
@@ -23108,6 +23239,8 @@ def health_full():
         "smtp_configured": bool(EMAIL_ENABLED and SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD and SMTP_FROM),
         "email_fortress_enabled": bool(EMAIL_FORTRESS_ENABLED),
         "email_queue_worker_enabled": bool(EMAIL_QUEUE_WORKER_ENABLED),
+        "email_queue_fast_retry_seconds": EMAIL_QUEUE_FAST_RETRY_SECONDS,
+        "email_critical_sms_alerts_enabled": bool(EMAIL_CRITICAL_SMS_ALERTS_ENABLED),
         "security_headers_enabled": bool(SECURITY_HEADERS_ENABLED),
         "rate_limit_enabled": bool(RATE_LIMIT_ENABLED),
         "max_photo_size_mb": MAX_PHOTO_SIZE_MB,
