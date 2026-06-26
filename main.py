@@ -121,6 +121,7 @@ print("📧 RC146B RECIPIENT EMAIL → STRIPE LOCK — EMAIL OBLIGATORIO Y SALTO
 print("🛟 RC147 RECIPIENT PASSPORT RECOVERY LOCK — /PEDIDO RECUPERA DESDE R2 🛟")
 print("🛡️ RC148 DELIVERY FORTRESS LOCK — SMS → EMAIL FORTRESS → WHATSAPP HUMANO 🛡️")
 print("📧 RC149F EMAIL FORTRESS PLUS — FAST RETRY + NO DUPLICATE QUEUE + LAST RESORT SMS 📧")
+print("🧹 RC149G DELIVERY FORTRESS WORKER SILENCE — NO ALREADY_REQUESTED LOOP 🧹")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
@@ -932,7 +933,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC149D_DELIVERY_FORTRESS_SAFE_EMAIL_GLOBAL_SMS_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC149G_DELIVERY_FORTRESS_WORKER_SILENCE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -9638,6 +9639,56 @@ def recipient_delivery_email_fallback_due(order: dict) -> tuple[bool, str]:
     return False, "not_due_yet"
 
 
+
+def delivery_fortress_waiting_for_sender_email(order: dict) -> bool:
+    """
+    RC149G — si ya hemos pedido al regalante un email distinto del destinatario,
+    Delivery Fortress NO debe intentar volver a enviar/pedir cada 15 segundos.
+    La siguiente responsabilidad pasa a:
+      1) email_queue worker si el email quedó en cola,
+      2) formulario /rescue si el regalante responde,
+      3) alerta WhatsApp humano si pasan las horas configuradas.
+    """
+    if not order:
+        return False
+    status = str(order.get("delivery_fortress_status") or "").strip().upper()
+    if status in {
+        "WAITING_DISTINCT_RECIPIENT_EMAIL",
+        "WAITING_RECIPIENT_EMAIL_FROM_SENDER",
+        "SENDER_EMAIL_REQUEST_QUEUED",
+        "SENDER_EMAIL_REQUEST_ERROR",
+    }:
+        return True
+    if order.get("rescue_sender_email_sent_at"):
+        return True
+    if str(order.get("rescue_mode_status") or "").strip().upper() in {
+        "WAITING_RECIPIENT_EMAIL",
+        "WAITING_RECIPIENT_EMAIL_EMAIL_QUEUED",
+    }:
+        return True
+    return False
+
+
+def delivery_fortress_email_path_already_active(order: dict) -> bool:
+    """
+    RC149G — estados en los que no hay que volver a llamar a send_recipient_delivery_fortress_email
+    desde el worker de 15s. Evita bucles de log y reintentos por el canal equivocado.
+    """
+    if not order:
+        return False
+    status = str(order.get("delivery_fortress_status") or "").strip().upper()
+    if status in {
+        "EMAIL_SENT",
+        "EMAIL_QUEUED",
+        "EMAIL_ERROR_NEEDS_HUMAN_WHATSAPP",
+        "OPENED_NO_EMAIL_NEEDED",
+        "NEEDS_HUMAN_WHATSAPP_NO_EMAILS",
+        "HUMAN_WHATSAPP_ALERT_SENT",
+        "HUMAN_WHATSAPP_ALERT_QUEUED",
+    }:
+        return True
+    return delivery_fortress_waiting_for_sender_email(order)
+
 def list_due_recipient_delivery_email_fallbacks(limit: int = 20) -> list[str]:
     if not DELIVERY_FORTRESS_ENABLED:
         return []
@@ -9653,6 +9704,20 @@ def list_due_recipient_delivery_email_fallbacks(limit: int = 20) -> list[str]:
           AND COALESCE(experience_video_url,'') <> ''
           AND COALESCE(recipient_email_delivery_sent_at,'') = ''
           AND COALESCE(rescue_recipient_email_sent_at,'') = ''
+          AND COALESCE(rescue_sender_email_sent_at,'') = ''
+          AND UPPER(COALESCE(delivery_fortress_status,'')) NOT IN (
+              'WAITING_DISTINCT_RECIPIENT_EMAIL',
+              'WAITING_RECIPIENT_EMAIL_FROM_SENDER',
+              'SENDER_EMAIL_REQUEST_QUEUED',
+              'SENDER_EMAIL_REQUEST_ERROR',
+              'EMAIL_QUEUED',
+              'EMAIL_SENT',
+              'EMAIL_ERROR_NEEDS_HUMAN_WHATSAPP',
+              'OPENED_NO_EMAIL_NEEDED',
+              'NEEDS_HUMAN_WHATSAPP_NO_EMAILS',
+              'HUMAN_WHATSAPP_ALERT_SENT',
+              'HUMAN_WHATSAPP_ALERT_QUEUED'
+          )
         ORDER BY COALESCE(recipient_sms_status_updated_at, recipient_sms_sent_at, delivery_sent_at, created_at) ASC
         LIMIT ?
     """, (max(1, int(limit or 20)),))
@@ -9666,12 +9731,16 @@ def process_all_due_delivery_fortress_email_fallbacks() -> list[dict]:
     for order_id in list_due_recipient_delivery_email_fallbacks(limit=20):
         try:
             order = get_order_by_id(order_id)
+            if delivery_fortress_email_path_already_active(order):
+                # RC149G: ya hay un email/solicitud activo; no repetir cada 15s ni ensuciar logs.
+                continue
             due, reason = recipient_delivery_email_fallback_due(order)
             update_order(order_id, delivery_fortress_last_checked_at=now_iso(), delivery_fortress_last_reason=reason)
             if not due:
                 continue
             result = send_recipient_delivery_fortress_email(order, reason=reason)
-            print("🛡️ RC148 Delivery Fortress email:", order_id, result)
+            if result.get("reason") not in {"already_requested", "already_sent"}:
+                print("🛡️ RC149G Delivery Fortress email:", order_id, result)
             results.append({"order_id": order_id, "reason": reason, "result": result})
         except Exception as e:
             log_error("process_delivery_fortress_email_fallback", e)
