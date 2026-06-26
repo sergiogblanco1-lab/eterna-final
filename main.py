@@ -1,3 +1,6 @@
+# RC148B_DELIVERY_FORTRESS_10MIN_LOCK
+# Ajuste: fallback de email a destinatario a los 10 minutos desde SMS/intento de entrega si no abre la experiencia.
+# Mantiene WhatsApp como alerta humana, no automático.
 # RC145G_EMAIL_FORTRESS_LOCK
 # Base: RC145F + cola persistente de emails de pedido.
 # Si SMTP falla, los emails customer/admin quedan en cola y se reintentan.
@@ -114,6 +117,7 @@ print("🧊 RC145 AUDIT FREEZE LOCK — SENDER RETRY + PASSPORT INDEX + VERSION 
 print("🛡️ RC145K MONEY TRUST + RESCUE CODE LOCK — DINERO TRAZADO + CÓDIGO COMPENSACIÓN 100% 🛡️")
 print("📧 RC146B RECIPIENT EMAIL → STRIPE LOCK — EMAIL OBLIGATORIO Y SALTO DIRECTO A STRIPE CONNECT 📧")
 print("🛟 RC147 RECIPIENT PASSPORT RECOVERY LOCK — /PEDIDO RECUPERA DESDE R2 🛟")
+print("🛡️ RC148 DELIVERY FORTRESS LOCK — SMS → EMAIL FORTRESS → WHATSAPP HUMANO 🛡️")
 print("📧 RC145G EMAIL FORTRESS LOCK — EMAIL QUEUE + RETRY + NO LOST ORDER EMAILS 📧")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
@@ -889,7 +893,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC147_RECIPIENT_PASSPORT_RECOVERY_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC148B_DELIVERY_FORTRESS_10MIN_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -913,6 +917,22 @@ ETERNA_RECIPIENT_RESCUE_12H_ENABLED = os.getenv("ETERNA_RECIPIENT_RESCUE_12H_ENA
 ETERNA_RECIPIENT_RESCUE_3H_HOURS = int(os.getenv("ETERNA_RECIPIENT_RESCUE_3H_HOURS", "3"))
 ETERNA_RECIPIENT_RESCUE_12H_HOURS = int(os.getenv("ETERNA_RECIPIENT_RESCUE_12H_HOURS", "12"))
 ETERNA_RECIPIENT_RESCUE_BATCH_SIZE = int(os.getenv("ETERNA_RECIPIENT_RESCUE_BATCH_SIZE", "20"))
+
+# =========================================================
+# RC148 — DELIVERY FORTRESS LOCK
+# Entrega garantizada por capas:
+# 1) SMS automático al destinatario.
+# 2) Email automático por Email Fortress si Twilio falla o si no abre en 10 minutos.
+# 3) Alerta interna para WhatsApp humano si tampoco abre el email.
+# No toca Stripe, Video Engine, reacción ni Sender Pack.
+# =========================================================
+DELIVERY_FORTRESS_ENABLED = os.getenv("DELIVERY_FORTRESS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+DELIVERY_AUTO_WHATSAPP_FALLBACK_ENABLED = os.getenv("DELIVERY_AUTO_WHATSAPP_FALLBACK_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+RECIPIENT_EMAIL_FALLBACK_AFTER_MINUTES = int(os.getenv("RECIPIENT_EMAIL_FALLBACK_AFTER_MINUTES", "10"))
+RECIPIENT_EMAIL_FALLBACK_ON_HARD_SMS_FAILURE = os.getenv("RECIPIENT_EMAIL_FALLBACK_ON_HARD_SMS_FAILURE", "1").strip().lower() in {"1", "true", "yes", "on"}
+RECIPIENT_MANUAL_WHATSAPP_ALERT_AFTER_HOURS = float(os.getenv("RECIPIENT_MANUAL_WHATSAPP_ALERT_AFTER_HOURS", "3"))
+RECIPIENT_MANUAL_WHATSAPP_ALERT_EMAIL_ENABLED = os.getenv("RECIPIENT_MANUAL_WHATSAPP_ALERT_EMAIL_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+SENDER_EMAIL_FALLBACK_AFTER_SMS_FAILURE_ENABLED = os.getenv("SENDER_EMAIL_FALLBACK_AFTER_SMS_FAILURE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 COOKIE_SECURE = PUBLIC_BASE_URL.startswith("https://")
 
@@ -2936,6 +2956,19 @@ def init_db():
     add_column_if_missing("orders", "rescue_recipient_email_sent_at", "ALTER TABLE orders ADD COLUMN rescue_recipient_email_sent_at TEXT")
     add_column_if_missing("orders", "sender_pack_email_sent_at", "ALTER TABLE orders ADD COLUMN sender_pack_email_sent_at TEXT")
     add_column_if_missing("orders", "sender_pack_email_last_error", "ALTER TABLE orders ADD COLUMN sender_pack_email_last_error TEXT")
+
+    # RC148 — Delivery Fortress: trazabilidad de entrega por SMS → Email → WhatsApp humano.
+    add_column_if_missing("orders", "delivery_fortress_status", "ALTER TABLE orders ADD COLUMN delivery_fortress_status TEXT")
+    add_column_if_missing("orders", "delivery_fortress_last_checked_at", "ALTER TABLE orders ADD COLUMN delivery_fortress_last_checked_at TEXT")
+    add_column_if_missing("orders", "delivery_fortress_last_reason", "ALTER TABLE orders ADD COLUMN delivery_fortress_last_reason TEXT")
+    add_column_if_missing("orders", "recipient_delivery_channel", "ALTER TABLE orders ADD COLUMN recipient_delivery_channel TEXT")
+    add_column_if_missing("orders", "recipient_email_delivery_sent_at", "ALTER TABLE orders ADD COLUMN recipient_email_delivery_sent_at TEXT")
+    add_column_if_missing("orders", "recipient_email_delivery_last_error", "ALTER TABLE orders ADD COLUMN recipient_email_delivery_last_error TEXT")
+    add_column_if_missing("orders", "recipient_email_delivery_source", "ALTER TABLE orders ADD COLUMN recipient_email_delivery_source TEXT")
+    add_column_if_missing("orders", "recipient_email_delivery_queue_key", "ALTER TABLE orders ADD COLUMN recipient_email_delivery_queue_key TEXT")
+    add_column_if_missing("orders", "recipient_manual_whatsapp_alert_sent_at", "ALTER TABLE orders ADD COLUMN recipient_manual_whatsapp_alert_sent_at TEXT")
+    add_column_if_missing("orders", "recipient_manual_whatsapp_alert_reason", "ALTER TABLE orders ADD COLUMN recipient_manual_whatsapp_alert_reason TEXT")
+    add_column_if_missing("orders", "recipient_manual_whatsapp_status", "ALTER TABLE orders ADD COLUMN recipient_manual_whatsapp_status TEXT")
 
     # RC119 — rescate elegante al destinatario si no abre la ETERNA.
     add_column_if_missing("orders", "recipient_rescue_3h_sent_at", "ALTER TABLE orders ADD COLUMN recipient_rescue_3h_sent_at TEXT")
@@ -7194,6 +7227,12 @@ def try_send_sender_sms(order: dict) -> dict:
             sender_sms_status_raw=json.dumps(result, ensure_ascii=False)[:2000],
         )
 
+        if SENDER_EMAIL_FALLBACK_AFTER_SMS_FAILURE_ENABLED:
+            try:
+                send_sender_pack_rescue_email(order, "sender_sms_failed_email_fallback")
+            except Exception as rescue_error:
+                log_error("sender_pack_rescue_email_immediate", rescue_error)
+
         if attempts >= 3:
             try:
                 send_sender_pack_rescue_email(order, "sender_sms_failed_after_retries")
@@ -7382,21 +7421,38 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
 
 
 def send_message_best_effort(phone: str, message: str, media_url: str = "") -> dict:
-    whatsapp_result = send_whatsapp(phone, message, media_url=media_url)
-    if whatsapp_result.get("ok"):
-        return whatsapp_result
+    """
+    RC148 — canal automático conservador.
+    Primero SMS. WhatsApp automático queda apagado por defecto porque el plan de ETERNA
+    es escalar a WhatsApp humano si SMS/email no abren.
+    """
     sms_result = send_sms(phone, message)
     if sms_result.get("ok"):
-        sms_result["fallback_from"] = "whatsapp"
-        sms_result["whatsapp_error"] = whatsapp_result.get("error")
+        sms_result["channel"] = "sms"
         return sms_result
+
+    if DELIVERY_AUTO_WHATSAPP_FALLBACK_ENABLED:
+        whatsapp_result = send_whatsapp(phone, message, media_url=media_url)
+        if whatsapp_result.get("ok"):
+            whatsapp_result["fallback_from"] = "sms"
+            whatsapp_result["sms_error"] = sms_result.get("error")
+            return whatsapp_result
+        return {
+            "ok": False,
+            "channel": "none",
+            "sid": None,
+            "error": "sms_error=" + str(sms_result.get("error")) + " | whatsapp_error=" + str(whatsapp_result.get("error")),
+            "sms_error": sms_result.get("error"),
+            "whatsapp_error": whatsapp_result.get("error"),
+        }
+
     return {
         "ok": False,
-        "channel": "none",
+        "channel": "sms",
         "sid": None,
-        "error": "whatsapp_error=" + str(whatsapp_result.get("error")) + " | sms_error=" + str(sms_result.get("error")),
-        "whatsapp_error": whatsapp_result.get("error"),
+        "error": str(sms_result.get("error") or "sms_error"),
         "sms_error": sms_result.get("error"),
+        "whatsapp_skipped": "human_whatsapp_escalation_only",
     }
 
 
@@ -7674,6 +7730,45 @@ def _mark_order_email_sent_from_queue(order_id: str, email_kind: str):
         elif email_kind == "admin_gift_payout_failed_email":
             update_order(order_id, admin_gift_payout_failed_email_sent_at=now_iso(), order_email_last_error=None)
             insert_order_event(order_id, "admin_gift_payout_failed_email", "ok", "Email admin payout.failed enviado desde Email Fortress")
+        elif email_kind == "recipient_delivery_email":
+            update_order(
+                order_id,
+                recipient_email_delivery_sent_at=now_iso(),
+                recipient_email_delivery_last_error=None,
+                recipient_delivery_channel="email",
+                delivery_fortress_status="EMAIL_SENT_FROM_QUEUE",
+                rescue_recipient_email_sent_at=now_iso(),
+                delivery_sent=1,
+                delivery_sent_at=now_iso(),
+                delivered_to_recipient=1,
+                order_email_last_error=None,
+            )
+            insert_order_event(order_id, "recipient_delivery_email_sent", "ok", "Email de entrega destinatario enviado desde Email Fortress")
+        elif email_kind == "recipient_delivery_sender_request_email":
+            update_order(
+                order_id,
+                rescue_sender_email_sent_at=now_iso(),
+                delivery_fortress_status="WAITING_RECIPIENT_EMAIL_FROM_SENDER",
+                order_email_last_error=None,
+            )
+            insert_order_event(order_id, "recipient_delivery_sender_request_email", "ok", "Email al regalante solicitando email del destinatario enviado desde Email Fortress")
+        elif email_kind == "recipient_manual_whatsapp_alert_email":
+            update_order(
+                order_id,
+                recipient_manual_whatsapp_alert_sent_at=now_iso(),
+                recipient_manual_whatsapp_status="ALERT_SENT_FROM_QUEUE",
+                order_email_last_error=None,
+            )
+            insert_order_event(order_id, "recipient_manual_whatsapp_alert_email", "ok", "Alerta interna para WhatsApp humano enviada desde Email Fortress")
+        elif email_kind == "sender_pack_rescue_email":
+            update_order(
+                order_id,
+                sender_pack_email_sent_at=now_iso(),
+                sender_pack_email_last_error=None,
+                rescue_mode_status="SENDER_PACK_EMAIL_SENT_FROM_QUEUE",
+                order_email_last_error=None,
+            )
+            insert_order_event(order_id, "sender_pack_email_rescue_sent", "ok", "Email Sender Pack enviado desde Email Fortress")
     except Exception as e:
         print(f"📧 RC145G email sent marker warning: {str(e)[:180]}")
 
@@ -8863,8 +8958,22 @@ def send_sender_pack_rescue_email(order: dict, reason: str = "") -> dict:
         )
         insert_order_event(order["id"], "sender_pack_email_rescue_sent", "ok", reason, {"to": mask_email(sender_email)})
     else:
-        update_order(order["id"], sender_pack_email_last_error=res.get("error") or "email_error")
-        insert_order_event(order["id"], "sender_pack_email_rescue_error", "warning", res.get("error") or "email_error", {"to": mask_email(sender_email)})
+        err = res.get("error") or "email_error"
+        queue_res = queue_email_fortress(
+            order_id=order["id"],
+            email_kind="sender_pack_rescue_email",
+            to_email=sender_email,
+            subject=f"Tu ETERNA ha vuelto — {order_public_code(order)}",
+            body=build_sender_pack_rescue_email(order, reason),
+            last_error=err,
+            meta={"source": "send_sender_pack_rescue_email", "reason": reason, "first_send_error": err},
+        )
+        if queue_res.get("queued"):
+            update_order(order["id"], sender_pack_email_last_error=err, rescue_mode_status="SENDER_PACK_EMAIL_QUEUED")
+            insert_order_event(order["id"], "sender_pack_email_rescue_queued", "pending", err, {"to": mask_email(sender_email), "queue": queue_res})
+            return {"ok": True, "queued": True, "reason": "email_queued", "queue": queue_res}
+        update_order(order["id"], sender_pack_email_last_error=err)
+        insert_order_event(order["id"], "sender_pack_email_rescue_error", "warning", err, {"to": mask_email(sender_email), "queue": queue_res})
     return res
 
 
@@ -8900,6 +9009,518 @@ def send_recipient_experience_rescue_email(order: dict, recipient_email: str, so
         )
         insert_order_event(order["id"], "recipient_experience_email_rescue_error", "warning", res.get("error") or "email_error", {"to": mask_email(clean_email)})
     return res
+
+
+# =========================================================
+# RC148 — DELIVERY FORTRESS EMAIL + WHATSAPP HUMANO
+# =========================================================
+
+def build_recipient_delivery_fortress_email(order: dict, reason: str = "") -> str:
+    lang = normalize_order_language(order.get("language") or "es")
+    sender = (order.get("sender_name") or "Alguien").strip()
+    recipient = (order.get("recipient_name") or "").strip()
+    ref = order_public_code(order)
+    url = recipient_experience_url_from_order(order)
+
+    if lang == "en":
+        greeting = f"Hi {recipient}," if recipient else "Hi,"
+        return f"""{greeting}
+
+{sender} has created an ETERNA for you.
+
+We first tried to send it by SMS. To make sure this moment never gets lost, we are also sending it to you by email.
+
+Open your ETERNA here:
+{url}
+
+Find a quiet moment, turn the sound on, and let it happen.
+
+Order reference: {ref}
+
+ETERNA
+""".strip()
+
+    greeting = f"Hola {recipient}," if recipient else "Hola,"
+    return f"""{greeting}
+
+{sender} ha creado una ETERNA para ti.
+
+Primero hemos intentado enviártela por SMS. Para asegurarnos de que este momento no se pierda nunca, también te la enviamos por email.
+
+Vive tu ETERNA aquí:
+{url}
+
+Busca un momento tranquilo, sube el sonido y deja que ocurra.
+
+Referencia del pedido: {ref}
+
+ETERNA
+""".strip()
+
+
+def build_sender_delivery_email_needed_body(order: dict, reason: str = "") -> str:
+    sender = (order.get("sender_name") or "").strip()
+    greeting = f"Hola {sender}," if sender else "Hola,"
+    return f"""{greeting}
+
+Tu ETERNA está creada y guardada correctamente.
+
+Hemos intentado entregarla por SMS al destinatario, pero el operador puede no haberla entregado correctamente.
+
+No se ha perdido nada.
+
+Para asegurar la entrega, necesitamos el email del destinatario. Puedes introducirlo aquí y ETERNA enviará automáticamente la experiencia por email:
+
+{rescue_url_from_order(order)}
+
+Pedido: {order_public_code(order)}
+Destinatario: {order.get('recipient_name') or 'sin nombre'}
+Motivo técnico: {reason or 'delivery_fortress_email_needed'}
+
+También puedes copiar este enlace manualmente si necesitas ayudarle:
+{recipient_experience_url_from_order(order)}
+
+Soporte ETERNA:
+{ETERNA_SUPPORT_EMAIL}
+{ETERNA_SUPPORT_PHONE}
+
+ETERNA
+""".strip()
+
+
+def send_sender_request_recipient_email_fortress(order: dict, reason: str = "") -> dict:
+    order = get_order_by_id(order["id"])
+    sender_email = (order.get("sender_email") or "").strip()
+    if not sender_email or "@" not in sender_email:
+        update_order(
+            order["id"],
+            delivery_fortress_status="NEEDS_HUMAN_WHATSAPP_NO_EMAILS",
+            delivery_fortress_last_reason=reason or "missing_sender_and_recipient_email",
+            delivery_fortress_last_checked_at=now_iso(),
+        )
+        try:
+            send_recipient_manual_whatsapp_alert(order, "No hay email del destinatario ni del regalante para rescate automático")
+        except Exception as e:
+            log_error("delivery_fortress_missing_emails_manual_alert", e)
+        return {"ok": False, "reason": "missing_sender_email"}
+
+    if order.get("rescue_sender_email_sent_at"):
+        return {"ok": True, "reason": "already_requested", "sent_at": order.get("rescue_sender_email_sent_at")}
+
+    subject = f"Necesitamos un email para entregar tu ETERNA — {order_public_code(order)}"
+    body = build_sender_delivery_email_needed_body(order, reason)
+    res = send_eterna_email(sender_email, subject, body)
+    if res.get("ok"):
+        update_order(
+            order["id"],
+            rescue_mode_status="WAITING_RECIPIENT_EMAIL",
+            rescue_sender_email_sent_at=now_iso(),
+            rescue_last_error=None,
+            delivery_fortress_status="WAITING_RECIPIENT_EMAIL_FROM_SENDER",
+            delivery_fortress_last_reason=reason or "sender_email_requested",
+            delivery_fortress_last_checked_at=now_iso(),
+        )
+        insert_order_event(order["id"], "recipient_delivery_sender_request_email", "ok", reason, {"to": mask_email(sender_email)})
+        return res
+
+    err = res.get("error") or "email_error"
+    queue_res = queue_email_fortress(
+        order_id=order["id"],
+        email_kind="recipient_delivery_sender_request_email",
+        to_email=sender_email,
+        subject=subject,
+        body=body,
+        last_error=err,
+        meta={"source": "delivery_fortress", "reason": reason, "first_send_error": err},
+    )
+    if queue_res.get("queued"):
+        update_order(
+            order["id"],
+            rescue_mode_status="WAITING_RECIPIENT_EMAIL_EMAIL_QUEUED",
+            rescue_last_error=err,
+            delivery_fortress_status="SENDER_EMAIL_REQUEST_QUEUED",
+            delivery_fortress_last_reason=reason or "sender_email_request_queued",
+            delivery_fortress_last_checked_at=now_iso(),
+        )
+        insert_order_event(order["id"], "recipient_delivery_sender_request_email_queued", "pending", err, {"to": mask_email(sender_email), "queue": queue_res})
+        return {"ok": True, "queued": True, "reason": "email_queued", "queue": queue_res}
+
+    update_order(
+        order["id"],
+        rescue_mode_status="SENDER_RESCUE_EMAIL_ERROR",
+        rescue_last_error=err,
+        delivery_fortress_status="SENDER_EMAIL_REQUEST_ERROR",
+        delivery_fortress_last_reason=err,
+        delivery_fortress_last_checked_at=now_iso(),
+    )
+    insert_order_event(order["id"], "recipient_delivery_sender_request_email_error", "warning", err, {"to": mask_email(sender_email), "queue": queue_res})
+    return {"ok": False, "reason": err, "queue": queue_res}
+
+
+def send_recipient_delivery_fortress_email(order: dict, reason: str = "", force: bool = False) -> dict:
+    """
+    Envía la ETERNA al destinatario por email como segunda vía.
+    Pasa por Email Fortress si SMTP falla, para que el email tampoco se pierda.
+    """
+    if not DELIVERY_FORTRESS_ENABLED:
+        return {"ok": False, "reason": "delivery_fortress_disabled"}
+
+    order = get_order_by_id(order["id"])
+    order_id = order["id"]
+
+    if recipient_has_opened_experience(order_id):
+        update_order(order_id, delivery_fortress_status="OPENED_NO_EMAIL_NEEDED", delivery_fortress_last_checked_at=now_iso())
+        return {"ok": False, "reason": "recipient_already_opened"}
+
+    if not force and (order.get("recipient_email_delivery_sent_at") or order.get("rescue_recipient_email_sent_at")):
+        return {
+            "ok": True,
+            "reason": "already_sent",
+            "sent_at": order.get("recipient_email_delivery_sent_at") or order.get("rescue_recipient_email_sent_at"),
+        }
+
+    recipient_email = (order.get("recipient_email") or "").strip()
+    if not recipient_email or "@" not in recipient_email:
+        return send_sender_request_recipient_email_fortress(order, reason or "missing_recipient_email")
+
+    subject = f"Tienes una ETERNA para ti — {order_public_code(order)}"
+    body = build_recipient_delivery_fortress_email(order, reason)
+    res = send_eterna_email(recipient_email, subject, body)
+
+    if res.get("ok"):
+        sent_at = now_iso()
+        update_order(
+            order_id,
+            recipient_email_delivery_sent_at=sent_at,
+            recipient_email_delivery_last_error=None,
+            recipient_email_delivery_source=reason or "delivery_fortress",
+            recipient_delivery_channel="email",
+            rescue_mode_status="RECIPIENT_EMAIL_SENT",
+            rescue_recipient_email_sent_at=sent_at,
+            rescue_last_error=None,
+            delivery_fortress_status="EMAIL_SENT",
+            delivery_fortress_last_reason=reason or "email_fallback_sent",
+            delivery_fortress_last_checked_at=sent_at,
+            delivery_sent=1,
+            delivery_sent_at=order.get("delivery_sent_at") or sent_at,
+            delivered_to_recipient=1,
+        )
+        set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_email_delivery_sent")
+        insert_order_event(order_id, "recipient_delivery_email_sent", "ok", reason, {"to": mask_email(recipient_email)})
+        return {"ok": True, "reason": "email_sent", "to": mask_email(recipient_email)}
+
+    err = res.get("error") or "email_error"
+    queue_res = queue_email_fortress(
+        order_id=order_id,
+        email_kind="recipient_delivery_email",
+        to_email=recipient_email,
+        subject=subject,
+        body=body,
+        last_error=err,
+        meta={"source": "delivery_fortress", "reason": reason, "first_send_error": err},
+    )
+
+    if queue_res.get("queued"):
+        update_order(
+            order_id,
+            recipient_email_delivery_last_error=err,
+            recipient_email_delivery_source=reason or "delivery_fortress",
+            recipient_email_delivery_queue_key=queue_res.get("email_key"),
+            recipient_delivery_channel="email_queued",
+            rescue_mode_status="RECIPIENT_EMAIL_QUEUED",
+            rescue_last_error=err,
+            delivery_fortress_status="EMAIL_QUEUED",
+            delivery_fortress_last_reason=reason or "email_queued",
+            delivery_fortress_last_checked_at=now_iso(),
+        )
+        insert_order_event(order_id, "recipient_delivery_email_queued", "pending", err, {"to": mask_email(recipient_email), "queue": queue_res})
+        return {"ok": True, "queued": True, "reason": "email_queued", "queue": queue_res}
+
+    update_order(
+        order_id,
+        recipient_email_delivery_last_error=err,
+        rescue_mode_status="RECIPIENT_EMAIL_ERROR",
+        rescue_last_error=err,
+        delivery_fortress_status="EMAIL_ERROR_NEEDS_HUMAN_WHATSAPP",
+        delivery_fortress_last_reason=err,
+        delivery_fortress_last_checked_at=now_iso(),
+    )
+    insert_order_event(order_id, "recipient_delivery_email_error", "warning", err, {"to": mask_email(recipient_email), "queue": queue_res})
+    try:
+        send_recipient_manual_whatsapp_alert(get_order_by_id(order_id), f"Email fallback falló: {err}")
+    except Exception as e:
+        log_error("delivery_fortress_email_error_manual_alert", e)
+    return {"ok": False, "reason": err, "queue": queue_res}
+
+
+def _delivery_fortress_minutes_since(value: str) -> Optional[int]:
+    dt = parse_iso_dt(value or "")
+    if not dt:
+        return None
+    try:
+        return int((now_dt() - dt).total_seconds() // 60)
+    except Exception:
+        return None
+
+
+def recipient_delivery_email_fallback_due(order: dict) -> tuple[bool, str]:
+    if not DELIVERY_FORTRESS_ENABLED:
+        return False, "delivery_fortress_disabled"
+    if not bool(order.get("paid")):
+        return False, "order_not_paid"
+    if not original_video_ready(order):
+        return False, "original_video_not_ready"
+    if bool(order.get("order_locked")):
+        return False, "order_locked"
+    if recipient_has_opened_experience(order.get("id")):
+        return False, "recipient_already_opened"
+    if order.get("recipient_email_delivery_sent_at") or order.get("rescue_recipient_email_sent_at"):
+        return False, "recipient_email_already_sent"
+
+    status = str(order.get("recipient_sms_status") or "").strip().lower()
+    error = str(order.get("recipient_sms_error") or "").strip()
+    attempts = int(order.get("recipient_sms_attempts") or 0)
+
+    if RECIPIENT_EMAIL_FALLBACK_ON_HARD_SMS_FAILURE and (status in {"failed", "undelivered"} or (error and attempts >= 1)):
+        return True, f"sms_hard_failure:{status or error}"
+
+    reference = order.get("recipient_sms_status_updated_at") or order.get("recipient_sms_sent_at") or order.get("delivery_sent_at")
+    minutes = _delivery_fortress_minutes_since(reference)
+    if minutes is not None and minutes >= max(1, int(RECIPIENT_EMAIL_FALLBACK_AFTER_MINUTES)):
+        return True, f"not_opened_after_{minutes}_minutes"
+
+    return False, "not_due_yet"
+
+
+def list_due_recipient_delivery_email_fallbacks(limit: int = 20) -> list[str]:
+    if not DELIVERY_FORTRESS_ENABLED:
+        return []
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE COALESCE(paid,0)=1
+          AND COALESCE(order_locked,0)=0
+          AND COALESCE(experience_started,0)=0
+          AND COALESCE(experience_completed,0)=0
+          AND COALESCE(experience_video_url,'') <> ''
+          AND COALESCE(recipient_email_delivery_sent_at,'') = ''
+          AND COALESCE(rescue_recipient_email_sent_at,'') = ''
+        ORDER BY COALESCE(recipient_sms_status_updated_at, recipient_sms_sent_at, delivery_sent_at, created_at) ASC
+        LIMIT ?
+    """, (max(1, int(limit or 20)),))
+    ids = [r["id"] for r in cur.fetchall()]
+    conn.close()
+    return ids
+
+
+def process_all_due_delivery_fortress_email_fallbacks() -> list[dict]:
+    results = []
+    for order_id in list_due_recipient_delivery_email_fallbacks(limit=20):
+        try:
+            order = get_order_by_id(order_id)
+            due, reason = recipient_delivery_email_fallback_due(order)
+            update_order(order_id, delivery_fortress_last_checked_at=now_iso(), delivery_fortress_last_reason=reason)
+            if not due:
+                continue
+            result = send_recipient_delivery_fortress_email(order, reason=reason)
+            print("🛡️ RC148 Delivery Fortress email:", order_id, result)
+            results.append({"order_id": order_id, "reason": reason, "result": result})
+        except Exception as e:
+            log_error("process_delivery_fortress_email_fallback", e)
+            results.append({"order_id": order_id, "result": {"ok": False, "reason": str(e)}})
+    return results
+
+
+def build_manual_whatsapp_message_for_recipient(order: dict) -> str:
+    recipient = (order.get("recipient_name") or "").strip()
+    sender = (order.get("sender_name") or "Alguien").strip()
+    url = recipient_experience_url_from_order(order)
+    greeting = f"Hola {recipient}," if recipient else "Hola,"
+    return f"""{greeting}
+
+{sender} ha creado una ETERNA para ti.
+
+Te la enviamos también por aquí para asegurarnos de que no se pierde:
+{url}
+
+Ábrela cuando tengas un momento tranquilo, con sonido.
+
+ETERNA""".strip()
+
+
+def build_recipient_manual_whatsapp_alert_email(order: dict, reason: str = "") -> str:
+    return f"""🚨 ETERNA · REVISAR ENTREGA POR WHATSAPP HUMANO
+
+Pedido: {order_public_code(order)}
+Order ID interno: {order.get('id')}
+Motivo: {reason or 'manual_whatsapp_needed'}
+Estado Delivery Fortress: {order.get('delivery_fortress_status') or 'sin estado'}
+
+REGALANTE
+Nombre: {order.get('sender_name') or 'sin nombre'}
+Email: {order.get('sender_email') or 'sin email'}
+Teléfono: {order.get('sender_phone') or 'sin teléfono'}
+
+DESTINATARIO
+Nombre: {order.get('recipient_name') or 'sin nombre'}
+Email: {order.get('recipient_email') or 'sin email'}
+Teléfono: {order.get('recipient_phone') or 'sin teléfono'}
+
+ENTREGA
+SMS SID: {order.get('recipient_sms_sid') or 'no disponible'}
+SMS status: {order.get('recipient_sms_status') or 'no disponible'}
+SMS error: {order.get('recipient_sms_error') or 'sin error'}
+SMS enviado: {order.get('recipient_sms_sent_at') or 'no'}
+Email entrega enviado: {order.get('recipient_email_delivery_sent_at') or order.get('rescue_recipient_email_sent_at') or 'no'}
+Email error: {order.get('recipient_email_delivery_last_error') or 'sin error'}
+Experiencia abierta: {'sí' if recipient_has_opened_experience(order.get('id')) else 'no'}
+
+LINK DESTINATARIO
+{recipient_experience_url_from_order(order)}
+
+MENSAJE SUGERIDO PARA WHATSAPP HUMANO
+----------------------------------------
+{build_manual_whatsapp_message_for_recipient(order)}
+----------------------------------------
+
+ACCIÓN RECOMENDADA
+1. Copiar el mensaje sugerido.
+2. Enviarlo manualmente al WhatsApp del destinatario si el número existe.
+3. Si el destinatario no responde, contactar al regalante.
+
+ETERNA
+""".strip()
+
+
+def send_recipient_manual_whatsapp_alert(order: dict, reason: str = "") -> dict:
+    if not RECIPIENT_MANUAL_WHATSAPP_ALERT_EMAIL_ENABLED:
+        return {"ok": False, "reason": "manual_whatsapp_alert_disabled"}
+    order = get_order_by_id(order["id"])
+    if order.get("recipient_manual_whatsapp_alert_sent_at"):
+        return {"ok": True, "reason": "already_sent", "sent_at": order.get("recipient_manual_whatsapp_alert_sent_at")}
+
+    admin_targets = ",".join([x for x in [ETERNA_OPERATIONS_EMAIL, ADMIN_ALERT_EMAIL] if x])
+    if not admin_targets:
+        return {"ok": False, "reason": "missing_admin_email"}
+
+    subject = f"🚨 Revisar entrega por WhatsApp humano {order_public_code(order)}"
+    body = build_recipient_manual_whatsapp_alert_email(order, reason)
+    res = send_eterna_email(admin_targets, subject, body, reply_to=(order.get("sender_email") or ""))
+    if res.get("ok"):
+        update_order(
+            order["id"],
+            recipient_manual_whatsapp_alert_sent_at=now_iso(),
+            recipient_manual_whatsapp_alert_reason=reason or "manual_whatsapp_needed",
+            recipient_manual_whatsapp_status="ALERT_SENT",
+            delivery_fortress_status="HUMAN_WHATSAPP_ALERT_SENT",
+            delivery_fortress_last_reason=reason or "manual_whatsapp_alert_sent",
+            delivery_fortress_last_checked_at=now_iso(),
+        )
+        insert_order_event(order["id"], "recipient_manual_whatsapp_alert_email", "warning", reason, {"to": admin_targets})
+        return res
+
+    err = res.get("error") or "email_error"
+    queue_res = queue_email_fortress(
+        order_id=order["id"],
+        email_kind="recipient_manual_whatsapp_alert_email",
+        to_email=admin_targets,
+        subject=subject,
+        body=body,
+        reply_to=(order.get("sender_email") or ""),
+        last_error=err,
+        meta={"source": "delivery_fortress_manual_whatsapp_alert", "reason": reason, "first_send_error": err},
+    )
+    if queue_res.get("queued"):
+        update_order(
+            order["id"],
+            recipient_manual_whatsapp_alert_reason=reason or "manual_whatsapp_needed",
+            recipient_manual_whatsapp_status="ALERT_QUEUED",
+            delivery_fortress_status="HUMAN_WHATSAPP_ALERT_QUEUED",
+            delivery_fortress_last_reason=reason or "manual_whatsapp_alert_queued",
+            delivery_fortress_last_checked_at=now_iso(),
+        )
+        insert_order_event(order["id"], "recipient_manual_whatsapp_alert_email_queued", "pending", err, {"queue": queue_res})
+        return {"ok": True, "queued": True, "reason": "email_queued", "queue": queue_res}
+
+    update_order(
+        order["id"],
+        recipient_manual_whatsapp_alert_reason=reason or err,
+        recipient_manual_whatsapp_status="ALERT_EMAIL_ERROR",
+        delivery_fortress_status="HUMAN_WHATSAPP_ALERT_ERROR",
+        delivery_fortress_last_reason=err,
+        delivery_fortress_last_checked_at=now_iso(),
+    )
+    insert_order_event(order["id"], "recipient_manual_whatsapp_alert_email_error", "error", err, {"queue": queue_res})
+    return {"ok": False, "reason": err, "queue": queue_res}
+
+
+def recipient_manual_whatsapp_alert_due(order: dict) -> tuple[bool, str]:
+    if not DELIVERY_FORTRESS_ENABLED:
+        return False, "delivery_fortress_disabled"
+    if bool(order.get("recipient_manual_whatsapp_alert_sent_at")):
+        return False, "manual_alert_already_sent"
+    if recipient_has_opened_experience(order.get("id")):
+        return False, "recipient_already_opened"
+    if not bool(order.get("paid")) or not original_video_ready(order):
+        return False, "order_not_ready"
+
+    # Si no hay email útil y el SMS falló, avisamos antes: solo queda acción humana.
+    recipient_email = (order.get("recipient_email") or "").strip()
+    sender_email = (order.get("sender_email") or "").strip()
+    sms_status = str(order.get("recipient_sms_status") or "").lower()
+    sms_error = str(order.get("recipient_sms_error") or "").strip()
+    if (sms_status in {"failed", "undelivered"} or sms_error) and not recipient_email and not sender_email:
+        return True, "sms_failed_and_no_email_path"
+
+    email_sent_at = order.get("recipient_email_delivery_sent_at") or order.get("rescue_recipient_email_sent_at")
+    if not email_sent_at:
+        return False, "recipient_email_not_sent_yet"
+    minutes = _delivery_fortress_minutes_since(email_sent_at)
+    threshold_minutes = max(15, int(float(RECIPIENT_MANUAL_WHATSAPP_ALERT_AFTER_HOURS) * 60))
+    if minutes is not None and minutes >= threshold_minutes:
+        return True, f"email_not_opened_after_{minutes}_minutes"
+    return False, "not_due_yet"
+
+
+def list_due_recipient_manual_whatsapp_alerts(limit: int = 20) -> list[str]:
+    if not DELIVERY_FORTRESS_ENABLED:
+        return []
+    conn = db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id
+        FROM orders
+        WHERE COALESCE(paid,0)=1
+          AND COALESCE(order_locked,0)=0
+          AND COALESCE(experience_started,0)=0
+          AND COALESCE(experience_completed,0)=0
+          AND COALESCE(experience_video_url,'') <> ''
+          AND COALESCE(recipient_manual_whatsapp_alert_sent_at,'') = ''
+        ORDER BY COALESCE(recipient_email_delivery_sent_at, rescue_recipient_email_sent_at, recipient_sms_status_updated_at, recipient_sms_sent_at, created_at) ASC
+        LIMIT ?
+    """, (max(1, int(limit or 20)),))
+    ids = [r["id"] for r in cur.fetchall()]
+    conn.close()
+    return ids
+
+
+def process_all_due_recipient_manual_whatsapp_alerts() -> list[dict]:
+    results = []
+    for order_id in list_due_recipient_manual_whatsapp_alerts(limit=20):
+        try:
+            order = get_order_by_id(order_id)
+            due, reason = recipient_manual_whatsapp_alert_due(order)
+            if not due:
+                continue
+            result = send_recipient_manual_whatsapp_alert(order, reason)
+            print("🛡️ RC148 WhatsApp humano alert:", order_id, result)
+            results.append({"order_id": order_id, "reason": reason, "result": result})
+        except Exception as e:
+            log_error("process_delivery_fortress_manual_whatsapp_alert", e)
+            results.append({"order_id": order_id, "result": {"ok": False, "reason": str(e)}})
+    return results
 
 
 def trigger_recipient_delivery_rescue(order: dict, reason: str = "") -> dict:
@@ -9264,6 +9885,9 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
                 recipient_sms_status_updated_at=sent_at,
                 recipient_sms_status_raw=json.dumps(result, ensure_ascii=False)[:2000],
                 recipient_sms_sent_at=sent_at,
+                recipient_delivery_channel=(result.get("channel") or "sms"),
+                delivery_fortress_status="SMS_SENT_WAITING_OPEN",
+                delivery_fortress_last_checked_at=sent_at,
                 delivery_sent=1,
                 delivery_sent_at=sent_at,
                 delivered_to_recipient=1,
@@ -9298,7 +9922,12 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         updated = get_order_by_id(order_id)
         insert_order_event(order_id, "recipient_sms_failed", "error", final_error, {"attempts": int(updated.get("recipient_sms_attempts") or 0)})
 
-        if int(updated.get("recipient_sms_attempts") or 0) >= 3:
+        if DELIVERY_FORTRESS_ENABLED and RECIPIENT_EMAIL_FALLBACK_ON_HARD_SMS_FAILURE:
+            try:
+                send_recipient_delivery_fortress_email(updated, f"recipient_sms_failed:{final_error}")
+            except Exception as fortress_error:
+                log_error("recipient_delivery_fortress_after_sms_failure", fortress_error)
+        elif int(updated.get("recipient_sms_attempts") or 0) >= 3:
             try:
                 trigger_recipient_delivery_rescue(updated, "recipient_sms_failed_after_retries")
             except Exception as rescue_error:
@@ -15545,6 +16174,9 @@ def list_pending_scheduled_deliveries():
             AND COALESCE(delivery_sent, 0) = 0
             AND COALESCE(experience_video_url, '') <> ''
             AND COALESCE(recipient_sms_attempts, 0) < 3
+            AND COALESCE(recipient_email_delivery_sent_at, '') = ''
+            AND COALESCE(recipient_email_delivery_queue_key, '') = ''
+            AND COALESCE(rescue_sender_email_sent_at, '') = ''
             AND COALESCE(order_locked, 0) = 0
         ORDER BY created_at ASC
     """)
@@ -15971,6 +16603,10 @@ def admin_health(token: str = ""):
     checks["twilio_sms"] = "ok" if twilio_enabled() else "missing_or_disabled"
     checks["sms_enabled"] = bool(SMS_ENABLED)
     checks["whatsapp_enabled"] = bool(WHATSAPP_ENABLED)
+    checks["delivery_fortress_enabled"] = bool(DELIVERY_FORTRESS_ENABLED)
+    checks["delivery_auto_whatsapp_fallback_enabled"] = bool(DELIVERY_AUTO_WHATSAPP_FALLBACK_ENABLED)
+    checks["recipient_email_fallback_after_minutes"] = RECIPIENT_EMAIL_FALLBACK_AFTER_MINUTES
+    checks["recipient_manual_whatsapp_alert_after_hours"] = RECIPIENT_MANUAL_WHATSAPP_ALERT_AFTER_HOURS
     checks["video_engine_url"] = VIDEO_ENGINE_URL or "missing"
     checks["r2"] = "ok" if r2_enabled() else "local_fallback"
     checks["r2_status"] = r2_status_summary()
@@ -16106,9 +16742,11 @@ def delivery_worker_loop():
                 rc74_recovery_cycle()
                 process_due_email_queue()
                 process_all_due_scheduled_deliveries()
+                process_all_due_delivery_fortress_email_fallbacks()
                 process_all_pending_reaction_recoveries()
                 process_all_due_sender_notifications()
                 process_all_due_recipient_rescues()
+                process_all_due_recipient_manual_whatsapp_alerts()
                 process_all_due_payouts()
         except Exception as e:
             log_error("delivery_worker_loop", e)
@@ -16161,15 +16799,19 @@ def startup_event():
                 log_human("RC60 SWEEP ARRANQUE", "Buscando entregas y avisos pendientes tras deploy/reinicio")
                 email_results = process_due_email_queue()
                 delivery_results = process_all_due_scheduled_deliveries()
+                delivery_fortress_results = process_all_due_delivery_fortress_email_fallbacks()
                 sender_results = process_all_due_sender_notifications()
                 recipient_rescue_results = process_all_due_recipient_rescues()
+                manual_whatsapp_results = process_all_due_recipient_manual_whatsapp_alerts()
                 payout_results = process_all_due_payouts()
                 log_human(
                     "RC60 SWEEP COMPLETADO",
                     f"📧 Emails pendientes revisados: {len(email_results)}",
                     f"📦 Entregas revisadas: {len(delivery_results)}",
+                    f"🛡️ Delivery Fortress email revisado: {len(delivery_fortress_results)}",
                     f"📩 Avisos regalante revisados: {len(sender_results)}",
                     f"🛟 Rescates destinatario revisados: {len(recipient_rescue_results)}",
+                    f"📲 Alertas WhatsApp humano revisadas: {len(manual_whatsapp_results)}",
                     f"💶 Payouts revisados: {len(payout_results)}",
                 )
             except Exception as e:
@@ -22143,12 +22785,21 @@ async def rc121_twilio_status_callback(request: Request):
         conn = db_conn()
         cur = conn.cursor()
         changed = 0
+        cur.execute("SELECT id FROM orders WHERE recipient_sms_sid=? LIMIT 1", (sid,))
+        recipient_match = cur.fetchone()
+        recipient_order_id = recipient_match["id"] if recipient_match else ""
+        cur.execute("SELECT id FROM orders WHERE sender_sms_sid=? LIMIT 1", (sid,))
+        sender_match = cur.fetchone()
+        sender_order_id = sender_match["id"] if sender_match else ""
+
         cur.execute("""
             UPDATE orders
             SET recipient_sms_status=?, recipient_sms_status_updated_at=?, recipient_sms_status_raw=?,
-                recipient_sms_error=CASE WHEN ? IN ('failed','undelivered') THEN ? ELSE recipient_sms_error END
+                recipient_sms_error=CASE WHEN ? IN ('failed','undelivered') THEN ? ELSE recipient_sms_error END,
+                delivery_fortress_status=CASE WHEN ? IN ('failed','undelivered') THEN 'SMS_FAILED_WAITING_EMAIL_FALLBACK' ELSE COALESCE(delivery_fortress_status,'SMS_STATUS_UPDATED') END,
+                delivery_fortress_last_checked_at=?
             WHERE recipient_sms_sid=?
-        """, (status, now, raw, status, status, sid))
+        """, (status, now, raw, status, status, status, now, sid))
         changed += cur.rowcount
         cur.execute("""
             UPDATE orders
@@ -22161,10 +22812,52 @@ async def rc121_twilio_status_callback(request: Request):
         conn.close()
         if changed:
             print(f"📡 RC121 Twilio status {sid}: {status} changed={changed}")
+
+        if status in {"failed", "undelivered"}:
+            if recipient_order_id and DELIVERY_FORTRESS_ENABLED and RECIPIENT_EMAIL_FALLBACK_ON_HARD_SMS_FAILURE:
+                try:
+                    order = get_order_by_id(recipient_order_id)
+                    send_recipient_delivery_fortress_email(order, f"twilio_status_{status}")
+                except Exception as e:
+                    log_error("twilio_status_delivery_fortress_email", e)
+            if sender_order_id and SENDER_EMAIL_FALLBACK_AFTER_SMS_FAILURE_ENABLED:
+                try:
+                    order = get_order_by_id(sender_order_id)
+                    send_sender_pack_rescue_email(order, f"twilio_sender_status_{status}")
+                except Exception as e:
+                    log_error("twilio_status_sender_pack_email", e)
+
         return {"ok": True, "sid": sid, "status": status, "changed": changed}
     except Exception as e:
         print("[WARN] RC121 Twilio status callback failed:", e)
         return {"ok": False, "error": str(e)[:300]}
+
+
+@app.post("/admin/delivery-fortress-email/{order_id}")
+def admin_delivery_fortress_email(order_id: str, request: Request):
+    admin_token = (request.query_params.get("token") or request.headers.get("x-admin-token") or "").strip()
+    rc74a_admin_guard(admin_token)
+    order = get_order_by_id(order_id)
+    result = send_recipient_delivery_fortress_email(order, reason="admin_manual", force=True)
+    return {"ok": bool(result.get("ok")), "order_id": order_id, "result": result, "updated": get_order_by_id(order_id)}
+
+
+@app.post("/admin/delivery-fortress-whatsapp-alert/{order_id}")
+def admin_delivery_fortress_whatsapp_alert(order_id: str, request: Request):
+    admin_token = (request.query_params.get("token") or request.headers.get("x-admin-token") or "").strip()
+    rc74a_admin_guard(admin_token)
+    order = get_order_by_id(order_id)
+    result = send_recipient_manual_whatsapp_alert(order, reason="admin_manual")
+    return {"ok": bool(result.get("ok")), "order_id": order_id, "result": result, "updated": get_order_by_id(order_id)}
+
+
+@app.post("/admin/process-delivery-fortress")
+def admin_process_delivery_fortress(request: Request):
+    admin_token = (request.query_params.get("token") or request.headers.get("x-admin-token") or "").strip()
+    rc74a_admin_guard(admin_token)
+    emails = process_all_due_delivery_fortress_email_fallbacks()
+    whatsapp_alerts = process_all_due_recipient_manual_whatsapp_alerts()
+    return {"ok": True, "email_fallbacks": emails, "manual_whatsapp_alerts": whatsapp_alerts, "timestamp": now_iso()}
 
 
 @app.get("/admin/email-queue")
