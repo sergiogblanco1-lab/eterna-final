@@ -1,4 +1,5 @@
-# RC149D_DELIVERY_FORTRESS_SAFE_EMAIL_GLOBAL_SMS_LOCK
+# RC151_WHATSAPP_FIRST_STABLE_LOCK
+# Base: RC150 + WhatsApp principal + SMS desacoplado por variable + rescate email/check-in.
 # Base: RC148B + Global phone adapter + Twilio Messaging Service + sender/recipient email protection.
 # Ajuste: fallback de email a destinatario a los 10 minutos desde SMS/intento de entrega si no abre la experiencia.
 # Mantiene WhatsApp como alerta humana, no automático.
@@ -122,6 +123,7 @@ print("🛟 RC147 RECIPIENT PASSPORT RECOVERY LOCK — /PEDIDO RECUPERA DESDE R2
 print("🛡️ RC148 DELIVERY FORTRESS LOCK — SMS → EMAIL FORTRESS → WHATSAPP HUMANO 🛡️")
 print("📧 RC149F EMAIL FORTRESS PLUS — FAST RETRY + NO DUPLICATE QUEUE + LAST RESORT SMS 📧")
 print("🧹 RC149G DELIVERY FORTRESS WORKER SILENCE — NO ALREADY_REQUESTED LOOP 🧹")
+print("📲 RC151 WHATSAPP FIRST STABLE LOCK — WHATSAPP PRINCIPAL + SMS BACKUP CONTROLADO + FOTO 1 PREVIEW 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
@@ -812,6 +814,32 @@ SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
+# =========================================================
+# RC150 — WHATSAPP ARRIVAL PHOTO PREVIEW LOCK
+# Permite que WhatsApp sea el primer canal de entrega si ya está Online.
+# La mini foto de llegada se adjunta al WhatsApp cuando existe.
+# Si WhatsApp falla, SMS sigue como red de seguridad.
+# Además /pedido sirve metadatos Open Graph a previews de WhatsApp/Facebook.
+# =========================================================
+WHATSAPP_PRIMARY_DELIVERY_ENABLED = os.getenv("WHATSAPP_PRIMARY_DELIVERY_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+WHATSAPP_ARRIVAL_PHOTO_ENABLED = os.getenv("WHATSAPP_ARRIVAL_PHOTO_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+WHATSAPP_LINK_PREVIEW_META_ENABLED = os.getenv("WHATSAPP_LINK_PREVIEW_META_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+# =========================================================
+# RC151 — WHATSAPP FIRST STABLE LOCK
+# WhatsApp es el canal principal. SMS queda vivo como respaldo técnico,
+# pero solo se usa como fallback automático si WHATSAPP_FALLBACK_SMS=1.
+# =========================================================
+WHATSAPP_FALLBACK_SMS = os.getenv("WHATSAPP_FALLBACK_SMS", "0").strip().lower() in {"1", "true", "yes", "on"}
+WHATSAPP_EMAIL_RESCUE_ENABLED = os.getenv("WHATSAPP_EMAIL_RESCUE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+WHATSAPP_MANUAL_ALERT_ENABLED = os.getenv("WHATSAPP_MANUAL_ALERT_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+WHATSAPP_OPEN_TIMEOUT_MINUTES = int(os.getenv("WHATSAPP_OPEN_TIMEOUT_MINUTES", "10"))
+PREEXPERIENCE_CHECKIN_ENABLED = os.getenv("PREEXPERIENCE_CHECKIN_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+SENDERPACK_EMAIL_AUTO_ENABLED = os.getenv("SENDERPACK_EMAIL_AUTO_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+EVENT_LOGGING_ENABLED = os.getenv("EVENT_LOGGING_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+ARRIVAL_PHOTO_PREVIEW_SIZE = int(os.getenv("ARRIVAL_PHOTO_PREVIEW_SIZE", "1200"))
+
 # Reacción móvil blindada:
 # antes estaba limitado a 15MB y en móvil/Safari una emoción real puede superar ese tamaño.
 # ETERNA_PRODUCCION_V1_RC1
@@ -916,6 +944,7 @@ CLUB_MARIPOSA_RECORDS_FOLDER = ensure_runtime_folder(os.getenv("CLUB_MARIPOSA_RE
 ETERNA_TRACES_FOLDER = ensure_runtime_folder(os.getenv("ETERNA_TRACES_FOLDER", str(DATA_FOLDER / "eterna_traces")), "eterna_traces")
 ETERNA_PASSPORTS_FOLDER = ensure_runtime_folder(os.getenv("ETERNA_PASSPORTS_FOLDER", str(DATA_FOLDER / "eterna_passports")), "eterna_passports")
 ETERNA_DB_BACKUPS_FOLDER = ensure_runtime_folder(os.getenv("ETERNA_DB_BACKUPS_FOLDER", str(DATA_FOLDER / "eterna_db_backups")), "eterna_db_backups")
+ARRIVAL_PHOTO_PREVIEW_FOLDER = ensure_runtime_folder(os.getenv("ARRIVAL_PHOTO_PREVIEW_FOLDER", str(DATA_FOLDER / "arrival_photo_previews")), "arrival_photo_previews")
 
 STATIC_FOLDER = Path("static")
 STATIC_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -933,7 +962,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC149G_DELIVERY_FORTRESS_WORKER_SILENCE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC151_WHATSAPP_FIRST_STABLE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -6994,6 +7023,103 @@ def arrival_photo_url_from_order(order: dict) -> str:
     return f"{PUBLIC_BASE_URL}/arrival-photo/{token}?slot={quote(slot)}"
 
 
+def arrival_photo_preview_url_from_order(order: dict) -> str:
+    """
+    RC150 — URL JPG cuadrada para WhatsApp y previews sociales.
+    Usa la foto de llegada elegida en el formulario, pero la sirve en formato
+    compatible 1:1 para que WhatsApp pueda mostrarla como miniatura fiable.
+    """
+    if not WHATSAPP_ARRIVAL_PHOTO_ENABLED:
+        return ""
+    if not SENDER_IDENTITY_ENABLED:
+        return ""
+    if not rc101_truthy(order.get("show_sender_identity")):
+        return ""
+    token = (order.get("recipient_token") or "").strip()
+    if not token:
+        return ""
+    slot = rc101_clean_photo_slot(order.get("arrival_photo_slot") or ARRIVAL_PHOTO_DEFAULT_SLOT)
+    return f"{PUBLIC_BASE_URL}/arrival-photo-preview/{token}.jpg?slot={quote(slot)}"
+
+
+def recipient_social_preview_title(order: dict) -> str:
+    sender_name = (order.get("sender_name") or "Alguien").strip() or "Alguien"
+    recipient_name = (order.get("recipient_name") or "").strip()
+    lang = normalize_order_language(order.get("language") or "es")
+    if lang == "en":
+        if recipient_name:
+            return f"{recipient_name}, {sender_name} prepared an ETERNA for you"
+        return f"{sender_name} prepared an ETERNA for you"
+    if recipient_name:
+        return f"{recipient_name}, {sender_name} ha preparado una ETERNA para ti"
+    return f"{sender_name} ha preparado una ETERNA para ti"
+
+
+def recipient_social_preview_description(order: dict) -> str:
+    lang = normalize_order_language(order.get("language") or "es")
+    if lang == "en":
+        return "Open it in a quiet moment, with sound. This is not just a video. It is an experience."
+    return "Ábrela en un momento tranquilo y con sonido. No es un vídeo. Es una experiencia."
+
+
+def is_social_or_whatsapp_preview_request(request: Request) -> bool:
+    ua = (request.headers.get("user-agent") or "").lower()
+    signals = ("whatsapp", "facebookexternalhit", "facebot", "twitterbot", "telegrambot", "slackbot", "linkedinbot", "discordbot")
+    return any(sig in ua for sig in signals)
+
+
+def render_recipient_link_preview(order: dict) -> HTMLResponse:
+    title = safe_text(recipient_social_preview_title(order))
+    description = safe_text(recipient_social_preview_description(order))
+    image_url = arrival_photo_preview_url_from_order(order) or f"{PUBLIC_BASE_URL}{eterna_asset('home_mobile')}"
+    url = recipient_experience_url_from_order(order)
+    html_doc = f"""<!doctype html>
+<html lang=\"{safe_attr(normalize_order_language(order.get('language') or 'es'))}\">
+<head>
+<meta charset=\"utf-8\">
+<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+<title>{title}</title>
+<meta name=\"description\" content=\"{safe_attr(description)}\">
+<meta property=\"og:type\" content=\"website\">
+<meta property=\"og:title\" content=\"{safe_attr(title)}\">
+<meta property=\"og:description\" content=\"{safe_attr(description)}\">
+<meta property=\"og:url\" content=\"{safe_attr(url)}\">
+<meta property=\"og:image\" content=\"{safe_attr(image_url)}\">
+<meta property=\"og:image:secure_url\" content=\"{safe_attr(image_url)}\">
+<meta property=\"og:image:type\" content=\"image/jpeg\">
+<meta property=\"og:image:width\" content=\"1200\">
+<meta property=\"og:image:height\" content=\"1200\">
+<meta name=\"twitter:card\" content=\"summary_large_image\">
+<meta name=\"twitter:title\" content=\"{safe_attr(title)}\">
+<meta name=\"twitter:description\" content=\"{safe_attr(description)}\">
+<meta name=\"twitter:image\" content=\"{safe_attr(image_url)}\">
+</head>
+<body style=\"margin:0;background:#02050a;color:white;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;text-align:center;\">
+<div>
+<h1 style=\"color:#f5d28b;font-size:24px;\">{title}</h1>
+<p style=\"opacity:.82;line-height:1.5;\">{description}</p>
+<a href=\"{safe_attr(url)}\" style=\"display:inline-block;margin-top:16px;background:#f5d28b;color:#06111d;text-decoration:none;font-weight:800;border-radius:999px;padding:14px 20px;\">Abrir mi ETERNA</a>
+</div>
+</body>
+</html>"""
+    return HTMLResponse(html_doc)
+
+
+def normalize_whatsapp_media_url(media_url: str) -> str:
+    media_url = (media_url or "").strip()
+    if not media_url:
+        return ""
+    # Twilio/WhatsApp requiere URLs absolutas HTTPS para media.
+    if media_url.startswith("https://"):
+        return media_url
+    return ""
+
+
+def normalize_sms_text_for_media_fallback(message: str) -> str:
+    # Si el texto va por SMS, no cambiamos el contenido; el enlace del body sigue abriendo /pedido.
+    return str(message or "")
+
+
 def normalize_order_language(value: str) -> str:
     raw = str(value or "").strip().lower()
     if raw in {"en", "english", "gb", "uk", "us"}:
@@ -7599,17 +7725,59 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
 
 def send_message_best_effort(phone: str, message: str, media_url: str = "") -> dict:
     """
-    RC148 — canal automático conservador.
-    Primero SMS. WhatsApp automático queda apagado por defecto porque el plan de ETERNA
-    es escalar a WhatsApp humano si SMS/email no abren.
+    RC150 — canal automático seguro.
+    Si WHATSAPP_PRIMARY_DELIVERY_ENABLED=1, intenta WhatsApp primero con la
+    mini foto de llegada; si falla, cae a SMS sin romper el flujo.
+    Si no está activado, conserva el comportamiento anterior: SMS primero y
+    WhatsApp automático solo como fallback opcional.
     """
+    clean_media_url = normalize_whatsapp_media_url(media_url)
+
+    if WHATSAPP_PRIMARY_DELIVERY_ENABLED:
+        whatsapp_result = send_whatsapp(phone, message, media_url=clean_media_url)
+        if whatsapp_result.get("ok"):
+            whatsapp_result["channel"] = "whatsapp"
+            whatsapp_result["primary"] = True
+            return whatsapp_result
+
+        # RC151: si WhatsApp falla, NO caemos a SMS salvo autorización explícita.
+        # Con WHATSAPP_FALLBACK_SMS=0 se activa Email Rescue / alerta humana por el flujo existente.
+        if not WHATSAPP_FALLBACK_SMS:
+            return {
+                "ok": False,
+                "channel": "whatsapp",
+                "sid": None,
+                "error": "whatsapp_primary_failed_sms_fallback_disabled:" + str(whatsapp_result.get("error")),
+                "whatsapp_error": whatsapp_result.get("error"),
+                "sms_skipped": "WHATSAPP_FALLBACK_SMS=0",
+                "whatsapp_media_url": clean_media_url or None,
+            }
+
+        sms_result = send_sms(phone, normalize_sms_text_for_media_fallback(message))
+        if sms_result.get("ok"):
+            sms_result["channel"] = "sms"
+            sms_result["fallback_from"] = "whatsapp"
+            sms_result["whatsapp_error"] = whatsapp_result.get("error")
+            sms_result["whatsapp_media_url"] = clean_media_url or None
+            return sms_result
+
+        return {
+            "ok": False,
+            "channel": "none",
+            "sid": None,
+            "error": "whatsapp_error=" + str(whatsapp_result.get("error")) + " | sms_error=" + str(sms_result.get("error")),
+            "whatsapp_error": whatsapp_result.get("error"),
+            "sms_error": sms_result.get("error"),
+            "whatsapp_media_url": clean_media_url or None,
+        }
+
     sms_result = send_sms(phone, message)
     if sms_result.get("ok"):
         sms_result["channel"] = "sms"
         return sms_result
 
     if DELIVERY_AUTO_WHATSAPP_FALLBACK_ENABLED:
-        whatsapp_result = send_whatsapp(phone, message, media_url=media_url)
+        whatsapp_result = send_whatsapp(phone, message, media_url=clean_media_url)
         if whatsapp_result.get("ok"):
             whatsapp_result["fallback_from"] = "sms"
             whatsapp_result["sms_error"] = sms_result.get("error")
@@ -9633,7 +9801,8 @@ def recipient_delivery_email_fallback_due(order: dict) -> tuple[bool, str]:
 
     reference = order.get("recipient_sms_status_updated_at") or order.get("recipient_sms_sent_at") or order.get("delivery_sent_at")
     minutes = _delivery_fortress_minutes_since(reference)
-    if minutes is not None and minutes >= max(1, int(RECIPIENT_EMAIL_FALLBACK_AFTER_MINUTES)):
+    timeout_minutes = max(1, int(WHATSAPP_OPEN_TIMEOUT_MINUTES if WHATSAPP_EMAIL_RESCUE_ENABLED else RECIPIENT_EMAIL_FALLBACK_AFTER_MINUTES))
+    if minutes is not None and minutes >= timeout_minutes:
         return True, f"not_opened_after_{minutes}_minutes"
 
     return False, "not_due_yet"
@@ -9810,7 +9979,7 @@ ETERNA
 
 
 def send_recipient_manual_whatsapp_alert(order: dict, reason: str = "") -> dict:
-    if not RECIPIENT_MANUAL_WHATSAPP_ALERT_EMAIL_ENABLED:
+    if not RECIPIENT_MANUAL_WHATSAPP_ALERT_EMAIL_ENABLED or not WHATSAPP_MANUAL_ALERT_ENABLED:
         return {"ok": False, "reason": "manual_whatsapp_alert_disabled"}
     order = get_order_by_id(order["id"])
     if order.get("recipient_manual_whatsapp_alert_sent_at"):
@@ -10243,11 +10412,11 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             }
 
         message = build_recipient_message(order)
-        arrival_media_url = arrival_photo_url_from_order(order)
-        print("📩 RC53 ENVIANDO MENSAJE DESTINATARIO A:", order.get("recipient_phone", ""))
+        arrival_media_url = arrival_photo_preview_url_from_order(order) or arrival_photo_url_from_order(order)
+        print("📩 RC151 ENVIANDO WHATSAPP/SMS DESTINATARIO A:", order.get("recipient_phone", ""))
         result = send_message_best_effort(order.get("recipient_phone", ""), message, media_url=arrival_media_url)
 
-        print("📩 RECIPIENT SMS RESULT:", result)
+        print("📩 RECIPIENT DELIVERY RESULT:", result)
 
         attempts = attempts + 1
 
@@ -10261,6 +10430,12 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         if success:
             sent_at = now_iso()
 
+            delivery_channel = (result.get("channel") or "sms").strip().lower()
+            delivery_status = "WHATSAPP_SENT_WAITING_OPEN" if delivery_channel == "whatsapp" else "SMS_SENT_WAITING_OPEN"
+            delivery_reason = "recipient_whatsapp_sent" if delivery_channel == "whatsapp" else "recipient_sms_sent"
+            delivery_event = "recipient_whatsapp_sent" if delivery_channel == "whatsapp" else "recipient_sms_sent"
+            delivery_label = "WhatsApp/enlace enviado al destinatario" if delivery_channel == "whatsapp" else "SMS/enlace enviado al destinatario"
+
             update_order(
                 order_id,
                 recipient_sms_attempts=attempts,
@@ -10270,17 +10445,17 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
                 recipient_sms_status_updated_at=sent_at,
                 recipient_sms_status_raw=json.dumps(result, ensure_ascii=False)[:2000],
                 recipient_sms_sent_at=sent_at,
-                recipient_delivery_channel=(result.get("channel") or "sms"),
-                delivery_fortress_status="SMS_SENT_WAITING_OPEN",
+                recipient_delivery_channel=delivery_channel,
+                delivery_fortress_status=delivery_status,
                 delivery_fortress_last_checked_at=sent_at,
                 delivery_sent=1,
                 delivery_sent_at=sent_at,
                 delivered_to_recipient=1,
             )
-            set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_sms_sent")
+            set_order_state(order_id, "DELIVERED_TO_RECIPIENT", delivery_reason)
 
             updated = get_order_by_id(order_id)
-            insert_order_event(order_id, "recipient_sms_sent", "ok", "SMS/enlace enviado al destinatario", {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0)})
+            insert_order_event(order_id, delivery_event, "ok", delivery_label, {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0), "channel": delivery_channel, "media_url": result.get("media_url")})
 
             return {
                 "ok": True,
@@ -17259,6 +17434,9 @@ def pedido(request: Request, recipient_token: str):
     if bool(order.get("experience_completed")):
         return RedirectResponse(url=f"/cobrar/{recipient_token}", status_code=303)
 
+    if WHATSAPP_LINK_PREVIEW_META_ENABLED and is_social_or_whatsapp_preview_request(request):
+        return render_recipient_link_preview(order)
+
     response = RedirectResponse(url=f"/guia/0/{recipient_token}", status_code=303)
     attach_recipient_session_if_needed(order, request, response)
     return response
@@ -21780,6 +21958,60 @@ def get_video_input(order_id: str, slot_name: str):
         )
 
 
+@app.get("/arrival-photo-preview/{recipient_token}.jpg")
+def get_arrival_photo_preview(recipient_token: str, slot: str = "photo1"):
+    """
+    RC150 — mini foto 1:1 compatible con WhatsApp/OG preview.
+    No modifica el vídeo ni las fotos originales. Solo crea una versión segura JPG.
+    """
+    order = get_order_by_recipient_token_or_404(recipient_token)
+    if not SENDER_IDENTITY_ENABLED or not rc101_truthy(order.get("show_sender_identity")):
+        raise HTTPException(status_code=404, detail="Foto de llegada no disponible")
+
+    clean_slot = rc101_clean_photo_slot(slot or order.get("arrival_photo_slot") or ARRIVAL_PHOTO_DEFAULT_SLOT)
+    selected_slot = rc101_clean_photo_slot(order.get("arrival_photo_slot") or ARRIVAL_PHOTO_DEFAULT_SLOT)
+    if clean_slot != selected_slot:
+        clean_slot = selected_slot
+
+    source_path = get_photo_asset_path(order["id"], clean_slot)
+    if not source_path or not os.path.exists(source_path):
+        raise HTTPException(status_code=404, detail="Foto de llegada no encontrada")
+
+    try:
+        preview_name = f"{order['id']}-{clean_slot}-{ARRIVAL_PHOTO_PREVIEW_SIZE}.jpg"
+        preview_path = ARRIVAL_PHOTO_PREVIEW_FOLDER / preview_name
+
+        if not preview_path.exists():
+            img = Image.open(source_path)
+            img = ImageOps.exif_transpose(img).convert("RGB")
+            size = max(640, int(ARRIVAL_PHOTO_PREVIEW_SIZE or 1200))
+            w, h = img.size
+            side = min(w, h)
+            left = max(0, (w - side) // 2)
+            top = max(0, (h - side) // 2)
+            img = img.crop((left, top, left + side, top + side)).resize((size, size), Image.LANCZOS)
+
+            # Borde muy sutil ETERNA para que la miniatura parezca cuidada sin alterar el recuerdo.
+            border = max(8, size // 70)
+            canvas = Image.new("RGB", (size, size), (2, 5, 10))
+            inner = img.resize((size - border * 2, size - border * 2), Image.LANCZOS)
+            canvas.paste(inner, (border, border))
+            canvas.save(preview_path, format="JPEG", quality=88, optimize=True, progressive=True)
+
+        return FileResponse(
+            str(preview_path),
+            media_type="image/jpeg",
+            filename=f"eterna-llegada-{order['id']}-{clean_slot}.jpg",
+        )
+    except Exception as e:
+        print("[WARN] RC150 arrival preview fallback:", e)
+        return FileResponse(
+            source_path,
+            media_type=guess_media_type_from_path(source_path),
+            filename=f"eterna-llegada-{order['id']}-{clean_slot}{Path(source_path).suffix or '.jpg'}",
+        )
+
+
 @app.get("/arrival-photo/{recipient_token}")
 def get_arrival_photo(recipient_token: str, slot: str = "photo1"):
     """
@@ -22435,7 +22667,11 @@ def messaging_config_status() -> dict:
         "twilio_auth_token_configured": bool(TWILIO_AUTH_TOKEN),
         "twilio_sms_from_configured": bool(TWILIO_FROM_NUMBER),
         "twilio_whatsapp_from_configured": bool(TWILIO_WHATSAPP_FROM),
-        "twilio_sms_ready": bool(Client and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and SMS_ENABLED),
+        "twilio_messaging_service_configured": bool(TWILIO_MESSAGING_SERVICE_SID),
+        "whatsapp_primary_delivery_enabled": WHATSAPP_PRIMARY_DELIVERY_ENABLED,
+        "whatsapp_arrival_photo_enabled": WHATSAPP_ARRIVAL_PHOTO_ENABLED,
+        "whatsapp_link_preview_meta_enabled": WHATSAPP_LINK_PREVIEW_META_ENABLED,
+        "twilio_sms_ready": bool(Client and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and (TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM_NUMBER) and SMS_ENABLED),
         "twilio_whatsapp_ready": bool(Client and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM and WHATSAPP_ENABLED),
         "best_effort_ready": bool(
             Client
@@ -22569,9 +22805,11 @@ def admin_test_order_message(
     if channel not in {"best_effort", "sms", "whatsapp"}:
         raise HTTPException(status_code=400, detail="channel debe ser best_effort, sms o whatsapp")
 
+    media_url = ""
     if target == "recipient":
         phone = order.get("recipient_phone", "")
         message = build_recipient_message(order)
+        media_url = arrival_photo_preview_url_from_order(order) or arrival_photo_url_from_order(order)
     else:
         phone = order.get("sender_phone", "")
         message = build_sender_ready_message(order)
@@ -22591,6 +22829,7 @@ def admin_test_order_message(
             "input_phone": phone,
             "normalized_phone": to_phone,
             "message_preview": message,
+            "media_url": media_url or None,
             "order_flags": {
                 "paid": bool(order.get("paid")),
                 "video_ready": original_video_ready(order),
@@ -22607,9 +22846,9 @@ def admin_test_order_message(
     if channel == "sms":
         result = send_sms(phone, message)
     elif channel == "whatsapp":
-        result = send_whatsapp(phone, message)
+        result = send_whatsapp(phone, message, media_url=media_url)
     else:
-        result = send_message_best_effort(phone, message)
+        result = send_message_best_effort(phone, message, media_url=media_url)
 
     return JSONResponse({
         "ok": bool(result.get("ok")),
@@ -24736,3 +24975,14 @@ def render_create_form(initial_language: str = "es") -> str:
     except Exception as e:
         print('[WARN] RC136 form cleanup fallback:', e)
     return html
+
+
+# =========================================================
+# RC151 CHANGELOG
+# - WhatsApp principal con WHATSAPP_PRIMARY_DELIVERY_ENABLED=1.
+# - SMS fallback automático controlado por WHATSAPP_FALLBACK_SMS.
+# - Estado Delivery Fortress distingue WHATSAPP_SENT_WAITING_OPEN de SMS_SENT_WAITING_OPEN.
+# - Eventos distinguen recipient_whatsapp_sent y recipient_sms_sent.
+# - Timeout de apertura controlable por WHATSAPP_OPEN_TIMEOUT_MINUTES.
+# - Preparado para ETERNA OS mediante flags de logging/conocimiento sin alterar núcleo.
+# =========================================================
