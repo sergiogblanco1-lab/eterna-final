@@ -124,6 +124,7 @@ print("🛡️ RC148 DELIVERY FORTRESS LOCK — SMS → EMAIL FORTRESS → WHATS
 print("📧 RC149F EMAIL FORTRESS PLUS — FAST RETRY + NO DUPLICATE QUEUE + LAST RESORT SMS 📧")
 print("🧹 RC149G DELIVERY FORTRESS WORKER SILENCE — NO ALREADY_REQUESTED LOOP 🧹")
 print("📲 RC151 WHATSAPP FIRST STABLE LOCK — WHATSAPP PRINCIPAL + SMS BACKUP CONTROLADO + FOTO 1 PREVIEW 📲")
+print("💸 RC152 GIFT PAYOUT INDEPENDENT LOCK — EL REGALO SE ENVÍA AL COMPLETAR CONNECT, AUNQUE FALLE VÍDEO/REACCIÓN 💸")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
@@ -11297,9 +11298,8 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     if not bool(order.get("paid")):
         return {"status": "not_paid"}
 
-    if not bool(order.get("experience_completed")):
-        return {"status": "experience_not_completed"}
-
+    # RC152: el dinero del regalo no espera a vídeo/reacción/experiencia.
+    # Solo exige pago real + onboarding Connect completado.
     if not bool(order.get("connect_onboarding_completed")):
         return {"status": "onboarding_not_ready"}
 
@@ -16784,14 +16784,15 @@ def list_pending_sender_notifications():
 
 def list_pending_payout_orders():
     """
-    RC117B MONEY FORTRESS — selección amplia y segura.
+    RC152 GIFT PAYOUT INDEPENDENT LOCK — selección de regalos pendientes.
+
+    Regla de negocio: el dinero del regalo NO depende de que el vídeo salga,
+    de que la experiencia se complete o de que exista reacción. Si el pedido
+    está pagado y el destinatario completa Stripe Connect, el regalo económico
+    debe intentarse enviar.
 
     No filtramos aquí por payout_next_attempt_at con comparación SQL de texto.
-    Motivo: si hay mezcla de formatos ISO/zonas, SQLite puede comparar cadenas
-    de forma inesperada y volver a meter el pedido en bucle.
-
-    El corte real del bucle se hace en Python con payout_retry_is_due(order)
-    dentro de process_all_due_payouts(), usando parse_iso_dt().
+    El corte real del bucle se hace en Python con payout_retry_is_due(order).
     """
     conn = db_conn()
     cur = conn.cursor()
@@ -16801,8 +16802,6 @@ def list_pending_payout_orders():
         WHERE
             COALESCE(paid, 0) = 1
             AND COALESCE(gift_amount, 0) > 0
-            AND COALESCE(reaction_uploaded, 0) = 1
-            AND COALESCE(experience_completed, 0) = 1
             AND COALESCE(connect_onboarding_completed, 0) = 1
             AND COALESCE(transfer_completed, 0) = 0
             AND COALESCE(cashout_completed, 0) = 0
@@ -21280,14 +21279,10 @@ def cobrar(request: Request, recipient_token: str):
     log_info("🎯 Destinatario", f"{order.get('recipient_name')} | {order.get('recipient_phone')}")
     log_info("🎁 Regalo", f"{order.get('gift_amount') or 0}€")
 
-    if not has_valid_recipient_session(order, request) and not reaction_is_safe(order):
-        return render_viral_block_page(normalize_order_language(order.get("language") or "es"))
+    # RC152: la pantalla de cobro debe estar disponible aunque falle vídeo/reacción.
+    # El token del destinatario + el pago real protegen el acceso al cobro.
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-    if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-    if not reaction_is_safe(order):
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
 
     try:
         if order.get("stripe_connected_account_id"):
