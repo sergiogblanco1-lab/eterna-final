@@ -1,4 +1,5 @@
-# RC151_WHATSAPP_FIRST_STABLE_LOCK
+# RC153_ENGINEERING_AUDIT_DB_MONEY_LOCK
+# Base: RC152 + diagnóstico DB + payout no bloqueado por order_locked + cobro independiente real.
 # Base: RC150 + WhatsApp principal + SMS desacoplado por variable + rescate email/check-in.
 # Base: RC148B + Global phone adapter + Twilio Messaging Service + sender/recipient email protection.
 # Ajuste: fallback de email a destinatario a los 10 minutos desde SMS/intento de entrega si no abre la experiencia.
@@ -125,6 +126,7 @@ print("📧 RC149F EMAIL FORTRESS PLUS — FAST RETRY + NO DUPLICATE QUEUE + LAS
 print("🧹 RC149G DELIVERY FORTRESS WORKER SILENCE — NO ALREADY_REQUESTED LOOP 🧹")
 print("📲 RC151 WHATSAPP FIRST STABLE LOCK — WHATSAPP PRINCIPAL + SMS BACKUP CONTROLADO + FOTO 1 PREVIEW 📲")
 print("💸 RC152 GIFT PAYOUT INDEPENDENT LOCK — EL REGALO SE ENVÍA AL COMPLETAR CONNECT, AUNQUE FALLE VÍDEO/REACCIÓN 💸")
+print("🧭 RC153 ENGINEERING AUDIT DB + MONEY LOCK — DB DIAGNÓSTICO + PAYOUT NO BLOQUEADO POR ORDER_LOCK 🧭")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
@@ -912,11 +914,119 @@ def ensure_runtime_folder(path_value: str, fallback_name: str) -> Path:
         return fallback
 
 
+def _sqlite_table_count_safe(db_file: Path, table_name: str = "orders") -> int:
+    """RC153 — lee el número de filas de una SQLite candidata sin romper arranque."""
+    try:
+        db_file = Path(db_file)
+        if not db_file.exists() or not db_file.is_file() or db_file.stat().st_size <= 0:
+            return -1
+        conn = sqlite3.connect(str(db_file), timeout=3)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+        if not cur.fetchone():
+            conn.close()
+            return -1
+        cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+        count = int(cur.fetchone()[0] or 0)
+        conn.close()
+        return count
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return -1
+
+
+def _db_rescue_candidate_paths(requested: Path) -> list[Path]:
+    """RC153 — rutas donde Render/proyectos anteriores suelen haber dejado la DB."""
+    raw = [
+        requested,
+        Path(os.getenv("DATABASE_PATH", "").strip() or requested),
+        DATA_FOLDER / "eterna.db",
+        Path("/data/eterna.db"),
+        Path("data/eterna.db"),
+        Path("eterna.db"),
+        Path("/opt/render/project/src/data/eterna.db"),
+        Path("/opt/render/project/src/eterna.db"),
+        Path("/opt/render/project/src/.data/eterna.db"),
+    ]
+    seen = set()
+    result = []
+    for p in raw:
+        try:
+            rp = Path(p).expanduser()
+            key = str(rp.resolve()) if rp.exists() else str(rp)
+            if key not in seen:
+                seen.add(key)
+                result.append(rp)
+        except Exception:
+            continue
+    return result
+
+
+def rc153_db_candidates_report(requested: Optional[Path] = None) -> list[dict]:
+    requested = Path(requested or (DATA_FOLDER / "eterna.db"))
+    rows = []
+    for p in _db_rescue_candidate_paths(requested):
+        try:
+            rows.append({
+                "path": str(p),
+                "exists": p.exists(),
+                "bytes": p.stat().st_size if p.exists() and p.is_file() else 0,
+                "orders": _sqlite_table_count_safe(p, "orders"),
+                "email_queue": _sqlite_table_count_safe(p, "email_queue"),
+                "is_requested": str(p.resolve()) == str(requested.resolve()) if p.exists() and requested.exists() else str(p) == str(requested),
+            })
+        except Exception as e:
+            rows.append({"path": str(p), "error": str(e)[:180]})
+    return rows
+
+
+def _best_db_rescue_candidate(requested: Path) -> Optional[Path]:
+    best = None
+    best_orders = -1
+    for p in _db_rescue_candidate_paths(requested):
+        try:
+            if p.exists() and p.is_file():
+                if requested.exists() and p.resolve() == requested.resolve():
+                    continue
+                orders = _sqlite_table_count_safe(p, "orders")
+                if orders > best_orders:
+                    best_orders = orders
+                    best = p
+        except Exception:
+            continue
+    return best if best_orders > 0 else None
+
+
 def resolve_db_path() -> Path:
     configured = os.getenv("DATABASE_PATH", "").strip()
     requested = Path(configured) if configured else (DATA_FOLDER / "eterna.db")
     try:
         requested.parent.mkdir(parents=True, exist_ok=True)
+
+        # RC153 — si el deploy apunta a una DB vacía pero existe otra DB local con pedidos,
+        # rescatamos antes de inicializar tablas. Esto protege cambios de ruta tipo /data vs ./data.
+        try:
+            current_orders = _sqlite_table_count_safe(requested, "orders") if requested.exists() else -1
+            rescue = _best_db_rescue_candidate(requested)
+            rescue_orders = _sqlite_table_count_safe(rescue, "orders") if rescue else -1
+            if rescue and (not requested.exists() or current_orders <= 0) and rescue_orders > 0:
+                if requested.exists():
+                    backup_name = requested.with_suffix(requested.suffix + f".empty_before_rc153_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.bak")
+                    try:
+                        shutil.copy2(requested, backup_name)
+                        print(f"🛟 RC153 DB guard: backup DB vacía {requested} -> {backup_name}")
+                    except Exception as be:
+                        print(f"[WARN] RC153 no pudo respaldar DB vacía: {be}")
+                shutil.copy2(rescue, requested)
+                print(f"🛟 RC153 DB rescue: copiada DB con {rescue_orders} pedidos {rescue} -> {requested}")
+            else:
+                print(f"🧭 RC153 DB candidates: current_orders={current_orders}, rescue_orders={rescue_orders}")
+        except Exception as rescue_error:
+            print(f"[WARN] RC153 DB rescue scan falló: {rescue_error}")
+
         legacy = Path("data") / "eterna.db"
         if legacy.exists() and legacy.resolve() != requested.resolve() and not requested.exists():
             try:
@@ -963,7 +1073,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC151_WHATSAPP_FIRST_STABLE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC153_ENGINEERING_AUDIT_DB_MONEY_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -11248,8 +11358,9 @@ def process_gift_transfer_for_order(order: dict) -> dict:
     order = recover_stuck_transfer_if_needed(order)
     gift_amount = float(order.get("gift_amount") or 0)
 
-    if bool(order.get("order_locked")):
-        return {"status": "order_locked", "retry": False}
+    # RC153: el dinero del regalo NO se bloquea por order_locked.
+    # order_locked puede cerrar la experiencia emocional, pero nunca debe impedir
+    # pagar un regalo económico ya cobrado y con Connect completado.
 
     if not ETERNA_PAYOUTS_ENABLED:
         update_order(
@@ -16807,7 +16918,7 @@ def list_pending_payout_orders():
             AND COALESCE(cashout_completed, 0) = 0
             AND COALESCE(gift_refunded, 0) = 0
             AND COALESCE(payout_manual_review, 0) = 0
-            AND COALESCE(order_locked, 0) = 0
+            -- RC153: no filtramos order_locked; el cierre emocional no bloquea el dinero.
         ORDER BY created_at ASC
     """)
     rows = cur.fetchall()
@@ -21448,11 +21559,8 @@ def connect_payout(request: Request, recipient_token: str):
     if not bool(order.get("paid")):
         return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
 
-    if not original_video_ready(order):
-        return RedirectResponse(url=f"/pedido/{recipient_token}", status_code=303)
-
-    if not reaction_is_safe(order):
-        return RedirectResponse(url=f"/experiencia/{recipient_token}", status_code=303)
+    # RC153: el cobro del regalo no espera a vídeo ni reacción.
+    # Si el destinatario ya ha completado Connect y el pedido está pagado, se intenta pagar.
 
     try:
         refresh_connect_status(order)
@@ -22339,6 +22447,56 @@ def admin_delivery_worker_status(token: str = ""):
         "pending_reaction_recovery_ids": list_pending_reaction_recovery_orders(),
         "pending_sender_notification_ids": list_pending_sender_notifications(),
         "pending_payout_order_ids": list_pending_payout_orders(),
+    })
+
+
+@app.get("/admin/db-diagnose")
+def admin_db_diagnose(token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    return JSONResponse({
+        "ok": True,
+        "app_version": ETERNA_APP_VERSION,
+        "db_path": str(DB_PATH),
+        "data_folder": str(DATA_FOLDER),
+        "db_exists": Path(DB_PATH).exists(),
+        "db_bytes": Path(DB_PATH).stat().st_size if Path(DB_PATH).exists() else 0,
+        "orders_in_active_db": _sqlite_table_count_safe(Path(DB_PATH), "orders"),
+        "email_queue_in_active_db": _sqlite_table_count_safe(Path(DB_PATH), "email_queue"),
+        "candidates": rc153_db_candidates_report(Path(DB_PATH)),
+    })
+
+
+@app.get("/admin/force-payout/{order_id}")
+def admin_force_payout(order_id: str, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    order = get_order_by_id(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    try:
+        if order.get("stripe_connected_account_id"):
+            refresh_connect_status(order)
+            order = get_order_by_id(order_id)
+    except Exception as e:
+        log_error("admin_force_payout_refresh_connect", e)
+
+    result = process_gift_transfer_for_order(order)
+    updated = get_order_by_id(order_id)
+    return JSONResponse({
+        "ok": result.get("status") in {"ok", "already_transferred"},
+        "result": result,
+        "order_id": order_id,
+        "paid": bool(updated.get("paid")) if updated else None,
+        "gift_amount": updated.get("gift_amount") if updated else None,
+        "connect_onboarding_completed": bool(updated.get("connect_onboarding_completed")) if updated else None,
+        "stripe_connected_account_id": updated.get("stripe_connected_account_id") if updated else None,
+        "stripe_transfer_id": updated.get("stripe_transfer_id") if updated else None,
+        "payout_status": updated.get("payout_status") if updated else None,
+        "payout_last_error": updated.get("payout_last_error") if updated else None,
     })
 
 
