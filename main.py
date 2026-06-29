@@ -1,4 +1,5 @@
-# RC154_WHATSAPP_TEMPLATE_LOCK
+# RC156_DELIVERY_TRUTH_LOCK
+# Base: RC155 + verdad de entrega: queued/sent no es delivered; failed activa rescate.
 # Base: RC153 + WhatsApp Business template para iniciar conversación sin error 63016.
 # Base: RC152 + diagnóstico DB + payout no bloqueado por order_locked + cobro independiente real.
 # Base: RC150 + WhatsApp principal + SMS desacoplado por variable + rescate email/check-in.
@@ -128,6 +129,7 @@ print("🧹 RC149G DELIVERY FORTRESS WORKER SILENCE — NO ALREADY_REQUESTED LOO
 print("📲 RC151 WHATSAPP FIRST STABLE LOCK — WHATSAPP PRINCIPAL + SMS BACKUP CONTROLADO + FOTO 1 PREVIEW 📲")
 print("💸 RC152 GIFT PAYOUT INDEPENDENT LOCK — EL REGALO SE ENVÍA AL COMPLETAR CONNECT, AUNQUE FALLE VÍDEO/REACCIÓN 💸")
 print("🧭 RC153 ENGINEERING AUDIT DB + MONEY LOCK — DB DIAGNÓSTICO + PAYOUT NO BLOQUEADO POR ORDER_LOCK 🧭")
+print("🛡️ RC156 DELIVERY TRUTH LOCK — QUEUED NO ES DELIVERED + RESCATE SI FAILED 🛡️")
 print("📲 RC155 WHATSAPP TEMPLATE ES/EN LOCK — NOMBRE + LINK + FOTO FUTURA SAFE 📲")
 print("📲 RC154 WHATSAPP TEMPLATE LOCK — CONTENT SID PARA PRIMER CONTACTO WHATSAPP 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
@@ -1105,7 +1107,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC154_WHATSAPP_TEMPLATE_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC156_DELIVERY_TRUTH_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -7091,7 +7093,9 @@ def normalize_order_state_from_flags(order: dict) -> str:
         return "SENDER_PACK_READY"
     if bool(order.get("experience_started")):
         return "EXPERIENCE_STARTED"
-    if bool(order.get("delivery_sent")) or bool(order.get("delivered_to_recipient")):
+    # RC156 — delivery_sent significa "Twilio aceptó/solicitó envío", no entrega real.
+    # Solo consideramos entregado si hay apertura/experiencia o flag real de delivered_to_recipient.
+    if bool(order.get("delivered_to_recipient")):
         return "DELIVERED_TO_RECIPIENT"
     if original_video_ready(order):
         return "VIDEO_READY"
@@ -10623,13 +10627,32 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
     print("➡️ order_id:", order_id)
 
     if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
-        set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_delivery_already_sent")
+        # RC156 — no marcar como DELIVERED por haber pedido envío a Twilio.
+        # queued/sent = solicitado; delivered/read o apertura = entrega real.
+        current_status = (order.get("recipient_sms_status") or "").strip().lower()
+        if bool(order.get("delivered_to_recipient")) or bool(order.get("experience_started")) or bool(order.get("experience_completed")):
+            set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_delivery_confirmed")
+            reason = "already_delivered"
+            ok = True
+        elif current_status in {"failed", "undelivered"}:
+            try:
+                trigger_recipient_delivery_rescue(order, f"recipient_delivery_{current_status}_already_sent")
+            except Exception as rescue_error:
+                log_error("recipient_delivery_rescue_already_failed", rescue_error)
+            reason = f"already_sent_but_{current_status}"
+            ok = False
+        else:
+            insert_order_event(order_id, "recipient_delivery_waiting_confirmation", "info", "Envío solicitado; esperando estado real Twilio o apertura", {"status": current_status})
+            reason = "already_requested_waiting_confirmation"
+            ok = True
         return {
-            "ok": True,
-            "reason": "already_sent",
+            "ok": ok,
+            "reason": reason,
             "delivery_sent": True,
+            "delivered_to_recipient": bool(order.get("delivered_to_recipient")),
             "delivery_sent_at": order.get("delivery_sent_at"),
             "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+            "recipient_sms_status": order.get("recipient_sms_status"),
             "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
             "recipient_sms_error": order.get("recipient_sms_error"),
         }
@@ -10653,13 +10676,31 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
         order = get_order_by_id(order_id)
 
         if bool(order.get("delivery_sent")) or bool(order.get("delivery_sent_at")):
-            set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_delivery_already_sent_after_lock")
+            # RC156 — segundo chequeo tras lock: mismo criterio de verdad de entrega.
+            current_status = (order.get("recipient_sms_status") or "").strip().lower()
+            if bool(order.get("delivered_to_recipient")) or bool(order.get("experience_started")) or bool(order.get("experience_completed")):
+                set_order_state(order_id, "DELIVERED_TO_RECIPIENT", "recipient_delivery_confirmed_after_lock")
+                reason = "already_delivered_after_lock"
+                ok = True
+            elif current_status in {"failed", "undelivered"}:
+                try:
+                    trigger_recipient_delivery_rescue(order, f"recipient_delivery_{current_status}_after_lock")
+                except Exception as rescue_error:
+                    log_error("recipient_delivery_rescue_after_lock_failed", rescue_error)
+                reason = f"already_sent_but_{current_status}_after_lock"
+                ok = False
+            else:
+                insert_order_event(order_id, "recipient_delivery_waiting_confirmation", "info", "Envío solicitado; esperando estado real Twilio o apertura", {"status": current_status})
+                reason = "already_requested_waiting_confirmation_after_lock"
+                ok = True
             return {
-                "ok": True,
-                "reason": "already_sent_after_lock",
+                "ok": ok,
+                "reason": reason,
                 "delivery_sent": True,
+                "delivered_to_recipient": bool(order.get("delivered_to_recipient")),
                 "delivery_sent_at": order.get("delivery_sent_at"),
                 "recipient_sms_sent_at": order.get("recipient_sms_sent_at"),
+                "recipient_sms_status": order.get("recipient_sms_status"),
                 "recipient_sms_attempts": int(order.get("recipient_sms_attempts") or 0),
                 "recipient_sms_error": order.get("recipient_sms_error"),
             }
@@ -10737,17 +10778,20 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
                 delivery_fortress_last_checked_at=sent_at,
                 delivery_sent=1,
                 delivery_sent_at=sent_at,
-                delivered_to_recipient=1,
+                delivered_to_recipient=0,
             )
-            set_order_state(order_id, "DELIVERED_TO_RECIPIENT", delivery_reason)
+            # RC156 — envío solicitado no equivale a entrega real.
+            # Conservamos estado VIDEO_READY hasta callback delivered/read o apertura del enlace.
+            set_order_state(order_id, "VIDEO_READY", delivery_reason + "_waiting_confirmation")
 
             updated = get_order_by_id(order_id)
-            insert_order_event(order_id, delivery_event, "ok", delivery_label, {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0), "channel": delivery_channel, "media_url": result.get("media_url")})
+            insert_order_event(order_id, delivery_event, "ok", delivery_label + " (esperando confirmación real)", {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0), "channel": delivery_channel, "status": updated.get("recipient_sms_status"), "media_url": result.get("media_url")})
 
             return {
                 "ok": True,
-                "reason": "sent",
+                "reason": "sent_waiting_confirmation",
                 "delivery_sent": True,
+                "delivered_to_recipient": False,
                 "delivery_sent_at": updated.get("delivery_sent_at"),
                 "recipient_sms_sent_at": updated.get("recipient_sms_sent_at"),
                 "recipient_sms_sid": updated.get("recipient_sms_sid"),
@@ -23778,6 +23822,33 @@ async def rc121_twilio_status_callback(request: Request):
         conn.close()
         if changed:
             print(f"📡 RC121 Twilio status {sid}: {status} changed={changed}")
+
+        # RC156 — verdad de entrega: solo delivered/read confirma entrega real.
+        if recipient_order_id and status in {"delivered", "read"}:
+            try:
+                update_order(
+                    recipient_order_id,
+                    delivered_to_recipient=1,
+                    delivery_fortress_status="DELIVERED_TO_RECIPIENT",
+                    delivery_fortress_last_checked_at=now,
+                )
+                set_order_state(recipient_order_id, "DELIVERED_TO_RECIPIENT", f"twilio_status_{status}")
+                insert_order_event(recipient_order_id, "recipient_delivery_confirmed", "ok", f"Twilio confirmó {status}", {"sid": sid, "status": status})
+            except Exception as e:
+                log_error("twilio_status_mark_delivered", e)
+
+        if recipient_order_id and status in {"failed", "undelivered"}:
+            try:
+                update_order(
+                    recipient_order_id,
+                    delivered_to_recipient=0,
+                    delivery_fortress_status="SMS_FAILED_WAITING_EMAIL_FALLBACK",
+                    delivery_fortress_last_checked_at=now,
+                )
+                set_order_state(recipient_order_id, "VIDEO_READY", f"twilio_status_{status}_delivery_failed")
+                insert_order_event(recipient_order_id, "recipient_delivery_failed", "error", f"Twilio devolvió {status}", {"sid": sid, "status": status})
+            except Exception as e:
+                log_error("twilio_status_mark_failed", e)
 
         if status in {"failed", "undelivered"}:
             if recipient_order_id and DELIVERY_FORTRESS_ENABLED and RECIPIENT_EMAIL_FALLBACK_ON_HARD_SMS_FAILURE:
