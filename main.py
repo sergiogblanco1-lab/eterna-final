@@ -128,6 +128,7 @@ print("🧹 RC149G DELIVERY FORTRESS WORKER SILENCE — NO ALREADY_REQUESTED LOO
 print("📲 RC151 WHATSAPP FIRST STABLE LOCK — WHATSAPP PRINCIPAL + SMS BACKUP CONTROLADO + FOTO 1 PREVIEW 📲")
 print("💸 RC152 GIFT PAYOUT INDEPENDENT LOCK — EL REGALO SE ENVÍA AL COMPLETAR CONNECT, AUNQUE FALLE VÍDEO/REACCIÓN 💸")
 print("🧭 RC153 ENGINEERING AUDIT DB + MONEY LOCK — DB DIAGNÓSTICO + PAYOUT NO BLOQUEADO POR ORDER_LOCK 🧭")
+print("📲 RC155 WHATSAPP TEMPLATE ES/EN LOCK — NOMBRE + LINK + FOTO FUTURA SAFE 📲")
 print("📲 RC154 WHATSAPP TEMPLATE LOCK — CONTENT SID PARA PRIMER CONTACTO WHATSAPP 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
@@ -820,13 +821,33 @@ WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
 # =========================================================
-# RC154 — WHATSAPP TEMPLATE LOCK
+# RC155 — WHATSAPP TEMPLATE ES/EN LOCK
 # WhatsApp no permite iniciar conversaciones con texto libre fuera de la ventana de 24h.
-# Para primer contacto usamos una plantilla aprobada de Twilio/Meta (Content SID HX...).
-# Variable esperada por defecto: {{1}} = enlace de experiencia.
+# Para primer contacto usamos plantillas aprobadas de Twilio/Meta (Content SID HX...).
+# Texto aprobado actual:
+#   {{1}} = nombre destinatario
+#   {{2}} = enlace experiencia
+#
+# Compatibilidad:
+#   TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES = plantilla española
+#   TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN = plantilla inglesa
+#   TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID    = fallback legacy
+#
+# Preparado para futuro:
+#   TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES/EN
+#   {{1}} = nombre, {{2}} = media_url foto 1, {{3}} = enlace experiencia
+# Solo se usará si el SID foto existe y llega media_url válida.
 # =========================================================
 TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID = os.getenv("TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID", "").strip()
-TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY = os.getenv("TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY", "1").strip() or "1"
+TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES = (
+    os.getenv("TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES", "").strip()
+    or TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID
+)
+TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN = os.getenv("TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN", "").strip()
+TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES = os.getenv("TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES", "").strip()
+TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN = os.getenv("TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN", "").strip()
+TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED = os.getenv("TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY = os.getenv("TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 # =========================================================
 # RC150 — WHATSAPP ARRIVAL PHOTO PREVIEW LOCK
@@ -7820,8 +7841,8 @@ def whatsapp_from_number() -> str:
     return f"whatsapp:{raw}"
 
 
-def rc154_extract_first_url(text: str) -> str:
-    """Extrae el primer enlace del mensaje para inyectarlo en la plantilla WhatsApp {{1}}."""
+def rc155_extract_first_url(text: str) -> str:
+    """Extrae el primer enlace http/https del mensaje."""
     try:
         match = re.search(r"https?://\S+", str(text or ""))
         if match:
@@ -7829,6 +7850,74 @@ def rc154_extract_first_url(text: str) -> str:
     except Exception:
         pass
     return ""
+
+
+def rc155_detect_message_language(message: str) -> str:
+    """Detecta el idioma del mensaje de entrega ya construido por ETERNA."""
+    text = str(message or "").lower()
+    english_signals = [
+        "this is not just",
+        "someone has prepared",
+        "has prepared something for you",
+        "open it when",
+        "quiet moment",
+        "created for you",
+    ]
+    if any(signal in text for signal in english_signals):
+        return "en"
+    return "es"
+
+
+def rc155_extract_recipient_name_from_message(message: str) -> str:
+    """
+    Extrae el nombre del destinatario desde el mensaje final.
+    Formato habitual:
+      Shhh…
+
+      Julia,
+
+      Alguien...
+    """
+    raw = str(message or "")
+    try:
+        lines = [line.strip() for line in raw.replace("\r", "\n").split("\n") if line.strip()]
+        for line in lines:
+            clean = line.strip().strip(",").strip()
+            low = clean.lower()
+            if not clean or low in {"shhh", "shhh…", "shhh..."}:
+                continue
+            if clean.startswith("http://") or clean.startswith("https://"):
+                continue
+            if low.startswith(("alguien ", "someone ", "esto ", "this ", "no es ", "it is ", "es una ", "but ", "pero ", "inside", "dentro", "open", "ábrelo")):
+                continue
+            # Nombre corto y razonable. Evita meter una frase completa como {{1}}.
+            if 1 <= len(clean) <= 60 and len(clean.split()) <= 5:
+                return clean
+    except Exception:
+        pass
+    return "alguien especial"
+
+
+def rc155_template_sid_for_lang(lang: str, media_url: str = "") -> tuple[str, str]:
+    """Devuelve (template_sid, template_kind). kind=text|photo|legacy_body."""
+    lang = (lang or "es").strip().lower()
+    clean_media = normalize_whatsapp_media_url(media_url)
+
+    # Futuro seguro: solo usar card/foto si está expresamente activado y existe SID aprobado.
+    if TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED and clean_media:
+        if lang == "en" and TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN:
+            return TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN, "photo"
+        if lang != "en" and TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES:
+            return TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES, "photo"
+
+    # Texto aprobado ES/EN.
+    if lang == "en" and TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN:
+        return TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN, "text"
+    if TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES:
+        return TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES, "text"
+    if TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID:
+        return TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID, "text"
+    return "", "legacy_body"
 
 
 def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
@@ -7846,16 +7935,33 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
         callback_url = twilio_status_callback_url()
 
-        # RC154 — si existe plantilla aprobada, usar Content SID.
-        # Esto evita el error Twilio/WhatsApp 63016 al iniciar conversación fuera de la ventana de 24h.
-        template_sid = (TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID or "").strip()
+        lang = rc155_detect_message_language(message)
+        experience_url = rc155_extract_first_url(message)
+        recipient_name = rc155_extract_recipient_name_from_message(message)
+        clean_media_url = normalize_whatsapp_media_url(media_url)
+        template_sid, template_kind = rc155_template_sid_for_lang(lang, clean_media_url)
+
+        # RC155 — usar plantilla aprobada para iniciar conversación WhatsApp.
+        # Text template: {{1}} = nombre, {{2}} = enlace experiencia.
+        # Photo/card template futuro: {{1}} = nombre, {{2}} = media_url foto, {{3}} = enlace experiencia.
         if template_sid:
-            template_value = rc154_extract_first_url(message) or str(message or "").strip()
+            if template_kind == "photo":
+                content_variables = {
+                    "1": recipient_name,
+                    "2": clean_media_url,
+                    "3": experience_url,
+                }
+            else:
+                content_variables = {
+                    "1": recipient_name,
+                    "2": experience_url,
+                }
+
             kwargs = {
                 "from_": wa_from,
                 "to": f"whatsapp:{to_phone}",
                 "content_sid": template_sid,
-                "content_variables": json.dumps({TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY: template_value}),
+                "content_variables": json.dumps(content_variables, ensure_ascii=False),
             }
             if callback_url:
                 kwargs["status_callback"] = callback_url
@@ -7866,22 +7972,42 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
                 "sid": msg.sid,
                 "status": getattr(msg, "status", None) or "queued",
                 "error": None,
-                "media_url": None,
+                "media_url": clean_media_url or None,
                 "template_sid": template_sid,
-                "template_variable_key": TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY,
+                "template_kind": template_kind,
+                "template_lang": lang,
                 "template_used": True,
+                "template_variables_keys": sorted(content_variables.keys()),
             }
 
-        # Fallback legacy: solo para entornos sin plantilla configurada o conversaciones ya abiertas.
+        # Fallback legacy: solo si no hay plantilla configurada. En producción conviene no usarlo
+        # para primer contacto porque WhatsApp puede devolver 63016.
+        if not TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY:
+            return {
+                "ok": False,
+                "channel": "whatsapp",
+                "sid": None,
+                "error": "missing_whatsapp_template_sid",
+                "template_used": False,
+                "template_lang": lang,
+            }
+
         kwargs = {"body": message, "from_": wa_from, "to": f"whatsapp:{to_phone}"}
-        if media_url:
-            kwargs["media_url"] = [media_url]
+        if clean_media_url:
+            kwargs["media_url"] = [clean_media_url]
         if callback_url:
             kwargs["status_callback"] = callback_url
         msg = client.messages.create(**kwargs)
-        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "status": getattr(msg, "status", None) or "queued", "error": None, "media_url": media_url or None, "template_used": False}
+        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "status": getattr(msg, "status", None) or "queued", "error": None, "media_url": clean_media_url or None, "template_used": False}
     except Exception as e:
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e), "media_url": media_url or None, "template_used": bool(TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID)}
+        return {
+            "ok": False,
+            "channel": "whatsapp",
+            "sid": None,
+            "error": str(e),
+            "media_url": media_url or None,
+            "template_used": bool(TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES or TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN or TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID),
+        }
 
 
 def send_message_best_effort(phone: str, message: str, media_url: str = "") -> dict:
@@ -22871,6 +22997,11 @@ def messaging_config_status() -> dict:
         "twilio_sms_from_configured": bool(TWILIO_FROM_NUMBER),
         "twilio_whatsapp_from_configured": bool(TWILIO_WHATSAPP_FROM),
         "twilio_messaging_service_configured": bool(TWILIO_MESSAGING_SERVICE_SID),
+        "twilio_whatsapp_template_sid_es_configured": bool(TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES),
+        "twilio_whatsapp_template_sid_en_configured": bool(TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN),
+        "twilio_whatsapp_photo_template_sid_es_configured": bool(TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES),
+        "twilio_whatsapp_photo_template_sid_en_configured": bool(TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN),
+        "twilio_whatsapp_photo_template_enabled": TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED,
         "whatsapp_primary_delivery_enabled": WHATSAPP_PRIMARY_DELIVERY_ENABLED,
         "whatsapp_arrival_photo_enabled": WHATSAPP_ARRIVAL_PHOTO_ENABLED,
         "whatsapp_link_preview_meta_enabled": WHATSAPP_LINK_PREVIEW_META_ENABLED,
