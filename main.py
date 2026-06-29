@@ -1,4 +1,5 @@
-# RC153_ENGINEERING_AUDIT_DB_MONEY_LOCK
+# RC154_WHATSAPP_TEMPLATE_LOCK
+# Base: RC153 + WhatsApp Business template para iniciar conversación sin error 63016.
 # Base: RC152 + diagnóstico DB + payout no bloqueado por order_locked + cobro independiente real.
 # Base: RC150 + WhatsApp principal + SMS desacoplado por variable + rescate email/check-in.
 # Base: RC148B + Global phone adapter + Twilio Messaging Service + sender/recipient email protection.
@@ -127,6 +128,7 @@ print("🧹 RC149G DELIVERY FORTRESS WORKER SILENCE — NO ALREADY_REQUESTED LOO
 print("📲 RC151 WHATSAPP FIRST STABLE LOCK — WHATSAPP PRINCIPAL + SMS BACKUP CONTROLADO + FOTO 1 PREVIEW 📲")
 print("💸 RC152 GIFT PAYOUT INDEPENDENT LOCK — EL REGALO SE ENVÍA AL COMPLETAR CONNECT, AUNQUE FALLE VÍDEO/REACCIÓN 💸")
 print("🧭 RC153 ENGINEERING AUDIT DB + MONEY LOCK — DB DIAGNÓSTICO + PAYOUT NO BLOQUEADO POR ORDER_LOCK 🧭")
+print("📲 RC154 WHATSAPP TEMPLATE LOCK — CONTENT SID PARA PRIMER CONTACTO WHATSAPP 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
 print("🖼️ RC145D CLUB PHOTO PREVIEW LOCK — FOTO CLUB VISIBLE COMO FORMULARIO 🖼️")
 print("🧼 RC145B LOG CLEAN LOCK — ROBOTS + HEAD + SYSTEM EVENT SAFE 🧼")
@@ -818,6 +820,15 @@ WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
 
 # =========================================================
+# RC154 — WHATSAPP TEMPLATE LOCK
+# WhatsApp no permite iniciar conversaciones con texto libre fuera de la ventana de 24h.
+# Para primer contacto usamos una plantilla aprobada de Twilio/Meta (Content SID HX...).
+# Variable esperada por defecto: {{1}} = enlace de experiencia.
+# =========================================================
+TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID = os.getenv("TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID", "").strip()
+TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY = os.getenv("TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY", "1").strip() or "1"
+
+# =========================================================
 # RC150 — WHATSAPP ARRIVAL PHOTO PREVIEW LOCK
 # Permite que WhatsApp sea el primer canal de entrega si ya está Online.
 # La mini foto de llegada se adjunta al WhatsApp cuando existe.
@@ -1073,7 +1084,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC153_ENGINEERING_AUDIT_DB_MONEY_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC154_WHATSAPP_TEMPLATE_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -7809,6 +7820,17 @@ def whatsapp_from_number() -> str:
     return f"whatsapp:{raw}"
 
 
+def rc154_extract_first_url(text: str) -> str:
+    """Extrae el primer enlace del mensaje para inyectarlo en la plantilla WhatsApp {{1}}."""
+    try:
+        match = re.search(r"https?://\S+", str(text or ""))
+        if match:
+            return match.group(0).strip().rstrip(".,)];")
+    except Exception:
+        pass
+    return ""
+
+
 def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
@@ -7822,16 +7844,44 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
         return {"ok": False, "channel": "whatsapp", "sid": None, "error": "twilio_base_not_configured"}
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        callback_url = twilio_status_callback_url()
+
+        # RC154 — si existe plantilla aprobada, usar Content SID.
+        # Esto evita el error Twilio/WhatsApp 63016 al iniciar conversación fuera de la ventana de 24h.
+        template_sid = (TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID or "").strip()
+        if template_sid:
+            template_value = rc154_extract_first_url(message) or str(message or "").strip()
+            kwargs = {
+                "from_": wa_from,
+                "to": f"whatsapp:{to_phone}",
+                "content_sid": template_sid,
+                "content_variables": json.dumps({TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY: template_value}),
+            }
+            if callback_url:
+                kwargs["status_callback"] = callback_url
+            msg = client.messages.create(**kwargs)
+            return {
+                "ok": True,
+                "channel": "whatsapp",
+                "sid": msg.sid,
+                "status": getattr(msg, "status", None) or "queued",
+                "error": None,
+                "media_url": None,
+                "template_sid": template_sid,
+                "template_variable_key": TWILIO_WHATSAPP_TEMPLATE_VARIABLE_KEY,
+                "template_used": True,
+            }
+
+        # Fallback legacy: solo para entornos sin plantilla configurada o conversaciones ya abiertas.
         kwargs = {"body": message, "from_": wa_from, "to": f"whatsapp:{to_phone}"}
         if media_url:
             kwargs["media_url"] = [media_url]
-        callback_url = twilio_status_callback_url()
         if callback_url:
             kwargs["status_callback"] = callback_url
         msg = client.messages.create(**kwargs)
-        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "status": getattr(msg, "status", None) or "queued", "error": None, "media_url": media_url or None}
+        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "status": getattr(msg, "status", None) or "queued", "error": None, "media_url": media_url or None, "template_used": False}
     except Exception as e:
-        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e), "media_url": media_url or None}
+        return {"ok": False, "channel": "whatsapp", "sid": None, "error": str(e), "media_url": media_url or None, "template_used": bool(TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID)}
 
 
 def send_message_best_effort(phone: str, message: str, media_url: str = "") -> dict:
