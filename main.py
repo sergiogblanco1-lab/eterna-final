@@ -1,4 +1,5 @@
-# RC157_LAUNCH_CANDIDATE
+# RC158_SENDER_PACK_PUBLIC_REACTION_LOCK
+# Base: RC157 + Sender Pack no se bloquea si falta archivo local pero existe reacción pública en R2.
 # Base: RC156 + centralización WhatsApp/Callback + diagnóstico Twilio real.
 # Base: RC155 + verdad de entrega: queued/sent no es delivered; failed activa rescate.
 # Base: RC153 + WhatsApp Business template para iniciar conversación sin error 63016.
@@ -132,6 +133,7 @@ print("💸 RC152 GIFT PAYOUT INDEPENDENT LOCK — EL REGALO SE ENVÍA AL COMPLE
 print("🧭 RC153 ENGINEERING AUDIT DB + MONEY LOCK — DB DIAGNÓSTICO + PAYOUT NO BLOQUEADO POR ORDER_LOCK 🧭")
 print("🛡️ RC156 DELIVERY TRUTH LOCK — QUEUED NO ES DELIVERED + RESCATE SI FAILED 🛡️")
 print("🚀 RC157 LAUNCH CANDIDATE — WHATSAPP CALLBACK + ERRORCODE LOCK 🚀")
+print("🛟 RC158 SENDER PACK PUBLIC REACTION LOCK — R2 PUBLIC URL NO BLOQUEA POR LOCAL MISSING 🛟")
 print("📲 RC155 WHATSAPP TEMPLATE ES/EN LOCK — NOMBRE + LINK + FOTO FUTURA SAFE 📲")
 print("📲 RC154 WHATSAPP TEMPLATE LOCK — CONTENT SID PARA PRIMER CONTACTO WHATSAPP 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
@@ -1118,7 +1120,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC157_LAUNCH_CANDIDATE").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC158_SENDER_PACK_PUBLIC_REACTION_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -6142,6 +6144,11 @@ def reaction_file_ready_for_sender(order: dict, min_age_seconds: int = 30, min_s
         return False, "reaction_local_path_missing"
 
     if not os.path.exists(local_path):
+        # RC158 — Render puede perder el archivo local tras deploy/reinicio,
+        # pero si la reacción ya está en R2 con URL pública, el Sender Pack puede salir.
+        # El regalante accede por /sender y la experiencia reconstruye desde URLs persistentes.
+        if order.get("reaction_video_public_url"):
+            return True, "public_url_available_local_missing"
         return False, "reaction_local_file_missing"
 
     try:
