@@ -1,4 +1,5 @@
-# RC156_DELIVERY_TRUTH_LOCK
+# RC157_LAUNCH_CANDIDATE
+# Base: RC156 + centralización WhatsApp/Callback + diagnóstico Twilio real.
 # Base: RC155 + verdad de entrega: queued/sent no es delivered; failed activa rescate.
 # Base: RC153 + WhatsApp Business template para iniciar conversación sin error 63016.
 # Base: RC152 + diagnóstico DB + payout no bloqueado por order_locked + cobro independiente real.
@@ -130,6 +131,7 @@ print("📲 RC151 WHATSAPP FIRST STABLE LOCK — WHATSAPP PRINCIPAL + SMS BACKUP
 print("💸 RC152 GIFT PAYOUT INDEPENDENT LOCK — EL REGALO SE ENVÍA AL COMPLETAR CONNECT, AUNQUE FALLE VÍDEO/REACCIÓN 💸")
 print("🧭 RC153 ENGINEERING AUDIT DB + MONEY LOCK — DB DIAGNÓSTICO + PAYOUT NO BLOQUEADO POR ORDER_LOCK 🧭")
 print("🛡️ RC156 DELIVERY TRUTH LOCK — QUEUED NO ES DELIVERED + RESCATE SI FAILED 🛡️")
+print("🚀 RC157 LAUNCH CANDIDATE — WHATSAPP CALLBACK + ERRORCODE LOCK 🚀")
 print("📲 RC155 WHATSAPP TEMPLATE ES/EN LOCK — NOMBRE + LINK + FOTO FUTURA SAFE 📲")
 print("📲 RC154 WHATSAPP TEMPLATE LOCK — CONTENT SID PARA PRIMER CONTACTO WHATSAPP 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
@@ -821,6 +823,7 @@ TWILIO_MESSAGING_SERVICE_SID = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "").str
 SMS_ENABLED = os.getenv("SMS_ENABLED", "1").strip() == "1"
 WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "1").strip() == "1"
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()
+TWILIO_STATUS_CALLBACK_URL = os.getenv("TWILIO_STATUS_CALLBACK_URL", "").strip()
 
 # =========================================================
 # RC155 — WHATSAPP TEMPLATE ES/EN LOCK
@@ -846,8 +849,16 @@ TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES = (
     or TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID
 )
 TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN = os.getenv("TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN", "").strip()
-TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES = os.getenv("TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES", "").strip()
-TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN = os.getenv("TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN", "").strip()
+TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES = (
+    os.getenv("TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES", "").strip()
+    or os.getenv("TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_MEDIA_SID_ES", "").strip()
+    or os.getenv("TWILIO_WHATSAPP_RECIPIENT_CARD_TEMPLATE_SID_ES", "").strip()
+)
+TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN = (
+    os.getenv("TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN", "").strip()
+    or os.getenv("TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_MEDIA_SID_EN", "").strip()
+    or os.getenv("TWILIO_WHATSAPP_RECIPIENT_CARD_TEMPLATE_SID_EN", "").strip()
+)
 TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED = os.getenv("TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
 TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY = os.getenv("TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY", "0").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -1107,7 +1118,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC156_DELIVERY_TRUTH_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC157_LAUNCH_CANDIDATE").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -7794,9 +7805,13 @@ def twilio_enabled() -> bool:
 
 def twilio_status_callback_url() -> str:
     """
-    RC121 — URL de callback de estado Twilio.
-    Solo observabilidad: queued/sent/delivered/undelivered/failed.
+    RC157 — URL de callback de estado Twilio.
+    Respeta TWILIO_STATUS_CALLBACK_URL si está definida en Render.
+    Si no, usa /twilio/status-callback. Existe alias /twilio/status para compatibilidad.
     """
+    configured = (TWILIO_STATUS_CALLBACK_URL or "").strip()
+    if configured.startswith("https://"):
+        return configured
     if not PUBLIC_BASE_URL or not PUBLIC_BASE_URL.startswith("https://"):
         return ""
     return f"{PUBLIC_BASE_URL}/twilio/status-callback"
@@ -23778,6 +23793,7 @@ def rc121_recovery_submit(token: str = Form(...), lang: str = Form("es")):
         return rc125_human_recovery_page(lang=lang, status_code=404, reason="token_not_found")
 
 
+@app.post("/twilio/status")
 @app.post("/twilio/status-callback")
 async def rc121_twilio_status_callback(request: Request):
     """Guarda estados reales de Twilio por MessageSid: queued/sent/delivered/undelivered/failed."""
@@ -23792,6 +23808,16 @@ async def rc121_twilio_status_callback(request: Request):
             status = status or "unknown"
         now = now_iso()
         raw = json.dumps(data, ensure_ascii=False)[:2000]
+        error_code = (data.get("ErrorCode") or data.get("error_code") or "").strip()
+        error_message = (data.get("ErrorMessage") or data.get("error_message") or data.get("ChannelStatusMessage") or "").strip()
+        error_detail = status
+        if status in {"failed", "undelivered"}:
+            parts = [status]
+            if error_code:
+                parts.append(error_code)
+            if error_message:
+                parts.append(error_message[:240])
+            error_detail = " | ".join(parts)
         conn = db_conn()
         cur = conn.cursor()
         changed = 0
@@ -23809,14 +23835,14 @@ async def rc121_twilio_status_callback(request: Request):
                 delivery_fortress_status=CASE WHEN ? IN ('failed','undelivered') THEN 'SMS_FAILED_WAITING_EMAIL_FALLBACK' ELSE COALESCE(delivery_fortress_status,'SMS_STATUS_UPDATED') END,
                 delivery_fortress_last_checked_at=?
             WHERE recipient_sms_sid=?
-        """, (status, now, raw, status, status, status, now, sid))
+        """, (status, now, raw, status, error_detail, status, now, sid))
         changed += cur.rowcount
         cur.execute("""
             UPDATE orders
             SET sender_sms_status=?, sender_sms_status_updated_at=?, sender_sms_status_raw=?,
                 sender_sms_error=CASE WHEN ? IN ('failed','undelivered') THEN ? ELSE sender_sms_error END
             WHERE sender_sms_sid=?
-        """, (status, now, raw, status, status, sid))
+        """, (status, now, raw, status, error_detail, sid))
         changed += cur.rowcount
         conn.commit()
         conn.close()
@@ -23846,7 +23872,7 @@ async def rc121_twilio_status_callback(request: Request):
                     delivery_fortress_last_checked_at=now,
                 )
                 set_order_state(recipient_order_id, "VIDEO_READY", f"twilio_status_{status}_delivery_failed")
-                insert_order_event(recipient_order_id, "recipient_delivery_failed", "error", f"Twilio devolvió {status}", {"sid": sid, "status": status})
+                insert_order_event(recipient_order_id, "recipient_delivery_failed", "error", f"Twilio devolvió {error_detail}", {"sid": sid, "status": status, "error_code": error_code, "error_message": error_message})
             except Exception as e:
                 log_error("twilio_status_mark_failed", e)
 
