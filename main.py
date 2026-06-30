@@ -1,4 +1,5 @@
-# RC158_SENDER_PACK_PUBLIC_REACTION_LOCK
+# RC159_SENDER_WORKER_COOLDOWN_LOCK
+# Base: RC158 + corta bucle de avisos regalante si falta reacción local/pública; reintento con cooldown seguro.
 # Base: RC157 + Sender Pack no se bloquea si falta archivo local pero existe reacción pública en R2.
 # Base: RC156 + centralización WhatsApp/Callback + diagnóstico Twilio real.
 # Base: RC155 + verdad de entrega: queued/sent no es delivered; failed activa rescate.
@@ -134,6 +135,7 @@ print("🧭 RC153 ENGINEERING AUDIT DB + MONEY LOCK — DB DIAGNÓSTICO + PAYOUT
 print("🛡️ RC156 DELIVERY TRUTH LOCK — QUEUED NO ES DELIVERED + RESCATE SI FAILED 🛡️")
 print("🚀 RC157 LAUNCH CANDIDATE — WHATSAPP CALLBACK + ERRORCODE LOCK 🚀")
 print("🛟 RC158 SENDER PACK PUBLIC REACTION LOCK — R2 PUBLIC URL NO BLOQUEA POR LOCAL MISSING 🛟")
+print("🧯 RC159 SENDER WORKER COOLDOWN LOCK — NO MÁS BUCLE CADA 15S SI FALTA REACCIÓN 🧯")
 print("📲 RC155 WHATSAPP TEMPLATE ES/EN LOCK — NOMBRE + LINK + FOTO FUTURA SAFE 📲")
 print("📲 RC154 WHATSAPP TEMPLATE LOCK — CONTENT SID PARA PRIMER CONTACTO WHATSAPP 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
@@ -886,6 +888,12 @@ WHATSAPP_MANUAL_ALERT_ENABLED = os.getenv("WHATSAPP_MANUAL_ALERT_ENABLED", "1").
 WHATSAPP_OPEN_TIMEOUT_MINUTES = int(os.getenv("WHATSAPP_OPEN_TIMEOUT_MINUTES", "10"))
 PREEXPERIENCE_CHECKIN_ENABLED = os.getenv("PREEXPERIENCE_CHECKIN_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 SENDERPACK_EMAIL_AUTO_ENABLED = os.getenv("SENDERPACK_EMAIL_AUTO_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+# RC159 — evita que el worker del regalante intente/loguee cada 15 segundos
+# cuando la reacción está marcada como subida pero el archivo local/público aún no es utilizable.
+SENDER_NOTIFICATION_RETRY_COOLDOWN_SECONDS = int(os.getenv("SENDER_NOTIFICATION_RETRY_COOLDOWN_SECONDS", "1800"))
+SENDER_NOTIFICATION_MISSING_REACTION_COOLDOWN_SECONDS = int(os.getenv("SENDER_NOTIFICATION_MISSING_REACTION_COOLDOWN_SECONDS", "21600"))
+
 EVENT_LOGGING_ENABLED = os.getenv("EVENT_LOGGING_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 ARRIVAL_PHOTO_PREVIEW_SIZE = int(os.getenv("ARRIVAL_PHOTO_PREVIEW_SIZE", "1200"))
@@ -1120,7 +1128,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC158_SENDER_PACK_PUBLIC_REACTION_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC159_SENDER_WORKER_COOLDOWN_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -3322,6 +3330,9 @@ def init_db():
     add_column_if_missing("orders", "sender_sms_attempts", "ALTER TABLE orders ADD COLUMN sender_sms_attempts INTEGER NOT NULL DEFAULT 0")
     add_column_if_missing("orders", "recipient_sms_error", "ALTER TABLE orders ADD COLUMN recipient_sms_error TEXT")
     add_column_if_missing("orders", "sender_sms_error", "ALTER TABLE orders ADD COLUMN sender_sms_error TEXT")
+    add_column_if_missing("orders", "sender_notification_next_attempt_at", "ALTER TABLE orders ADD COLUMN sender_notification_next_attempt_at TEXT")
+    add_column_if_missing("orders", "sender_notification_last_checked_at", "ALTER TABLE orders ADD COLUMN sender_notification_last_checked_at TEXT")
+    add_column_if_missing("orders", "sender_notification_last_reason", "ALTER TABLE orders ADD COLUMN sender_notification_last_reason TEXT")
 
     # RC121 — SMS TRACKING REAL SAFE
     # No cambia Twilio: solo guarda estados callback queued/sent/delivered/undelivered/failed.
@@ -17126,11 +17137,16 @@ def list_pending_sender_notifications():
             AND COALESCE(sender_sms_sent_at, '') = ''
             AND COALESCE(sender_notified, 0) = 0
             AND COALESCE(sender_sms_attempts, 0) < 3
+            AND (
+                COALESCE(sender_notification_next_attempt_at, '') = ''
+                OR sender_notification_next_attempt_at <= ?
+            )
             -- RC145: no filtramos order_locked aquí. Un pedido sin regalo puede quedar bloqueado
             -- como finalizado antes de que el SMS del regalante salga si la reacción era demasiado reciente.
             -- La seguridad real la dan reaction_uploaded/sender_notified/attempts.
+            -- RC159: si falta reacción local/pública, no se revisa cada 15s; se respeta cooldown.
         ORDER BY created_at ASC
-    """)
+    """, (now_iso(),))
     rows = cur.fetchall()
     conn.close()
     return [r["id"] for r in rows]
@@ -17187,12 +17203,64 @@ def process_all_due_scheduled_deliveries() -> list[dict]:
     return results
 
 
+def _sender_notification_cooldown_seconds(reason: str) -> int:
+    """
+    RC159 — anti-bucle del worker del regalante.
+    Si la reacción todavía no está disponible, no tiene sentido intentar avisar cada 15s.
+    - Falta local/R2: cooldown largo.
+    - Archivo reciente/cambiando: cooldown corto.
+    """
+    clean = str(reason or "").strip()
+    hard_missing = {
+        "reaction_local_file_missing",
+        "reaction_local_path_missing",
+        "reaction_not_found",
+        "reaction_size_unreadable",
+        "reaction_stability_check_failed",
+    }
+    if clean in hard_missing:
+        return max(300, SENDER_NOTIFICATION_MISSING_REACTION_COOLDOWN_SECONDS)
+    if clean.startswith("reaction_file_too_recent") or clean == "reaction_file_size_still_changing":
+        return max(60, SENDER_NOTIFICATION_RETRY_COOLDOWN_SECONDS // 10)
+    return max(300, SENDER_NOTIFICATION_RETRY_COOLDOWN_SECONDS)
+
+
+def _apply_sender_notification_cooldown(order_id: str, result: dict):
+    """Guarda próxima revisión para que el worker no haga spam de intentos/logs."""
+    try:
+        reason = str((result or {}).get("reason") or "sender_notification_waiting")
+        seconds = _sender_notification_cooldown_seconds(reason)
+        next_at = (now_dt() + timedelta(seconds=seconds)).isoformat()
+        update_order(
+            order_id,
+            sender_notification_next_attempt_at=next_at,
+            sender_notification_last_checked_at=now_iso(),
+            sender_notification_last_reason=reason,
+            sender_sms_error=reason,
+        )
+        print(f"📩 Worker sender sms retenido con cooldown: {order_id} {reason} next={next_at}")
+    except Exception as e:
+        log_error("sender_notification_cooldown", e)
+
+
 def process_all_due_sender_notifications() -> list[dict]:
     results = []
     for order_id in list_pending_sender_notifications():
         try:
             order = maybe_mark_eterna_completed(order_id)
             result = try_send_sender_sms(order)
+            if not result.get("ok") and result.get("no_attempt_increment"):
+                _apply_sender_notification_cooldown(order_id, result)
+            elif result.get("ok"):
+                try:
+                    update_order(
+                        order_id,
+                        sender_notification_next_attempt_at=None,
+                        sender_notification_last_reason=result.get("reason") or "ok",
+                        sender_notification_last_checked_at=now_iso(),
+                    )
+                except Exception as e:
+                    log_error("sender_notification_clear_cooldown", e)
             print("📩 Worker sender sms:", order_id, result)
             results.append({
                 "order_id": order_id,
