@@ -1,4 +1,5 @@
-# RC159_SENDER_WORKER_COOLDOWN_LOCK
+# RC160_WHATSAPP_LANGUAGE_ROUTER_LOCK
+# Base: RC159 + router único WhatsApp ES/EN por idioma real del pedido; sin detección por texto ni fallbacks ambiguos.
 # Base: RC158 + corta bucle de avisos regalante si falta reacción local/pública; reintento con cooldown seguro.
 # Base: RC157 + Sender Pack no se bloquea si falta archivo local pero existe reacción pública en R2.
 # Base: RC156 + centralización WhatsApp/Callback + diagnóstico Twilio real.
@@ -136,6 +137,7 @@ print("🛡️ RC156 DELIVERY TRUTH LOCK — QUEUED NO ES DELIVERED + RESCATE SI
 print("🚀 RC157 LAUNCH CANDIDATE — WHATSAPP CALLBACK + ERRORCODE LOCK 🚀")
 print("🛟 RC158 SENDER PACK PUBLIC REACTION LOCK — R2 PUBLIC URL NO BLOQUEA POR LOCAL MISSING 🛟")
 print("🧯 RC159 SENDER WORKER COOLDOWN LOCK — NO MÁS BUCLE CADA 15S SI FALTA REACCIÓN 🧯")
+print("📲 RC160 WHATSAPP LANGUAGE ROUTER LOCK — ES/EN POR IDIOMA REAL DEL PEDIDO 📲")
 print("📲 RC155 WHATSAPP TEMPLATE ES/EN LOCK — NOMBRE + LINK + FOTO FUTURA SAFE 📲")
 print("📲 RC154 WHATSAPP TEMPLATE LOCK — CONTENT SID PARA PRIMER CONTACTO WHATSAPP 📲")
 print("🦋 RC145F CLUB MARIPOSA HEIC SHIELD LOCK — IPHONE PHOTO SAFE + R2 MEMBER BACKUP 🦋")
@@ -733,7 +735,7 @@ _rate_limit_lock = threading.Lock()
 
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
-    "https://eterna-final.onrender.com",
+    "https://tueterna.com",
 ).strip().rstrip("/")
 
 VIDEO_ENGINE_URL = os.getenv(
@@ -865,6 +867,17 @@ TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN = (
 )
 TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED = os.getenv("TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
 TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY = os.getenv("TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+# =========================================================
+# RC160 — WHATSAPP LANGUAGE ROUTER LOCK
+# Única regla para plantillas de primer contacto al destinatario:
+#   order.language == "es" -> TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES
+#   order.language == "en" -> TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN
+# No hay detección por texto, no hay fallback a otro idioma y no se usan
+# plantillas de foto hasta que estén aprobadas y se active explícitamente.
+# =========================================================
+RC160_WHATSAPP_STRICT_LANGUAGE_ROUTER = os.getenv("RC160_WHATSAPP_STRICT_LANGUAGE_ROUTER", "1").strip().lower() in {"1", "true", "yes", "on"}
+
 
 # =========================================================
 # RC150 — WHATSAPP ARRIVAL PHOTO PREVIEW LOCK
@@ -1128,7 +1141,7 @@ DELIVERY_WORKER_LOCK = threading.Lock()
 # =========================================================
 # RC74 FULL — AUTONOMÍA OPERATIVA
 # =========================================================
-ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC159_SENDER_WORKER_COOLDOWN_LOCK").strip()
+ETERNA_APP_VERSION = os.getenv("ETERNA_APP_VERSION", "RC160_WHATSAPP_LANGUAGE_ROUTER_LOCK").strip()
 ETERNA_SAFE_MODE = os.getenv("ETERNA_SAFE_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_PAYOUTS_ENABLED = os.getenv("ETERNA_PAYOUTS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 ETERNA_ORDER_LOCK_ENABLED = os.getenv("ETERNA_ORDER_LOCK_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -7659,7 +7672,7 @@ def try_send_sender_sms(order: dict) -> dict:
 
         message = build_sender_ready_message(order)
         print("📩 RC53 ENVIANDO MENSAJE REGALANTE A:", order.get("sender_phone", ""))
-        result = send_message_best_effort(order.get("sender_phone", ""), message)
+        result = send_message_best_effort(order.get("sender_phone", ""), message, order_language=order.get("language") or "es", order_id=order.get("id") or "")
 
         attempts = attempts + 1
 
@@ -7935,29 +7948,52 @@ def rc155_extract_recipient_name_from_message(message: str) -> str:
     return "alguien especial"
 
 
+def rc160_order_language(value: str = "") -> str:
+    """RC160 — normaliza idioma real del pedido/formulario. Solo es o en."""
+    try:
+        return normalize_order_language(value or "es")
+    except Exception:
+        raw = str(value or "es").strip().lower()
+        return "en" if raw.startswith("en") else "es"
+
+
+def rc160_whatsapp_template_for_order_language(order_language: str) -> tuple[str, str, str]:
+    """
+    RC160 — router único y determinista de plantilla WhatsApp.
+    No detecta idioma por el texto del mensaje.
+    No cambia al otro idioma si falta el SID.
+    No usa plantilla legacy ni foto para evitar ambigüedad y 63027.
+    Devuelve (template_sid, lang, template_kind).
+    """
+    lang = rc160_order_language(order_language)
+    if lang == "en":
+        return (TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN or "").strip(), "en", "text"
+    return (TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES or "").strip(), "es", "text"
+
+
+def rc160_log_whatsapp_router(order_id: str = "", order_language: str = "", template_sid: str = "", template_kind: str = "text"):
+    try:
+        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("📲 RC160 WhatsApp Template Router")
+        print(f"🆔 Pedido: {order_id or 'sin pedido'}")
+        print(f"🌍 Idioma pedido: {rc160_order_language(order_language)}")
+        print(f"🧩 Template kind: {template_kind or 'text'}")
+        print(f"🔑 Template SID: {template_sid or 'MISSING'}")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    except Exception:
+        pass
+
+
 def rc155_template_sid_for_lang(lang: str, media_url: str = "") -> tuple[str, str]:
-    """Devuelve (template_sid, template_kind). kind=text|photo|legacy_body."""
-    lang = (lang or "es").strip().lower()
-    clean_media = normalize_whatsapp_media_url(media_url)
-
-    # Futuro seguro: solo usar card/foto si está expresamente activado y existe SID aprobado.
-    if TWILIO_WHATSAPP_PHOTO_TEMPLATE_ENABLED and clean_media:
-        if lang == "en" and TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN:
-            return TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_EN, "photo"
-        if lang != "en" and TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES:
-            return TWILIO_WHATSAPP_RECIPIENT_PHOTO_TEMPLATE_SID_ES, "photo"
-
-    # Texto aprobado ES/EN.
-    if lang == "en" and TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN:
-        return TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_EN, "text"
-    if TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES:
-        return TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID_ES, "text"
-    if TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID:
-        return TWILIO_WHATSAPP_RECIPIENT_TEMPLATE_SID, "text"
-    return "", "legacy_body"
+    """
+    Compatibilidad interna: desde RC160 se enruta de forma estricta por idioma real
+    del pedido. Esta función ya no debe usarse para adivinar idioma desde mensaje.
+    """
+    template_sid, _lang, template_kind = rc160_whatsapp_template_for_order_language(lang)
+    return template_sid, template_kind
 
 
-def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
+def send_whatsapp(phone: str, message: str, media_url: str = "", order_language: str = "es", order_id: str = "") -> dict:
     to_phone = to_e164(phone)
     wa_from = whatsapp_from_number()
     if not to_phone:
@@ -7972,27 +8008,32 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
         callback_url = twilio_status_callback_url()
 
-        lang = rc155_detect_message_language(message)
+        # RC160 — idioma real del pedido/formulario. No se detecta por texto.
+        lang = rc160_order_language(order_language)
         experience_url = rc155_extract_first_url(message)
         recipient_name = rc155_extract_recipient_name_from_message(message)
         clean_media_url = normalize_whatsapp_media_url(media_url)
-        template_sid, template_kind = rc155_template_sid_for_lang(lang, clean_media_url)
+        template_sid, lang, template_kind = rc160_whatsapp_template_for_order_language(lang)
+        rc160_log_whatsapp_router(order_id=order_id, order_language=lang, template_sid=template_sid, template_kind=template_kind)
+        if order_id:
+            try:
+                insert_order_event(
+                    order_id,
+                    "rc160_whatsapp_template_router",
+                    "ok" if template_sid else "error",
+                    f"language={lang} template_sid={'set' if template_sid else 'missing'}",
+                    {"language": lang, "template_sid": template_sid, "template_kind": template_kind},
+                )
+            except Exception as router_event_error:
+                print("[WARN] RC160 router event failed:", router_event_error)
 
-        # RC155 — usar plantilla aprobada para iniciar conversación WhatsApp.
+        # RC160 — usar solo plantilla aprobada del idioma del pedido.
         # Text template: {{1}} = nombre, {{2}} = enlace experiencia.
-        # Photo/card template futuro: {{1}} = nombre, {{2}} = media_url foto, {{3}} = enlace experiencia.
         if template_sid:
-            if template_kind == "photo":
-                content_variables = {
-                    "1": recipient_name,
-                    "2": clean_media_url,
-                    "3": experience_url,
-                }
-            else:
-                content_variables = {
-                    "1": recipient_name,
-                    "2": experience_url,
-                }
+            content_variables = {
+                "1": recipient_name,
+                "2": experience_url,
+            }
 
             kwargs = {
                 "from_": wa_from,
@@ -8017,25 +8058,16 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
                 "template_variables_keys": sorted(content_variables.keys()),
             }
 
-        # Fallback legacy: solo si no hay plantilla configurada. En producción conviene no usarlo
-        # para primer contacto porque WhatsApp puede devolver 63016.
-        if not TWILIO_WHATSAPP_TEMPLATE_FALLBACK_TEXT_BODY:
-            return {
-                "ok": False,
-                "channel": "whatsapp",
-                "sid": None,
-                "error": "missing_whatsapp_template_sid",
-                "template_used": False,
-                "template_lang": lang,
-            }
-
-        kwargs = {"body": message, "from_": wa_from, "to": f"whatsapp:{to_phone}"}
-        if clean_media_url:
-            kwargs["media_url"] = [clean_media_url]
-        if callback_url:
-            kwargs["status_callback"] = callback_url
-        msg = client.messages.create(**kwargs)
-        return {"ok": True, "channel": "whatsapp", "sid": msg.sid, "status": getattr(msg, "status", None) or "queued", "error": None, "media_url": clean_media_url or None, "template_used": False}
+        # RC160 — sin fallback legacy ni cambio automático de idioma.
+        return {
+            "ok": False,
+            "channel": "whatsapp",
+            "sid": None,
+            "error": f"missing_whatsapp_template_for_language_{lang}",
+            "template_used": False,
+            "template_lang": lang,
+            "order_id": order_id or None,
+        }
     except Exception as e:
         return {
             "ok": False,
@@ -8047,7 +8079,7 @@ def send_whatsapp(phone: str, message: str, media_url: str = "") -> dict:
         }
 
 
-def send_message_best_effort(phone: str, message: str, media_url: str = "") -> dict:
+def send_message_best_effort(phone: str, message: str, media_url: str = "", order_language: str = "es", order_id: str = "") -> dict:
     """
     RC150 — canal automático seguro.
     Si WHATSAPP_PRIMARY_DELIVERY_ENABLED=1, intenta WhatsApp primero con la
@@ -8058,7 +8090,7 @@ def send_message_best_effort(phone: str, message: str, media_url: str = "") -> d
     clean_media_url = normalize_whatsapp_media_url(media_url)
 
     if WHATSAPP_PRIMARY_DELIVERY_ENABLED:
-        whatsapp_result = send_whatsapp(phone, message, media_url=clean_media_url)
+        whatsapp_result = send_whatsapp(phone, message, media_url=clean_media_url, order_language=order_language, order_id=order_id)
         if whatsapp_result.get("ok"):
             whatsapp_result["channel"] = "whatsapp"
             whatsapp_result["primary"] = True
@@ -8101,7 +8133,7 @@ def send_message_best_effort(phone: str, message: str, media_url: str = "") -> d
         return sms_result
 
     if DELIVERY_AUTO_WHATSAPP_FALLBACK_ENABLED:
-        whatsapp_result = send_whatsapp(phone, message, media_url=clean_media_url)
+        whatsapp_result = send_whatsapp(phone, message, media_url=clean_media_url, order_language=order_language, order_id=order_id)
         if whatsapp_result.get("ok"):
             whatsapp_result["fallback_from"] = "sms"
             whatsapp_result["sms_error"] = sms_result.get("error")
@@ -10557,7 +10589,7 @@ def try_send_recipient_rescue_sms(order: dict, stage: str) -> dict:
 
     phone = order.get("recipient_phone") or ""
     message = build_recipient_rescue_sms_message(order, stage=stage)
-    result = send_message_best_effort(phone, message)
+    result = send_message_best_effort(phone, message, order_language=order.get("language") or "es", order_id=order_id)
 
     update_fields = {}
     if result.get("ok"):
@@ -10774,8 +10806,8 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
 
         message = build_recipient_message(order)
         arrival_media_url = arrival_photo_preview_url_from_order(order) or arrival_photo_url_from_order(order)
-        print("📩 RC151 ENVIANDO WHATSAPP/SMS DESTINATARIO A:", order.get("recipient_phone", ""))
-        result = send_message_best_effort(order.get("recipient_phone", ""), message, media_url=arrival_media_url)
+        print("📩 RC160 ENVIANDO WHATSAPP/SMS DESTINATARIO A:", order.get("recipient_phone", ""), "LANG:", order.get("language") or "es")
+        result = send_message_best_effort(order.get("recipient_phone", ""), message, media_url=arrival_media_url, order_language=order.get("language") or "es", order_id=order_id)
 
         print("📩 RECIPIENT DELIVERY RESULT:", result)
 
@@ -10818,7 +10850,7 @@ def process_scheduled_recipient_delivery(order_id: str) -> dict:
             set_order_state(order_id, "VIDEO_READY", delivery_reason + "_waiting_confirmation")
 
             updated = get_order_by_id(order_id)
-            insert_order_event(order_id, delivery_event, "ok", delivery_label + " (esperando confirmación real)", {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0), "channel": delivery_channel, "status": updated.get("recipient_sms_status"), "media_url": result.get("media_url")})
+            insert_order_event(order_id, delivery_event, "ok", delivery_label + " (esperando confirmación real)", {"sid": updated.get("recipient_sms_sid"), "attempts": int(updated.get("recipient_sms_attempts") or 0), "channel": delivery_channel, "status": updated.get("recipient_sms_status"), "media_url": result.get("media_url"), "template_sid": result.get("template_sid"), "template_lang": result.get("template_lang")})
 
             return {
                 "ok": True,
@@ -23231,9 +23263,9 @@ def admin_test_message(
     if channel == "sms":
         result = send_sms(to_phone, message)
     elif channel == "whatsapp":
-        result = send_whatsapp(to_phone, message)
+        result = send_whatsapp(to_phone, message, order_language="es", order_id="admin_test")
     else:
-        result = send_message_best_effort(to_phone, message)
+        result = send_message_best_effort(to_phone, message, order_language="es", order_id="admin_test")
 
     print("📨 ADMIN TEST MESSAGE RESULT:", result)
 
@@ -23314,9 +23346,9 @@ def admin_test_order_message(
     if channel == "sms":
         result = send_sms(phone, message)
     elif channel == "whatsapp":
-        result = send_whatsapp(phone, message, media_url=media_url)
+        result = send_whatsapp(phone, message, media_url=media_url, order_language=order.get("language") or "es", order_id=order_id)
     else:
-        result = send_message_best_effort(phone, message, media_url=media_url)
+        result = send_message_best_effort(phone, message, media_url=media_url, order_language=order.get("language") or "es", order_id=order_id)
 
     return JSONResponse({
         "ok": bool(result.get("ok")),
